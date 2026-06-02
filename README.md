@@ -58,7 +58,7 @@ The app will be running at **http://localhost:5173**
 
 ## Project Structure
 
-```
+```text
 src/
 ├── assets/                        # Images (logo, banners, etc.)
 │
@@ -118,7 +118,7 @@ src/
 
 Each folder inside `src/features/` represents one page group or feature. Inside a feature you can add these subfolders as needed:
 
-```
+```text
 features/
 └── your-feature/
     ├── components/   ← UI pieces specific to this feature

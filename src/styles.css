@@ -137,6 +137,9 @@
   }
 
   /* Faint top-edge glow — used to separate dark sections */
+  .section-glow-top {
+    position: relative;
+  }
   .section-glow-top::before {
     content: "";
     position: absolute;

@@ -22,7 +22,7 @@ export function OverviewTab({ tournament: t }: OverviewTabProps) {
                       i === 0 ? "text-white" : i === 1 ? "text-white/60" : "text-white/30"
                     }`}
                   >
-                    {i === 0 ? "01" : i === 1 ? "02" : "03"}
+                    {String(i + 1).padStart(2, "0")}
                   </span>
                   <span className="text-sm text-muted-foreground">{tier.place}</span>
                 </div>

@@ -16,10 +16,19 @@ const TABS: { id: Tab; label: string }[] = [
 export function TournamentTabs({ active, onChange, teamCount }: TournamentTabsProps) {
   return (
     <div className="sticky top-16 z-20 border-b border-white/8 bg-background/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center gap-0 px-6">
+      <div
+        role="tablist"
+        aria-label="Tournament sections"
+        className="mx-auto flex max-w-7xl items-center gap-0 px-6"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.id}
+            role="tab"
+            id={`tab-${tab.id}`}
+            type="button"
+            aria-selected={active === tab.id}
+            aria-controls={`tab-panel-${tab.id}`}
             onClick={() => onChange(tab.id)}
             className={`relative px-5 py-4 text-[11px] font-tech uppercase tracking-wider-2 transition-colors duration-150 ${
               active === tab.id

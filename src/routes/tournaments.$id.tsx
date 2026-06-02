@@ -89,13 +89,25 @@ function TournamentDetailPage() {
       <main className="relative bg-[oklch(0.05_0_0)]">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
         <div className="relative mx-auto max-w-7xl px-6 py-12">
-          {activeTab === "overview" && <OverviewTab tournament={tournament} />}
-          {activeTab === "teams" && <TeamsTab teams={tournament.teams} />}
+          {activeTab === "overview" && (
+            <div role="tabpanel" id="tab-panel-overview" aria-labelledby="tab-overview">
+              <OverviewTab tournament={tournament} />
+            </div>
+          )}
+          {activeTab === "teams" && (
+            <div role="tabpanel" id="tab-panel-teams" aria-labelledby="tab-teams">
+              <TeamsTab teams={tournament.teams} />
+            </div>
+          )}
           {activeTab === "bracket" && (
-            <BracketTab bracket={tournament.bracket} format={tournament.format} />
+            <div role="tabpanel" id="tab-panel-bracket" aria-labelledby="tab-bracket">
+              <BracketTab bracket={tournament.bracket} format={tournament.format} />
+            </div>
           )}
           {activeTab === "rules" && (
-            <RulesTab rules={tournament.rules} contact={tournament.contact} />
+            <div role="tabpanel" id="tab-panel-rules" aria-labelledby="tab-rules">
+              <RulesTab rules={tournament.rules} contact={tournament.contact} />
+            </div>
           )}
         </div>
       </main>

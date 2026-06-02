@@ -9,6 +9,15 @@ import { mockTournaments } from "@/lib/mock-data";
 import { ALL_GAMES, ALL_STATUSES } from "@/features/tournaments/constants";
 import type { TournamentGame, TournamentStatus, Tournament } from "@/features/tournaments/types";
 
+// Valid public statuses — excludes "Draft" from MockTournament
+const PUBLIC_STATUSES = new Set([
+  "Registration Open",
+  "Registration Closed",
+  "Live",
+  "Completed",
+  "Archived",
+]);
+
 export const Route = createFileRoute("/tournaments/")({
   head: () => ({
     meta: [
@@ -23,8 +32,10 @@ export const Route = createFileRoute("/tournaments/")({
   component: TournamentsPage,
 });
 
-// Exclude Draft tournaments from the public directory
-const publicTournaments = mockTournaments.filter((t) => t.status !== "Draft") as Tournament[];
+// Exclude Draft tournaments — filter to public statuses, result typed as Tournament[]
+const publicTournaments: Tournament[] = mockTournaments.filter((t) =>
+  PUBLIC_STATUSES.has(t.status),
+) as Tournament[];
 
 function TournamentsPage() {
   const [activeGame, setActiveGame] = useState<typeof ALL_GAMES | TournamentGame>(ALL_GAMES);
@@ -132,15 +143,16 @@ function TournamentsPage() {
             {/* Everything else (or when a filter is active — flat list) */}
             {activeStatus !== ALL_STATUSES ? (
               <TournamentGrid tournaments={filtered} />
+            ) : filtered.some((t) => t.status !== "Live" && t.status !== "Registration Open") ? (
+              <Group
+                label="Past & Upcoming"
+                tournaments={filtered.filter(
+                  (t) => t.status !== "Live" && t.status !== "Registration Open",
+                )}
+              />
             ) : (
-              filtered.some((t) => t.status !== "Live" && t.status !== "Registration Open") && (
-                <Group
-                  label="Past & Upcoming"
-                  tournaments={filtered.filter(
-                    (t) => t.status !== "Live" && t.status !== "Registration Open",
-                  )}
-                />
-              )
+              /* All groups empty — show TournamentGrid so its empty-state renders */
+              filtered.length === 0 && <TournamentGrid tournaments={[]} />
             )}
           </div>
         </div>

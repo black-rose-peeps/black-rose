@@ -31,10 +31,14 @@ export function TeamsTab({ teams }: TeamsTabProps) {
 
 function TeamRow({ team, rank }: { team: TournamentTeam; rank: number }) {
   const [open, setOpen] = useState(false);
+  const panelId = `players-panel-${team.id}`;
 
   return (
     <div className="border border-white/8 bg-[oklch(0.07_0_0)] transition hover:border-white/15">
       <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
       >
@@ -56,7 +60,7 @@ function TeamRow({ team, rank }: { team: TournamentTeam; rank: number }) {
       </button>
 
       {open && (
-        <div className="border-t border-white/8">
+        <div id={panelId} className="border-t border-white/8">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/6 bg-white/[0.02] text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Emblem } from "@/features/shared/components/Emblem";
 
 export function Footer() {
@@ -22,8 +23,24 @@ export function Footer() {
           </div>
 
           {[
-            { title: "Compete", links: ["Tournaments", "Teams", "Brackets", "Standings"] },
-            { title: "Community", links: ["News", "Champions", "Calendar", "Discord"] },
+            {
+              title: "Compete",
+              links: [
+                { label: "Tournaments", to: "/tournaments" as const },
+                { label: "Teams", to: null },
+                { label: "Brackets", to: null },
+                { label: "Standings", to: null },
+              ],
+            },
+            {
+              title: "Community",
+              links: [
+                { label: "News", to: null },
+                { label: "Champions", to: null },
+                { label: "Calendar", to: null },
+                { label: "Discord", to: null },
+              ],
+            },
           ].map((c) => (
             <div key={c.title}>
               <div className="text-[10px] font-tech uppercase tracking-wider-2 text-white/30">
@@ -31,13 +48,22 @@ export function Footer() {
               </div>
               <ul className="mt-4 space-y-3 text-sm">
                 {c.links.map((l) => (
-                  <li key={l}>
-                    <a
-                      href="#"
-                      className="text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {l}
-                    </a>
+                  <li key={l.label}>
+                    {l.to ? (
+                      <Link
+                        to={l.to}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {l.label}
+                      </Link>
+                    ) : (
+                      <span
+                        aria-disabled="true"
+                        className="cursor-default text-muted-foreground/50"
+                      >
+                        {l.label}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

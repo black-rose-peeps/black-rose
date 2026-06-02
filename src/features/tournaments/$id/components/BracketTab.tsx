@@ -67,14 +67,14 @@ function MatchCard({ match }: { match: BracketMatch }) {
       <TeamSlot
         name={match.teamA}
         score={match.scoreA}
-        winner={match.winner === match.teamA}
+        winner={!!(match.winner && match.teamA && match.winner === match.teamA)}
         hasScores={hasScores}
       />
       <div className="h-px bg-white/6" />
       <TeamSlot
         name={match.teamB}
         score={match.scoreB}
-        winner={match.winner === match.teamB}
+        winner={!!(match.winner && match.teamB && match.winner === match.teamB)}
         hasScores={hasScores}
       />
     </div>

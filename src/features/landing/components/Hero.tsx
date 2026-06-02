@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import heroBg from "@/assets/landing-hero-bg2.jpg";
 import { Emblem } from "@/features/shared/components/Emblem";
 
@@ -45,13 +46,19 @@ export function Hero() {
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row animate-rise">
-          <button className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition">
+          <Link
+            to="/register"
+            className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition"
+          >
             Register Now
             <span aria-hidden>→</span>
-          </button>
-          <button className="clip-cta inline-flex h-12 items-center gap-3 border border-border bg-transparent px-8 font-tech text-sm uppercase tracking-wider-2 text-foreground hover:bg-secondary transition">
+          </Link>
+          <Link
+            to="/tournaments"
+            className="clip-cta inline-flex h-12 items-center gap-3 border border-border bg-transparent px-8 font-tech text-sm uppercase tracking-wider-2 text-foreground hover:bg-secondary transition"
+          >
             View Tournaments
-          </button>
+          </Link>
         </div>
 
         {/* Stats strip */}

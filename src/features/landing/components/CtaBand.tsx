@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Emblem } from "@/features/shared/components/Emblem";
 
 export function CtaBand() {
@@ -38,13 +39,19 @@ export function CtaBand() {
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <button className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90">
+          <Link
+            to="/register"
+            className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+          >
             Create Account
             <span aria-hidden>→</span>
-          </button>
-          <button className="clip-cta inline-flex h-12 items-center gap-3 border border-white/15 bg-white/[0.04] px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/[0.08] hover:border-white/25">
+          </Link>
+          <Link
+            to="/tournaments"
+            className="clip-cta inline-flex h-12 items-center gap-3 border border-white/15 bg-white/[0.04] px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/[0.08] hover:border-white/25"
+          >
             Browse Tournaments
-          </button>
+          </Link>
         </div>
       </div>
     </section>
