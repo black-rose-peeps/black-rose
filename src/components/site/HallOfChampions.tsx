@@ -1,10 +1,28 @@
 import { SectionHeading } from "./SectionHeading";
 
 const champs = [
-  { team: "OBSIDIAN ORDER", tag: "OBS", tournament: "Valorant Spring Open", mvp: "kairo", date: "May 2026" },
-  { team: "NOCTURNE EMPIRE", tag: "NCT", tournament: "MLBB Crown Series", mvp: "vex", date: "Mar 2026" },
+  {
+    team: "OBSIDIAN ORDER",
+    tag: "OBS",
+    tournament: "Valorant Spring Open",
+    mvp: "kairo",
+    date: "May 2026",
+  },
+  {
+    team: "NOCTURNE EMPIRE",
+    tag: "NCT",
+    tournament: "MLBB Crown Series",
+    mvp: "vex",
+    date: "Mar 2026",
+  },
   { team: "PALE KINGS", tag: "PLK", tournament: "CS2 Iron Cup", mvp: "renji", date: "Jan 2026" },
-  { team: "HOUSE OF THORNS", tag: "HOT", tournament: "Valorant Winter Cup", mvp: "sable", date: "Dec 2025" },
+  {
+    team: "HOUSE OF THORNS",
+    tag: "HOT",
+    tournament: "Valorant Winter Cup",
+    mvp: "sable",
+    date: "Dec 2025",
+  },
 ];
 
 export function HallOfChampions() {

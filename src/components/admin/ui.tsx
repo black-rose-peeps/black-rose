@@ -1,15 +1,7 @@
 import type { ReactNode } from "react";
 
-export function Panel({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`border border-border bg-card ${className}`}>{children}</div>
-  );
+export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`border border-border bg-card ${className}`}>{children}</div>;
 }
 
 export function PanelHeader({
@@ -110,13 +102,7 @@ export function PrimaryButton({
   );
 }
 
-export function GhostButton({
-  children,
-  onClick,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-}) {
+export function GhostButton({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
   return (
     <button
       type="button"

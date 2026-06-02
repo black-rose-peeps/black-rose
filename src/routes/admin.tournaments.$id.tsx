@@ -97,7 +97,9 @@ function TournamentDetailPage() {
                           {team.tag}
                         </div>
                         <div className="flex flex-col leading-tight">
-                          <span className="font-display text-base tracking-wider-2">{team.name}</span>
+                          <span className="font-display text-base tracking-wider-2">
+                            {team.name}
+                          </span>
                           <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                             ID {team.id}
                           </span>
@@ -105,9 +107,15 @@ function TournamentDetailPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs">{team.captain}</td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">{team.members.length}</td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">{team.registrationDate}</td>
-                    <td className="px-4 py-4"><StatusPill status={team.status} /></td>
+                    <td className="px-4 py-4 text-xs text-muted-foreground">
+                      {team.members.length}
+                    </td>
+                    <td className="px-4 py-4 text-xs text-muted-foreground">
+                      {team.registrationDate}
+                    </td>
+                    <td className="px-4 py-4">
+                      <StatusPill status={team.status} />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -128,7 +136,10 @@ function TournamentDetailPage() {
                 ))}
                 {teams.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-xs text-muted-foreground">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-10 text-center text-xs text-muted-foreground"
+                    >
                       No teams registered yet.
                     </td>
                   </tr>

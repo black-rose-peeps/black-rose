@@ -1,6 +1,12 @@
 // Mock data for Black Rose admin (frontend flow only)
 
-export type TournamentStatus = "Draft" | "Registration Open" | "Registration Closed" | "Live" | "Completed" | "Archived";
+export type TournamentStatus =
+  | "Draft"
+  | "Registration Open"
+  | "Registration Closed"
+  | "Live"
+  | "Completed"
+  | "Archived";
 
 export interface MockTournament {
   id: string;
@@ -188,12 +194,54 @@ export const mockTeams: MockTeam[] = [
 ];
 
 export const mockUsers: MockUser[] = [
-  { id: "u-001", username: "thornn", email: "thornn@blackrose.gg", role: "User", registrationDate: "2026-02-12", status: "Active" },
-  { id: "u-002", username: "halox", email: "halox@blackrose.gg", role: "User", registrationDate: "2026-03-04", status: "Active" },
-  { id: "u-003", username: "marshal", email: "marshal@blackrose.gg", role: "Tournament Admin", registrationDate: "2026-01-19", status: "Active" },
-  { id: "u-004", username: "ire", email: "ire@blackrose.gg", role: "User", registrationDate: "2026-04-22", status: "Suspended" },
-  { id: "u-005", username: "saira", email: "saira@blackrose.gg", role: "User", registrationDate: "2026-05-30", status: "Active" },
-  { id: "u-006", username: "warden", email: "warden@blackrose.gg", role: "Super Admin", registrationDate: "2025-11-02", status: "Active" },
+  {
+    id: "u-001",
+    username: "thornn",
+    email: "thornn@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-02-12",
+    status: "Active",
+  },
+  {
+    id: "u-002",
+    username: "halox",
+    email: "halox@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-03-04",
+    status: "Active",
+  },
+  {
+    id: "u-003",
+    username: "marshal",
+    email: "marshal@blackrose.gg",
+    role: "Tournament Admin",
+    registrationDate: "2026-01-19",
+    status: "Active",
+  },
+  {
+    id: "u-004",
+    username: "ire",
+    email: "ire@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-04-22",
+    status: "Suspended",
+  },
+  {
+    id: "u-005",
+    username: "saira",
+    email: "saira@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-05-30",
+    status: "Active",
+  },
+  {
+    id: "u-006",
+    username: "warden",
+    email: "warden@blackrose.gg",
+    role: "Super Admin",
+    registrationDate: "2025-11-02",
+    status: "Active",
+  },
 ];
 
 export const mockOverview = {

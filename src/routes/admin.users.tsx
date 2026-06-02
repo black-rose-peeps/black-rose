@@ -38,9 +38,15 @@ function UsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs text-muted-foreground">{u.email}</td>
-                    <td className="px-4 py-4 text-[10px] font-tech uppercase tracking-wider-2">{u.role}</td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">{u.registrationDate}</td>
-                    <td className="px-4 py-4"><StatusPill status={u.status} /></td>
+                    <td className="px-4 py-4 text-[10px] font-tech uppercase tracking-wider-2">
+                      {u.role}
+                    </td>
+                    <td className="px-4 py-4 text-xs text-muted-foreground">
+                      {u.registrationDate}
+                    </td>
+                    <td className="px-4 py-4">
+                      <StatusPill status={u.status} />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-foreground transition hover:border-foreground/60">
