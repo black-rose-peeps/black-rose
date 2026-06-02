@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Emblem } from "@/components/site/Emblem";
+import { Emblem } from "@/features/shared/components/Emblem";
 import type { ReactNode } from "react";
 
 export function AuthShell({

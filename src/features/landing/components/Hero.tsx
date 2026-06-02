@@ -1,5 +1,6 @@
-import heroBg from "@/assets/hero-bg.jpg";
-import { Emblem } from "./Emblem";
+import { Link } from "@tanstack/react-router";
+import heroBg from "@/assets/landing-hero-bg2.jpg";
+import { Emblem } from "@/features/shared/components/Emblem";
 
 export function Hero() {
   return (
@@ -16,7 +17,7 @@ export function Hero() {
         }}
       />
       <div className="absolute inset-0 -z-10 radial-fade" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-background to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-linear-to-t from-background to-transparent" />
 
       {/* Geometric corner accents */}
       <div className="pointer-events-none absolute left-6 top-24 hidden h-32 w-32 border-l border-t border-border md:block" />
@@ -24,14 +25,14 @@ export function Hero() {
 
       <div className="relative mx-auto flex max-w-5xl flex-col items-center px-6 text-center">
         {/* Spinning emblem */}
-        <div className="relative mb-10 animate-rise">
+        <div className="relative animate-rise">
           <div className="absolute inset-0 -m-8 rounded-full blur-3xl bg-foreground/5" />
-          <Emblem spin className="relative h-42 w-42 md:h-56 md:w-56 opacity-90" />
+          <Emblem spin className="mb-6 relative h-42 w-42 md:h-56 md:w-56 opacity-90" />
         </div>
 
         <div className="mb-6 inline-flex items-center gap-3 border border-border px-4 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground animate-rise">
           <span className="h-1.5 w-1.5 bg-foreground animate-pulse-soft" />
-          Community Esports · Season 01
+          Community Esports
         </div>
 
         <h1 className="font-display text-6xl leading-[0.9] tracking-display sm:text-7xl md:text-[7.5rem] animate-rise">
@@ -45,17 +46,23 @@ export function Hero() {
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row animate-rise">
-          <button className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition">
+          <Link
+            to="/register"
+            className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition"
+          >
             Register Now
             <span aria-hidden>→</span>
-          </button>
-          <button className="clip-cta inline-flex h-12 items-center gap-3 border border-border bg-transparent px-8 font-tech text-sm uppercase tracking-wider-2 text-foreground hover:bg-secondary transition">
+          </Link>
+          <Link
+            to="/tournaments"
+            className="clip-cta inline-flex h-12 items-center gap-3 border border-border bg-transparent px-8 font-tech text-sm uppercase tracking-wider-2 text-foreground hover:bg-secondary transition"
+          >
             View Tournaments
-          </button>
+          </Link>
         </div>
 
         {/* Stats strip */}
-        <div className="mt-20 grid w-full max-w-3xl grid-cols-3 divide-x divide-border border-y border-border">
+        {/* <div className="mt-20 grid w-full max-w-3xl grid-cols-3 divide-x divide-border border-y border-border">
           {[
             { k: "1,240+", v: "Players" },
             { k: "186", v: "Teams" },
@@ -68,7 +75,7 @@ export function Hero() {
               </div>
             </div>
           ))}
-        </div>
+        </div> */}
       </div>
     </section>
   );

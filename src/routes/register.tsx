@@ -1,12 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { AuthShell, SocialButton } from "@/components/auth/AuthShell";
+import { AuthShell, SocialButton } from "@/features/auth/components/AuthShell";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
       { title: "Create Account — Black Rose" },
-      { name: "description", content: "Create your Black Rose account to build teams and compete in community tournaments." },
+      {
+        name: "description",
+        content:
+          "Create your Black Rose account to build teams and compete in community tournaments.",
+      },
     ],
   }),
   component: RegisterPage,
@@ -26,7 +30,7 @@ function RegisterPage() {
     accept: false,
   });
 
-  function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
+  function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -55,16 +59,39 @@ function RegisterPage() {
       <form onSubmit={onSubmit} className="flex flex-col gap-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Username *">
-            <Input value={form.username} onChange={(v) => update("username", v)} placeholder="thornn" required />
+            <Input
+              value={form.username}
+              onChange={(v) => update("username", v)}
+              placeholder="thornn"
+              required
+            />
           </Field>
           <Field label="Email *">
-            <Input type="email" value={form.email} onChange={(v) => update("email", v)} placeholder="you@blackrose.gg" required />
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(v) => update("email", v)}
+              placeholder="you@blackrose.gg"
+              required
+            />
           </Field>
           <Field label="Password *">
-            <Input type="password" value={form.password} onChange={(v) => update("password", v)} placeholder="••••••••" required />
+            <Input
+              type="password"
+              value={form.password}
+              onChange={(v) => update("password", v)}
+              placeholder="••••••••"
+              required
+            />
           </Field>
           <Field label="Confirm Password *">
-            <Input type="password" value={form.confirm} onChange={(v) => update("confirm", v)} placeholder="••••••••" required />
+            <Input
+              type="password"
+              value={form.confirm}
+              onChange={(v) => update("confirm", v)}
+              placeholder="••••••••"
+              required
+            />
           </Field>
         </div>
 
@@ -75,16 +102,32 @@ function RegisterPage() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Discord Username">
-            <Input value={form.discord} onChange={(v) => update("discord", v)} placeholder="thornn#0001" />
+            <Input
+              value={form.discord}
+              onChange={(v) => update("discord", v)}
+              placeholder="thornn#0001"
+            />
           </Field>
           <Field label="Riot ID">
-            <Input value={form.riot} onChange={(v) => update("riot", v)} placeholder="thornn#APAC" />
+            <Input
+              value={form.riot}
+              onChange={(v) => update("riot", v)}
+              placeholder="thornn#APAC"
+            />
           </Field>
           <Field label="Steam ID">
-            <Input value={form.steam} onChange={(v) => update("steam", v)} placeholder="STEAM_0:1:..." />
+            <Input
+              value={form.steam}
+              onChange={(v) => update("steam", v)}
+              placeholder="STEAM_0:1:..."
+            />
           </Field>
           <Field label="Country">
-            <Input value={form.country} onChange={(v) => update("country", v)} placeholder="Philippines" />
+            <Input
+              value={form.country}
+              onChange={(v) => update("country", v)}
+              placeholder="Philippines"
+            />
           </Field>
         </div>
 
@@ -98,7 +141,9 @@ function RegisterPage() {
           />
           <span>
             I agree to the{" "}
-            <span className="text-foreground underline-offset-4 hover:underline cursor-pointer">Terms and Conditions</span>{" "}
+            <span className="text-foreground underline-offset-4 hover:underline cursor-pointer">
+              Terms and Conditions
+            </span>{" "}
             and Black Rose competitive ruleset.
           </span>
         </label>

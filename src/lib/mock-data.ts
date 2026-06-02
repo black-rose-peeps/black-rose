@@ -1,6 +1,12 @@
-// Mock data for Black Rose admin (frontend flow only)
+// Mock data for Black Rose (frontend flow only)
 
-export type TournamentStatus = "Draft" | "Registration Open" | "Registration Closed" | "Live" | "Completed" | "Archived";
+export type TournamentStatus =
+  | "Draft"
+  | "Registration Open"
+  | "Registration Closed"
+  | "Live"
+  | "Completed"
+  | "Archived";
 
 export interface MockTournament {
   id: string;
@@ -12,6 +18,8 @@ export interface MockTournament {
   registrationDeadline: string;
   teamsRegistered: number;
   teamCap: number;
+  format: string;
+  region: string;
 }
 
 export interface MockPlayer {
@@ -47,55 +55,130 @@ export const mockTournaments: MockTournament[] = [
     name: "Valorant Nightfall Cup",
     game: "Valorant",
     status: "Registration Open",
-    prizePool: "$5,000",
+    prizePool: "₱10,000",
     startDate: "2026-06-21",
     registrationDeadline: "2026-06-18",
     teamsRegistered: 14,
     teamCap: 32,
+    format: "Double Elimination",
+    region: "PH",
   },
   {
     id: "mlbb-thorne",
     name: "MLBB Thorne Invitational",
     game: "MLBB",
     status: "Registration Closed",
-    prizePool: "$3,200",
+    prizePool: "₱8,000",
     startDate: "2026-06-14",
     registrationDeadline: "2026-06-08",
     teamsRegistered: 16,
     teamCap: 16,
+    format: "Single Elimination",
+    region: "SEA",
   },
   {
     id: "cs2-ironveil",
     name: "CS2 Ironveil Open",
     game: "CS2",
     status: "Live",
-    prizePool: "$7,500",
+    prizePool: "₱15,000",
     startDate: "2026-05-30",
     registrationDeadline: "2026-05-25",
     teamsRegistered: 24,
     teamCap: 24,
+    format: "GSL + Playoffs",
+    region: "APAC",
   },
   {
     id: "vlr-onyx",
     name: "Valorant Onyx Series",
     game: "Valorant",
     status: "Completed",
-    prizePool: "$10,000",
+    prizePool: "₱25,000",
     startDate: "2026-04-12",
     registrationDeadline: "2026-04-05",
     teamsRegistered: 32,
     teamCap: 32,
+    format: "Double Elimination",
+    region: "PH",
   },
   {
     id: "mlbb-bloom",
     name: "MLBB Bloom Qualifier",
     game: "MLBB",
-    status: "Draft",
-    prizePool: "$1,500",
+    status: "Registration Open",
+    prizePool: "₱5,000",
     startDate: "2026-07-04",
     registrationDeadline: "2026-06-28",
-    teamsRegistered: 0,
+    teamsRegistered: 6,
     teamCap: 24,
+    format: "Round Robin + Playoffs",
+    region: "PH",
+  },
+  {
+    id: "cs2-ashfall",
+    name: "CS2 Ashfall Invitational",
+    game: "CS2",
+    status: "Registration Open",
+    prizePool: "₱12,000",
+    startDate: "2026-07-12",
+    registrationDeadline: "2026-07-08",
+    teamsRegistered: 9,
+    teamCap: 16,
+    format: "Single Elimination",
+    region: "SEA",
+  },
+  {
+    id: "vlr-crimson",
+    name: "Valorant Crimson Qualifier",
+    game: "Valorant",
+    status: "Completed",
+    prizePool: "₱6,000",
+    startDate: "2026-03-08",
+    registrationDeadline: "2026-03-01",
+    teamsRegistered: 16,
+    teamCap: 16,
+    format: "Single Elimination",
+    region: "PH",
+  },
+  {
+    id: "mlbb-ironclad",
+    name: "MLBB Ironclad Series",
+    game: "MLBB",
+    status: "Live",
+    prizePool: "₱9,500",
+    startDate: "2026-06-02",
+    registrationDeadline: "2026-05-28",
+    teamsRegistered: 12,
+    teamCap: 12,
+    format: "Round Robin",
+    region: "APAC",
+  },
+  {
+    id: "cs2-phantom",
+    name: "CS2 Phantom League",
+    game: "CS2",
+    status: "Completed",
+    prizePool: "₱20,000",
+    startDate: "2026-02-15",
+    registrationDeadline: "2026-02-08",
+    teamsRegistered: 24,
+    teamCap: 24,
+    format: "GSL + Playoffs",
+    region: "SEA",
+  },
+  {
+    id: "vlr-eclipse",
+    name: "Valorant Eclipse Cup",
+    game: "Valorant",
+    status: "Archived",
+    prizePool: "₱4,000",
+    startDate: "2025-12-10",
+    registrationDeadline: "2025-12-05",
+    teamsRegistered: 8,
+    teamCap: 8,
+    format: "Single Elimination",
+    region: "PH",
   },
 ];
 
@@ -188,12 +271,54 @@ export const mockTeams: MockTeam[] = [
 ];
 
 export const mockUsers: MockUser[] = [
-  { id: "u-001", username: "thornn", email: "thornn@blackrose.gg", role: "User", registrationDate: "2026-02-12", status: "Active" },
-  { id: "u-002", username: "halox", email: "halox@blackrose.gg", role: "User", registrationDate: "2026-03-04", status: "Active" },
-  { id: "u-003", username: "marshal", email: "marshal@blackrose.gg", role: "Tournament Admin", registrationDate: "2026-01-19", status: "Active" },
-  { id: "u-004", username: "ire", email: "ire@blackrose.gg", role: "User", registrationDate: "2026-04-22", status: "Suspended" },
-  { id: "u-005", username: "saira", email: "saira@blackrose.gg", role: "User", registrationDate: "2026-05-30", status: "Active" },
-  { id: "u-006", username: "warden", email: "warden@blackrose.gg", role: "Super Admin", registrationDate: "2025-11-02", status: "Active" },
+  {
+    id: "u-001",
+    username: "thornn",
+    email: "thornn@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-02-12",
+    status: "Active",
+  },
+  {
+    id: "u-002",
+    username: "halox",
+    email: "halox@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-03-04",
+    status: "Active",
+  },
+  {
+    id: "u-003",
+    username: "marshal",
+    email: "marshal@blackrose.gg",
+    role: "Tournament Admin",
+    registrationDate: "2026-01-19",
+    status: "Active",
+  },
+  {
+    id: "u-004",
+    username: "ire",
+    email: "ire@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-04-22",
+    status: "Suspended",
+  },
+  {
+    id: "u-005",
+    username: "saira",
+    email: "saira@blackrose.gg",
+    role: "User",
+    registrationDate: "2026-05-30",
+    status: "Active",
+  },
+  {
+    id: "u-006",
+    username: "warden",
+    email: "warden@blackrose.gg",
+    role: "Super Admin",
+    registrationDate: "2025-11-02",
+    status: "Active",
+  },
 ];
 
 export const mockOverview = {

@@ -1,6 +1,7 @@
 import valorant from "@/assets/tournament-valorant.jpg";
 import mlbb from "@/assets/tournament-mlbb.jpg";
 import cs2 from "@/assets/tournament-cs2.jpg";
+import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "./SectionHeading";
 
 const tournaments = [
@@ -35,24 +36,32 @@ const tournaments = [
 
 export function FeaturedTournaments() {
   return (
-    <section className="border-t border-border bg-background py-24 md:py-32">
-      <div className="mx-auto max-w-7xl px-6">
+    <section className="relative border-t border-border bg-background py-24 md:py-32 overflow-hidden">
+      {/* Background depth layers */}
+      <div className="pointer-events-none absolute inset-0 grid-bg opacity-60" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-white/[0.025] to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-card/60 to-transparent" />
+
+      <div className="relative mx-auto max-w-7xl px-6">
         <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <SectionHeading
             eyebrow="01 — Active Now"
             title="Featured Tournaments"
             description="Hand-curated, professionally organized competitive events. Lock in your roster before registration closes."
           />
-          <button className="self-start text-xs font-tech uppercase tracking-wider-2 text-muted-foreground hover:text-foreground transition md:self-end">
+          <Link
+            to="/tournaments"
+            className="self-start text-xs font-tech uppercase tracking-wider-2 text-muted-foreground hover:text-foreground transition md:self-end"
+          >
             View all tournaments →
-          </button>
+          </Link>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {tournaments.map((t) => (
             <article
               key={t.name}
-              className="group clip-angle-lg relative flex flex-col border border-border bg-card transition hover:border-foreground/60"
+              className="group clip-angle-lg relative flex flex-col border border-white/[0.08] bg-card card-depth shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] transition duration-300 hover:border-white/25 hover:shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.08)_inset]"
             >
               <div className="relative h-48 overflow-hidden">
                 <img
@@ -61,8 +70,10 @@ export function FeaturedTournaments() {
                   loading="lazy"
                   className="h-full w-full object-cover grayscale transition duration-700 group-hover:grayscale-0 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
-                <div className="absolute left-4 top-4 flex items-center gap-2 border border-border bg-background/80 px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 backdrop-blur">
+                <div className="absolute inset-0 bg-linear-to-t from-card via-card/50 to-transparent" />
+                {/* shimmer line on hover */}
+                <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="absolute left-4 top-4 flex items-center gap-2 border border-white/10 bg-black/70 px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 backdrop-blur">
                   <span
                     className={`h-1.5 w-1.5 ${t.status === "Open" ? "bg-foreground animate-pulse-soft" : "bg-muted-foreground"}`}
                   />
@@ -78,7 +89,7 @@ export function FeaturedTournaments() {
                   {t.name}
                 </h3>
 
-                <dl className="mt-6 grid grid-cols-3 gap-3 border-y border-border py-4 text-left">
+                <dl className="mt-6 grid grid-cols-3 gap-3 border-y border-white/[0.07] py-4 text-left">
                   <div>
                     <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                       Prize
@@ -101,7 +112,7 @@ export function FeaturedTournaments() {
 
                 <button
                   disabled={t.status !== "Open"}
-                  className="mt-6 clip-cta inline-flex h-11 items-center justify-center gap-2 bg-foreground px-5 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground"
+                  className="mt-6 clip-cta inline-flex h-11 items-center justify-center gap-2 bg-foreground px-5 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:bg-white/5 disabled:text-muted-foreground"
                 >
                   {t.status === "Open" ? "Register" : "Closed"}
                   {t.status === "Open" && <span aria-hidden>→</span>}

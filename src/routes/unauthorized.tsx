@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Emblem } from "@/components/site/Emblem";
+import { Emblem } from "@/features/shared/components/Emblem";
 
 export const Route = createFileRoute("/unauthorized")({
   head: () => ({
@@ -25,7 +25,8 @@ function UnauthorizedPage() {
         </div>
         <h1 className="font-display text-6xl tracking-display sm:text-7xl">Access Denied</h1>
         <p className="mx-auto mt-4 max-w-sm text-sm text-muted-foreground">
-          You do not have the clearance to enter the Black Rose operations console. This area is reserved for tournament administrators.
+          You do not have the clearance to enter the Black Rose operations console. This area is
+          reserved for tournament administrators.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
