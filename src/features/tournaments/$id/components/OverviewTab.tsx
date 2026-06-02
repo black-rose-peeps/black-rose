@@ -41,7 +41,7 @@ export function OverviewTab({ tournament: t }: OverviewTabProps) {
           <ol className="relative ml-2 border-l border-white/10">
             {t.schedule.map((entry, i) => (
               <li key={i} className="mb-6 ml-6 last:mb-0">
-                <span className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 border border-white/20 bg-background" />
+                <span className="absolute left-[-5px] mt-1.5 h-2.5 w-2.5 border border-white/20 bg-background" />
                 <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                   {entry.date}
                 </div>

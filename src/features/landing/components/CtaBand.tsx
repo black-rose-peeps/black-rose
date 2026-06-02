@@ -3,7 +3,7 @@ import { Emblem } from "@/features/shared/components/Emblem";
 
 export function CtaBand() {
   return (
-    <section className="relative overflow-hidden border-y border-white/[0.06] bg-[oklch(0.07_0_0)] py-24 md:py-32">
+    <section className="relative overflow-hidden border-y border-white/6 bg-[oklch(0.07_0_0)] py-24 md:py-32">
       {/* Grid texture */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
       {/* Central radial spotlight */}
@@ -15,15 +15,15 @@ export function CtaBand() {
       {/* Decorative spinning emblems */}
       <Emblem
         spin
-        className="pointer-events-none absolute -right-32 -top-32 h-[28rem] w-[28rem] opacity-[0.07]"
+        className="pointer-events-none absolute -right-32 -top-32 h-112 w-md opacity-[0.07]"
       />
       <Emblem
         spin
-        className="pointer-events-none absolute -bottom-40 -left-32 h-[24rem] w-[24rem] opacity-[0.05]"
+        className="pointer-events-none absolute -bottom-40 -left-32 h-96 w-[24rem] opacity-[0.05]"
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <div className="mb-6 inline-flex items-center gap-3 border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground backdrop-blur-sm">
+        <div className="mb-6 inline-flex items-center gap-3 border border-white/10 bg-white/3 px-4 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground backdrop-blur-sm">
           <span className="h-1.5 w-1.5 bg-foreground animate-pulse-soft" />
           Registration Open
         </div>
@@ -48,7 +48,7 @@ export function CtaBand() {
           </Link>
           <Link
             to="/tournaments"
-            className="clip-cta inline-flex h-12 items-center gap-3 border border-white/15 bg-white/[0.04] px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/[0.08] hover:border-white/25"
+            className="clip-cta inline-flex h-12 items-center gap-3 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/8 hover:border-white/25"
           >
             Browse Tournaments
           </Link>

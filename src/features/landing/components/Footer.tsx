@@ -3,7 +3,7 @@ import { Emblem } from "@/features/shared/components/Emblem";
 
 export function Footer() {
   return (
-    <footer className="relative border-t border-white/[0.06] bg-[oklch(0.04_0_0)] overflow-hidden">
+    <footer className="relative border-t border-white/6 bg-[oklch(0.04_0_0)] overflow-hidden">
       {/* Very faint grid for texture */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-30" />
       {/* Top edge highlight */}
@@ -71,7 +71,7 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-white/[0.06] pt-8 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/60 md:flex-row md:items-center">
+        <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-white/6 pt-8 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/60 md:flex-row md:items-center">
           <span>© 2026 Black Rose Esports. All rights reserved.</span>
           <span>Forge Your Legacy.</span>
         </div>

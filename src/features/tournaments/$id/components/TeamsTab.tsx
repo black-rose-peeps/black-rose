@@ -63,7 +63,7 @@ function TeamRow({ team, rank }: { team: TournamentTeam; rank: number }) {
         <div id={panelId} className="border-t border-white/8">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/6 bg-white/[0.02] text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+              <tr className="border-b border-white/6 bg-white/2 text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                 <th className="px-5 py-2.5 text-left font-normal">#</th>
                 <th className="px-3 py-2.5 text-left font-normal">IGN</th>
                 <th className="px-5 py-2.5 text-left font-normal">Role</th>
@@ -71,7 +71,7 @@ function TeamRow({ team, rank }: { team: TournamentTeam; rank: number }) {
             </thead>
             <tbody className="divide-y divide-white/5">
               {team.players.map((p, i) => (
-                <tr key={p.ign} className="transition hover:bg-white/[0.02]">
+                <tr key={p.ign} className="transition hover:bg-white/2">
                   <td className="px-5 py-3 text-[10px] text-muted-foreground">{i + 1}</td>
                   <td className="px-3 py-3 font-medium">{p.ign}</td>
                   <td className="px-5 py-3 text-xs text-muted-foreground">{p.role}</td>

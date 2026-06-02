@@ -68,7 +68,7 @@ function TournamentsPage() {
         {/* Decorative emblem — right side */}
         <Emblem
           spin
-          className="pointer-events-none absolute -right-20 top-0 h-[32rem] w-[32rem] opacity-[0.04]"
+          className="pointer-events-none absolute -right-20 top-0 h-128 w-lg opacity-[0.04]"
         />
 
         <div className="relative mx-auto max-w-7xl px-6">
@@ -87,7 +87,7 @@ function TournamentsPage() {
           </p>
 
           {/* Stats strip — factual only */}
-          <div className="mt-10 inline-grid grid-cols-3 divide-x divide-white/8 border border-white/8 bg-white/[0.025]">
+          <div className="mt-10 inline-grid grid-cols-3 divide-x divide-white/8 border border-white/8 bg-white/2.5">
             {[
               { label: "Total Tournaments", value: totalCount },
               { label: "Registration Open", value: openCount },
