@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Emblem } from "./Emblem";
+import { Emblem } from "@/features/shared/components/Emblem";
 
 const nav = [
-  { label: "Tournaments", href: "/" },
+  { label: "Tournaments", href: "/tournaments" },
   { label: "Teams", href: "/" },
   { label: "Champions", href: "/" },
   { label: "Community", href: "/" },

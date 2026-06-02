@@ -1,12 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { AuthShell, SocialButton } from "@/components/auth/AuthShell";
+import { AuthShell, SocialButton } from "@/features/auth/components/AuthShell";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign In — Black Rose" },
-      { name: "description", content: "Sign in to your Black Rose account to manage teams and tournaments." },
+      {
+        name: "description",
+        content: "Sign in to your Black Rose account to manage teams and tournaments.",
+      },
     ],
   }),
   component: LoginPage,
@@ -55,7 +58,10 @@ function LoginPage() {
         <Field
           label="Password"
           trailing={
-            <Link to="/login" className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground hover:text-foreground">
+            <Link
+              to="/login"
+              className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground hover:text-foreground"
+            >
               Forgot?
             </Link>
           }

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AdminTopbar } from "@/components/admin/AdminTopbar";
-import { Panel, PanelHeader, PrimaryButton } from "@/components/admin/ui";
+import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import { Panel, PanelHeader, PrimaryButton } from "@/features/admin/components/ui";
 
 export const Route = createFileRoute("/admin/settings")({
   component: SettingsPage,

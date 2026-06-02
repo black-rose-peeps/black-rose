@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Header } from "@/components/site/Header";
-import { Hero } from "@/components/site/Hero";
-import { FeaturedTournaments } from "@/components/site/FeaturedTournaments";
-import { WhyBlackRose } from "@/components/site/WhyBlackRose";
-import { HallOfChampions } from "@/components/site/HallOfChampions";
-import { CtaBand } from "@/components/site/CtaBand";
-import { Footer } from "@/components/site/Footer";
+import { Header } from "@/features/landing/components/Header";
+import { Hero } from "@/features/landing/components/Hero";
+import { FeaturedTournaments } from "@/features/landing/components/FeaturedTournaments";
+import { WhyBlackRose } from "@/features/landing/components/WhyBlackRose";
+import { HallOfChampions } from "@/features/landing/components/HallOfChampions";
+import { CtaBand } from "@/features/landing/components/CtaBand";
+import { Footer } from "@/features/landing/components/Footer";
 
 export const Route = createFileRoute("/")({
   head: () => ({

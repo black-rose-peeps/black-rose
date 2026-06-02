@@ -10,11 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
+import { Route as TournamentsRouteImport } from './routes/tournaments'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TournamentsIndexRouteImport } from './routes/tournaments.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
@@ -26,6 +29,11 @@ import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournamen
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
   path: '/unauthorized',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TournamentsRoute = TournamentsRouteImport.update({
+  id: '/tournaments',
+  path: '/tournaments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -48,10 +56,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TournamentsIndexRoute = TournamentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TournamentsRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const TournamentsIdRoute = TournamentsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TournamentsRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
@@ -94,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tournaments': typeof TournamentsRouteWithChildren
   '/unauthorized': typeof UnauthorizedRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/participants': typeof AdminParticipantsRoute
@@ -101,7 +120,9 @@ export interface FileRoutesByFullPath {
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/tournaments/$id': typeof TournamentsIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
 }
 export interface FileRoutesByTo {
@@ -115,7 +136,9 @@ export interface FileRoutesByTo {
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/tournaments/$id': typeof TournamentsIdRoute
   '/admin': typeof AdminIndexRoute
+  '/tournaments': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
 }
 export interface FileRoutesById {
@@ -124,6 +147,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tournaments': typeof TournamentsRouteWithChildren
   '/unauthorized': typeof UnauthorizedRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/participants': typeof AdminParticipantsRoute
@@ -131,7 +155,9 @@ export interface FileRoutesById {
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/tournaments/$id': typeof TournamentsIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
 }
 export interface FileRouteTypes {
@@ -141,6 +167,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/register'
+    | '/tournaments'
     | '/unauthorized'
     | '/admin/announcements'
     | '/admin/participants'
@@ -148,7 +175,9 @@ export interface FileRouteTypes {
     | '/admin/teams'
     | '/admin/tournaments'
     | '/admin/users'
+    | '/tournaments/$id'
     | '/admin/'
+    | '/tournaments/'
     | '/admin/tournaments/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -162,7 +191,9 @@ export interface FileRouteTypes {
     | '/admin/teams'
     | '/admin/tournaments'
     | '/admin/users'
+    | '/tournaments/$id'
     | '/admin'
+    | '/tournaments'
     | '/admin/tournaments/$id'
   id:
     | '__root__'
@@ -170,6 +201,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/register'
+    | '/tournaments'
     | '/unauthorized'
     | '/admin/announcements'
     | '/admin/participants'
@@ -177,7 +209,9 @@ export interface FileRouteTypes {
     | '/admin/teams'
     | '/admin/tournaments'
     | '/admin/users'
+    | '/tournaments/$id'
     | '/admin/'
+    | '/tournaments/'
     | '/admin/tournaments/$id'
   fileRoutesById: FileRoutesById
 }
@@ -186,6 +220,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  TournamentsRoute: typeof TournamentsRouteWithChildren
   UnauthorizedRoute: typeof UnauthorizedRoute
 }
 
@@ -196,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/unauthorized'
       fullPath: '/unauthorized'
       preLoaderRoute: typeof UnauthorizedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tournaments': {
+      id: '/tournaments'
+      path: '/tournaments'
+      fullPath: '/tournaments'
+      preLoaderRoute: typeof TournamentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -226,12 +268,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tournaments/': {
+      id: '/tournaments/'
+      path: '/'
+      fullPath: '/tournaments/'
+      preLoaderRoute: typeof TournamentsIndexRouteImport
+      parentRoute: typeof TournamentsRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/tournaments/$id': {
+      id: '/tournaments/$id'
+      path: '/$id'
+      fullPath: '/tournaments/$id'
+      preLoaderRoute: typeof TournamentsIdRouteImport
+      parentRoute: typeof TournamentsRoute
     }
     '/admin/users': {
       id: '/admin/users'
@@ -318,11 +374,26 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface TournamentsRouteChildren {
+  TournamentsIdRoute: typeof TournamentsIdRoute
+  TournamentsIndexRoute: typeof TournamentsIndexRoute
+}
+
+const TournamentsRouteChildren: TournamentsRouteChildren = {
+  TournamentsIdRoute: TournamentsIdRoute,
+  TournamentsIndexRoute: TournamentsIndexRoute,
+}
+
+const TournamentsRouteWithChildren = TournamentsRoute._addFileChildren(
+  TournamentsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  TournamentsRoute: TournamentsRouteWithChildren,
   UnauthorizedRoute: UnauthorizedRoute,
 }
 export const routeTree = rootRouteImport

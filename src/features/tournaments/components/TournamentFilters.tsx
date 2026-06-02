@@ -1,0 +1,97 @@
+import { ALL_GAMES, ALL_STATUSES, GAME_FILTERS, STATUS_FILTERS } from "../constants";
+import type { TournamentGame, TournamentStatus } from "../types";
+
+interface TournamentFiltersProps {
+  activeGame: typeof ALL_GAMES | TournamentGame;
+  activeStatus: typeof ALL_STATUSES | TournamentStatus;
+  onGameChange: (g: typeof ALL_GAMES | TournamentGame) => void;
+  onStatusChange: (s: typeof ALL_STATUSES | TournamentStatus) => void;
+  filteredCount: number;
+  totalCount: number;
+}
+
+// Pill button — used for both game and status chips
+function Chip({
+  label,
+  active,
+  onClick,
+  accent,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  accent?: string; // optional colored dot
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 px-4 py-2 text-[10px] font-tech uppercase tracking-wider-2 transition-all duration-200 ${
+        active
+          ? "bg-white text-black"
+          : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
+      }`}
+    >
+      {accent && (
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? "bg-black/50" : accent}`} />
+      )}
+      {label}
+    </button>
+  );
+}
+
+export function TournamentFilters({
+  activeGame,
+  activeStatus,
+  onGameChange,
+  onStatusChange,
+  filteredCount,
+  totalCount,
+}: TournamentFiltersProps) {
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Game row */}
+      <div className="flex flex-col gap-2.5">
+        <span className="text-sm font-tech uppercase tracking-wider-2 text-foreground">Game</span>
+        <div className="flex flex-wrap gap-2">
+          {GAME_FILTERS.map((g) => (
+            <Chip key={g} label={g} active={activeGame === g} onClick={() => onGameChange(g)} />
+          ))}
+        </div>
+      </div>
+
+      {/* Status row */}
+      <div className="flex flex-col gap-2.5">
+        <span className="text-sm font-tech uppercase tracking-wider-2 text-foreground">Status</span>
+        <div className="flex flex-wrap gap-2">
+          {STATUS_FILTERS.map((s) => {
+            // Dot accent colors per status
+            const dotColor =
+              s === "Registration Open"
+                ? "bg-emerald-400"
+                : s === "Live"
+                  ? "bg-white animate-pulse-soft"
+                  : "bg-muted-foreground";
+            const showDot = s !== ALL_STATUSES;
+            return (
+              <Chip
+                key={s}
+                label={s}
+                active={activeStatus === s}
+                onClick={() => onStatusChange(s)}
+                accent={showDot ? dotColor : undefined}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Divider + count */}
+      <div className="flex items-center justify-between border-t border-white/6 pt-4">
+        <div className="h-px flex-1" />
+        <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <span className="text-white">{filteredCount}</span> / {totalCount} tournaments
+        </span>
+      </div>
+    </div>
+  );
+}

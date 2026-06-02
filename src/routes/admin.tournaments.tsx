@@ -1,6 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AdminTopbar } from "@/components/admin/AdminTopbar";
-import { GhostButton, Panel, PanelHeader, PrimaryButton, StatusPill } from "@/components/admin/ui";
+import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import {
+  GhostButton,
+  Panel,
+  PanelHeader,
+  PrimaryButton,
+  StatusPill,
+} from "@/features/admin/components/ui";
 import { mockTournaments } from "@/lib/mock-data";
 import { Plus } from "lucide-react";
 
@@ -50,12 +56,16 @@ function TournamentsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs text-muted-foreground">{t.game}</td>
-                    <td className="px-4 py-4"><StatusPill status={t.status} /></td>
+                    <td className="px-4 py-4">
+                      <StatusPill status={t.status} />
+                    </td>
                     <td className="px-4 py-4 text-xs">
                       <span className="text-foreground">{t.teamsRegistered}</span>
                       <span className="text-muted-foreground"> / {t.teamCap}</span>
                     </td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">{t.registrationDeadline}</td>
+                    <td className="px-4 py-4 text-xs text-muted-foreground">
+                      {t.registrationDeadline}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <Link

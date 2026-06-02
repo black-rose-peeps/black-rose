@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AdminTopbar } from "@/components/admin/AdminTopbar";
-import { Panel, PanelHeader, StatCard, StatusPill } from "@/components/admin/ui";
+import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import { Panel, PanelHeader, StatCard, StatusPill } from "@/features/admin/components/ui";
 import { mockOverview, mockTeams, mockTournaments } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/admin/")({
@@ -18,10 +18,22 @@ function AdminDashboard() {
       <AdminTopbar title="Dashboard" subtitle="Operations Overview" />
       <div className="flex flex-1 flex-col gap-8 px-6 py-8 lg:px-10">
         <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-          <StatCard label="Total Users" value={mockOverview.totalUsers.toLocaleString()} delta="+42 this week" />
+          <StatCard
+            label="Total Users"
+            value={mockOverview.totalUsers.toLocaleString()}
+            delta="+42 this week"
+          />
           <StatCard label="Total Teams" value={mockOverview.totalTeams} delta="+11 this week" />
-          <StatCard label="Active Tournaments" value={mockOverview.activeTournaments} delta="2 in registration" />
-          <StatCard label="Pending Registrations" value={mockOverview.pendingRegistrations} delta="Awaiting review" />
+          <StatCard
+            label="Active Tournaments"
+            value={mockOverview.activeTournaments}
+            delta="2 in registration"
+          />
+          <StatCard
+            label="Pending Registrations"
+            value={mockOverview.pendingRegistrations}
+            delta="Awaiting review"
+          />
           <StatCard label="Completed" value={mockOverview.completedTournaments} delta="All-time" />
         </section>
 

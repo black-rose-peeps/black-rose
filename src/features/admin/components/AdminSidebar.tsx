@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Emblem } from "@/components/site/Emblem";
+import { Emblem } from "@/features/shared/components/Emblem";
 import {
   LayoutGrid,
   Trophy,

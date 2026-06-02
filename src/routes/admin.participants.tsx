@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AdminTopbar } from "@/components/admin/AdminTopbar";
-import { Panel, PanelHeader, StatusPill } from "@/components/admin/ui";
+import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import { Panel, PanelHeader, StatusPill } from "@/features/admin/components/ui";
 import { mockTeams, mockTournaments } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/admin/participants")({
@@ -47,8 +47,12 @@ function ParticipantsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-4 text-xs">{team.captain}</td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">{team.registrationDate}</td>
-                    <td className="px-4 py-4"><StatusPill status={team.status} /></td>
+                    <td className="px-4 py-4 text-xs text-muted-foreground">
+                      {team.registrationDate}
+                    </td>
+                    <td className="px-4 py-4">
+                      <StatusPill status={team.status} />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button className="border border-foreground/40 bg-foreground/5 px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-foreground transition hover:bg-foreground/10">
