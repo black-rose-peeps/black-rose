@@ -75,8 +75,14 @@ src/
 │   │       └── SectionHeading.tsx
 │   │
 │   ├── auth/                      # Login and Register pages
-│   │   └── components/
-│   │       └── AuthShell.tsx
+│   │   ├── components/
+│   │   │   └── AuthShell.tsx      # Shared auth page layout shell
+│   │   ├── services/
+│   │   │   └── discord.ts         # Discord OAuth2 placeholder (wire up when backend is ready)
+│   │   ├── store/
+│   │   │   └── session.ts         # Client-side session store (placeholder until real auth)
+│   │   └── types/
+│   │       └── index.ts           # UserRole, AppUser types
 │   │
 │   ├── admin/                     # Admin console (/admin/*)
 │   │   └── components/
@@ -142,8 +148,9 @@ Route files in `routes/` stay thin — they import from `features/` and compose 
 | `/`                      | Public landing page                                 |
 | `/tournaments`           | Tournament directory with game & status filters     |
 | `/tournaments/:id`       | Tournament detail — overview, teams, bracket, rules |
-| `/login`                 | Sign in                                             |
-| `/register`              | Create account                                      |
+| `/login`                 | Sign in with Discord                                |
+| `/register`              | Create account with Discord → redirects to waitlist |
+| `/waitlist`              | Pending verification — shown after registering      |
 | `/unauthorized`          | 403 access denied page                              |
 | `/admin`                 | Admin dashboard                                     |
 | `/admin/tournaments`     | Tournament management                               |
@@ -174,6 +181,9 @@ Route files in `routes/` stay thin — they import from `features/` and compose 
 - The `@/` import alias maps to `src/`. For example, `@/features/landing/components/Hero` → `src/features/landing/components/Hero.tsx`.
 - When adding a new shadcn/ui component, run `npx shadcn@latest add <component>` — it drops into `src/components/ui/` automatically. Don't move it.
 - The admin panel uses mock data from `src/lib/mock-data.ts`. No real backend or auth is connected yet.
+- Authentication uses Discord OAuth2. The placeholder service is at `src/features/auth/services/discord.ts`. To wire it up: create a Discord app at https://discord.com/developers/applications, set `VITE_DISCORD_CLIENT_ID` and `VITE_DISCORD_REDIRECT_URI` in a `.env` file, then implement the `exchangeCodeForToken` and `getDiscordUser` functions in a server function.
+- User roles are defined in `src/features/auth/types/index.ts`. New registrations get `not_verified` and land on `/waitlist`. An admin manually sets the role to `verified` to grant full access.
+- The session store at `src/features/auth/store/session.ts` is a `sessionStorage` placeholder. Replace it with real session management (JWT cookie, server-side session, etc.) when the backend is ready.
 
 ---
 
@@ -184,22 +194,25 @@ The project is currently frontend-only and uses mock data for development.
 ### Completed
 
 - ✅ Landing Page
-- ✅ Login & Registration UI - FE with mock data implemented
-- ✅ Admin Dashboard UI - FE with mock data implemented
+- ✅ Login — Discord OAuth2 UI (placeholder, backend not wired)
+- ✅ Registration — Discord OAuth2 UI → redirects to waitlist
+- ✅ Waitlist page — shown to `not_verified` users after registering
+- ✅ Tournament Directory — frontend with mock data
+- ✅ Tournament Details Page — frontend with mock data (overview, teams, bracket, rules)
+- ✅ Admin Dashboard UI — frontend with mock data
 
-### Next Pages to Build (Priority Order)
+### Next Up
 
-1. Tournament Directory - FE with mock data implemented
-2. Tournament Details Page - FE with mock data implemented
-3. Team Creation & Management
-4. Tournament Registration Flow
-5. Bracket Viewer
-6. User Dashboard
-7. Notifications & Announcements
+1. Discord OAuth2 backend integration (callback route, token exchange, session)
+2. Admin: user verification flow (change role `not_verified` → `verified`)
+3. User Dashboard / Profile page (shown after verification)
+4. Team Creation & Management
+5. Tournament Registration Flow
+6. Notifications & Announcements
 
 ### Notes
 
 - No backend has been implemented yet.
 - No database is connected.
-- Authentication is not functional yet.
+- Authentication is not functional yet. Registration simulates a session in `sessionStorage` and redirects to `/waitlist`.
 - All users, teams, tournaments, and registrations currently use mock data.
