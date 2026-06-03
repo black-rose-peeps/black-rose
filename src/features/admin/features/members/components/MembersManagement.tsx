@@ -26,6 +26,7 @@ export function MembersManagement() {
 
   function handleCreated(member: AdminMember) {
     prependMember(member);
+    pagination.setPage(1);
   }
 
   return (

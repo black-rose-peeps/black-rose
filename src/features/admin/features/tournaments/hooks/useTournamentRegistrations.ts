@@ -21,8 +21,32 @@ export function useTournamentRegistrations(tournamentId: string) {
   }, [tournamentId]);
 
   useEffect(() => {
-    refetch();
-  }, [refetch]);
+    let cancelled = false;
+
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await fetchTournamentRegistrations(tournamentId);
+        if (!cancelled) {
+          setRegistrations(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load registrations.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId]);
 
   const prependRegistration = useCallback((registration: MockTeam) => {
     setRegistrations((prev) => [registration, ...prev]);

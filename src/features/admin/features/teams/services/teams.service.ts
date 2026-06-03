@@ -72,35 +72,31 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> {
   await delay(MOCK_LATENCY_MS);
 
-  const teamIndex = teamsStore.findIndex((t) => t.id === input.teamId);
-  if (teamIndex === -1) {
+  const existing = teamsStore.find((t) => t.id === input.teamId);
+  if (!existing) {
     throw new Error("Team not found.");
   }
 
-  const team = teamsStore[teamIndex];
   const member = await fetchMemberById(input.memberId);
   if (!member) {
     throw new Error("Member not found.");
   }
 
-  if (team.members.some((m) => m.userId === member.id && m.status !== "removed")) {
+  if (existing.members.some((m) => m.userId === member.id && m.status !== "removed")) {
     throw new Error(`${member.username} is already on this team.`);
   }
 
   const otherTeam = findTeamMemberTeam(member.id);
-  if (otherTeam && otherTeam.id !== team.id) {
+  if (otherTeam && otherTeam.id !== existing.id) {
     throw new Error(`${member.username} is already on team ${otherTeam.name}.`);
   }
 
   const updated: Team = {
-    ...team,
-    members: [
-      ...team.members,
-      adminMemberToTeamMember(member, input.role ?? "TBD"),
-    ],
+    ...existing,
+    members: [...existing.members, adminMemberToTeamMember(member, input.role ?? "TBD")],
   };
 
-  teamsStore = teamsStore.map((t, i) => (i === teamIndex ? updated : t));
+  teamsStore = teamsStore.map((t) => (t.id === input.teamId ? updated : t));
   return updated;
 }
 

@@ -674,10 +674,7 @@ function DoubleElimBracketPreview({
   const ubSfMatches = ubR1Matches / 2;
   const lbR1Matches = ubSfMatches;
   const canvasHeight =
-    ubR1Matches * BRACKET_CARD_H +
-    (ubR1Matches - 1) * BRACKET_MATCH_GAP +
-    BRACKET_PAD_V * 2 +
-    28;
+    ubR1Matches * BRACKET_CARD_H + (ubR1Matches - 1) * BRACKET_MATCH_GAP + BRACKET_PAD_V * 2 + 28;
 
   const columns = [
     { id: "ub-r1", label: "Upper — Round 1", matches: ubR1Matches, side: "upper" as const },
@@ -746,11 +743,7 @@ function DoubleElimBracketPreview({
                     const teamA = assignments[teamAIdx];
                     const teamB = assignments[teamBIdx];
                     return (
-                      <div
-                        key={mi}
-                        className="absolute"
-                        style={{ left: `${x}px`, top: `${y}px` }}
-                      >
+                      <div key={mi} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
                         <BracketPreviewMatchCard
                           label={`Match ${mi + 1}`}
                           teamA={teamA}
@@ -766,11 +759,7 @@ function DoubleElimBracketPreview({
 
                   if (col.id === "gf") {
                     return (
-                      <div
-                        key={mi}
-                        className="absolute"
-                        style={{ left: `${x}px`, top: `${y}px` }}
-                      >
+                      <div key={mi} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
                         <BracketPreviewMatchCard
                           label="Grand Final"
                           teamA={null}
@@ -899,7 +888,11 @@ function BracketPreview({
               const y = bracketMatchTop(mi, round.matches, totalR1H + 28);
 
               return (
-                <div key={`${actualRoundIndex}-${mi}`} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
+                <div
+                  key={`${actualRoundIndex}-${mi}`}
+                  className="absolute"
+                  style={{ left: `${x}px`, top: `${y}px` }}
+                >
                   <BracketPreviewMatchCard
                     label={`${round.label}${round.matches > 1 ? ` ${mi + 1}` : ""}`}
                     teamA={null}

@@ -69,19 +69,14 @@ export function validateCreateMemberForm(
   } else if (!/^[a-z0-9._]{2,32}$/i.test(discordUsername)) {
     errors.discordUsername = "Use 2–32 characters: letters, numbers, dots, and underscores.";
   } else if (
-    existingMembers.some(
-      (m) => m.discordUsername.toLowerCase() === discordUsername.toLowerCase(),
-    )
+    existingMembers.some((m) => m.discordUsername.toLowerCase() === discordUsername.toLowerCase())
   ) {
     errors.discordUsername = "This Discord username is already registered.";
   }
 
   if (discordId && !/^\d{17,20}$/.test(discordId)) {
     errors.discordId = "Discord ID must be a 17–20 digit snowflake.";
-  } else if (
-    discordId &&
-    existingMembers.some((m) => m.discordId === discordId)
-  ) {
+  } else if (discordId && existingMembers.some((m) => m.discordId === discordId)) {
     errors.discordId = "This Discord ID is already linked.";
   }
 

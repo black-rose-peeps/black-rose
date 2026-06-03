@@ -1,5 +1,8 @@
 # Admin Database Guide (Supabase)
 
+> **Start here:** [README.md](./README.md) — short table list and flow for the five admin feature folders.  
+> This file adds TypeScript mappings, enum literals, RLS notes, and wiring details.
+
 Reference for implementing the Black Rose **admin console** on **Supabase** (PostgreSQL + Auth + RLS). The frontend currently uses in-memory mock services; this doc lists **only what the admin feature folders define today**.
 
 ---
@@ -64,7 +67,7 @@ interface CreateMemberInput {
 
 | Column | Postgres type | Constraints |
 |--------|---------------|-------------|
-| `id` | `uuid` | **PK**, default `gen_random_uuid()` |
+| `id` | `uuid` | **PK**, **FK → `auth.users(id) ON DELETE CASCADE`** (same UUID as Auth user; no separate default) |
 | `username` | `text` | NOT NULL, UNIQUE |
 | `discord_username` | `text` | NOT NULL, UNIQUE |
 | `discord_id` | `text` | NULL, UNIQUE |
@@ -73,7 +76,9 @@ interface CreateMemberInput {
 | `status` | `text` | NOT NULL, CHECK in (`Active`, `Suspended`, `Banned`) |
 | `created_at` | `timestamptz` | NOT NULL, default `now()` |
 
-**Maps to:** `AdminMember` (`registrationDate` ← `created_at::date`).
+**Auth linkage:** `profiles.id` is the same UUID as the Supabase Auth user (`auth.users.id`). Create a profile row when a user signs up (database trigger on `auth.users` insert, or admin create flow). There is no separate profile UUID — `AdminMember.id` maps directly to `auth.uid()` for RLS.
+
+**Maps to:** `AdminMember` (`id` ← `profiles.id`, `registrationDate` ← `created_at::date`). When a profile is created by an admin without Auth, either provision an Auth user first or defer until the member signs in.
 
 ---
 
@@ -89,7 +94,7 @@ type TeamMemberStatus = "captain" | "active" | "invited" | "removed";
 
 type TeamMemberRole =
   | "IGL" | "Duelist" | "Controller" | "Initiator" | "Sentinel" | "Flex"
-  | "AWPer" | "Rifler" | "Support" | "Lurker" | "Mid" | "ADC" | "Jungle"
+  | "AWPer" | "Rifler" | "Support" | "Lurker" | "Top" | "Mid" | "ADC" | "Jungle"
   | "Roam" | "EXP" | "Gold" | "Sub" | "TBD";
 
 interface TeamMember {
@@ -153,7 +158,15 @@ interface AddTeamMemberInput {
 | `status` | `text` | NOT NULL, CHECK in (`captain`, `active`, `invited`, `removed`) |
 | `joined_at` | `timestamptz` | NOT NULL, default `now()` |
 
-**Unique:** `(team_id, user_id)` where `status <> 'removed'`.
+**Unique (partial index):** one active membership per user per team. Implement as a PostgreSQL partial unique index (not a table-level UNIQUE constraint):
+
+```sql
+create unique index unique_active_team_member
+  on team_members (team_id, user_id)
+  where status <> 'removed';
+```
+
+This allows multiple `removed` rows for the same pair while preventing duplicate active/captain/invited memberships.
 
 `username`, `displayName`, `avatarInitials` can be joined from `profiles` at query time.
 
@@ -217,7 +230,8 @@ interface CreateTournamentFormValues {
 
 | Column | Postgres type | Constraints |
 |--------|---------------|-------------|
-| `id` | `uuid` or `text` | **PK** (mock uses slugs like `lol-twilight`) |
+| `id` | `uuid` | **PK**, default `gen_random_uuid()` |
+| `slug` | `text` | NULL, UNIQUE (human-readable URL, e.g. `lol-twilight`) |
 | `name` | `text` | NOT NULL |
 | `game` | `text` | NOT NULL, CHECK in (`Valorant`, `League of Legends`, `Teamfight Tactics`) |
 | `format` | `text` | NOT NULL, CHECK in (`Single Elimination`, `Double Elimination`) |
@@ -232,10 +246,12 @@ interface CreateTournamentFormValues {
 | `registration_deadline` | `date` | NOT NULL |
 | `created_at` | `timestamptz` | default `now()` |
 
-**Bracket team counts (app logic today):**
+**Bracket team counts (app logic today — required by bracket manager UI):**
 
-- Single Elimination → **16** teams for bracket manager
-- Double Elimination → **8** teams for bracket manager
+- Single Elimination → **16** teams (validate at registration close)
+- Double Elimination → **8** teams (validate at registration close)
+
+> **Note:** The bracket manager UI expects exactly 16 teams for SE and 8 for DE. Tournaments with different team counts require bracket generation logic updates before publish.
 
 ---
 
@@ -280,7 +296,7 @@ interface ParticipantRow extends MockTeam {
 | Column | Postgres type | Constraints |
 |--------|---------------|-------------|
 | `id` | `uuid` | **PK** |
-| `tournament_id` | `uuid/text` | NOT NULL, **FK → `tournaments.id`** |
+| `tournament_id` | `uuid` | NOT NULL, **FK → `tournaments.id`** |
 | `team_id` | `uuid` | NOT NULL, **FK → `teams.id`** |
 | `status` | `text` | NOT NULL, CHECK in (`Pending`, `Approved`, `Rejected`) |
 | `registered_at` | `date` | NOT NULL |
@@ -323,6 +339,13 @@ interface AdminBracketRound {
   matches: AdminBracketMatch[];
 }
 ```
+
+**UI ↔ SQL mapping (`AdminBracketMatch`):**
+
+- `teamA` / `teamB` — display names resolved by joining `tournament_registrations` → `teams` (DB stores `team_a_registration_id` / `team_b_registration_id` as UUID FKs).
+- `scoreA` / `scoreB` — integers in the DB (`score_a`, `score_b`); the UI type allows `number | ""` for empty inputs. Transform at the service layer when reading/writing.
+- `winner` — registration team name in the UI; DB uses `winner_registration_id`.
+- Bracket engine `nextMatchSlot` uses camelCase (`"teamA" | "teamB"`) in TypeScript; persist as snake_case (`team_a`, `team_b`) in `next_match_slot`.
 
 From `src/features/admin/features/tournament/types/bracket-engine.ts`:
 
@@ -371,7 +394,7 @@ Grand Final slots: **Upper bracket winner** vs **Lower bracket winner**.
 | Column | Postgres type | Constraints |
 |--------|---------------|-------------|
 | `id` | `uuid` | **PK** |
-| `tournament_id` | `uuid/text` | NOT NULL, **FK → `tournaments.id`** |
+| `tournament_id` | `uuid` | NOT NULL, **FK → `tournaments.id`** |
 | `label` | `text` | NOT NULL |
 | `sort_order` | `integer` | NOT NULL |
 | `bracket_side` | `text` | CHECK in (`upper`, `lower`, `main`, `grand_final`) |
@@ -391,13 +414,13 @@ Grand Final slots: **Upper bracket winner** vs **Lower bracket winner**.
 | `winner_registration_id` | `uuid` | NULL, **FK → `tournament_registrations.id`** |
 | `confirmed` | `boolean` | NOT NULL, default `false` |
 | `next_match_id` | `uuid` | NULL, **FK → `bracket_matches.id`** |
-| `next_match_slot` | `text` | NULL, CHECK in (`teamA`, `teamB`) |
+| `next_match_slot` | `text` | NULL, CHECK in (`team_a`, `team_b`) |
 
 #### `tournament_bracket_state` (optional, 1 row per tournament)
 
 | Column | Postgres type | Notes |
 |--------|---------------|--------|
-| `tournament_id` | `uuid/text` | **PK**, **FK → `tournaments.id`** |
+| `tournament_id` | `uuid` | **PK**, **FK → `tournaments.id`** |
 | `status` | `text` | `not_generated`, `draft`, `published` |
 | `bracket_locked` | `boolean` | default `false` |
 | `updated_at` | `timestamptz` | |
@@ -424,6 +447,8 @@ profiles
 ---
 
 ## RLS (Supabase) — minimal
+
+**Prerequisites:** Supabase Auth must be enabled. `auth.uid()` returns the authenticated user's UUID (matches `profiles.id`). Unauthenticated requests fail these policies — that is expected; use the anon key only for public read paths you explicitly allow.
 
 ```sql
 -- Example: only admins insert tournaments
@@ -463,3 +488,18 @@ Repeat similar policies for `profiles`, `teams`, `team_members`, `tournament_reg
 | `participants/services/participants.service.ts` | `tournament_registrations` (+ join `tournaments`) |
 
 Public tournament page types (`TournamentDetail`, `BracketRound` in `src/features/tournaments/types`) can read the same bracket tables with a read-only Supabase view.
+
+---
+
+## Recommended indexes
+
+PostgreSQL auto-indexes primary keys and UNIQUE constraints; foreign keys are **not** auto-indexed — add these for typical admin and public queries:
+
+| Table | Index columns |
+|-------|---------------|
+| `profiles` | `(username)`, `(discord_username)` |
+| `teams` | `(captain_user_id)`, `(active_tournament_id)` |
+| `team_members` | `(team_id, status)`, `(user_id)` |
+| `tournaments` | `(game, status)`, `(start_date)`, `(slug)` |
+| `tournament_registrations` | `(tournament_id, status)`, `(team_id)` |
+| `bracket_matches` | `(round_id, match_number)`, `(next_match_id)` |

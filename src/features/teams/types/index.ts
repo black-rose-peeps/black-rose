@@ -12,6 +12,7 @@ export type TeamMemberRole =
   | "Support"
   | "Lurker"
   | "Mid"
+  | "Top"
   | "ADC"
   | "Jungle"
   | "Roam"

@@ -1,5 +1,6 @@
 import type { BracketRound, BracketMatch } from "../../types";
 import { splitBracketRounds } from "@/lib/mock-brackets";
+import { isDoubleEliminationFormat } from "@/features/tournaments/constants/formats";
 
 interface BracketTabProps {
   bracket: BracketRound[];
@@ -21,6 +22,7 @@ export function BracketTab({ bracket, format }: BracketTabProps) {
   }
 
   const { main, grandFinals } = splitBracketRounds(bracket);
+  const isDoubleElim = isDoubleEliminationFormat(format);
 
   return (
     <div className="flex flex-col gap-10">
@@ -41,7 +43,9 @@ export function BracketTab({ bracket, format }: BracketTabProps) {
             <span className="h-px flex-1 bg-amber-400/30" />
           </div>
           <p className="text-xs text-muted-foreground">
-            Championship match — upper bracket winner vs lower bracket winner.
+            {isDoubleElim
+              ? "Championship match — upper bracket winner vs lower bracket winner."
+              : "Championship match — winners from the semifinals."}
           </p>
           <BracketRoundGrid rounds={grandFinals} highlight />
         </section>

@@ -22,11 +22,7 @@ import type { AdminMember } from "@/features/admin/features/members/types";
 import { ADMIN_TEAM_GAMES, DEFAULT_CREATE_TEAM_FORM } from "../constants";
 import { useCreateTeam } from "../hooks";
 import type { CreateTeamFormValues, Team } from "../types";
-import {
-  formValuesToCreateTeamInput,
-  hasFormErrors,
-  validateCreateTeamForm,
-} from "../utils";
+import { formValuesToCreateTeamInput, hasFormErrors, validateCreateTeamForm } from "../utils";
 
 interface CreateTeamModalProps {
   open: boolean;
@@ -128,9 +124,7 @@ export function CreateTeamModal({
               <Label htmlFor="team-game">Game</Label>
               <Select
                 value={values.game}
-                onValueChange={(game) =>
-                  updateField("game", game as CreateTeamFormValues["game"])
-                }
+                onValueChange={(game) => updateField("game", game as CreateTeamFormValues["game"])}
                 disabled={isSubmitting}
               >
                 <SelectTrigger id="team-game" className="bg-background/50">
@@ -155,9 +149,7 @@ export function CreateTeamModal({
               >
                 <SelectTrigger id="team-captain" className="bg-background/50">
                   <SelectValue
-                    placeholder={
-                      members.length === 0 ? "Register members first" : "Select captain"
-                    }
+                    placeholder={members.length === 0 ? "Register members first" : "Select captain"}
                   />
                 </SelectTrigger>
                 <SelectContent>

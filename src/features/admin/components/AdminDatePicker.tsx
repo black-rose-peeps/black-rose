@@ -51,7 +51,7 @@ export function AdminDatePicker({
             disabled={disabled}
             className={cn(
               "w-full justify-start bg-background/50 text-left font-normal",
-              !value && "text-muted-foreground",
+              !selected && "text-muted-foreground",
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />

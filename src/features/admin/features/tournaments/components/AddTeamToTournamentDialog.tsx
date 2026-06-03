@@ -39,16 +39,13 @@ export function AddTeamToTournamentDialog({
 }: AddTeamToTournamentDialogProps) {
   const [rosterTeams, setRosterTeams] = useState<Team[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
+  const [teamsLoadError, setTeamsLoadError] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const { submit, isSubmitting, error, resetError } = useAddTeamToTournament(tournament.id);
 
   const registeredRosterIds = useMemo(
     () =>
-      new Set(
-        registeredTeams
-          .map((r) => r.rosterTeamId)
-          .filter((id): id is string => Boolean(id)),
-      ),
+      new Set(registeredTeams.map((r) => r.rosterTeamId).filter((id): id is string => Boolean(id))),
     [registeredTeams],
   );
 
@@ -69,9 +66,14 @@ export function AddTeamToTournamentDialog({
     if (!open) return;
     setSelectedTeamId("");
     resetError();
+    setTeamsLoadError(null);
     setTeamsLoading(true);
     fetchTeams()
       .then(setRosterTeams)
+      .catch((err) => {
+        setRosterTeams([]);
+        setTeamsLoadError(err instanceof Error ? err.message : "Failed to load teams.");
+      })
       .finally(() => setTeamsLoading(false));
   }, [open, resetError]);
 
@@ -93,15 +95,17 @@ export function AddTeamToTournamentDialog({
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Add Team</DialogTitle>
           <DialogDescription>
-            Register a roster from Teams into {tournament.name}.{" "}
-            {registeredTeams.length}/{tournament.teamCap} slots used.
+            Register a roster from Teams into {tournament.name}. {registeredTeams.length}/
+            {tournament.teamCap} slots used.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {atCap ? (
             <Alert>
-              <AlertDescription>Team cap reached. Remove a team or raise the cap to add more.</AlertDescription>
+              <AlertDescription>
+                Team cap reached. Remove a team or raise the cap to add more.
+              </AlertDescription>
             </Alert>
           ) : (
             <div className="space-y-2">
@@ -116,9 +120,11 @@ export function AddTeamToTournamentDialog({
                     placeholder={
                       teamsLoading
                         ? "Loading teams…"
-                        : eligibleTeams.length === 0
-                          ? "No eligible teams — create one under Teams"
-                          : "Select a team"
+                        : teamsLoadError
+                          ? "Could not load teams"
+                          : eligibleTeams.length === 0
+                            ? "No eligible teams — create one under Teams"
+                            : "Select a team"
                     }
                   />
                 </SelectTrigger>
@@ -131,6 +137,12 @@ export function AddTeamToTournamentDialog({
                 </SelectContent>
               </Select>
             </div>
+          )}
+
+          {teamsLoadError && (
+            <Alert variant="destructive">
+              <AlertDescription>{teamsLoadError}</AlertDescription>
+            </Alert>
           )}
 
           {error && (

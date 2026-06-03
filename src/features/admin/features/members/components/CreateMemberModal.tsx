@@ -180,7 +180,11 @@ export function CreateMemberModal({
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="font-tech uppercase tracking-wider">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="font-tech uppercase tracking-wider"
+            >
               {isSubmitting ? "Saving…" : "Register Member"}
             </Button>
           </DialogFooter>

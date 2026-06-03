@@ -18,6 +18,10 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function registrationId(tournamentId: string, rosterTeamId: string): string {
+  return `reg-${tournamentId}-${rosterTeamId}`;
+}
+
 function teamToRegistration(team: Team, tournamentId: string): MockTeam {
   const captain =
     team.members.find((m) => m.status === "captain") ??
@@ -25,7 +29,7 @@ function teamToRegistration(team: Team, tournamentId: string): MockTeam {
     team.members[0];
 
   return {
-    id: `reg-${team.id}`,
+    id: registrationId(tournamentId, team.id),
     rosterTeamId: team.id,
     name: team.name,
     tag: team.tag,
@@ -44,9 +48,7 @@ function teamToRegistration(team: Team, tournamentId: string): MockTeam {
   };
 }
 
-export async function fetchTournamentRegistrations(
-  tournamentId: string,
-): Promise<MockTeam[]> {
+export async function fetchTournamentRegistrations(tournamentId: string): Promise<MockTeam[]> {
   await delay(MOCK_LATENCY_MS);
   return registrationsStore.filter((t) => t.tournamentId === tournamentId);
 }
@@ -91,7 +93,9 @@ export async function addTeamToTournament(
   }
 
   if (
-    current.some((r) => r.rosterTeamId === rosterTeamId || r.id === `reg-${rosterTeamId}`)
+    current.some(
+      (r) => r.rosterTeamId === rosterTeamId || r.id === registrationId(tournamentId, rosterTeamId),
+    )
   ) {
     throw new Error("This team is already registered for this tournament.");
   }
@@ -102,19 +106,13 @@ export async function addTeamToTournament(
     throw new Error("Team not found. Create the team under Teams first.");
   }
 
-  if (
-    rosterTeam.game !== "Multi" &&
-    rosterTeam.game !== tournament.game
-  ) {
+  if (rosterTeam.game !== "Multi" && rosterTeam.game !== tournament.game) {
     throw new Error(
       `${rosterTeam.name} is registered for ${rosterTeam.game}, but this tournament is ${tournament.game}.`,
     );
   }
 
-  if (
-    rosterTeam.activeTournamentId &&
-    rosterTeam.activeTournamentId !== tournamentId
-  ) {
+  if (rosterTeam.activeTournamentId && rosterTeam.activeTournamentId !== tournamentId) {
     throw new Error(
       `${rosterTeam.name} is already active in ${rosterTeam.activeTournamentName ?? "another tournament"}.`,
     );
