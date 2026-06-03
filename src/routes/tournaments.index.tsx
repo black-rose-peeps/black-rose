@@ -4,19 +4,12 @@ import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { TournamentFilters } from "@/features/tournaments/components/TournamentFilters";
 import { TournamentGrid } from "@/features/tournaments/components/TournamentGrid";
+import { TournamentGroup } from "@/features/tournaments/components/TournamentGroup";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { mockTournaments } from "@/lib/mock-data";
 import { ALL_GAMES, ALL_STATUSES } from "@/features/tournaments/constants";
-import type { TournamentGame, TournamentStatus, Tournament } from "@/features/tournaments/types";
-
-// Valid public statuses — excludes "Draft" from MockTournament
-const PUBLIC_STATUSES = new Set([
-  "Registration Open",
-  "Registration Closed",
-  "Live",
-  "Completed",
-  "Archived",
-]);
+import { getPublicTournaments } from "@/features/tournaments/utils";
+import type { TournamentGame, TournamentStatus } from "@/features/tournaments/types";
 
 export const Route = createFileRoute("/tournaments/")({
   head: () => ({
@@ -32,10 +25,8 @@ export const Route = createFileRoute("/tournaments/")({
   component: TournamentsPage,
 });
 
-// Exclude Draft tournaments — filter to public statuses, result typed as Tournament[]
-const publicTournaments: Tournament[] = mockTournaments.filter((t) =>
-  PUBLIC_STATUSES.has(t.status),
-) as Tournament[];
+// Exclude Draft tournaments — filter to public statuses
+const publicTournaments = getPublicTournaments(mockTournaments);
 
 function TournamentsPage() {
   const [activeGame, setActiveGame] = useState<typeof ALL_GAMES | TournamentGame>(ALL_GAMES);
@@ -123,7 +114,7 @@ function TournamentsPage() {
 
             {/* Live — pinned first */}
             {activeStatus === ALL_STATUSES && filtered.some((t) => t.status === "Live") && (
-              <Group
+              <TournamentGroup
                 dot="bg-white animate-pulse-soft"
                 label="Live Now"
                 tournaments={filtered.filter((t) => t.status === "Live")}
@@ -133,7 +124,7 @@ function TournamentsPage() {
             {/* Registration Open */}
             {activeStatus === ALL_STATUSES &&
               filtered.some((t) => t.status === "Registration Open") && (
-                <Group
+                <TournamentGroup
                   dot="bg-emerald-400 animate-pulse-soft"
                   label="Registration Open"
                   tournaments={filtered.filter((t) => t.status === "Registration Open")}
@@ -144,7 +135,7 @@ function TournamentsPage() {
             {activeStatus !== ALL_STATUSES ? (
               <TournamentGrid tournaments={filtered} />
             ) : filtered.some((t) => t.status !== "Live" && t.status !== "Registration Open") ? (
-              <Group
+              <TournamentGroup
                 label="Past & Upcoming"
                 tournaments={filtered.filter(
                   (t) => t.status !== "Live" && t.status !== "Registration Open",
@@ -159,28 +150,6 @@ function TournamentsPage() {
       </main>
 
       <Footer />
-    </div>
-  );
-}
-
-// Labelled tournament section group
-function Group({
-  label,
-  dot,
-  tournaments,
-}: {
-  label: string;
-  dot?: string;
-  tournaments: Tournament[];
-}) {
-  return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-2.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-        {dot && <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />}
-        {label}
-        <span className="h-px flex-1 bg-white/6" />
-      </div>
-      <TournamentGrid tournaments={tournaments} />
     </div>
   );
 }
