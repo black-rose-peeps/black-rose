@@ -1,115 +1,156 @@
-import type { ReactNode } from "react";
+import React from "react";
 
-export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`border border-border bg-card ${className}`}>{children}</div>;
-}
-
-export function PanelHeader({
-  title,
-  eyebrow,
-  actions,
+// Basic UI Components for Admin
+export function Panel({
+  children,
+  className = "",
 }: {
-  title: string;
-  eyebrow?: string;
-  actions?: ReactNode;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-border px-6 py-4">
-      <div className="flex flex-col leading-tight">
-        {eyebrow && (
-          <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-            {eyebrow}
-          </span>
-        )}
-        <h3 className="font-display text-lg tracking-wider-2">{title}</h3>
-      </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    <div className={`rounded-lg border border-border bg-card shadow-lg ${className}`}>
+      {children}
     </div>
   );
 }
 
-export function StatCard({
-  label,
-  value,
-  delta,
+export function PanelHeader({
+  eyebrow,
+  title,
+  actions,
 }: {
-  label: string;
-  value: string | number;
-  delta?: string;
+  eyebrow?: string;
+  title: string;
+  actions?: React.ReactNode;
 }) {
   return (
-    <Panel className="clip-angle p-5">
-      <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-3 font-display text-4xl tracking-display">{value}</div>
-      {delta && (
-        <div className="mt-2 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-          {delta}
+    <div className="border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between">
+        <div>
+          {eyebrow && (
+            <div className="text-xs-readable font-tech font-medium uppercase tracking-wider-2 text-muted-foreground mb-1">
+              {eyebrow}
+            </div>
+          )}
+          <h2 className="text-xl font-display font-bold tracking-wider-2">{title}</h2>
         </div>
-      )}
-    </Panel>
+        {actions && <div className="flex items-center gap-3">{actions}</div>}
+      </div>
+    </div>
   );
 }
 
-const statusStyles: Record<string, string> = {
-  // Tournament
-  Draft: "border-border text-muted-foreground",
-  "Registration Open": "border-foreground/70 text-foreground",
-  "Registration Closed": "border-border text-muted-foreground",
-  Live: "border-foreground text-foreground bg-foreground/10",
-  Completed: "border-border text-muted-foreground",
-  Archived: "border-border text-muted-foreground/60",
-  // Team
-  Pending: "border-foreground/40 text-foreground",
-  Approved: "border-foreground text-foreground bg-foreground/10",
-  Rejected: "border-border text-muted-foreground/60 line-through",
-  // User
-  Active: "border-foreground/60 text-foreground",
-  Suspended: "border-border text-muted-foreground",
-  Banned: "border-border text-muted-foreground/60 line-through",
-};
-
-export function StatusPill({ status }: { status: string }) {
-  const cls = statusStyles[status] ?? "border-border text-muted-foreground";
+export function GhostButton({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 border px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 ${cls}`}
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded border border-border bg-transparent px-4 py-2 text-sm-readable font-tech font-medium uppercase tracking-wider-2 text-muted-foreground transition hover:border-foreground/60 hover:text-foreground"
     >
-      <span className="h-1.5 w-1.5 bg-current" />
-      {status}
-    </span>
+      {children}
+    </button>
   );
 }
 
 export function PrimaryButton({
   children,
   onClick,
-  type = "button",
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   onClick?: () => void;
-  type?: "button" | "submit";
 }) {
   return (
     <button
-      type={type}
+      type="button"
       onClick={onClick}
-      className="clip-cta inline-flex h-9 items-center bg-foreground px-4 text-[10px] font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+      className="
+        inline-flex
+        items-center
+        justify-center
+        gap-1.5
+        rounded
+        bg-foreground
+        px-4
+        py-2
+        text-sm-readable
+        font-tech
+        font-medium
+        uppercase
+        tracking-wider-2
+        text-background
+        transition
+        hover:bg-foreground/90
+      "
     >
       {children}
     </button>
   );
 }
 
-export function GhostButton({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
+export function StatusPill({ status }: { status: string }) {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "approved":
+      case "active":
+        return "border-emerald-400/40 bg-emerald-400/10 text-emerald-400";
+      case "pending":
+        return "border-amber-400/40 bg-amber-400/10 text-amber-400";
+      case "rejected":
+      case "banned":
+        return "border-red-400/40 bg-red-400/10 text-red-400";
+      case "live":
+        return "border-sky-400/40 bg-sky-400/10 text-sky-400";
+      case "registration open":
+        return "border-emerald-400/40 bg-emerald-400/10 text-emerald-400";
+      case "registration closed":
+        return "border-amber-400/40 bg-amber-400/10 text-amber-400";
+      case "completed":
+        return "border-violet-400/40 bg-violet-400/10 text-violet-400";
+      case "archived":
+        return "border-border bg-muted/50 text-muted-foreground";
+      case "suspended":
+        return "border-orange-400/40 bg-orange-400/10 text-orange-400";
+      default:
+        return "border-border bg-muted text-muted-foreground";
+    }
+  };
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex h-9 items-center border border-border bg-secondary px-4 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:border-foreground/60 hover:text-foreground"
+    <span
+      className={`inline-block rounded-full border px-3 py-1 text-xs-readable font-tech font-medium uppercase tracking-wider-2 ${getStatusColor(status)}`}
     >
-      {children}
-    </button>
+      {status}
+    </span>
+  );
+}
+export function StatCard({
+  title,
+  value,
+  change,
+  icon,
+}: {
+  title: string;
+  value: string | number;
+  change?: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          {change && <p className="text-xs text-muted-foreground mt-1">{change}</p>}
+        </div>
+        {icon && <div className="text-muted-foreground">{icon}</div>}
+      </div>
+    </div>
   );
 }

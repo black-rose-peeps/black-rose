@@ -19,22 +19,22 @@ function AdminDashboard() {
       <div className="flex flex-1 flex-col gap-8 px-6 py-8 lg:px-10">
         <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <StatCard
-            label="Total Users"
+            title="Total Users"
             value={mockOverview.totalUsers.toLocaleString()}
-            delta="+42 this week"
+            change="+42 this week"
           />
-          <StatCard label="Total Teams" value={mockOverview.totalTeams} delta="+11 this week" />
+          <StatCard title="Total Teams" value={mockOverview.totalTeams} change="+11 this week" />
           <StatCard
-            label="Active Tournaments"
+            title="Active Tournaments"
             value={mockOverview.activeTournaments}
-            delta="2 in registration"
+            change="2 in registration"
           />
           <StatCard
-            label="Pending Registrations"
+            title="Pending Registrations"
             value={mockOverview.pendingRegistrations}
-            delta="Awaiting review"
+            change="Awaiting review"
           />
-          <StatCard label="Completed" value={mockOverview.completedTournaments} delta="All-time" />
+          <StatCard title="Completed" value={mockOverview.completedTournaments} change="All-time" />
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
