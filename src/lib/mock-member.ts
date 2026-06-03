@@ -45,7 +45,7 @@ export const mockMemberProfile: MemberProfile = {
       game: "Valorant",
       status: "Pending",
       teamName: "Novellino eSports",
-      teamTag: "OBV",
+      teamTag: "NE",
     },
   ],
   upcomingMatches: [],
@@ -57,6 +57,7 @@ export const mockMemberProfile: MemberProfile = {
  * Replace with a real API call when the backend is ready.
  */
 export function getMemberBySlug(slug: string): MemberProfile | null {
-  if (slug === mockMemberProfile.slug) return mockMemberProfile;
+  if (slug.trim().toLowerCase() === mockMemberProfile.slug.trim().toLowerCase())
+    return mockMemberProfile;
   return null;
 }

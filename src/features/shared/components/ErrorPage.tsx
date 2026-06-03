@@ -2,9 +2,9 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 export function ErrorPage({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
   const router = useRouter();
 
+  // Log only inside effect — not during render
   useEffect(() => {
     console.error(error);
   }, [error]);

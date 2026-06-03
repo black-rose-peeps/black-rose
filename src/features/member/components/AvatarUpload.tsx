@@ -41,6 +41,22 @@ export function AvatarUpload({
     reader.onload = (e) => {
       const result = e.target?.result;
       if (typeof result === "string") onChange(result);
+      else setError("Could not read the file. Please try again.");
+      reader.onload = null;
+      reader.onerror = null;
+      reader.onabort = null;
+    };
+    reader.onerror = () => {
+      setError("Failed to read the file. Please try another image.");
+      reader.onload = null;
+      reader.onerror = null;
+      reader.onabort = null;
+    };
+    reader.onabort = () => {
+      setError("File read was cancelled.");
+      reader.onload = null;
+      reader.onerror = null;
+      reader.onabort = null;
     };
     reader.readAsDataURL(file);
   }

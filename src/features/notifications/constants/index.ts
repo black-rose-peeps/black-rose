@@ -12,7 +12,7 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
     body: "Quamico invited you to join Novellino eSports as a substitute.",
     createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 min ago
     read: false,
-    href: "/teams/team-obv",
+    href: "/teams/team-ne",
   },
   {
     id: "notif-002",

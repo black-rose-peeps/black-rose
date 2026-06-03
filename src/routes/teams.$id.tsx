@@ -43,6 +43,14 @@ function TeamDetailPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
+  // Reset local state when the loader provides a different team (param change)
+  useEffect(() => {
+    setTeam(initialTeam);
+    setInviteSearch("");
+    setInviteOpen(false);
+    setInvitedIds(new Set());
+  }, [initialTeam]);
+
   useEffect(() => {
     if (!session) {
       navigate({ to: "/login" });

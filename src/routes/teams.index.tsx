@@ -26,7 +26,7 @@ function TeamsIndexPage() {
     }
   }, [navigate, session]);
 
-  if (!session) return null;
+  if (!session || session.role === "not_verified") return null;
 
   const team = getTeamByUserId(session.id);
   const isCaptain = team?.captainUserId === session.id;

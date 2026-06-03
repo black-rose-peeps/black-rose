@@ -90,7 +90,7 @@ export function RosterTable({
 
                 {/* Status / Actions col */}
                 <td className="px-4 py-3 text-right">
-                  {isEditable && isCaptain && m.status !== "captain" ? (
+                  {isEditable && isCaptain && onRemove && m.status !== "captain" ? (
                     <button
                       type="button"
                       onClick={() => onRemove?.(m)}

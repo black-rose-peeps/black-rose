@@ -52,7 +52,7 @@ function CreateTeamPage() {
     setTimeout(() => navigate({ to: "/teams" }), 1500);
   }
 
-  if (!session) return null;
+  if (!session || session.role === "not_verified") return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -106,9 +106,9 @@ function CreateTeamPage() {
                 required
                 value={form.tag}
                 onChange={(e) => update("tag", e.target.value.toUpperCase().slice(0, 5))}
-                placeholder="OBV"
+                placeholder="NE"
                 maxLength={5}
-                pattern="[A-Z]{2,5}"
+                pattern="[A-Z]{3,5}"
                 className="h-11 w-full border border-border bg-secondary px-4 font-tech text-sm uppercase tracking-wider-2 outline-none transition focus:border-foreground"
               />
             </FormField>

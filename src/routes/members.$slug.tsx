@@ -51,8 +51,8 @@ function MemberProfilePage() {
   );
 
   useEffect(() => {
-    if (isOwnProfile) setAvatarUrl(getSavedAvatar());
-  }, [isOwnProfile]);
+    setAvatarUrl(isOwnProfile ? getSavedAvatar() : p.avatarUrl);
+  }, [isOwnProfile, p.slug, p.avatarUrl]);
 
   function handleAvatarChange(dataUrl: string) {
     saveAvatar(dataUrl);

@@ -38,7 +38,7 @@ function DashboardPage() {
     }
   }, [navigate, session]);
 
-  if (!session) return null;
+  if (!session || session.role === "not_verified") return null;
 
   // TODO: replace with real /api/profile/me fetch
   const p = mockMemberProfile;

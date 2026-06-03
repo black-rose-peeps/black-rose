@@ -8,6 +8,10 @@
 
 const AVATAR_KEY = "br_avatar";
 
+// TODO (multi-user): scope this key per user ID (e.g. `${AVATAR_KEY}_${userId}`)
+// to prevent cross-account leakage when real auth is implemented.
+// For now there is only one mock user so a global key is acceptable.
+
 export function getSavedAvatar(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(AVATAR_KEY);

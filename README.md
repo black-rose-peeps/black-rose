@@ -121,7 +121,6 @@ src/
 │   ├── mock-teams.ts              # Placeholder team + roster data
 │   ├── mock-tournament-details.ts # Rich tournament detail data
 │   └── utils.ts                   # Utility functions (cn, etc.)
-│   └── utils.ts                   # Utility functions (cn, etc.)
 │
 ├── routes/                        # File-based routing (TanStack Router)
 │   ├── __root.tsx                 # Root layout — wraps every page

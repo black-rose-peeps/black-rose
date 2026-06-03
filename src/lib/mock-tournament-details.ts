@@ -75,7 +75,7 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
       {
         id: "t-001",
         name: "Novellino eSports",
-        tag: "OBV",
+        tag: "NE",
         captain: "CoyHa",
         seed: 1,
         players: [
@@ -448,7 +448,7 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
       {
         id: "t-001",
         name: "Novellino eSports",
-        tag: "OBV",
+        tag: "NE",
         captain: "CoyHa",
         seed: 1,
         players: [

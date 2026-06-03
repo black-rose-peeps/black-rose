@@ -9,7 +9,6 @@ import {
   Calendar,
   ShieldCheck,
 } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from "../store";
 import type { AppNotification, NotificationType } from "../types";
 
@@ -69,15 +68,24 @@ export function NotificationBell() {
     refresh();
   }, []);
 
-  // Close on outside click
+  // Close on outside click OR Escape key
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
-    if (open) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    function handleKeydown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClick);
+      document.addEventListener("keydown", handleKeydown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKeydown);
+    };
   }, [open]);
 
   function handleOpen() {
@@ -194,8 +202,8 @@ export function NotificationBell() {
                 return (
                   <li key={n.id}>
                     {n.href ? (
-                      <Link
-                        to={n.href as "/"}
+                      <a
+                        href={n.href}
                         onClick={() => {
                           handleRead(n.id);
                           setOpen(false);
@@ -203,7 +211,7 @@ export function NotificationBell() {
                         className="block"
                       >
                         {content}
-                      </Link>
+                      </a>
                     ) : (
                       <button
                         type="button"

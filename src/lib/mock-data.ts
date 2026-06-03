@@ -186,7 +186,7 @@ export const mockTeams: MockTeam[] = [
   {
     id: "t-001",
     name: "Novellino eSports",
-    tag: "OBV",
+    tag: "NE",
     captain: "CoyHa",
     members: [
       { ign: "CoyHa", role: "Duelist / IGL", discord: "CoyHa#2026" },

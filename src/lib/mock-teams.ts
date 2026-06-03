@@ -3,9 +3,9 @@ import type { Team } from "@/features/teams/types";
 
 export const mockTeams: Team[] = [
   {
-    id: "team-obv",
+    id: "team-ne",
     name: "Novellino eSports",
-    tag: "OBV",
+    tag: "NE",
     game: "Valorant",
     captainUserId: "mock_verified_001", // CoyHa
     createdAt: "2026-02-20T00:00:00.000Z",
@@ -78,7 +78,13 @@ export const mockTeams: Team[] = [
 
 /** Get the team a given user is a member or captain of (returns the first match) */
 export function getTeamByUserId(userId: string): Team | null {
-  return mockTeams.find((t) => t.members.some((m) => m.userId === userId)) ?? null;
+  return (
+    mockTeams.find((t) =>
+      t.members.some(
+        (m) => m.userId === userId && (m.status === "captain" || m.status === "active"),
+      ),
+    ) ?? null
+  );
 }
 
 /** Get a team by its ID */

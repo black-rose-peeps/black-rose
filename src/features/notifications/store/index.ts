@@ -14,27 +14,28 @@ const STORE_KEY = "br_notifications";
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
-function load(): AppNotification[] {
-  if (typeof window === "undefined") return [];
+function save(notifications: AppNotification[]): void {
+  if (typeof window === "undefined") return;
   try {
-    const raw = sessionStorage.getItem(STORE_KEY);
-    return raw ? (JSON.parse(raw) as AppNotification[]) : null!;
-  } catch {
-    return null!;
+    sessionStorage.setItem(STORE_KEY, JSON.stringify(notifications));
+  } catch (err) {
+    console.warn("[notifications] Failed to persist to sessionStorage:", err);
   }
 }
 
-function save(notifications: AppNotification[]): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(STORE_KEY, JSON.stringify(notifications));
+function load(): AppNotification[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(STORE_KEY);
+    return raw ? (JSON.parse(raw) as AppNotification[]) : null;
+  } catch {
+    return null;
+  }
 }
-
-// ── Initialise with mock data on first load ───────────────────────────────────
 
 function getAll(): AppNotification[] {
   const stored = load();
   if (stored) return stored;
-  // First visit — seed with mock data
   save(MOCK_NOTIFICATIONS);
   return MOCK_NOTIFICATIONS;
 }

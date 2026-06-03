@@ -3,7 +3,7 @@ export const WAITLIST_TEMPLATES = [
     game: "Valorant",
     accent: "text-red-400",
     fields: [
-      "IGN&#:",
+      "IGN:",
       "Rank:",
       "Nationality:",
       "Invited by / Referred by:",
