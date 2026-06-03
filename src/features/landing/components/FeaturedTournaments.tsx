@@ -1,6 +1,4 @@
 import valorant from "@/assets/tournament-valorant.jpg";
-import mlbb from "@/assets/tournament-mlbb.png";
-import cs2 from "@/assets/tournament-cs2.jpg";
 import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "./SectionHeading";
 
@@ -10,27 +8,9 @@ const tournaments = [
     name: "Valorant Nightfall Cup",
     game: "Valorant · 5v5",
     prize: "₱10,000",
-    slots: "12 / 16",
-    deadline: "Aug 31",
+    slots: "16 / 32",
+    deadline: "Jun 18",
     status: "Open",
-  },
-  {
-    img: mlbb,
-    name: "MLBB Midnight Clash",
-    game: "Mobile Legends · 5v5",
-    prize: "₱8,000",
-    slots: "9 / 16",
-    deadline: "Sep 07",
-    status: "Open",
-  },
-  {
-    img: cs2,
-    name: "CS2 Iron Bloom Invitational",
-    game: "Counter-Strike 2 · 5v5",
-    prize: "₱15,000",
-    slots: "8 / 8",
-    deadline: "Closed",
-    status: "Full",
   },
 ];
 
@@ -57,7 +37,7 @@ export function FeaturedTournaments() {
           </Link>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:max-w-md">
           {tournaments.map((t) => (
             <article
               key={t.name}

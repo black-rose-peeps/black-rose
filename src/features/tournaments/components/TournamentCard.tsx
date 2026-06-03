@@ -5,14 +5,14 @@ import type { Tournament } from "../types";
 
 const GAME_ACCENT: Record<Tournament["game"], string> = {
   Valorant: "from-red-500/20 via-red-500/5 to-transparent",
-  MLBB: "from-sky-500/20 via-sky-500/5 to-transparent",
-  CS2: "from-amber-500/20 via-amber-500/5 to-transparent",
+  "League of Legends": "from-blue-500/20 via-blue-500/5 to-transparent",
+  "Teamfight Tactics": "from-violet-500/20 via-violet-500/5 to-transparent",
 };
 
 const GAME_TAG_COLOR: Record<Tournament["game"], string> = {
   Valorant: "text-red-400",
-  MLBB: "text-sky-400",
-  CS2: "text-amber-400",
+  "League of Legends": "text-blue-400",
+  "Teamfight Tactics": "text-violet-400",
 };
 
 interface TournamentCardProps {

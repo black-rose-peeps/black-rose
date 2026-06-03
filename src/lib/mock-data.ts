@@ -1,5 +1,7 @@
 // Mock data for Black Rose (frontend flow only)
 
+import { generateMockMemberUsers } from "./generate-mock-rosters";
+
 export type TournamentStatus =
   | "Draft"
   | "Registration Open"
@@ -11,7 +13,7 @@ export type TournamentStatus =
 export interface MockTournament {
   id: string;
   name: string;
-  game: "Valorant" | "MLBB" | "CS2";
+  game: "Valorant" | "League of Legends" | "Teamfight Tactics";
   status: TournamentStatus;
   prizePool: string;
   startDate: string;
@@ -30,6 +32,8 @@ export interface MockPlayer {
 
 export interface MockTeam {
   id: string;
+  /** Links to admin roster `Team.id` when registered from the Teams pipeline. */
+  rosterTeamId?: string;
   name: string;
   tag: string;
   captain: string;
@@ -64,121 +68,17 @@ export const mockTournaments: MockTournament[] = [
     region: "PH",
   },
   {
-    id: "mlbb-thorne",
-    name: "MLBB Thorne Invitational",
-    game: "MLBB",
+    id: "lol-twilight",
+    name: "Twilight Clash",
+    game: "League of Legends",
     status: "Registration Closed",
-    prizePool: "₱8,000",
-    startDate: "2026-06-14",
-    registrationDeadline: "2026-06-08",
-    teamsRegistered: 16,
-    teamCap: 16,
-    format: "Single Elimination",
-    region: "SEA",
-  },
-  {
-    id: "cs2-ironveil",
-    name: "CS2 Ironveil Open",
-    game: "CS2",
-    status: "Live",
-    prizePool: "₱15,000",
-    startDate: "2026-05-30",
-    registrationDeadline: "2026-05-25",
-    teamsRegistered: 24,
-    teamCap: 24,
-    format: "GSL + Playoffs",
-    region: "APAC",
-  },
-  {
-    id: "vlr-onyx",
-    name: "Valorant Onyx Series",
-    game: "Valorant",
-    status: "Completed",
-    prizePool: "₱25,000",
-    startDate: "2026-04-12",
-    registrationDeadline: "2026-04-05",
-    teamsRegistered: 32,
-    teamCap: 32,
-    format: "Double Elimination",
-    region: "PH",
-  },
-  {
-    id: "mlbb-bloom",
-    name: "MLBB Bloom Qualifier",
-    game: "MLBB",
-    status: "Registration Open",
-    prizePool: "₱5,000",
-    startDate: "2026-07-04",
-    registrationDeadline: "2026-06-28",
-    teamsRegistered: 6,
-    teamCap: 24,
-    format: "Round Robin + Playoffs",
-    region: "PH",
-  },
-  {
-    id: "cs2-ashfall",
-    name: "CS2 Ashfall Invitational",
-    game: "CS2",
-    status: "Registration Open",
-    prizePool: "₱12,000",
+    prizePool: "$5,000",
     startDate: "2026-07-12",
     registrationDeadline: "2026-07-08",
-    teamsRegistered: 9,
-    teamCap: 16,
-    format: "Single Elimination",
-    region: "SEA",
-  },
-  {
-    id: "vlr-crimson",
-    name: "Valorant Crimson Qualifier",
-    game: "Valorant",
-    status: "Completed",
-    prizePool: "₱6,000",
-    startDate: "2026-03-08",
-    registrationDeadline: "2026-03-01",
-    teamsRegistered: 16,
-    teamCap: 16,
-    format: "Single Elimination",
-    region: "PH",
-  },
-  {
-    id: "mlbb-ironclad",
-    name: "MLBB Ironclad Series",
-    game: "MLBB",
-    status: "Live",
-    prizePool: "₱9,500",
-    startDate: "2026-06-02",
-    registrationDeadline: "2026-05-28",
-    teamsRegistered: 12,
-    teamCap: 12,
-    format: "Round Robin",
-    region: "APAC",
-  },
-  {
-    id: "cs2-phantom",
-    name: "CS2 Phantom League",
-    game: "CS2",
-    status: "Completed",
-    prizePool: "₱20,000",
-    startDate: "2026-02-15",
-    registrationDeadline: "2026-02-08",
-    teamsRegistered: 24,
-    teamCap: 24,
-    format: "GSL + Playoffs",
-    region: "SEA",
-  },
-  {
-    id: "vlr-eclipse",
-    name: "Valorant Eclipse Cup",
-    game: "Valorant",
-    status: "Archived",
-    prizePool: "₱4,000",
-    startDate: "2025-12-10",
-    registrationDeadline: "2025-12-05",
     teamsRegistered: 8,
-    teamCap: 8,
-    format: "Single Elimination",
-    region: "PH",
+    teamCap: 16,
+    format: "Double Elimination",
+    region: "SEA",
   },
 ];
 
@@ -231,8 +131,8 @@ export const mockTeams: MockTeam[] = [
     ],
     registrationDate: "2026-05-22",
     status: "Approved",
-    tournamentId: "cs2-ironveil",
-    history: ["CS2 Winter Brawl — Runner-up"],
+    tournamentId: "vlr-nightfall",
+    history: ["Valorant Winter Brawl — Runner-up"],
   },
   {
     id: "t-004",
@@ -247,7 +147,7 @@ export const mockTeams: MockTeam[] = [
       { ign: "noor", role: "Flex", discord: "noor#9921" },
     ],
     registrationDate: "2026-05-30",
-    status: "Approved",
+    status: "Pending",
     tournamentId: "vlr-nightfall",
     history: ["Valorant Eclipse Cup — Champions"],
   },
@@ -472,9 +372,145 @@ export const mockTeams: MockTeam[] = [
     tournamentId: "vlr-nightfall",
     history: ["Valorant Raven Cup — Champions", "Valorant Strike League — Top 8"],
   },
+  {
+    id: "t-tw-001",
+    name: "Neon Syndicate",
+    tag: "NSY",
+    captain: "pulse",
+    members: [
+      { ign: "pulse", role: "Top", discord: "pulse#1001" },
+      { ign: "wire", role: "Jungle", discord: "wire#1002" },
+      { ign: "flux", role: "Mid", discord: "flux#1003" },
+      { ign: "grid", role: "ADC", discord: "grid#1004" },
+      { ign: "arc", role: "Support", discord: "arc#1005" },
+    ],
+    registrationDate: "2026-07-01",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
+  {
+    id: "t-tw-002",
+    name: "Obsidian Core",
+    tag: "OBS",
+    captain: "onyx",
+    members: [
+      { ign: "onyx", role: "Top", discord: "onyx#2001" },
+      { ign: "shard", role: "Jungle", discord: "shard#2002" },
+      { ign: "basalt", role: "Mid", discord: "basalt#2003" },
+      { ign: "flint", role: "ADC", discord: "flint#2004" },
+      { ign: "slate", role: "Support", discord: "slate#2005" },
+    ],
+    registrationDate: "2026-07-01",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
+  {
+    id: "t-tw-003",
+    name: "Pulse Breakers",
+    tag: "PLS",
+    captain: "beat",
+    members: [
+      { ign: "beat", role: "Top", discord: "beat#3001" },
+      { ign: "tempo", role: "Jungle", discord: "tempo#3002" },
+      { ign: "echo", role: "Mid", discord: "echo#3003" },
+      { ign: "rhythm", role: "ADC", discord: "rhythm#3004" },
+      { ign: "bass", role: "Support", discord: "bass#3005" },
+    ],
+    registrationDate: "2026-07-02",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
+  {
+    id: "t-tw-004",
+    name: "Cipher Unit",
+    tag: "CPH",
+    captain: "key",
+    members: [
+      { ign: "key", role: "Top", discord: "key#4001" },
+      { ign: "lock", role: "Jungle", discord: "lock#4002" },
+      { ign: "hash", role: "Mid", discord: "hash#4003" },
+      { ign: "token", role: "ADC", discord: "token#4004" },
+      { ign: "byte", role: "Support", discord: "byte#4005" },
+    ],
+    registrationDate: "2026-07-02",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
+  {
+    id: "t-tw-005",
+    name: "Aurora Five",
+    tag: "AUR",
+    captain: "dawn",
+    members: [
+      { ign: "dawn", role: "Top", discord: "dawn#5001" },
+      { ign: "glow", role: "Jungle", discord: "glow#5002" },
+      { ign: "ray", role: "Mid", discord: "ray#5003" },
+      { ign: "halo", role: "ADC", discord: "halo#5004" },
+      { ign: "lumen", role: "Support", discord: "lumen#5005" },
+    ],
+    registrationDate: "2026-07-03",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
+  {
+    id: "t-tw-006",
+    name: "Static Reign",
+    tag: "STC",
+    captain: "volt",
+    members: [
+      { ign: "volt", role: "Top", discord: "volt#6001" },
+      { ign: "surge", role: "Jungle", discord: "surge#6002" },
+      { ign: "ohm", role: "Mid", discord: "ohm#6003" },
+      { ign: "amp", role: "ADC", discord: "amp#6004" },
+      { ign: "watt", role: "Support", discord: "watt#6005" },
+    ],
+    registrationDate: "2026-07-03",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
+  {
+    id: "t-tw-007",
+    name: "Midnight Forge",
+    tag: "MFG",
+    captain: "anvil",
+    members: [
+      { ign: "anvil", role: "Top", discord: "anvil#7001" },
+      { ign: "ember", role: "Jungle", discord: "ember#7002" },
+      { ign: "coal", role: "Mid", discord: "coal#7003" },
+      { ign: "spark", role: "ADC", discord: "spark#7004" },
+      { ign: "iron", role: "Support", discord: "iron#7005" },
+    ],
+    registrationDate: "2026-07-04",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
+  {
+    id: "t-tw-008",
+    name: "Zenith Line",
+    tag: "ZEN",
+    captain: "apex",
+    members: [
+      { ign: "apex", role: "Top", discord: "apex#8001" },
+      { ign: "peak", role: "Jungle", discord: "peak#8002" },
+      { ign: "ridge", role: "Mid", discord: "ridge#8003" },
+      { ign: "crest", role: "ADC", discord: "crest#8004" },
+      { ign: "summit", role: "Support", discord: "summit#8005" },
+    ],
+    registrationDate: "2026-07-04",
+    status: "Approved",
+    tournamentId: "lol-twilight",
+    history: [],
+  },
 ];
 
-export const mockUsers: MockUser[] = [
+const coreMockUsers: MockUser[] = [
   {
     id: "u-001",
     username: "CoyHa",
@@ -525,10 +561,12 @@ export const mockUsers: MockUser[] = [
   },
 ];
 
+export const mockUsers: MockUser[] = [...coreMockUsers, ...generateMockMemberUsers(54)];
+
 export const mockOverview = {
-  totalUsers: 1284,
-  totalTeams: 312,
-  activeTournaments: 4,
-  pendingRegistrations: 18,
-  completedTournaments: 27,
+  totalUsers: mockUsers.length,
+  totalTeams: 48,
+  activeTournaments: 2,
+  pendingRegistrations: 3,
+  completedTournaments: 12,
 };

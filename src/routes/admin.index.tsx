@@ -1,17 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
 import { Panel, PanelHeader, StatCard, StatusPill } from "@/features/admin/components/ui";
-import { mockOverview, mockTeams, mockTournaments } from "@/lib/mock-data";
+import { fetchAdminDashboard } from "@/features/admin/services/dashboard.service";
 
 export const Route = createFileRoute("/admin/")({
+  loader: () => fetchAdminDashboard(),
   component: AdminDashboard,
 });
 
 function AdminDashboard() {
-  const pending = mockTeams.filter((t) => t.status === "Pending");
-  const active = mockTournaments.filter(
-    (t) => t.status === "Live" || t.status === "Registration Open",
-  );
+  const { stats, activeTournaments, pendingRegistrations } = Route.useLoaderData();
 
   return (
     <>
@@ -19,22 +17,26 @@ function AdminDashboard() {
       <div className="flex flex-1 flex-col gap-8 px-6 py-8 lg:px-10">
         <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <StatCard
-            title="Total Users"
-            value={mockOverview.totalUsers.toLocaleString()}
-            change="+42 this week"
+            title="Total Members"
+            value={stats.totalMembers.toLocaleString()}
+            change="Registered accounts"
           />
-          <StatCard title="Total Teams" value={mockOverview.totalTeams} change="+11 this week" />
+          <StatCard title="Total Teams" value={stats.totalTeams} change="Roster teams" />
           <StatCard
             title="Active Tournaments"
-            value={mockOverview.activeTournaments}
-            change="2 in registration"
+            value={stats.activeTournaments}
+            change="Live or open registration"
           />
           <StatCard
             title="Pending Registrations"
-            value={mockOverview.pendingRegistrations}
+            value={stats.pendingRegistrations}
             change="Awaiting review"
           />
-          <StatCard title="Completed" value={mockOverview.completedTournaments} change="All-time" />
+          <StatCard
+            title="Completed"
+            value={stats.completedTournaments}
+            change="Finished events"
+          />
         </section>
 
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -52,7 +54,7 @@ function AdminDashboard() {
               }
             />
             <div className="divide-y divide-border">
-              {active.map((t) => (
+              {activeTournaments.map((t) => (
                 <Link
                   key={t.id}
                   to="/admin/tournaments/$id"
@@ -68,6 +70,11 @@ function AdminDashboard() {
                   <StatusPill status={t.status} />
                 </Link>
               ))}
+              {activeTournaments.length === 0 && (
+                <div className="px-6 py-8 text-center text-xs text-muted-foreground">
+                  No active tournaments.
+                </div>
+              )}
             </div>
           </Panel>
 
@@ -85,7 +92,7 @@ function AdminDashboard() {
               }
             />
             <div className="divide-y divide-border">
-              {pending.slice(0, 5).map((team) => (
+              {pendingRegistrations.slice(0, 5).map((team) => (
                 <div key={team.id} className="flex items-center justify-between px-6 py-4">
                   <div className="flex flex-col leading-tight">
                     <span className="text-sm font-medium">{team.name}</span>
@@ -96,7 +103,7 @@ function AdminDashboard() {
                   <StatusPill status={team.status} />
                 </div>
               ))}
-              {pending.length === 0 && (
+              {pendingRegistrations.length === 0 && (
                 <div className="px-6 py-8 text-center text-xs text-muted-foreground">
                   No pending registrations.
                 </div>

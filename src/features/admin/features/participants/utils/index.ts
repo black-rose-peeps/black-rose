@@ -1,0 +1,16 @@
+import type { MockTeam } from "@/lib/mock-data";
+
+export function registrationStatusVariant(
+  status: MockTeam["status"],
+): "default" | "secondary" | "destructive" | "outline" {
+  switch (status) {
+    case "Approved":
+      return "default";
+    case "Pending":
+      return "secondary";
+    case "Rejected":
+      return "destructive";
+    default:
+      return "outline";
+  }
+}

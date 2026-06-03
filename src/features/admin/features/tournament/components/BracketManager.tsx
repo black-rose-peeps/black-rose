@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { BracketEngine } from "../types/bracket-engine";
 import type { BracketStatus } from "../../../types";
 import type { BracketRound, TournamentTeam } from "@/features/tournaments/types";
+import { isDoubleEliminationFormat } from "@/features/tournaments/constants/formats";
 
 interface BracketManagerProps {
   tournamentId: string;
@@ -62,6 +63,9 @@ export function BracketManager({
 
   const bracketSize = bracketEngine.getBracketStructure().totalTeams;
   const firstRoundMatches = bracketSize / 2;
+  const isDoubleElim = isDoubleEliminationFormat(format);
+  const formatAbbrev = isDoubleElim ? "DE" : "SE";
+  const totalRounds = Math.log2(bracketSize);
 
   const [status, setStatus] = useState<BracketStatus>("not_generated");
   const [activeTab, setActiveTab] = useState<"seeding" | "bracket" | "validation">("seeding");
@@ -197,7 +201,7 @@ export function BracketManager({
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
                 Format
               </div>
-              <div className="font-display text-xl font-bold">SE</div>
+              <div className="font-display text-xl font-bold">{formatAbbrev}</div>
             </div>
             <div className="px-5 py-3 border-r border-border min-w-20">
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
@@ -221,7 +225,7 @@ export function BracketManager({
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
                 Rounds
               </div>
-              <div className="font-display text-xl font-bold">4</div>
+              <div className="font-display text-xl font-bold">{totalRounds}</div>
             </div>
           </div>
         </div>
@@ -452,6 +456,8 @@ export function BracketManager({
                   structure.
                 </div>
               </div>
+            ) : isDoubleElim ? (
+              <DoubleElimBracketPreview assignments={assignments} bracketSize={bracketSize} />
             ) : (
               <BracketPreview assignments={assignments} bracketSize={bracketSize} />
             )}
@@ -519,18 +525,293 @@ function ValidationItem({ label, passed }: { label: string; passed: boolean }) {
   );
 }
 
-function BracketPreview({
+const BRACKET_CARD_W = 200;
+const BRACKET_CARD_H = 88;
+const BRACKET_MATCH_GAP = 20;
+const BRACKET_PAD_V = 24;
+
+function getBracketTeamColor(team: TournamentTeam | null): {
+  bg: string;
+  color: string;
+  abbr: string;
+} {
+  if (!team) return { bg: "#1a1a1a", color: "#333", abbr: "-" };
+
+  const hash = team.name.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  const colors = [
+    { bg: "#7c3aed20", color: "#7c3aed" },
+    { bg: "#dc262620", color: "#dc2626" },
+    { bg: "#6b728020", color: "#6b7280" },
+    { bg: "#1d4ed820", color: "#1d4ed8" },
+    { bg: "#05966920", color: "#059669" },
+    { bg: "#d9770620", color: "#d97706" },
+    { bg: "#db277720", color: "#db2777" },
+    { bg: "#0891b220", color: "#0891b2" },
+  ];
+
+  const selectedColor = colors[Math.abs(hash) % colors.length];
+  const words = team.name.split(" ");
+  const abbr =
+    words.length > 1
+      ? words
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2)
+      : team.name.slice(0, 2).toUpperCase();
+
+  return { ...selectedColor, abbr };
+}
+
+function BracketPreviewTeamRow({
+  team,
+  seed,
+  placeholder,
+}: {
+  team: TournamentTeam | null;
+  seed?: number;
+  placeholder?: string;
+}) {
+  const { bg, color, abbr } = getBracketTeamColor(team);
+
+  if (!team) {
+    return (
+      <div className="flex items-center py-2 px-3 border-b border-border last:border-0 min-h-8">
+        <span className="font-display text-xs font-bold text-muted-foreground w-4 text-center">
+          {seed ?? "?"}
+        </span>
+        <span
+          className="w-5 h-5 mx-2 flex items-center justify-center text-xs font-bold"
+          style={{ background: "#1a1a1a", color: "#333" }}
+        >
+          -
+        </span>
+        <span className="font-display text-sm text-muted-foreground flex-1">
+          {placeholder ?? "TBD"}
+        </span>
+        <span className="font-display text-sm font-bold text-muted-foreground">-</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center py-2 px-3 border-b border-border last:border-0 min-h-8">
+      <span className="font-display text-xs font-bold text-muted-foreground w-4 text-center">
+        {seed}
+      </span>
+      <span
+        className="w-5 h-5 mx-2 flex items-center justify-center text-xs font-bold rounded-sm"
+        style={{ background: bg, color }}
+      >
+        {abbr}
+      </span>
+      <span className="font-display text-sm font-medium flex-1 truncate">{team.name}</span>
+      <span className="font-display text-sm font-bold text-muted-foreground">-</span>
+    </div>
+  );
+}
+
+function bracketMatchTop(matchIndex: number, matchCount: number, canvasHeight: number): number {
+  const contentH = canvasHeight - BRACKET_PAD_V * 2 - 28;
+  if (matchCount <= 1) {
+    return BRACKET_PAD_V + 28 + (contentH - BRACKET_CARD_H) / 2;
+  }
+  const spacing = (contentH - BRACKET_CARD_H) / (matchCount - 1);
+  return BRACKET_PAD_V + 28 + matchIndex * spacing;
+}
+
+function BracketPreviewMatchCard({
+  label,
+  teamA,
+  teamB,
+  seedA,
+  seedB,
+  borderClass,
+  ready,
+  placeholderA,
+  placeholderB,
+}: {
+  label: string;
+  teamA: TournamentTeam | null;
+  teamB: TournamentTeam | null;
+  seedA?: number;
+  seedB?: number;
+  borderClass: string;
+  ready?: boolean;
+  placeholderA?: string;
+  placeholderB?: string;
+}) {
+  return (
+    <div className={`bg-card border ${borderClass}`} style={{ width: `${BRACKET_CARD_W}px` }}>
+      <div className={`flex justify-between items-center px-3 py-1 border-b ${borderClass}`}>
+        <span className="font-display text-xs uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        <span className="font-display text-xs uppercase text-muted-foreground">
+          {ready ? "READY" : "TBD"}
+        </span>
+      </div>
+      <BracketPreviewTeamRow team={teamA} seed={seedA} placeholder={placeholderA} />
+      <BracketPreviewTeamRow team={teamB} seed={seedB} placeholder={placeholderB} />
+    </div>
+  );
+}
+
+function DoubleElimBracketPreview({
   assignments,
   bracketSize,
 }: {
   assignments: Array<TournamentTeam | null>;
   bracketSize: number;
 }) {
-  const CARD_W = 200;
-  const CARD_H = 88;
+  const COL_GAP = 60;
+  const CENTER_GAP = 48;
+  const ubR1Matches = bracketSize / 2;
+  const ubSfMatches = ubR1Matches / 2;
+  const lbR1Matches = ubSfMatches;
+  const canvasHeight =
+    ubR1Matches * BRACKET_CARD_H + (ubR1Matches - 1) * BRACKET_MATCH_GAP + BRACKET_PAD_V * 2 + 28;
+
+  const columns = [
+    { id: "ub-r1", label: "Upper — Round 1", matches: ubR1Matches, side: "upper" as const },
+    { id: "ub-sf", label: "Upper — Semifinals", matches: ubSfMatches, side: "upper" as const },
+    { id: "gf", label: "Grand Final", matches: 1, side: "grand" as const },
+    { id: "lb-r1", label: "Lower — Round 1", matches: lbR1Matches, side: "lower" as const },
+    { id: "lb-f", label: "Lower — Final", matches: 1, side: "lower" as const },
+  ];
+
+  function columnX(index: number): number {
+    let x = 20;
+    for (let i = 0; i < index; i++) {
+      x += BRACKET_CARD_W + COL_GAP;
+      if (columns[i].id === "ub-sf") x += CENTER_GAP / 2;
+      if (columns[i + 1]?.id === "gf") x += CENTER_GAP / 2;
+    }
+    return x;
+  }
+
+  const totalW = columnX(columns.length - 1) + BRACKET_CARD_W + 40;
+
+  function borderFor(side: "upper" | "lower" | "grand") {
+    if (side === "grand") return "border-amber-400/50 ring-1 ring-amber-400/15";
+    if (side === "lower") return "border-amber-400/30";
+    return "border-border";
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-6 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+        <span className="text-foreground/80">Upper Bracket</span>
+        <span className="h-px w-16 bg-border" />
+        <span className="text-amber-400/90">Grand Final</span>
+        <span className="h-px w-16 bg-border" />
+        <span className="text-foreground/80">Lower Bracket</span>
+      </div>
+
+      <div className="custom-scrollbar overflow-auto pb-4">
+        <div
+          className="relative min-w-full"
+          style={{ width: `${totalW}px`, height: `${canvasHeight}px`, minHeight: "400px" }}
+        >
+          {columns.map((col, colIndex) => {
+            const x = columnX(colIndex);
+            const border = borderFor(col.side);
+
+            return (
+              <div key={col.id}>
+                <div
+                  className={`absolute top-0 font-display text-xs font-bold uppercase tracking-wider py-2 border-b ${
+                    col.side === "grand"
+                      ? "text-amber-400/90 border-amber-400/30"
+                      : "text-muted-foreground border-border"
+                  }`}
+                  style={{ left: `${x}px`, width: `${BRACKET_CARD_W}px` }}
+                >
+                  {col.label}
+                </div>
+
+                {Array.from({ length: col.matches }, (_, mi) => {
+                  const y = bracketMatchTop(mi, col.matches, canvasHeight);
+
+                  if (col.id === "ub-r1") {
+                    const teamAIdx = mi * 2;
+                    const teamBIdx = mi * 2 + 1;
+                    const teamA = assignments[teamAIdx];
+                    const teamB = assignments[teamBIdx];
+                    return (
+                      <div key={mi} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
+                        <BracketPreviewMatchCard
+                          label={`Match ${mi + 1}`}
+                          teamA={teamA}
+                          teamB={teamB}
+                          seedA={teamAIdx + 1}
+                          seedB={teamBIdx + 1}
+                          borderClass={border}
+                          ready={!!(teamA && teamB)}
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (col.id === "gf") {
+                    return (
+                      <div key={mi} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
+                        <BracketPreviewMatchCard
+                          label="Grand Final"
+                          teamA={null}
+                          teamB={null}
+                          borderClass={border}
+                          placeholderA="Upper bracket winner"
+                          placeholderB="Lower bracket winner"
+                        />
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={mi} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
+                      <BracketPreviewMatchCard
+                        label={
+                          col.matches > 1
+                            ? `${col.label.replace(/^Lower — /, "")} ${mi + 1}`
+                            : col.label
+                        }
+                        teamA={null}
+                        teamB={null}
+                        borderClass={border}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Grand Final pits the upper-bracket semifinal winner against the lower-bracket final winner.
+      </p>
+    </div>
+  );
+}
+
+function BracketPreview({
+  title,
+  assignments,
+  bracketSize,
+  variant = "upper",
+}: {
+  title?: string;
+  assignments: Array<TournamentTeam | null>;
+  bracketSize: number;
+  variant?: "upper" | "lower";
+}) {
   const ROUND_GAP = 60;
-  const MATCH_GAP = 20;
-  const PAD_V = 24;
 
   const firstRoundMatches = bracketSize / 2;
   const totalRounds = Math.log2(bracketSize);
@@ -540,177 +821,89 @@ function BracketPreview({
     return { label: labels[i] ?? `Round ${i + 1}`, matches };
   });
 
-  const totalR1H = rounds[0].matches * CARD_H + (rounds[0].matches - 1) * MATCH_GAP + PAD_V * 2;
-  const totalW = rounds.length * (CARD_W + ROUND_GAP) + 40;
-
-  function getTeamColor(team: TournamentTeam | null): { bg: string; color: string; abbr: string } {
-    if (!team) return { bg: "#1a1a1a", color: "#333", abbr: "-" };
-
-    // Generate colors based on team name hash for consistency
-    const hash = team.name.split("").reduce((a, b) => {
-      a = (a << 5) - a + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-
-    const colors = [
-      { bg: "#7c3aed20", color: "#7c3aed" },
-      { bg: "#dc262620", color: "#dc2626" },
-      { bg: "#6b728020", color: "#6b7280" },
-      { bg: "#1d4ed820", color: "#1d4ed8" },
-      { bg: "#05966920", color: "#059669" },
-      { bg: "#d9770620", color: "#d97706" },
-      { bg: "#db277720", color: "#db2777" },
-      { bg: "#0891b220", color: "#0891b2" },
-    ];
-
-    const colorIndex = Math.abs(hash) % colors.length;
-    const selectedColor = colors[colorIndex];
-
-    // Create abbreviation from team name
-    const words = team.name.split(" ");
-    const abbr =
-      words.length > 1
-        ? words
-            .map((w) => w[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2)
-        : team.name.slice(0, 2).toUpperCase();
-
-    return { ...selectedColor, abbr };
-  }
-  function renderBracketTeam(team: TournamentTeam | null, seed?: number) {
-    const { bg, color, abbr } = getTeamColor(team);
-
-    if (!team) {
-      return (
-        <div className="flex items-center py-2 px-3 border-b border-border last:border-0 min-h-8">
-          <span className="font-display text-xs font-bold text-muted-foreground w-4 text-center">
-            {seed || "?"}
-          </span>
-          <span
-            className="w-5 h-5 mx-2 flex items-center justify-center text-xs font-bold"
-            style={{ background: "#1a1a1a", color: "#333" }}
-          >
-            -
-          </span>
-          <span className="font-display text-sm text-muted-foreground flex-1">TBD</span>
-          <span className="font-display text-sm font-bold text-muted-foreground">-</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex items-center py-2 px-3 border-b border-border last:border-0 min-h-8">
-        <span className="font-display text-xs font-bold text-muted-foreground w-4 text-center">
-          {seed}
-        </span>
-        <span
-          className="w-5 h-5 mx-2 flex items-center justify-center text-xs font-bold rounded-sm"
-          style={{ background: bg, color }}
-        >
-          {abbr}
-        </span>
-        <span className="font-display text-sm font-medium flex-1 truncate">{team.name}</span>
-        <span className="font-display text-sm font-bold text-muted-foreground">-</span>
-      </div>
-    );
-  }
+  const totalR1H =
+    rounds[0].matches * BRACKET_CARD_H +
+    (rounds[0].matches - 1) * BRACKET_MATCH_GAP +
+    BRACKET_PAD_V * 2;
+  const totalW = rounds.length * (BRACKET_CARD_W + ROUND_GAP) + 40;
+  const borderAccent = variant === "lower" ? "border-amber-400/30" : "border-border";
 
   return (
-    <div className="custom-scrollbar overflow-auto pb-4">
-      <div
-        className="relative min-w-full"
-        style={{
-          width: `${totalW}px`,
-          height: `${totalR1H}px`,
-          minHeight: "400px",
-        }}
-      >
-        {/* Round Headers */}
-        {rounds.map((round, ri) => {
-          const x = ri * (CARD_W + ROUND_GAP) + 20;
-          return (
-            <div
-              key={ri}
-              className="absolute top-0 font-display text-xs font-bold uppercase tracking-wider text-muted-foreground py-2 border-b border-border"
-              style={{ left: `${x}px`, width: `${CARD_W}px` }}
-            >
-              {round.label}
-            </div>
-          );
-        })}
-
-        {/* Round 1 Matches */}
-        {Array.from({ length: firstRoundMatches }, (_, i) => {
-          const teamAIdx = i * 2;
-          const teamBIdx = i * 2 + 1;
-          const teamA = assignments[teamAIdx];
-          const teamB = assignments[teamBIdx];
-
-          const x = 20;
-          const y = PAD_V + 28 + i * (CARD_H + MATCH_GAP);
-
-          return (
-            <div
-              key={i}
-              className="absolute bg-card border border-border"
-              style={{ left: `${x}px`, top: `${y}px`, width: `${CARD_W}px` }}
-            >
-              <div className="flex justify-between items-center px-3 py-1 border-b border-border">
-                <span className="font-display text-xs uppercase tracking-wider text-muted-foreground">
-                  Match {i + 1}
-                </span>
-                <span className="font-display text-xs uppercase text-muted-foreground">
-                  {teamA && teamB ? "READY" : "TBD"}
-                </span>
-              </div>
-              {renderBracketTeam(teamA, teamAIdx + 1)}
-              {renderBracketTeam(teamB, teamBIdx + 1)}
-            </div>
-          );
-        })}
-
-        {/* Placeholder matches for other rounds */}
-        {rounds.slice(1).map((round, ri) => {
-          const actualRoundIndex = ri + 1;
-          const x = actualRoundIndex * (CARD_W + ROUND_GAP) + 20;
-
-          return Array.from({ length: round.matches }, (_, mi) => {
-            const matchesInRound = round.matches;
-            const spacing =
-              matchesInRound > 1 ? (totalR1H - PAD_V * 2 - CARD_H) / (matchesInRound - 1) : 0;
-            const y =
-              PAD_V +
-              28 +
-              (matchesInRound === 1 ? (totalR1H - PAD_V * 2 - CARD_H) / 2 : mi * spacing);
-
+    <div className="space-y-3">
+      {title && (
+        <div className="flex items-center gap-3 font-display text-sm uppercase tracking-wider text-muted-foreground">
+          <span>{title}</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+      )}
+      <div className="custom-scrollbar overflow-auto pb-4">
+        <div
+          className="relative min-w-full"
+          style={{
+            width: `${totalW}px`,
+            height: `${totalR1H}px`,
+            minHeight: "400px",
+          }}
+        >
+          {rounds.map((round, ri) => {
+            const x = ri * (BRACKET_CARD_W + ROUND_GAP) + 20;
             return (
               <div
-                key={`${actualRoundIndex}-${mi}`}
-                className="absolute bg-card border border-border"
-                style={{ left: `${x}px`, top: `${y}px`, width: `${CARD_W}px` }}
+                key={ri}
+                className="absolute top-0 font-display text-xs font-bold uppercase tracking-wider text-muted-foreground py-2 border-b border-border"
+                style={{ left: `${x}px`, width: `${BRACKET_CARD_W}px` }}
               >
-                <div className="flex justify-between items-center px-3 py-1 border-b border-border">
-                  <span className="font-display text-xs uppercase tracking-wider text-muted-foreground">
-                    {round.label} {round.matches > 1 ? mi + 1 : ""}
-                  </span>
-                  <span className="font-display text-xs uppercase text-muted-foreground">TBD</span>
-                </div>
-                {renderBracketTeam(null)}
-                {renderBracketTeam(null)}
+                {round.label}
               </div>
             );
-          });
-        })}
+          })}
 
-        {/* Connection Lines (simplified) */}
-        <svg
-          className="absolute top-0 left-0 pointer-events-none"
-          style={{ width: "100%", height: "100%" }}
-        >
-          {/* Add basic connection lines here if needed */}
-        </svg>
+          {Array.from({ length: firstRoundMatches }, (_, i) => {
+            const teamAIdx = i * 2;
+            const teamBIdx = i * 2 + 1;
+            const teamA = assignments[teamAIdx];
+            const teamB = assignments[teamBIdx];
+            const y = BRACKET_PAD_V + 28 + i * (BRACKET_CARD_H + BRACKET_MATCH_GAP);
+
+            return (
+              <div key={i} className="absolute" style={{ left: "20px", top: `${y}px` }}>
+                <BracketPreviewMatchCard
+                  label={`Match ${i + 1}`}
+                  teamA={teamA}
+                  teamB={teamB}
+                  seedA={teamAIdx + 1}
+                  seedB={teamBIdx + 1}
+                  borderClass={borderAccent}
+                  ready={!!(teamA && teamB)}
+                />
+              </div>
+            );
+          })}
+
+          {rounds.slice(1).map((round, ri) => {
+            const actualRoundIndex = ri + 1;
+            const x = actualRoundIndex * (BRACKET_CARD_W + ROUND_GAP) + 20;
+
+            return Array.from({ length: round.matches }, (_, mi) => {
+              const y = bracketMatchTop(mi, round.matches, totalR1H + 28);
+
+              return (
+                <div
+                  key={`${actualRoundIndex}-${mi}`}
+                  className="absolute"
+                  style={{ left: `${x}px`, top: `${y}px` }}
+                >
+                  <BracketPreviewMatchCard
+                    label={`${round.label}${round.matches > 1 ? ` ${mi + 1}` : ""}`}
+                    teamA={null}
+                    teamB={null}
+                    borderClass={borderAccent}
+                  />
+                </div>
+              );
+            });
+          })}
+        </div>
       </div>
     </div>
   );

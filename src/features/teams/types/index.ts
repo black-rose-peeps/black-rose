@@ -12,6 +12,8 @@ export type TeamMemberRole =
   | "Support"
   | "Lurker"
   | "Mid"
+  | "Top"
+  | "ADC"
   | "Jungle"
   | "Roam"
   | "EXP"
@@ -34,7 +36,7 @@ export interface Team {
   id: string;
   name: string;
   tag: string;
-  game: "Valorant" | "MLBB" | "CS2" | "Multi";
+  game: "Valorant" | "League of Legends" | "Teamfight Tactics" | "Multi";
   captainUserId: string;
   members: TeamMember[];
   createdAt: string;
