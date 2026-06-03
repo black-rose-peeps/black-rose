@@ -113,6 +113,8 @@ export function StatusPill({ status }: { status: string }) {
         return "border-amber-400/40 bg-amber-400/10 text-amber-400";
       case "completed":
         return "border-violet-400/40 bg-violet-400/10 text-violet-400";
+      case "draft":
+        return "border-border bg-muted/50 text-muted-foreground";
       case "archived":
         return "border-border bg-muted/50 text-muted-foreground";
       case "suspended":

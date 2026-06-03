@@ -1,73 +1,142 @@
-import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Panel, PanelHeader, StatusPill } from "@/features/admin/components/ui";
-import { mockTeams, mockTournaments } from "@/lib/mock-data";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { AdminSection } from "@/features/admin/components/AdminSection";
+import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import { usePagination } from "@/features/admin/hooks/usePagination";
+import { useParticipants } from "../hooks";
+import { registrationStatusVariant } from "../utils";
 
 export function ParticipantsManagement() {
-  const tournamentNameById = useMemo(
-    () => Object.fromEntries(mockTournaments.map((t) => [t.id, t.name])),
-    [],
-  );
+  const { participants, isLoading, error, updatingId, updateStatus } = useParticipants();
+  const pagination = usePagination(participants);
 
   return (
-    <Panel>
-      <PanelHeader eyebrow="All registrations" title="Team Registrations" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-secondary/50 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-              <th className="px-6 py-3 text-left font-normal">Team</th>
-              <th className="px-4 py-3 text-left font-normal">Tournament</th>
-              <th className="px-4 py-3 text-left font-normal">Captain</th>
-              <th className="px-4 py-3 text-left font-normal">Registered</th>
-              <th className="px-4 py-3 text-left font-normal">Status</th>
-              <th className="px-6 py-3 text-right font-normal">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {mockTeams.map((team) => (
-              <tr key={team.id} className="transition hover:bg-secondary/40">
-                <td className="px-6 py-4">
-                  <div className="font-display text-base tracking-wider-2">{team.name}</div>
-                  <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                    {team.members?.length ?? 0} players · {team?.tag}
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-xs text-muted-foreground">
-                  <Link
-                    to="/admin/tournaments/$id"
-                    params={{ id: team.tournamentId }}
-                    className="hover:text-foreground"
-                  >
-                    {tournamentNameById[team.tournamentId]}
-                  </Link>
-                </td>
-                <td className="px-4 py-4 text-xs">{team.captain}</td>
-                <td className="px-4 py-4 text-xs text-muted-foreground">{team.registrationDate}</td>
-                <td className="px-4 py-4">
-                  <StatusPill status={team.status} />
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      className="border border-foreground/40 bg-foreground/5 px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-foreground transition hover:bg-foreground/10"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-destructive"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <AdminSection
+      eyebrow="Registrations"
+      title="Participants"
+      description="All team registrations across tournaments. Approve or reject entries before they appear in bracket seeding."
+    >
+      {error && (
+        <div className="px-6 pt-4">
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      <div className="p-6 pt-4">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                Team
+              </TableHead>
+              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                Tournament
+              </TableHead>
+              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                Captain
+              </TableHead>
+              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                Registered
+              </TableHead>
+              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                Status
+              </TableHead>
+              <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                Actions
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  Loading registrations…
+                </TableCell>
+              </TableRow>
+            ) : participants.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  No registrations yet. Add teams from a tournament detail page.
+                </TableCell>
+              </TableRow>
+            ) : (
+              pagination.paginatedItems.map((team) => {
+                const isUpdating = updatingId === team.id;
+                return (
+                  <TableRow key={team.id}>
+                    <TableCell>
+                      <div className="font-display text-base tracking-wider-2">{team.name}</div>
+                      <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                        {team.members.length} players · {team.tag}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        to="/admin/tournaments/$id"
+                        params={{ id: team.tournamentId }}
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        {team.tournamentName}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-sm">{team.captain}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {team.registrationDate}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={registrationStatusVariant(team.status)}>{team.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={isUpdating || team.status === "Approved"}
+                          className="font-tech text-[10px] uppercase tracking-wider-2"
+                          onClick={() => updateStatus(team.id, "Approved")}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={isUpdating || team.status === "Rejected"}
+                          className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => updateStatus(team.id, "Rejected")}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+        <AdminTablePagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          rangeStart={pagination.rangeStart}
+          rangeEnd={pagination.rangeEnd}
+          onPageChange={pagination.setPage}
+        />
       </div>
-    </Panel>
+    </AdminSection>
   );
 }

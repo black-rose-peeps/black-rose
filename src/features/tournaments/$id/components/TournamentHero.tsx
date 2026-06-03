@@ -5,14 +5,14 @@ import type { TournamentDetail } from "../../types";
 
 const GAME_TAG_COLOR: Record<TournamentDetail["game"], string> = {
   Valorant: "text-red-400",
-  MLBB: "text-sky-400",
-  CS2: "text-amber-400",
+  "League of Legends": "text-blue-400",
+  "Teamfight Tactics": "text-violet-400",
 };
 
 const GAME_GLOW: Record<TournamentDetail["game"], string> = {
   Valorant: "from-red-950/40 via-transparent to-transparent",
-  MLBB: "from-sky-950/40 via-transparent to-transparent",
-  CS2: "from-amber-950/40 via-transparent to-transparent",
+  "League of Legends": "from-blue-950/40 via-transparent to-transparent",
+  "Teamfight Tactics": "from-violet-950/40 via-transparent to-transparent",
 };
 
 interface TournamentHeroProps {

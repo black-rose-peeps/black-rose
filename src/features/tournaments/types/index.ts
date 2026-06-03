@@ -5,7 +5,7 @@ export type TournamentStatus =
   | "Completed"
   | "Archived";
 
-export type TournamentGame = "Valorant" | "MLBB" | "CS2";
+export type TournamentGame = "Valorant" | "League of Legends" | "Teamfight Tactics";
 
 export interface Tournament {
   id: string;

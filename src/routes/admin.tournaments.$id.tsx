@@ -1,16 +1,24 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Users2, Trophy } from "lucide-react";
+import { ArrowLeft, Plus, Users2, Trophy } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
 import { Panel, PanelHeader, PrimaryButton, StatusPill } from "@/features/admin/components/ui";
 import { BracketManager } from "@/features/admin/features/tournament/components/BracketManager";
 import { TeamModal } from "@/features/admin/components/TeamModal";
-import { mockTeams, mockTournaments, type MockTeam } from "@/lib/mock-data";
+import { AddTeamToTournamentDialog } from "@/features/admin/features/tournaments/components/AddTeamToTournamentDialog";
+import { useTournamentRegistrations } from "@/features/admin/features/tournaments/hooks";
+import { fetchTournamentById } from "@/features/admin/features/tournaments/services/tournaments.service";
+import {
+  formatBracketAvailability,
+  supportsBracketManager as canUseBracketManager,
+} from "@/features/admin/features/tournaments/utils";
+import type { MockTeam } from "@/lib/mock-data";
 import { mockTournamentDetails } from "@/lib/mock-tournament-details";
 
 export const Route = createFileRoute("/admin/tournaments/$id")({
-  loader: ({ params }) => {
-    const tournament = mockTournaments.find((t) => t.id === params.id);
+  loader: async ({ params }) => {
+    const tournament = await fetchTournamentById(params.id);
     if (!tournament) throw notFound();
     return { tournament };
   },
@@ -31,8 +39,14 @@ type Tab = "teams" | "bracket";
 
 function TournamentDetailPage() {
   const { tournament } = Route.useLoaderData();
-  const teams = mockTeams.filter((t) => t.tournamentId === tournament.id);
+  const {
+    registrations: teams,
+    isLoading: teamsLoading,
+    error: teamsError,
+    prependRegistration,
+  } = useTournamentRegistrations(tournament.id);
   const [openTeam, setOpenTeam] = useState<MockTeam | null>(null);
+  const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("teams");
 
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
@@ -52,8 +66,11 @@ function TournamentDetailPage() {
       players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
     }));
 
-  const supportsBracketManager =
-    tournament.format === "Single Elimination" && detailTeams.length === 16;
+  const bracketNotice = formatBracketAvailability(tournament, detailTeams.length);
+  const supportsBracketManager = canUseBracketManager(
+    tournament.format,
+    detailTeams.length,
+  );
 
   return (
     <>
@@ -76,7 +93,10 @@ function TournamentDetailPage() {
               { label: "Prize Pool", value: tournament.prizePool },
               { label: "Start Date", value: tournament.startDate },
               { label: "Reg. Deadline", value: tournament.registrationDeadline },
-              { label: "Teams", value: `${teams.length}/${tournament.teamCap}` },
+              {
+                label: "Teams",
+                value: `${teams.length}/${tournament.teamCap}`,
+              },
               { label: "Players", value: totalPlayers },
             ].map((cell) => (
               <div key={cell.label} className="bg-card px-6 py-6">
@@ -105,11 +125,7 @@ function TournamentDetailPage() {
             icon={<Trophy className="h-4 w-4" />}
             label="Bracket Management"
             disabled={!supportsBracketManager}
-            title={
-              supportsBracketManager
-                ? undefined
-                : "Only available for 16-team single-elimination tournaments"
-            }
+            title={supportsBracketManager ? undefined : bracketNotice || "Bracket unavailable"}
             onClick={() => supportsBracketManager && setActiveTab("bracket")}
           />
         </div>
@@ -122,13 +138,34 @@ function TournamentDetailPage() {
               title="Registered Teams"
               actions={
                 <>
-                  {/* <GhostButton>Export CSV</GhostButton> */}
+                  <PrimaryButton
+                    type="button"
+                    onClick={() => setIsAddTeamOpen(true)}
+                    disabled={teams.length >= tournament.teamCap}
+                    title={
+                      teams.length >= tournament.teamCap
+                        ? "Team cap reached"
+                        : "Add a roster from Teams"
+                    }
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Team
+                  </PrimaryButton>
                   <PrimaryButton onClick={() => setActiveTab("bracket")}>
                     Manage Bracket
                   </PrimaryButton>
                 </>
               }
             />
+            {teamsError && (
+              <div className="px-6 pt-4">
+                <Alert variant="destructive">
+                  <AlertDescription>{teamsError}</AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -142,6 +179,16 @@ function TournamentDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
+                  {teamsLoading && teams.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-6 py-12 text-center text-base-readable text-muted-foreground"
+                      >
+                        Loading teams…
+                      </td>
+                    </tr>
+                  )}
                   {teams.map((team) => (
                     <tr key={team.id} className="transition hover:bg-secondary/40">
                       <td className="px-6 py-5">
@@ -187,13 +234,13 @@ function TournamentDetailPage() {
                       </td>
                     </tr>
                   ))}
-                  {teams.length === 0 && (
+                  {!teamsLoading && teams.length === 0 && (
                     <tr>
                       <td
                         colSpan={6}
                         className="px-6 py-12 text-center text-base-readable text-muted-foreground"
                       >
-                        No teams registered yet. Check back later or promote the tournament.
+                        No teams registered yet. Use Add Team to register rosters from the Teams tab.
                       </td>
                     </tr>
                   )}
@@ -218,13 +265,12 @@ function TournamentDetailPage() {
                 />
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
-                  <p className="text-base-readable">
-                    Bracket management is only available for 16-team single-elimination
-                    tournaments.
+                  <p className="mx-auto max-w-lg text-base-readable">
+                    {bracketNotice ||
+                      "Bracket management is not available for this tournament yet."}
                   </p>
                   <p className="mt-2 text-sm">
-                    This tournament uses {tournament.format} with {detailTeams.length} registered
-                    teams.
+                    {tournament.format} · {detailTeams.length}/{tournament.teamCap} teams registered
                   </p>
                 </div>
               )}
@@ -234,6 +280,14 @@ function TournamentDetailPage() {
       </div>
 
       {openTeam && <TeamModal team={openTeam} onClose={() => setOpenTeam(null)} />}
+
+      <AddTeamToTournamentDialog
+        open={isAddTeamOpen}
+        tournament={tournament}
+        registeredTeams={teams}
+        onClose={() => setIsAddTeamOpen(false)}
+        onAdded={prependRegistration}
+      />
     </>
   );
 }

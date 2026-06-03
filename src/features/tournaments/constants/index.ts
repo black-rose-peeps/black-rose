@@ -1,13 +1,15 @@
 import type { TournamentGame, TournamentStatus } from "../types";
 
+export * from "./formats";
+
 export const ALL_GAMES = "All Games";
 export const ALL_STATUSES = "All";
 
 export const GAME_FILTERS: (typeof ALL_GAMES | TournamentGame)[] = [
   ALL_GAMES,
   "Valorant",
-  "MLBB",
-  "CS2",
+  "League of Legends",
+  "Teamfight Tactics",
 ];
 
 export const STATUS_FILTERS: (typeof ALL_STATUSES | TournamentStatus)[] = [
@@ -21,8 +23,8 @@ export const STATUS_FILTERS: (typeof ALL_STATUSES | TournamentStatus)[] = [
 
 export const GAME_LABELS: Record<TournamentGame, string> = {
   Valorant: "Valorant · 5v5",
-  MLBB: "Mobile Legends · 5v5",
-  CS2: "Counter-Strike 2 · 5v5",
+  "League of Legends": "League of Legends · 5v5",
+  "Teamfight Tactics": "Teamfight Tactics · 8",
 };
 
 export const STATUS_CONFIG: Record<
