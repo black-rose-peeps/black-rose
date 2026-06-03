@@ -31,6 +31,7 @@ import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminParticipantsRouteImport } from './routes/admin.participants'
 import { Route as AdminAnnouncementsRouteImport } from './routes/admin.announcements'
+import { Route as AdminTournamentsIndexRouteImport } from './routes/admin.tournaments.index'
 import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
 
 const WaitlistRoute = WaitlistRouteImport.update({
@@ -143,6 +144,11 @@ const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
   path: '/announcements',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminTournamentsIndexRoute = AdminTournamentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminTournamentsRoute,
+} as any)
 const AdminTournamentsIdRoute = AdminTournamentsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/teams/': typeof TeamsIndexRoute
   '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
+  '/admin/tournaments/': typeof AdminTournamentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -185,7 +192,6 @@ export interface FileRoutesByTo {
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
-  '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/members/$slug': typeof MembersSlugRoute
   '/teams/$id': typeof TeamsIdRoute
@@ -195,6 +201,7 @@ export interface FileRoutesByTo {
   '/teams': typeof TeamsIndexRoute
   '/tournaments': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
+  '/admin/tournaments': typeof AdminTournamentsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -221,6 +228,7 @@ export interface FileRoutesById {
   '/teams/': typeof TeamsIndexRoute
   '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
+  '/admin/tournaments/': typeof AdminTournamentsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -248,6 +256,7 @@ export interface FileRouteTypes {
     | '/teams/'
     | '/tournaments/'
     | '/admin/tournaments/$id'
+    | '/admin/tournaments/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -260,7 +269,6 @@ export interface FileRouteTypes {
     | '/admin/participants'
     | '/admin/settings'
     | '/admin/teams'
-    | '/admin/tournaments'
     | '/admin/users'
     | '/members/$slug'
     | '/teams/$id'
@@ -270,6 +278,7 @@ export interface FileRouteTypes {
     | '/teams'
     | '/tournaments'
     | '/admin/tournaments/$id'
+    | '/admin/tournaments'
   id:
     | '__root__'
     | '/'
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/teams/'
     | '/tournaments/'
     | '/admin/tournaments/$id'
+    | '/admin/tournaments/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -466,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAnnouncementsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/tournaments/': {
+      id: '/admin/tournaments/'
+      path: '/'
+      fullPath: '/admin/tournaments/'
+      preLoaderRoute: typeof AdminTournamentsIndexRouteImport
+      parentRoute: typeof AdminTournamentsRoute
+    }
     '/admin/tournaments/$id': {
       id: '/admin/tournaments/$id'
       path: '/$id'
@@ -478,10 +495,12 @@ declare module '@tanstack/react-router' {
 
 interface AdminTournamentsRouteChildren {
   AdminTournamentsIdRoute: typeof AdminTournamentsIdRoute
+  AdminTournamentsIndexRoute: typeof AdminTournamentsIndexRoute
 }
 
 const AdminTournamentsRouteChildren: AdminTournamentsRouteChildren = {
   AdminTournamentsIdRoute: AdminTournamentsIdRoute,
+  AdminTournamentsIndexRoute: AdminTournamentsIndexRoute,
 }
 
 const AdminTournamentsRouteWithChildren =

@@ -12,9 +12,6 @@ export default defineConfig({
     // tanstackStart includes the TanStack Router plugin internally —
     // do NOT add TanStackRouterVite separately or transforms will run twice.
     tanstackStart({
-      router: {
-        autoCodeSplitting: false,
-      },
       server: { entry: "server" },
     }),
     // @vitejs/plugin-react is required by tanstackStart for React Refresh

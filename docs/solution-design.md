@@ -22,32 +22,31 @@ Discord Invite: `https://discord.com/invite/Epe4aDdt8N`
 
 The existing repo already provides a strong frontend foundation:
 
-* App name: `blackrose-arena`
-* Frontend stack:
+- App name: `blackrose-arena`
+- Frontend stack:
+  - React
+  - TanStack Start
+  - TanStack Router
+  - Tailwind CSS
+  - shadcn/Radix UI-style component primitives
+  - Vite
 
-  * React
-  * TanStack Start
-  * TanStack Router
-  * Tailwind CSS
-  * shadcn/Radix UI-style component primitives
-  * Vite
-* Current pages already present:
+- Current pages already present:
+  - Public landing page
+  - Login page
+  - Register page
+  - Unauthorized page
+  - Tournament directory
+  - Tournament detail page
+  - Admin dashboard
+  - Admin tournament management
+  - Admin tournament detail view
 
-  * Public landing page
-  * Login page
-  * Register page
-  * Unauthorized page
-  * Tournament directory
-  * Tournament detail page
-  * Admin dashboard
-  * Admin tournament management
-  * Admin tournament detail view
-* Current limitations:
-
-  * No real backend yet
-  * No database connected yet
-  * Authentication is not functional yet
-  * All users, teams, tournaments, brackets, and registrations are currently mock data
+- Current limitations:
+  - No real backend yet
+  - No database connected yet
+  - Authentication is not functional yet
+  - All users, teams, tournaments, brackets, and registrations are currently mock data
 
 The solution should reuse the current UI direction: black/white esports branding, Black Rose emblem, dark grid background, angular CTA buttons, tournament cards, admin panels, and existing tournament/admin layout patterns.
 
@@ -57,24 +56,24 @@ The solution should reuse the current UI direction: black/white esports branding
 
 ### Primary Goals
 
-* Allow users to sign in using Discord OAuth2.
-* Verify if the logged-in user belongs to the Black Rose Discord server.
-* Verify if the logged-in user has the `ROSE` Discord role.
-* Grant full member access only to verified users.
-* Redirect non-verified users to a waitlist or verification page.
-* Allow verified members to create and maintain public profile pages.
-* Allow verified members to register for Valorant tournaments.
-* Allow admins to create tournaments, approve registrations, seed teams, manage brackets, and publish results.
-* Allow users to link Riot accounts for Valorant stats and account verification.
+- Allow users to sign in using Discord OAuth2.
+- Verify if the logged-in user belongs to the Black Rose Discord server.
+- Verify if the logged-in user has the `ROSE` Discord role.
+- Grant full member access only to verified users.
+- Redirect non-verified users to a waitlist or verification page.
+- Allow verified members to create and maintain public profile pages.
+- Allow verified members to register for Valorant tournaments.
+- Allow admins to create tournaments, approve registrations, seed teams, manage brackets, and publish results.
+- Allow users to link Riot accounts for Valorant stats and account verification.
 
 ### Non-Goals for MVP
 
-* Full multi-game tournament automation beyond Valorant.
-* Real-time match lobby creation.
-* Automatic in-game result submission.
-* Payments, entry fees, or prize payout automation.
-* Public ranking/ELO system.
-* Scouting tools that show opponent stats before a match.
+- Full multi-game tournament automation beyond Valorant.
+- Real-time match lobby creation.
+- Automatic in-game result submission.
+- Payments, entry fees, or prize payout automation.
+- Public ranking/ELO system.
+- Scouting tools that show opponent stats before a match.
 
 ---
 
@@ -86,18 +85,18 @@ A visitor who is not logged in.
 
 Allowed access:
 
-* Landing page
-* Public tournament listing
-* Public tournament details
-* Login/Register page
-* Discord invite link
+- Landing page
+- Public tournament listing
+- Public tournament details
+- Login/Register page
+- Discord invite link
 
 Restricted from:
 
-* Member profiles dashboard
-* Tournament registration
-* Riot linking
-* Admin pages
+- Member profiles dashboard
+- Tournament registration
+- Riot linking
+- Admin pages
 
 ---
 
@@ -105,22 +104,22 @@ Restricted from:
 
 A user who logged in with Discord but either:
 
-* Has not joined the Black Rose Discord server, or
-* Joined the server but does not have the `ROSE` role yet
+- Has not joined the Black Rose Discord server, or
+- Joined the server but does not have the `ROSE` role yet
 
 Allowed access:
 
-* Waitlist / verification page
-* Discord invite link
-* Re-check verification button
-* Logout
+- Waitlist / verification page
+- Discord invite link
+- Re-check verification button
+- Logout
 
 Restricted from:
 
-* Full member dashboard
-* Profile editing
-* Tournament registration
-* Admin pages
+- Full member dashboard
+- Profile editing
+- Tournament registration
+- Admin pages
 
 ---
 
@@ -130,13 +129,13 @@ A Discord-authenticated user who belongs to the Black Rose Discord server and ha
 
 Allowed access:
 
-* Member dashboard
-* Member profile page
-* Social link management
-* Riot account linking
-* Tournament registration
-* Team creation/joining
-* Tournament bracket viewing
+- Member dashboard
+- Member profile page
+- Social link management
+- Riot account linking
+- Tournament registration
+- Team creation/joining
+- Tournament bracket viewing
 
 ---
 
@@ -146,12 +145,12 @@ An internal Black Rose admin who can manage tournaments.
 
 Allowed access:
 
-* Admin dashboard
-* Tournament creation/editing
-* Team and participant approval
-* Bracket generation
-* Match result updates
-* Announcement publishing
+- Admin dashboard
+- Tournament creation/editing
+- Team and participant approval
+- Bracket generation
+- Match result updates
+- Announcement publishing
 
 ---
 
@@ -161,12 +160,12 @@ A full application administrator.
 
 Allowed access:
 
-* All Tournament Admin features
-* User role management
-* App settings
-* Discord role mapping settings
-* Audit logs
-* Admin assignment
+- All Tournament Admin features
+- User role management
+- App settings
+- Discord role mapping settings
+- Audit logs
+- Admin assignment
 
 ---
 
@@ -198,13 +197,13 @@ Use TanStack Start as the full-stack application layer first. This avoids introd
 
 Suggested setup:
 
-* Frontend and server routes: TanStack Start
-* Database: PostgreSQL
-* ORM: Prisma or Drizzle
-* Auth/session: secure HTTP-only cookie session
-* File uploads: S3-compatible storage or Cloudinary, optional for MVP
-* Hosting: Node-capable deployment platform
-* Background jobs: simple scheduled job runner or hosted cron later
+- Frontend and server routes: TanStack Start
+- Database: PostgreSQL
+- ORM: Prisma or Drizzle
+- Auth/session: secure HTTP-only cookie session
+- File uploads: S3-compatible storage or Cloudinary, optional for MVP
+- Hosting: Node-capable deployment platform
+- Background jobs: simple scheduled job runner or hosted cron later
 
 ---
 
@@ -293,20 +292,19 @@ RIOT_REDIRECT_URI=
 
 On successful login:
 
-* Store user ID in secure HTTP-only cookie session.
-* Store Discord ID in the database.
-* Store current verification status:
+- Store user ID in secure HTTP-only cookie session.
+- Store Discord ID in the database.
+- Store current verification status:
+  - `VERIFIED`
+  - `WAITLISTED`
+  - `SUSPENDED`
+  - `BANNED`
 
-  * `VERIFIED`
-  * `WAITLISTED`
-  * `SUSPENDED`
-  * `BANNED`
-* Re-check Discord role:
-
-  * On login
-  * On manual “Re-check Verification” button
-  * Optionally once every 12–24 hours
-  * Optionally through Discord bot role update events in a later phase
+- Re-check Discord role:
+  - On login
+  - On manual “Re-check Verification” button
+  - Optionally once every 12–24 hours
+  - Optionally through Discord bot role update events in a later phase
 
 ---
 
@@ -337,24 +335,24 @@ On successful login:
 
 Purpose:
 
-* Introduce Black Rose
-* Drive users to Discord login
-* Promote tournaments
-* Showcase champions and community credibility
+- Introduce Black Rose
+- Drive users to Discord login
+- Promote tournaments
+- Showcase champions and community credibility
 
 Current repo already has a strong hero style with:
 
-* Black Rose emblem
-* Dark grid background
-* Large “FORGE YOUR LEGACY” hero text
-* Register and View Tournaments CTAs
+- Black Rose emblem
+- Dark grid background
+- Large “FORGE YOUR LEGACY” hero text
+- Register and View Tournaments CTAs
 
 Recommended changes:
 
-* Replace generic Register with “Continue with Discord”
-* Keep “View Tournaments”
-* Add “Join Discord” secondary action for guests
-* Add member feature preview section
+- Replace generic Register with “Continue with Discord”
+- Keep “View Tournaments”
+- Add “Join Discord” secondary action for guests
+- Add member feature preview section
 
 ---
 
@@ -364,9 +362,9 @@ Current login/register pages still show email/password and mock social buttons. 
 
 Recommended login page behavior:
 
-* Primary button: “Continue with Discord”
-* Remove password login from MVP unless admins specifically need non-Discord emergency access
-* Display a short message:
+- Primary button: “Continue with Discord”
+- Remove password login from MVP unless admins specifically need non-Discord emergency access
+- Display a short message:
 
 > Black Rose access is verified through Discord. You must be a member of the Black Rose server and have the ROSE role to access member features.
 
@@ -386,11 +384,11 @@ States:
 
 Recommended page content:
 
-* Black Rose emblem
-* Status card
-* Discord invite link
-* “I already joined — re-check verification” button
-* Message telling users to contact moderators if they believe this is a mistake
+- Black Rose emblem
+- Status card
+- Discord invite link
+- “I already joined — re-check verification” button
+- Message telling users to contact moderators if they believe this is a mistake
 
 Suggested route:
 
@@ -408,12 +406,12 @@ Central member hub after verification.
 
 Sections:
 
-* Profile completion status
-* Linked socials
-* Linked Riot account status
-* Active tournament registrations
-* Upcoming matches
-* Featured member preview card
+- Profile completion status
+- Linked socials
+- Linked Riot account status
+- Active tournament registrations
+- Upcoming matches
+- Featured member preview card
 
 Suggested route:
 
@@ -437,27 +435,27 @@ Suggested route:
 
 Profile fields:
 
-* Display name
-* Discord username
-* Black Rose role/title
-* Profile avatar
-* Banner image
-* Short bio
-* Favorite games
-* Main game
-* Main role/agent
-* Country/region
-* Social links:
+- Display name
+- Discord username
+- Black Rose role/title
+- Profile avatar
+- Banner image
+- Short bio
+- Favorite games
+- Main game
+- Main role/agent
+- Country/region
+- Social links:
+  - Twitch
+  - YouTube
+  - TikTok
+  - Facebook Gaming
+  - X/Twitter
+  - Instagram
 
-  * Twitch
-  * YouTube
-  * TikTok
-  * Facebook Gaming
-  * X/Twitter
-  * Instagram
-* Riot account link status
-* Featured tournaments
-* Achievements/badges
+- Riot account link status
+- Featured tournaments
+- Achievements/badges
 
 Recommended privacy rule:
 
@@ -477,16 +475,15 @@ Suggested route:
 
 Recommended additions:
 
-* Show “Registration Open” tournaments first
-* Add game filter
-* Add status filter
-* Add “Verified Members Only” registration indicator
-* Show team count and deadline
-* Add CTA:
-
-  * Guest: “Login with Discord”
-  * Waitlisted: “Verify Membership”
-  * Verified Member: “Register Team”
+- Show “Registration Open” tournaments first
+- Add game filter
+- Add status filter
+- Add “Verified Members Only” registration indicator
+- Show team count and deadline
+- Add CTA:
+  - Guest: “Login with Discord”
+  - Waitlisted: “Verify Membership”
+  - Verified Member: “Register Team”
 
 ---
 
@@ -494,10 +491,10 @@ Recommended additions:
 
 The repo already has tournament detail tabs:
 
-* Overview
-* Teams
-* Bracket
-* Rules
+- Overview
+- Teams
+- Bracket
+- Rules
 
 Suggested route:
 
@@ -507,20 +504,20 @@ Suggested route:
 
 Recommended additions:
 
-* Registration CTA based on user access
-* Team registration form
-* Match schedule
-* Bracket viewer
-* Admin-only edit shortcut
-* Riot account requirement indicator for Valorant tournaments
+- Registration CTA based on user access
+- Team registration form
+- Match schedule
+- Bracket viewer
+- Admin-only edit shortcut
+- Riot account requirement indicator for Valorant tournaments
 
 For Valorant tournaments, registration can require:
 
-* Verified Black Rose member
-* Riot account linked
-* Valid Riot ID
-* Team roster minimum met
-* Agreement to tournament rules
+- Verified Black Rose member
+- Riot account linked
+- Valid Riot ID
+- Team roster minimum met
+- Agreement to tournament rules
 
 ---
 
@@ -561,12 +558,12 @@ Registration status: Pending Admin Approval
 
 Registration status values:
 
-* `DRAFT`
-* `PENDING`
-* `APPROVED`
-* `REJECTED`
-* `WAITLISTED`
-* `WITHDRAWN`
+- `DRAFT`
+- `PENDING`
+- `APPROVED`
+- `REJECTED`
+- `WAITLISTED`
+- `WITHDRAWN`
 
 ---
 
@@ -574,19 +571,19 @@ Registration status values:
 
 The repo already has an admin dashboard with:
 
-* Total users
-* Total teams
-* Active tournaments
-* Pending registrations
-* Completed tournaments
+- Total users
+- Total teams
+- Active tournaments
+- Pending registrations
+- Completed tournaments
 
 Recommended additions:
 
-* Verification queue
-* Riot link status count
-* Recent audit logs
-* Tournament health alerts
-* Upcoming match conflicts
+- Verification queue
+- Riot link status count
+- Recent audit logs
+- Tournament health alerts
+- Upcoming match conflicts
 
 Suggested route:
 
@@ -609,17 +606,17 @@ Suggested routes:
 
 Recommended features:
 
-* Create tournament
-* Edit tournament
-* Open/close registration
-* Approve/reject teams
-* Generate bracket
-* Seed teams
-* Publish bracket
-* Update match result
-* Publish winners
-* Export CSV
-* Post announcement to Discord, optional later
+- Create tournament
+- Edit tournament
+- Open/close registration
+- Approve/reject teams
+- Generate bracket
+- Seed teams
+- Publish bracket
+- Update match result
+- Publish winners
+- Export CSV
+- Post announcement to Discord, optional later
 
 ---
 
@@ -629,10 +626,10 @@ Recommended features:
 
 Riot account linking is needed to:
 
-* Verify Valorant identity
-* Associate a member profile with a Riot account
-* Fetch player match data and stats after opt-in
-* Improve tournament integrity
+- Verify Valorant identity
+- Associate a member profile with a Riot account
+- Fetch player match data and stats after opt-in
+- Improve tournament integrity
 
 ### 9.2 Required Approach
 
@@ -674,31 +671,31 @@ Store only what is needed.
 
 Suggested fields:
 
-* Riot PUUID
-* Game name
-* Tagline
-* Region/routing value
-* Linked date
-* Last sync date
-* Consent version
-* Account visibility setting
+- Riot PUUID
+- Game name
+- Tagline
+- Region/routing value
+- Linked date
+- Last sync date
+- Consent version
+- Account visibility setting
 
 ### 9.4 Valorant Stats for MVP
 
 For MVP, show simple member-owned stats only:
 
-* Recent matches
-* Agent usage
-* Win/loss summary
-* KDA summary
-* Last updated timestamp
+- Recent matches
+- Agent usage
+- Win/loss summary
+- KDA summary
+- Last updated timestamp
 
 Avoid:
 
-* Pre-match opponent scouting
-* Hidden player lookup
-* Ranking systems that compete with Riot’s official ranking
-* Publicly exposing a player’s stats without opt-in
+- Pre-match opponent scouting
+- Hidden player lookup
+- Ranking systems that compete with Riot’s official ranking
+- Publicly exposing a player’s stats without opt-in
 
 ---
 
@@ -1067,13 +1064,13 @@ GET    /api/admin/audit-logs
 
 The wireframes below follow the existing repo’s visual direction:
 
-* Black background
-* White typography
-* Black Rose emblem
-* Grid texture
-* Angular clipped CTA buttons
-* Admin dashboard panels
-* Tournament cards and tables
+- Black background
+- White typography
+- Black Rose emblem
+- Grid texture
+- Angular clipped CTA buttons
+- Admin dashboard panels
+- Tournament cards and tables
 
 ---
 
@@ -1388,25 +1385,25 @@ src/
 
 ### MVP Bracket Features
 
-* Admin can generate a bracket from approved registrations.
-* Admin can manually seed teams.
-* Admin can publish bracket.
-* Members can view bracket.
-* Admin can enter match results.
-* Winners automatically advance to the next match.
+- Admin can generate a bracket from approved registrations.
+- Admin can manually seed teams.
+- Admin can publish bracket.
+- Members can view bracket.
+- Admin can enter match results.
+- Winners automatically advance to the next match.
 
 ### Supported MVP Formats
 
 Start with:
 
-* Single Elimination
-* Double Elimination, if time allows
+- Single Elimination
+- Double Elimination, if time allows
 
 Later:
 
-* Round Robin
-* Group Stage + Playoffs
-* Swiss
+- Round Robin
+- Group Stage + Playoffs
+- Swiss
 
 ### Bracket Generation Flow
 
@@ -1441,31 +1438,31 @@ Members see public bracket
 
 ### Authentication Security
 
-* Use Authorization Code flow.
-* Validate OAuth `state`.
-* Use secure HTTP-only cookies.
-* Protect all member/admin routes server-side.
-* Never trust client-side role checks.
-* Re-check Discord role on login and periodically.
-* Store Discord and Riot secrets only in environment variables.
+- Use Authorization Code flow.
+- Validate OAuth `state`.
+- Use secure HTTP-only cookies.
+- Protect all member/admin routes server-side.
+- Never trust client-side role checks.
+- Re-check Discord role on login and periodically.
+- Store Discord and Riot secrets only in environment variables.
 
 ### API Security
 
-* Rate-limit auth callbacks and verification checks.
-* Rate-limit profile updates.
-* Rate-limit tournament registration submissions.
-* Validate all request payloads using Zod.
-* Add audit logs for admin actions.
-* Use CSRF protection for cookie-based mutation requests.
-* Use server-side authorization checks for every admin API.
+- Rate-limit auth callbacks and verification checks.
+- Rate-limit profile updates.
+- Rate-limit tournament registration submissions.
+- Validate all request payloads using Zod.
+- Add audit logs for admin actions.
+- Use CSRF protection for cookie-based mutation requests.
+- Use server-side authorization checks for every admin API.
 
 ### Token Security
 
-* Do not expose Discord or Riot access tokens to the browser.
-* Encrypt stored refresh tokens.
-* Prefer short-lived sessions.
-* Allow users to unlink Riot account.
-* Revoke tokens where supported when unlinking.
+- Do not expose Discord or Riot access tokens to the browser.
+- Encrypt stored refresh tokens.
+- Prefer short-lived sessions.
+- Allow users to unlink Riot account.
+- Revoke tokens where supported when unlinking.
 
 ---
 
@@ -1475,13 +1472,13 @@ Every admin action should create an audit log.
 
 Examples:
 
-* Admin approves a registration
-* Admin rejects a registration
-* Admin edits tournament rules
-* Admin publishes bracket
-* Admin changes match result
-* Admin suspends user
-* Admin changes app role
+- Admin approves a registration
+- Admin rejects a registration
+- Admin edits tournament rules
+- Admin publishes bracket
+- Admin changes match result
+- Admin suspends user
+- Admin changes app role
 
 Audit log format:
 
@@ -1501,64 +1498,64 @@ Example:
 
 ### Phase 1 — Auth and Access Control
 
-* Add Discord OAuth2 login
-* Add backend session handling
-* Add database
-* Add `users` and `discord_accounts` tables
-* Add `ROSE` role verification
-* Add `/waitlist`
-* Protect member/admin routes
+- Add Discord OAuth2 login
+- Add backend session handling
+- Add database
+- Add `users` and `discord_accounts` tables
+- Add `ROSE` role verification
+- Add `/waitlist`
+- Protect member/admin routes
 
 ### Phase 2 — Member Profiles
 
-* Add member dashboard
-* Add editable profile
-* Add public member profile page
-* Add social links
-* Add profile visibility settings
+- Add member dashboard
+- Add editable profile
+- Add public member profile page
+- Add social links
+- Add profile visibility settings
 
 ### Phase 3 — Tournament Registration
 
-* Connect tournament pages to database
-* Add team creation
-* Add tournament registration
-* Add registration statuses
-* Add admin approval flow
+- Connect tournament pages to database
+- Add team creation
+- Add tournament registration
+- Add registration statuses
+- Add admin approval flow
 
 ### Phase 4 — Bracket Management
 
-* Add bracket generation
-* Add bracket publishing
-* Add match result updates
-* Add public bracket viewer
-* Add admin audit logs
+- Add bracket generation
+- Add bracket publishing
+- Add match result updates
+- Add public bracket viewer
+- Add admin audit logs
 
 ### Phase 5 — Riot Account Linking
 
-* Add Riot linking page
-* Add Riot opt-in disclaimer
-* Add Riot identity verification
-* Add Valorant stats sync
-* Add Riot-linked requirement for Valorant tournaments
+- Add Riot linking page
+- Add Riot opt-in disclaimer
+- Add Riot identity verification
+- Add Valorant stats sync
+- Add Riot-linked requirement for Valorant tournaments
 
 ### Phase 6 — Discord Enhancements
 
-* Add optional Discord bot
-* Sync role changes through Discord events
-* Post tournament announcements to Discord
-* Notify teams about match schedules
+- Add optional Discord bot
+- Sync role changes through Discord events
+- Post tournament announcements to Discord
+- Notify teams about match schedules
 
 ---
 
 ## 18. Key Assumptions
 
-* The Black Rose Discord server ID will be configured in environment variables.
-* The `ROSE` role ID will be configured in environment variables.
-* Discord remains the source of truth for membership verification.
-* The web application database stores app-specific data only.
-* Riot account linking will require user opt-in.
-* Real Valorant stat features may require Riot production approval.
-* The MVP can launch with manual admin-controlled brackets before adding advanced automation.
+- The Black Rose Discord server ID will be configured in environment variables.
+- The `ROSE` role ID will be configured in environment variables.
+- Discord remains the source of truth for membership verification.
+- The web application database stores app-specific data only.
+- Riot account linking will require user opt-in.
+- Real Valorant stat features may require Riot production approval.
+- The MVP can launch with manual admin-controlled brackets before adding advanced automation.
 
 ---
 
@@ -1566,36 +1563,36 @@ Example:
 
 ### Discord Login
 
-* User can click “Continue with Discord”.
-* User is redirected to Discord OAuth.
-* User returns to the app after approval.
-* App creates or updates user record.
-* App checks Black Rose guild membership and `ROSE` role.
-* Verified user lands on dashboard.
-* Non-verified user lands on waitlist page.
+- User can click “Continue with Discord”.
+- User is redirected to Discord OAuth.
+- User returns to the app after approval.
+- App creates or updates user record.
+- App checks Black Rose guild membership and `ROSE` role.
+- Verified user lands on dashboard.
+- Non-verified user lands on waitlist page.
 
 ### Profile
 
-* Verified member can edit profile.
-* Verified member can add social links.
-* Public profile page can be viewed by slug.
-* Member can toggle social link visibility.
+- Verified member can edit profile.
+- Verified member can add social links.
+- Public profile page can be viewed by slug.
+- Member can toggle social link visibility.
 
 ### Tournament
 
-* Verified member can register a team.
-* Waitlisted user cannot register.
-* Admin can approve/reject registration.
-* Approved team appears in tournament team list.
-* Admin can generate and publish bracket.
-* Public users can view published bracket.
+- Verified member can register a team.
+- Waitlisted user cannot register.
+- Admin can approve/reject registration.
+- Approved team appears in tournament team list.
+- Admin can generate and publish bracket.
+- Public users can view published bracket.
 
 ### Admin
 
-* Non-admin cannot access `/admin`.
-* Tournament Admin can manage tournaments.
-* Super Admin can manage users and settings.
-* Admin actions are saved in audit logs.
+- Non-admin cannot access `/admin`.
+- Tournament Admin can manage tournaments.
+- Super Admin can manage users and settings.
+- Admin actions are saved in audit logs.
 
 ---
 
