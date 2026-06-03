@@ -74,16 +74,16 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
     teams: [
       {
         id: "t-001",
-        name: "Obsidian Vipers",
-        tag: "OBV",
-        captain: "thornn",
+        name: "Novellino eSports",
+        tag: "NE",
+        captain: "CoyHa",
         seed: 1,
         players: [
-          { ign: "thornn", role: "Duelist / IGL" },
-          { ign: "azael", role: "Controller" },
-          { ign: "kairo", role: "Initiator" },
-          { ign: "voss", role: "Sentinel" },
-          { ign: "ren", role: "Flex" },
+          { ign: "CoyHa", role: "Duelist / IGL" },
+          { ign: "Chewie", role: "Controller" },
+          { ign: "Cent", role: "Initiator" },
+          { ign: "Kiraz", role: "Sentinel" },
+          { ign: "Ashburn", role: "Flex" },
         ],
       },
       {
@@ -109,7 +109,7 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
           { ign: "rave", role: "IGL" },
           { ign: "byte", role: "Duelist" },
           { ign: "nova", role: "Sentinel" },
-          { ign: "echo", role: "Initiator" },
+          { ign: "Quamico", role: "Initiator" },
           { ign: "ire", role: "Controller" },
         ],
       },
@@ -134,7 +134,7 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
           {
             id: "qf-1",
             round: "Quarterfinals",
-            teamA: "Obsidian Vipers",
+            teamA: "Novellino eSports",
             teamB: "Iron Phantom",
             scoreA: undefined,
             scoreB: undefined,
@@ -428,7 +428,7 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
     format: "Double Elimination",
     region: "PH",
     description:
-      "The Onyx Series was the largest Black Rose Valorant tournament to date — 32 teams, a fully seeded double-elimination bracket, and three weekends of elite competition. Obsidian Vipers claimed the title in a thrilling grand final.",
+      "The Onyx Series was the largest Black Rose Valorant tournament to date — 32 teams, a fully seeded double-elimination bracket, and three weekends of elite competition. Novellino eSports claimed the title in a thrilling grand final.",
     organizer: "Black Rose Operations",
     contact: "ops@blackrose.gg",
     prizeBreakdown: [
@@ -447,16 +447,16 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
     teams: [
       {
         id: "t-001",
-        name: "Obsidian Vipers",
-        tag: "OBV",
-        captain: "thornn",
+        name: "Novellino eSports",
+        tag: "NE",
+        captain: "CoyHa",
         seed: 1,
         players: [
-          { ign: "thornn", role: "Duelist / IGL" },
-          { ign: "azael", role: "Controller" },
-          { ign: "kairo", role: "Initiator" },
-          { ign: "voss", role: "Sentinel" },
-          { ign: "ren", role: "Flex" },
+          { ign: "CoyHa", role: "Duelist / IGL" },
+          { ign: "Chewie", role: "Controller" },
+          { ign: "Cent", role: "Initiator" },
+          { ign: "Kiraz", role: "Sentinel" },
+          { ign: "Ashburn", role: "Flex" },
         ],
       },
       {
@@ -481,11 +481,11 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
           {
             id: "sf-1",
             round: "Semifinals",
-            teamA: "Obsidian Vipers",
+            teamA: "Novellino eSports",
             teamB: "Ash Reapers",
             scoreA: 13,
             scoreB: 5,
-            winner: "Obsidian Vipers",
+            winner: "Novellino eSports",
           },
           {
             id: "sf-2",
@@ -504,11 +504,11 @@ export const mockTournamentDetails: Record<string, TournamentDetail> = {
           {
             id: "gf-1",
             round: "Grand Finals",
-            teamA: "Obsidian Vipers",
+            teamA: "Novellino eSports",
             teamB: "Crimson Halo",
             scoreA: 3,
             scoreB: 1,
-            winner: "Obsidian Vipers",
+            winner: "Novellino eSports",
           },
         ],
       },

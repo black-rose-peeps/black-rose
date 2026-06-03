@@ -90,6 +90,22 @@ src/
 │   │       ├── AdminTopbar.tsx
 │   │       └── ui.tsx             # Admin-specific UI primitives
 │   │
+│   ├── member/                    # Member dashboard and profile
+│   │   ├── components/
+│   │   │   └── MemberNav.tsx      # Sticky nav for member pages (mirrors landing Header)
+│   │   ├── types/
+│   │   │   └── index.ts           # MemberProfile, SocialLink, RiotAccount, etc.
+│   │   └── constants/
+│   │       └── index.ts           # Social platform labels and ordering
+│   │
+│   ├── teams/                     # Team creation and management
+│   │   ├── components/
+│   │   │   └── RosterTable.tsx    # Roster table with captain actions
+│   │   ├── types/
+│   │   │   └── index.ts           # Team, TeamMember, TeamMemberStatus types
+│   │   └── constants/
+│   │       └── index.ts           # Game options, role options, GAME_COLOR/ACCENT
+│   │
 │   └── shared/                    # Components reused across 2+ features
 │       └── components/
 │           └── Emblem.tsx
@@ -100,7 +116,10 @@ src/
 ├── hooks/                         # Custom React hooks
 │
 ├── lib/
-│   ├── mock-data.ts               # Placeholder data for admin panel
+│   ├── mock-data.ts               # Placeholder data for admin panel + tournaments
+│   ├── mock-member.ts             # Placeholder member profile data
+│   ├── mock-teams.ts              # Placeholder team + roster data
+│   ├── mock-tournament-details.ts # Rich tournament detail data
 │   └── utils.ts                   # Utility functions (cn, etc.)
 │
 ├── routes/                        # File-based routing (TanStack Router)
@@ -151,6 +170,11 @@ Route files in `routes/` stay thin — they import from `features/` and compose 
 | `/login`                 | Sign in with Discord                                |
 | `/register`              | Create account with Discord → redirects to waitlist |
 | `/waitlist`              | Pending verification — shown after registering      |
+| `/dashboard`             | Member dashboard (verified members only)            |
+| `/members/:slug`         | Public member profile page                          |
+| `/teams`                 | My team overview — create or view current team      |
+| `/teams/create`          | Create a new team                                   |
+| `/teams/:id`             | Team detail — roster, invite members, tournament    |
 | `/unauthorized`          | 403 access denied page                              |
 | `/admin`                 | Admin dashboard                                     |
 | `/admin/tournaments`     | Tournament management                               |
@@ -200,15 +224,17 @@ The project is currently frontend-only and uses mock data for development.
 - ✅ Tournament Directory — frontend with mock data
 - ✅ Tournament Details Page — frontend with mock data (overview, teams, bracket, rules)
 - ✅ Admin Dashboard UI — frontend with mock data
+- ✅ Member Dashboard — `/dashboard` (verified session required)
+- ✅ Member Profile Page — `/members/:slug` (public, session-aware)
+- ✅ Teams — `/teams`, `/teams/create`, `/teams/:id` (create team, invite members, view roster)
 
 ### Next Up
 
 1. Discord OAuth2 backend integration (callback route, token exchange, session)
 2. Admin: user verification flow (change role `not_verified` → `verified`)
-3. User Dashboard / Profile page (shown after verification)
-4. Team Creation & Management
-5. Tournament Registration Flow
-6. Notifications & Announcements
+3. Tournament Registration Flow from team page
+4. User Profile editing (social links, bio, riot account)
+5. Notifications & Announcements
 
 ### Notes
 

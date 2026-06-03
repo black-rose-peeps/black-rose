@@ -185,15 +185,15 @@ export const mockTournaments: MockTournament[] = [
 export const mockTeams: MockTeam[] = [
   {
     id: "t-001",
-    name: "Obsidian Vipers",
-    tag: "OBV",
-    captain: "thornn",
+    name: "Novellino eSports",
+    tag: "NE",
+    captain: "CoyHa",
     members: [
-      { ign: "thornn", role: "Duelist / IGL", discord: "thornn#0001" },
-      { ign: "azael", role: "Controller", discord: "azael#1142" },
-      { ign: "kairo", role: "Initiator", discord: "kairo#0098" },
-      { ign: "voss", role: "Sentinel", discord: "voss#7732" },
-      { ign: "ren", role: "Flex", discord: "ren#0420" },
+      { ign: "CoyHa", role: "Duelist / IGL", discord: "CoyHa#2026" },
+      { ign: "Chewie", role: "Controller", discord: "Chewie#0001" },
+      { ign: "Cent", role: "Initiator", discord: "Cent#0001" },
+      { ign: "Kiraz", role: "Sentinel", discord: "Kiraz#0001" },
+      { ign: "Ashburn", role: "Flex", discord: "Ashburn#0001" },
     ],
     registrationDate: "2026-05-28",
     status: "Pending",
@@ -260,7 +260,7 @@ export const mockTeams: MockTeam[] = [
       { ign: "rave", role: "IGL", discord: "rave#3300" },
       { ign: "byte", role: "Duelist", discord: "byte#0011" },
       { ign: "nova", role: "Sentinel", discord: "nova#7788" },
-      { ign: "echo", role: "Initiator", discord: "echo#1234" },
+      { ign: "Quamico", role: "Initiator", discord: "Quamico#0001" },
       { ign: "ire", role: "Controller", discord: "ire#0099" },
     ],
     registrationDate: "2026-06-01",
@@ -273,8 +273,8 @@ export const mockTeams: MockTeam[] = [
 export const mockUsers: MockUser[] = [
   {
     id: "u-001",
-    username: "thornn",
-    email: "thornn@blackrose.gg",
+    username: "CoyHa",
+    email: "CoyHa@blackrose.gg",
     role: "User",
     registrationDate: "2026-02-12",
     status: "Active",

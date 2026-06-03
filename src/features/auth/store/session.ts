@@ -55,6 +55,26 @@ export function isAdmin(): boolean {
 // Remove these once real auth is wired up.
 
 /**
+ * Simulate a verified Discord login (for frontend dev flow).
+ * Creates a verified session so the user lands on /dashboard.
+ *
+ * TODO: Replace with real Discord OAuth2 callback handling.
+ */
+export function simulateDiscordLogin(): AppUser {
+  const user: AppUser = {
+    id: "mock_verified_001",
+    username: "CoyHa",
+    displayName: "CoyHa",
+    avatarUrl: null,
+    email: "CoyHa@blackrose.gg",
+    role: "verified",
+    registeredAt: "2026-02-12T00:00:00.000Z",
+  };
+  setSession(user);
+  return user;
+}
+
+/**
  * Simulate a new Discord registration.
  * Creates a not_verified session so the waitlist page can display user info.
  *
