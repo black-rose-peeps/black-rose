@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as TournamentsRouteImport } from './routes/tournaments'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -26,6 +27,11 @@ import { Route as AdminParticipantsRouteImport } from './routes/admin.participan
 import { Route as AdminAnnouncementsRouteImport } from './routes/admin.announcements'
 import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
   path: '/unauthorized',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/tournaments': typeof TournamentsRouteWithChildren
   '/unauthorized': typeof UnauthorizedRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/tournaments': typeof TournamentsRouteWithChildren
   '/unauthorized': typeof UnauthorizedRoute
+  '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/tournaments'
     | '/unauthorized'
+    | '/waitlist'
     | '/admin/announcements'
     | '/admin/participants'
     | '/admin/settings'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/unauthorized'
+    | '/waitlist'
     | '/admin/announcements'
     | '/admin/participants'
     | '/admin/settings'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/tournaments'
     | '/unauthorized'
+    | '/waitlist'
     | '/admin/announcements'
     | '/admin/participants'
     | '/admin/settings'
@@ -222,10 +234,18 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   TournamentsRoute: typeof TournamentsRouteWithChildren
   UnauthorizedRoute: typeof UnauthorizedRoute
+  WaitlistRoute: typeof WaitlistRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/unauthorized': {
       id: '/unauthorized'
       path: '/unauthorized'
@@ -395,6 +415,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   TournamentsRoute: TournamentsRouteWithChildren,
   UnauthorizedRoute: UnauthorizedRoute,
+  WaitlistRoute: WaitlistRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

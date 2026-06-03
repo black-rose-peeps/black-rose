@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
-import { AuthShell, SocialButton } from "@/features/auth/components/AuthShell";
+import { AuthShell } from "@/features/auth/components/AuthShell";
+import { simulateDiscordRegister } from "@/features/auth/store/session";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/register")({
       {
         name: "description",
         content:
-          "Create your Black Rose account to build teams and compete in community tournaments.",
+          "Create your Black Rose account via Discord to build teams and compete in community tournaments.",
       },
     ],
   }),
@@ -18,156 +18,61 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirm: "",
-    discord: "",
-    riot: "",
-    steam: "",
-    country: "",
-    accept: false,
-  });
 
-  function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
+  function handleRegister() {
+    // TODO: Replace with real Discord OAuth2 redirect when backend is ready.
+    // For now: simulate registration → set not_verified session → go to waitlist.
+    simulateDiscordRegister();
+    navigate({ to: "/waitlist" });
   }
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    // Frontend flow only — redirect to placeholder user dashboard (home for now).
-    navigate({ to: "/" });
-  }
-
   return (
     <AuthShell
       headline="Forge Your Legacy"
       subheadline="Create your Black Rose account to build teams, register for tournaments, and rise through the brackets."
     >
-      <div className="mb-8">
+      {/* Heading */}
+      <div className="mb-10">
         <div className="mb-3 flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
           <span className="h-px w-10 bg-border" />
           New Recruit
         </div>
         <h2 className="font-display text-4xl tracking-display">Create Account</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Required fields are marked. Game IDs can be added later from your profile.
+          Black Rose accounts are tied to your Discord identity. No separate password needed.
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-5">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Username *">
-            <Input
-              value={form.username}
-              onChange={(v) => update("username", v)}
-              placeholder="thornn"
-              required
-            />
-          </Field>
-          <Field label="Email *">
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(v) => update("email", v)}
-              placeholder="you@blackrose.gg"
-              required
-            />
-          </Field>
-          <Field label="Password *">
-            <Input
-              type="password"
-              value={form.password}
-              onChange={(v) => update("password", v)}
-              placeholder="••••••••"
-              required
-            />
-          </Field>
-          <Field label="Confirm Password *">
-            <Input
-              type="password"
-              value={form.confirm}
-              onChange={(v) => update("confirm", v)}
-              placeholder="••••••••"
-              required
-            />
-          </Field>
-        </div>
+      {/* What you get */}
+      <ul className="mb-8 flex flex-col gap-2.5">
+        {[
+          "Join or create competitive teams",
+          "Register for tournaments in one click",
+          // "Track your match history and standings",
+          "Receive announcements and bracket updates",
+        ].map((item) => (
+          <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="h-1.5 w-1.5 shrink-0 bg-white/40" />
+            {item}
+          </li>
+        ))}
+      </ul>
 
-        <div className="mt-2 flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-          <span className="h-px w-10 bg-border" />
-          Optional — Game Identities
-        </div>
+      {/* Discord CTA */}
+      <div className="flex flex-col gap-4">
+        <DiscordButton onClick={handleRegister} />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Discord Username">
-            <Input
-              value={form.discord}
-              onChange={(v) => update("discord", v)}
-              placeholder="thornn#0001"
-            />
-          </Field>
-          <Field label="Riot ID">
-            <Input
-              value={form.riot}
-              onChange={(v) => update("riot", v)}
-              placeholder="thornn#APAC"
-            />
-          </Field>
-          <Field label="Steam ID">
-            <Input
-              value={form.steam}
-              onChange={(v) => update("steam", v)}
-              placeholder="STEAM_0:1:..."
-            />
-          </Field>
-          <Field label="Country">
-            <Input
-              value={form.country}
-              onChange={(v) => update("country", v)}
-              placeholder="Philippines"
-            />
-          </Field>
-        </div>
+        <p className="text-center text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          You will be redirected to Discord to authorize access.
+          <br />
+          We only request your username and email.
+        </p>
+      </div>
 
-        <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground select-none">
-          <input
-            type="checkbox"
-            required
-            checked={form.accept}
-            onChange={(e) => update("accept", e.target.checked)}
-            className="mt-0.5 h-3.5 w-3.5 border border-border bg-secondary accent-foreground"
-          />
-          <span>
-            I agree to the{" "}
-            <span className="text-foreground underline-offset-4 hover:underline cursor-pointer">
-              Terms and Conditions
-            </span>{" "}
-            and Black Rose competitive ruleset.
-          </span>
-        </label>
+      {/* Divider */}
+      <div className="my-8 h-px bg-border" />
 
-        <button
-          type="submit"
-          className="clip-cta mt-2 inline-flex h-11 items-center justify-center bg-foreground px-6 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
-        >
-          Create Account
-        </button>
-
-        <div className="my-2 flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-          <span className="h-px flex-1 bg-border" />
-          Or continue with
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <SocialButton label="Discord" />
-          <SocialButton label="Google" />
-        </div>
-      </form>
-
-      <p className="mt-8 text-center text-xs text-muted-foreground">
+      {/* Footer link */}
+      <p className="text-center text-xs text-muted-foreground">
         Already enlisted?{" "}
         <Link to="/login" className="text-foreground underline-offset-4 hover:underline">
           Sign In
@@ -177,38 +82,30 @@ function RegisterPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function DiscordButton({ onClick }: { onClick: () => void }) {
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-        {label}
-      </label>
-      {children}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="cursor-pointer group relative inline-flex h-14 w-full items-center justify-center gap-3 bg-[#5865F2] px-6 font-tech text-sm uppercase tracking-wider-2 text-white transition hover:bg-[#4752c4] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5865F2]"
+    >
+      <DiscordIcon className="h-5 w-5 shrink-0" />
+      Register with Discord
+    </button>
   );
 }
 
-function Input({
-  value,
-  onChange,
-  type = "text",
-  placeholder,
-  required,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-  required?: boolean;
-}) {
+function DiscordIcon({ className }: { className?: string }) {
   return (
-    <input
-      type={type}
-      value={value}
-      required={required}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-11 w-full border border-border bg-secondary px-4 text-sm outline-none transition focus:border-foreground"
-    />
+    <svg
+      role="img"
+      aria-label="Discord"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
+    </svg>
   );
 }
