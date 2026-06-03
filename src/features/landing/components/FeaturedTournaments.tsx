@@ -1,5 +1,5 @@
 import valorant from "@/assets/tournament-valorant.jpg";
-import mlbb from "@/assets/tournament-mlbb.jpg";
+import mlbb from "@/assets/tournament-mlbb.png";
 import cs2 from "@/assets/tournament-cs2.jpg";
 import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "./SectionHeading";

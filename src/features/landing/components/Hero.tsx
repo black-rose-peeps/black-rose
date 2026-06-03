@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import heroBg from "@/assets/landing-hero-bg2.jpg";
+import heroBg from "@/assets/landing-hero-bg2.png";
 import { Emblem } from "@/features/shared/components/Emblem";
 
 export function Hero() {
@@ -27,7 +27,7 @@ export function Hero() {
         {/* Spinning emblem */}
         <div className="relative animate-rise">
           <div className="absolute inset-0 -m-8 rounded-full blur-3xl bg-foreground/5" />
-          <Emblem spin className="mb-6 relative h-42 w-42 md:h-56 md:w-56 opacity-90" />
+          <Emblem spin className="mb-6 relative h-64 w-64 md:h-80 md:w-80 opacity-90" />
         </div>
 
         <div className="mb-6 inline-flex items-center gap-3 border border-border px-4 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground animate-rise">

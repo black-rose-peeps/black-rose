@@ -8,7 +8,6 @@ export function Emblem({ className = "", spin = false }: { className?: string; s
       width={1024}
       height={1024}
       className={`object-contain ${className} ${spin ? "animate-spin-slow" : ""}`}
-      style={{ filter: "invert(1)" }}
     />
   );
 }
