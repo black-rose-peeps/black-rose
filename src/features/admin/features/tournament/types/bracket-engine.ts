@@ -170,14 +170,14 @@ export class BracketEngine {
    * Auto-seed teams into first round
    */
   autoSeed(teams: string[]): void {
+    this.reset();
+
     const firstRound = this.structure.rounds[0];
 
-    for (let i = 0; i < firstRound.matches.length && i * 2 < teams.length; i++) {
+    for (let i = 0; i < firstRound.matches.length; i++) {
       const match = firstRound.matches[i];
-      match.teamA = teams[i * 2] || null;
-      match.teamB = teams[i * 2 + 1] || null;
-      match.winner = null;
-      match.confirmed = false;
+      match.teamA = teams[i * 2] ?? null;
+      match.teamB = teams[i * 2 + 1] ?? null;
     }
 
     this.advanceWinners();
@@ -194,6 +194,20 @@ export class BracketEngine {
 
     // Validate assignments
     for (const assignment of assignments) {
+      if (assignment.teamA && !this.teamPool.includes(assignment.teamA)) {
+        errors.push({
+          type: "missing",
+          message: `Team ${assignment.teamA} does not exist in teamPool`,
+          matchId: assignment.matchId,
+        });
+      }
+      if (assignment.teamB && !this.teamPool.includes(assignment.teamB)) {
+        errors.push({
+          type: "missing",
+          message: `Team ${assignment.teamB} does not exist in teamPool`,
+          matchId: assignment.matchId,
+        });
+      }
       if (assignment.teamA && usedTeams.has(assignment.teamA)) {
         errors.push({
           type: "duplicate",
@@ -216,8 +230,12 @@ export class BracketEngine {
         });
       }
 
-      if (assignment.teamA) usedTeams.add(assignment.teamA);
-      if (assignment.teamB) usedTeams.add(assignment.teamB);
+      if (assignment.teamA && this.teamPool.includes(assignment.teamA)) {
+        usedTeams.add(assignment.teamA);
+      }
+      if (assignment.teamB && this.teamPool.includes(assignment.teamB)) {
+        usedTeams.add(assignment.teamB);
+      }
     }
 
     if (errors.length === 0) {
@@ -278,19 +296,39 @@ export class BracketEngine {
   private advanceWinners(): void {
     for (const round of this.structure.rounds) {
       for (const match of round.matches) {
-        if (match.confirmed && match.winner && match.nextMatchId) {
+        if (match.nextMatchId && match.nextMatchSlot) {
           const nextMatch = this.findMatch(match.nextMatchId);
-          if (nextMatch && match.nextMatchSlot) {
-            nextMatch[match.nextMatchSlot] = match.winner;
-            // Reset next match if it was previously set
-            if (!nextMatch.confirmed) {
-              nextMatch.winner = null;
-              nextMatch.scoreA = "";
-              nextMatch.scoreB = "";
-            }
+          if (nextMatch) {
+            this.clearDownstream(nextMatch.matchId, match.nextMatchSlot);
           }
         }
       }
+    }
+
+    for (const round of this.structure.rounds) {
+      for (const match of round.matches) {
+        if (match.confirmed && match.winner && match.nextMatchId && match.nextMatchSlot) {
+          const nextMatch = this.findMatch(match.nextMatchId);
+          if (nextMatch) {
+            nextMatch[match.nextMatchSlot] = match.winner;
+          }
+        }
+      }
+    }
+  }
+
+  private clearDownstream(matchId: string, slot: "teamA" | "teamB"): void {
+    const match = this.findMatch(matchId);
+    if (!match) return;
+
+    match[slot] = null;
+    match.winner = null;
+    match.scoreA = "";
+    match.scoreB = "";
+    match.confirmed = false;
+
+    if (match.nextMatchId && match.nextMatchSlot) {
+      this.clearDownstream(match.nextMatchId, match.nextMatchSlot);
     }
   }
 
@@ -301,28 +339,46 @@ export class BracketEngine {
     const errors: TeamAssignmentError[] = [];
     const usedTeams = new Set<string>();
 
-    // Check first round for duplicates
+    const teamPoolSet = new Set(this.teamPool);
+
+    // Check first round for duplicates and invalid teams
     const firstRound = this.structure.rounds[0];
     for (const match of firstRound.matches) {
       if (match.teamA) {
-        if (usedTeams.has(match.teamA)) {
+        if (!teamPoolSet.has(match.teamA)) {
+          errors.push({
+            type: "missing",
+            message: `Team ${match.teamA} does not exist in teamPool`,
+            matchId: match.matchId,
+          });
+        } else if (usedTeams.has(match.teamA)) {
           errors.push({
             type: "duplicate",
             message: `Team ${match.teamA} appears multiple times`,
             matchId: match.matchId,
           });
+          usedTeams.add(match.teamA);
+        } else {
+          usedTeams.add(match.teamA);
         }
-        usedTeams.add(match.teamA);
       }
       if (match.teamB) {
-        if (usedTeams.has(match.teamB)) {
+        if (!teamPoolSet.has(match.teamB)) {
+          errors.push({
+            type: "missing",
+            message: `Team ${match.teamB} does not exist in teamPool`,
+            matchId: match.matchId,
+          });
+        } else if (usedTeams.has(match.teamB)) {
           errors.push({
             type: "duplicate",
             message: `Team ${match.teamB} appears multiple times`,
             matchId: match.matchId,
           });
+          usedTeams.add(match.teamB);
+        } else {
+          usedTeams.add(match.teamB);
         }
-        usedTeams.add(match.teamB);
       }
       if (match.teamA === match.teamB && match.teamA !== null) {
         errors.push({
@@ -333,17 +389,18 @@ export class BracketEngine {
       }
     }
 
-    // Check that all first round slots are filled
-    const emptySlots = firstRound.matches.some((m) => m.teamA === null || m.teamB === null);
-    if (emptySlots) {
+    // Every first-round match needs at least one team (bye allowed on the other slot)
+    const emptyMatches = firstRound.matches.some((m) => m.teamA === null && m.teamB === null);
+    if (emptyMatches) {
       errors.push({
         type: "missing",
-        message: "All first round matches must have teams assigned",
+        message: "All first round matches must have at least one team assigned",
       });
     }
 
     const isValid = errors.length === 0;
-    const canPublish = isValid && firstRound.matches.every((m) => m.teamA && m.teamB);
+    const canPublish =
+      isValid && firstRound.matches.every((m) => m.teamA !== null || m.teamB !== null);
 
     return { isValid, errors, canPublish };
   }

@@ -38,16 +38,40 @@ export function MembersManagement() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-end gap-2">
-                    <button className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-foreground transition hover:border-foreground/60">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      title="Not implemented"
+                      className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground opacity-50 cursor-not-allowed"
+                    >
                       View
                     </button>
-                    <button className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      title="Not implemented"
+                      className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground opacity-50 cursor-not-allowed"
+                    >
                       Change Role
                     </button>
-                    <button className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-destructive">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      title="Not implemented"
+                      className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground opacity-50 cursor-not-allowed"
+                    >
                       Suspend
                     </button>
-                    <button className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-destructive">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      title="Not implemented"
+                      className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground opacity-50 cursor-not-allowed"
+                    >
                       Ban
                     </button>
                   </div>

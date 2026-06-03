@@ -1,19 +1,32 @@
-import React from "react";
+import React, { cloneElement, isValidElement, useId } from "react";
 
 interface SettingsFieldProps {
   label: string;
   description?: string;
-  children: React.ReactNode;
+  id?: string;
+  children: React.ReactNode | ((controlId: string) => React.ReactNode);
 }
 
-export function SettingsField({ label, description, children }: SettingsFieldProps) {
+export function SettingsField({ label, description, id: idProp, children }: SettingsFieldProps) {
+  const generatedId = useId();
+  const controlId = idProp ?? generatedId;
+
+  const control =
+    typeof children === "function"
+      ? children(controlId)
+      : isValidElement(children)
+        ? cloneElement(children as React.ReactElement<{ id?: string }>, { id: controlId })
+        : children;
+
   return (
     <div className="flex flex-col gap-2 py-4 border-b border-border last:border-b-0">
       <div>
-        <label className="text-sm font-medium text-foreground">{label}</label>
+        <label htmlFor={controlId} className="text-sm font-medium text-foreground">
+          {label}
+        </label>
         {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
       </div>
-      <div>{children}</div>
+      <div>{control}</div>
     </div>
   );
 }
@@ -28,23 +41,26 @@ interface SettingsToggleProps {
 export function SettingsToggle({ label, description, checked, onChange }: SettingsToggleProps) {
   return (
     <SettingsField label={label} description={description}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`
+      {(controlId) => (
+        <button
+          id={controlId}
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(!checked)}
+          className={`
           relative inline-flex h-6 w-11 items-center rounded-full transition-colors
           ${checked ? "bg-emerald-600" : "bg-gray-600"}
         `}
-      >
-        <span
-          className={`
+        >
+          <span
+            className={`
             inline-block h-4 w-4 transform rounded-full bg-white transition-transform
             ${checked ? "translate-x-6" : "translate-x-1"}
           `}
-        />
-      </button>
+          />
+        </button>
+      )}
     </SettingsField>
   );
 }

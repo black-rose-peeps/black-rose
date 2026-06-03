@@ -98,11 +98,25 @@ export function StatusPill({ status }: { status: string }) {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "approved":
+      case "active":
         return "border-emerald-400/40 bg-emerald-400/10 text-emerald-400";
       case "pending":
         return "border-amber-400/40 bg-amber-400/10 text-amber-400";
       case "rejected":
+      case "banned":
         return "border-red-400/40 bg-red-400/10 text-red-400";
+      case "live":
+        return "border-sky-400/40 bg-sky-400/10 text-sky-400";
+      case "registration open":
+        return "border-emerald-400/40 bg-emerald-400/10 text-emerald-400";
+      case "registration closed":
+        return "border-amber-400/40 bg-amber-400/10 text-amber-400";
+      case "completed":
+        return "border-violet-400/40 bg-violet-400/10 text-violet-400";
+      case "archived":
+        return "border-border bg-muted/50 text-muted-foreground";
+      case "suspended":
+        return "border-orange-400/40 bg-orange-400/10 text-orange-400";
       default:
         return "border-border bg-muted text-muted-foreground";
     }

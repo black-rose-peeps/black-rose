@@ -1,7 +1,13 @@
+import { useState } from "react";
 import { Panel, PanelHeader, PrimaryButton } from "@/features/admin/components/ui";
 import { SettingsField, SettingsToggle } from "@/features/admin/components/SettingsControls";
 
 export function SettingsManagement() {
+  const [require2fa, setRequire2fa] = useState(true);
+  const [autoApproveTeams, setAutoApproveTeams] = useState(false);
+  const [lockBracketEdits, setLockBracketEdits] = useState(true);
+  const [emailDigest, setEmailDigest] = useState(true);
+
   return (
     <>
       <Panel>
@@ -45,14 +51,26 @@ export function SettingsManagement() {
           actions={<PrimaryButton>Save Changes</PrimaryButton>}
         />
         <div className="grid grid-cols-1 gap-5 px-6 py-6 md:grid-cols-2">
-          <SettingsToggle label="Require 2FA for admins" checked={true} onChange={() => {}} />
-          <SettingsToggle label="Auto-approve verified teams" checked={false} onChange={() => {}} />
+          <SettingsToggle
+            label="Require 2FA for admins"
+            checked={require2fa}
+            onChange={setRequire2fa}
+          />
+          <SettingsToggle
+            label="Auto-approve verified teams"
+            checked={autoApproveTeams}
+            onChange={setAutoApproveTeams}
+          />
           <SettingsToggle
             label="Lock bracket edits during live matches"
-            checked={true}
-            onChange={() => {}}
+            checked={lockBracketEdits}
+            onChange={setLockBracketEdits}
           />
-          <SettingsToggle label="Email digest to super admins" checked={true} onChange={() => {}} />
+          <SettingsToggle
+            label="Email digest to super admins"
+            checked={emailDigest}
+            onChange={setEmailDigest}
+          />
         </div>
       </Panel>
     </>

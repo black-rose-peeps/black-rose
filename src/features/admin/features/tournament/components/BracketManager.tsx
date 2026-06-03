@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { BracketEngine } from "../types/bracket-engine";
 import type { BracketStatus } from "../../../types";
 import type { BracketRound, TournamentTeam } from "@/features/tournaments/types";
@@ -11,34 +11,94 @@ interface BracketManagerProps {
   initialBracket: BracketRound[];
 }
 
-export function BracketManager({ tournamentName, format, teams }: BracketManagerProps) {
-  // Initialize bracket engine with team names
+function deriveBracketState(
+  initialBracket: BracketRound[],
+  teams: TournamentTeam[],
+  bracketSize: number,
+): {
+  assignments: Array<TournamentTeam | null>;
+  status: BracketStatus;
+  bracketGenerated: boolean;
+  bracketLocked: boolean;
+} {
+  const assignments: Array<TournamentTeam | null> = Array(bracketSize).fill(null);
+  const firstRound = initialBracket[0];
+
+  if (firstRound?.matches?.length) {
+    let slot = 0;
+    for (const match of firstRound.matches) {
+      if (slot >= bracketSize) break;
+      assignments[slot++] = match.teamA
+        ? (teams.find((t) => t.name === match.teamA) ?? null)
+        : null;
+      if (slot >= bracketSize) break;
+      assignments[slot++] = match.teamB
+        ? (teams.find((t) => t.name === match.teamB) ?? null)
+        : null;
+    }
+  }
+
+  const assignedCount = assignments.filter(Boolean).length;
+  const hasInitialBracket = initialBracket.length > 0 && assignedCount > 0;
+
+  return {
+    assignments,
+    status: hasInitialBracket ? "draft" : "not_generated",
+    bracketGenerated: hasInitialBracket,
+    bracketLocked: false,
+  };
+}
+
+export function BracketManager({
+  tournamentName,
+  format,
+  teams,
+  initialBracket,
+}: BracketManagerProps) {
   const bracketEngine = useMemo(() => {
     const teamNames = teams.map((t) => t.name);
     return new BracketEngine(teamNames);
   }, [teams]);
 
+  const bracketSize = bracketEngine.getBracketStructure().totalTeams;
+  const firstRoundMatches = bracketSize / 2;
+
   const [status, setStatus] = useState<BracketStatus>("not_generated");
   const [activeTab, setActiveTab] = useState<"seeding" | "bracket" | "validation">("seeding");
   const [bracketGenerated, setBracketGenerated] = useState(false);
   const [bracketLocked, setBracketLocked] = useState(false);
-  const [assignments, setAssignments] = useState<Array<TournamentTeam | null>>(
-    Array(16).fill(null),
+  const [assignments, setAssignments] = useState<Array<TournamentTeam | null>>(() =>
+    Array(bracketSize).fill(null),
   );
+
+  useEffect(() => {
+    const derived = deriveBracketState(initialBracket, teams, bracketSize);
+    setStatus(derived.status);
+    setAssignments(derived.assignments);
+    setBracketGenerated(derived.bracketGenerated);
+    setBracketLocked(derived.bracketLocked);
+
+    bracketEngine.reset();
+    if (derived.bracketGenerated) {
+      const teamNames = derived.assignments.filter(Boolean).map((t) => t!.name);
+      if (teamNames.length > 0) {
+        bracketEngine.autoSeed(teamNames);
+      }
+    }
+  }, [initialBracket, teams, bracketSize, bracketEngine]);
 
   const validation = bracketEngine.validateBracketIntegrity();
   const assignedCount = assignments.filter(Boolean).length;
-  const allAssigned = assignments.filter(Boolean).length === 16;
+  const allAssigned = assignedCount === bracketSize;
   const canPublish = status === "draft" && validation.canPublish && bracketGenerated && allAssigned;
 
   function handleGenerate() {
     if (!allAssigned) {
-      alert("Assign all 16 teams before generating.");
+      alert(`Assign all ${bracketSize} teams before generating.`);
       setActiveTab("seeding");
       return;
     }
 
-    // Auto-seed teams into the bracket engine
     const teamNames = assignments.filter(Boolean).map((t) => t!.name);
     bracketEngine.autoSeed(teamNames);
     setBracketGenerated(true);
@@ -48,8 +108,8 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
 
   function handleAutoSeed() {
     if (bracketLocked) return;
-    const newAssignments: Array<TournamentTeam | null> = [...teams.slice(0, 16)];
-    while (newAssignments.length < 16) {
+    const newAssignments: Array<TournamentTeam | null> = [...teams.slice(0, bracketSize)];
+    while (newAssignments.length < bracketSize) {
       newAssignments.push(null);
     }
     setAssignments(newAssignments);
@@ -57,9 +117,9 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
 
   function handleRandomSeed() {
     if (bracketLocked) return;
-    const shuffled = [...teams].sort(() => Math.random() - 0.5).slice(0, 16);
+    const shuffled = [...teams].sort(() => Math.random() - 0.5).slice(0, bracketSize);
     const newAssignments: Array<TournamentTeam | null> = [...shuffled];
-    while (newAssignments.length < 16) {
+    while (newAssignments.length < bracketSize) {
       newAssignments.push(null);
     }
     setAssignments(newAssignments);
@@ -71,7 +131,7 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
     }
     if (!confirm("Reset the bracket? All results will be lost.")) return;
 
-    setAssignments(Array(16).fill(null));
+    setAssignments(Array(bracketSize).fill(null));
     setBracketGenerated(false);
     setStatus("not_generated");
     bracketEngine.reset();
@@ -107,9 +167,8 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
     setAssignments(newAssignments);
 
     if (bracketGenerated) {
-      // Update bracket engine if bracket is already generated
       const teamNames = newAssignments.filter(Boolean).map((t) => t!.name);
-      if (teamNames.length === 16) {
+      if (teamNames.length === bracketSize) {
         bracketEngine.autoSeed(teamNames);
       }
     }
@@ -144,7 +203,7 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
                 Teams
               </div>
-              <div className="font-display text-xl font-bold text-amber-400">16</div>
+              <div className="font-display text-xl font-bold text-amber-400">{bracketSize}</div>
             </div>
             <div className="px-5 py-3 border-r border-border min-w-20">
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
@@ -290,7 +349,7 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {Array.from({ length: 8 }, (_, i) => {
+              {Array.from({ length: firstRoundMatches }, (_, i) => {
                 const teamAIdx = i * 2;
                 const teamBIdx = i * 2 + 1;
                 const teamA = assignments[teamAIdx];
@@ -394,7 +453,7 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
                 </div>
               </div>
             ) : (
-              <BracketPreview assignments={assignments} />
+              <BracketPreview assignments={assignments} bracketSize={bracketSize} />
             )}
           </div>
         )}
@@ -424,7 +483,7 @@ export function BracketManager({ tournamentName, format, teams }: BracketManager
                 />
                 <ValidationItem label="All matches populated" passed={allAssigned} />
                 <ValidationItem label="Bracket structure valid" passed={bracketGenerated} />
-                <ValidationItem label="Team count correct" passed={assignedCount === 16} />
+                <ValidationItem label="Team count correct" passed={assignedCount === bracketSize} />
                 <ValidationItem label="Seeding complete" passed={allAssigned && bracketGenerated} />
               </div>
             </div>
@@ -460,19 +519,26 @@ function ValidationItem({ label, passed }: { label: string; passed: boolean }) {
   );
 }
 
-function BracketPreview({ assignments }: { assignments: Array<TournamentTeam | null> }) {
+function BracketPreview({
+  assignments,
+  bracketSize,
+}: {
+  assignments: Array<TournamentTeam | null>;
+  bracketSize: number;
+}) {
   const CARD_W = 200;
   const CARD_H = 88;
   const ROUND_GAP = 60;
   const MATCH_GAP = 20;
   const PAD_V = 24;
 
-  const rounds = [
-    { label: "Round 1", matches: 8 },
-    { label: "Round 2", matches: 4 },
-    { label: "Semifinals", matches: 2 },
-    { label: "Final", matches: 1 },
-  ];
+  const firstRoundMatches = bracketSize / 2;
+  const totalRounds = Math.log2(bracketSize);
+  const rounds = Array.from({ length: totalRounds }, (_, i) => {
+    const matches = bracketSize / Math.pow(2, i + 1);
+    const labels = ["Round 1", "Round 2", "Semifinals", "Final"];
+    return { label: labels[i] ?? `Round ${i + 1}`, matches };
+  });
 
   const totalR1H = rounds[0].matches * CARD_H + (rounds[0].matches - 1) * MATCH_GAP + PAD_V * 2;
   const totalW = rounds.length * (CARD_W + ROUND_GAP) + 40;
@@ -576,7 +642,7 @@ function BracketPreview({ assignments }: { assignments: Array<TournamentTeam | n
         })}
 
         {/* Round 1 Matches */}
-        {Array.from({ length: 8 }, (_, i) => {
+        {Array.from({ length: firstRoundMatches }, (_, i) => {
           const teamAIdx = i * 2;
           const teamBIdx = i * 2 + 1;
           const teamA = assignments[teamAIdx];

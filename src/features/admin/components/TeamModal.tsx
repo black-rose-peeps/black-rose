@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import type { MockTeam } from "@/lib/mock-data";
 
@@ -8,17 +8,46 @@ interface TeamModalProps {
 }
 
 export function TeamModal({ team, onClose }: TeamModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    dialogRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-lg border border-border bg-card shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="team-modal-title"
+        tabIndex={-1}
+        className="w-full max-w-2xl rounded-lg border border-border bg-card shadow-2xl outline-none"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <h2 className="text-xl font-display font-bold tracking-wider-2">{team.name}</h2>
+            <h2
+              id="team-modal-title"
+              className="text-xl font-display font-bold tracking-wider-2"
+            >
+              {team.name}
+            </h2>
             <p className="text-sm-readable text-muted-foreground">Team Details</p>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <X className="h-5 w-5" />
@@ -82,6 +111,7 @@ export function TeamModal({ team, onClose }: TeamModalProps) {
         {/* Actions */}
         <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
           <button
+            type="button"
             onClick={onClose}
             className="rounded border border-border bg-secondary px-4 py-2 text-sm font-medium transition hover:bg-secondary/80"
           >

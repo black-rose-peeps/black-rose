@@ -104,7 +104,9 @@ export function ProfessionalMatchCard({
           isWinner={m.winner === m.teamA}
           availableTeams={availableTeams}
           disabled={isConfirmed}
-          onTeamChange={(team) => update({ teamA: team || null, winner: null, confirmed: false })}
+          onTeamChange={(team) =>
+            update({ teamA: team || null, scoreA: "", winner: null, confirmed: false })
+          }
           onScoreChange={(score) => {
             const winner = resolveWinner(m.teamA, m.teamB, score, m.scoreB);
             update({ scoreA: score, winner, confirmed: false });
@@ -121,7 +123,9 @@ export function ProfessionalMatchCard({
           isWinner={m.winner === m.teamB}
           availableTeams={availableTeams}
           disabled={isConfirmed}
-          onTeamChange={(team) => update({ teamB: team || null, winner: null, confirmed: false })}
+          onTeamChange={(team) =>
+            update({ teamB: team || null, scoreB: "", winner: null, confirmed: false })
+          }
           onScoreChange={(score) => {
             const winner = resolveWinner(m.teamA, m.teamB, m.scoreA, score);
             update({ scoreB: score, winner, confirmed: false });

@@ -58,7 +58,7 @@ export const mockTournaments: MockTournament[] = [
     prizePool: "₱10,000",
     startDate: "2026-06-21",
     registrationDeadline: "2026-06-18",
-    teamsRegistered: 17,
+    teamsRegistered: 16,
     teamCap: 32,
     format: "Single Elimination",
     region: "PH",

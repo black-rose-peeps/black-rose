@@ -6,21 +6,21 @@ Successfully implemented a comprehensive, professional-grade bracket management 
 
 ## ✅ Core Requirements Implemented
 
-### 1. Professional Bracket Engine (`src/features/admin/types/bracket-engine.ts`)
+### 1. Professional Bracket Engine (`src/features/admin/features/tournament/types/bracket-engine.ts`)
 
 - **True bracket relationships**: Each match has `nextMatchId` and `nextMatchSlot` properties
 - **Automatic positioning**: Matches are positioned based on mathematical calculations, not manual positioning
 - **Parent-child relationships**: Winners automatically advance to the correct slots in next round
 - **Comprehensive validation**: Prevents duplicate teams, validates bracket integrity
 
-### 2. Compact Match Cards (`src/features/admin/components/ProfessionalMatchCard.tsx`)
+### 2. Compact Match Cards (`src/features/admin/features/tournament/components/ProfessionalMatchCard.tsx`)
 
 - **Smaller, theme-compliant cards**: 256x112px cards that complement the website's dark theme
 - **Team initials in bracket**: Shows full names in dropdowns, team initials/tags in bracket view
 - **Interactive states**: Hover effects, confirmation animations, visual feedback
 - **Smart team selection**: Click to change teams, automatic dropdown for unassigned slots
 
-### 3. Advanced Admin Features (`src/features/admin/components/BracketManager.tsx`)
+### 3. Advanced Admin Features (`src/features/admin/features/tournament/components/BracketManager.tsx`)
 
 - **Auto Seed**: Automatically seeds teams in bracket order
 - **Random Seed**: Randomly shuffles and assigns teams

@@ -1,9 +1,13 @@
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Panel, PanelHeader, StatusPill } from "@/features/admin/components/ui";
 import { mockTeams, mockTournaments } from "@/lib/mock-data";
 
 export function ParticipantsManagement() {
-  const tournamentNameById = Object.fromEntries(mockTournaments.map((t) => [t.id, t.name]));
+  const tournamentNameById = useMemo(
+    () => Object.fromEntries(mockTournaments.map((t) => [t.id, t.name])),
+    [],
+  );
 
   return (
     <Panel>
@@ -26,7 +30,7 @@ export function ParticipantsManagement() {
                 <td className="px-6 py-4">
                   <div className="font-display text-base tracking-wider-2">{team.name}</div>
                   <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                    {team.members.length} players · {team.tag}
+                    {team.members?.length ?? 0} players · {team?.tag}
                   </div>
                 </td>
                 <td className="px-4 py-4 text-xs text-muted-foreground">
@@ -45,10 +49,16 @@ export function ParticipantsManagement() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-end gap-2">
-                    <button className="border border-foreground/40 bg-foreground/5 px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-foreground transition hover:bg-foreground/10">
+                    <button
+                      type="button"
+                      className="border border-foreground/40 bg-foreground/5 px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-foreground transition hover:bg-foreground/10"
+                    >
                       Approve
                     </button>
-                    <button className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-destructive">
+                    <button
+                      type="button"
+                      className="border border-border bg-secondary px-3 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-destructive"
+                    >
                       Reject
                     </button>
                   </div>

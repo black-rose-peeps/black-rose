@@ -52,6 +52,9 @@ function TournamentDetailPage() {
       players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
     }));
 
+  const supportsBracketManager =
+    tournament.format === "Single Elimination" && detailTeams.length === 16;
+
   return (
     <>
       <AdminTopbar title={tournament.name} subtitle="Tournament Operations" />
@@ -101,7 +104,13 @@ function TournamentDetailPage() {
             active={activeTab === "bracket"}
             icon={<Trophy className="h-4 w-4" />}
             label="Bracket Management"
-            onClick={() => setActiveTab("bracket")}
+            disabled={!supportsBracketManager}
+            title={
+              supportsBracketManager
+                ? undefined
+                : "Only available for 16-team single-elimination tournaments"
+            }
+            onClick={() => supportsBracketManager && setActiveTab("bracket")}
           />
         </div>
 
@@ -199,13 +208,26 @@ function TournamentDetailPage() {
           <Panel>
             <PanelHeader eyebrow="Admin" title="Bracket Management" />
             <div className="px-6 py-6">
-              <BracketManager
-                tournamentId={tournament.id}
-                tournamentName={tournament.name}
-                format={tournament.format}
-                teams={detailTeams}
-                initialBracket={detailBracket}
-              />
+              {supportsBracketManager ? (
+                <BracketManager
+                  tournamentId={tournament.id}
+                  tournamentName={tournament.name}
+                  format={tournament.format}
+                  teams={detailTeams}
+                  initialBracket={detailBracket}
+                />
+              ) : (
+                <div className="py-12 text-center text-muted-foreground">
+                  <p className="text-base-readable">
+                    Bracket management is only available for 16-team single-elimination
+                    tournaments.
+                  </p>
+                  <p className="mt-2 text-sm">
+                    This tournament uses {tournament.format} with {detailTeams.length} registered
+                    teams.
+                  </p>
+                </div>
+              )}
             </div>
           </Panel>
         )}
@@ -223,22 +245,30 @@ function TabButton({
   icon,
   label,
   count,
+  disabled,
+  title,
   onClick,
 }: {
   active: boolean;
   icon: React.ReactNode;
   label: string;
   count?: number;
+  disabled?: boolean;
+  title?: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className={`relative flex items-center gap-3 px-6 py-4 text-sm-readable font-tech font-medium uppercase tracking-wider-2 transition ${
         active
           ? "text-foreground bg-card"
-          : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/50"
+          : disabled
+            ? "text-muted-foreground/50 cursor-not-allowed"
+            : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/50"
       }`}
     >
       {icon}

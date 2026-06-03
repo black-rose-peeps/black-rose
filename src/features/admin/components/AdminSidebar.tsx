@@ -58,7 +58,10 @@ export function AdminSidebar() {
     if (exact) {
       return location.pathname === href;
     }
-    return location.pathname.startsWith(href);
+    return (
+      location.pathname === href ||
+      location.pathname.startsWith(`${href}/`)
+    );
   };
 
   return (
