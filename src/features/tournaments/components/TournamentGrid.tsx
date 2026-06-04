@@ -1,9 +1,14 @@
 import { Trophy } from "lucide-react";
 import { TournamentCard } from "./TournamentCard";
 import type { Tournament } from "../types";
+import type { MockTournament } from "@/lib/mock-data";
+
+// Accept either the public Tournament type or the wider MockTournament (which
+// includes "Draft" status). TournamentCard handles the display either way.
+type AnyTournament = Tournament | MockTournament;
 
 interface TournamentGridProps {
-  tournaments: Tournament[];
+  tournaments: AnyTournament[];
 }
 
 export function TournamentGrid({ tournaments }: TournamentGridProps) {
@@ -22,7 +27,7 @@ export function TournamentGrid({ tournaments }: TournamentGridProps) {
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {tournaments.map((t) => (
-        <TournamentCard key={t.id} tournament={t} />
+        <TournamentCard key={t.id} tournament={t as Tournament} />
       ))}
     </div>
   );

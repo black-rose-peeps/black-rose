@@ -1,5 +1,8 @@
 import { TournamentGrid } from "./TournamentGrid";
 import type { Tournament } from "../types";
+import type { MockTournament } from "@/lib/mock-data";
+
+type AnyTournament = Tournament | MockTournament;
 
 /** Labelled section group used on the tournament directory page. */
 export function TournamentGroup({
@@ -9,7 +12,7 @@ export function TournamentGroup({
 }: {
   label: string;
   dot?: string;
-  tournaments: Tournament[];
+  tournaments: AnyTournament[];
 }) {
   return (
     <div className="flex flex-col gap-5">

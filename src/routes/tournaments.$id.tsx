@@ -8,22 +8,23 @@ import { OverviewTab } from "@/features/tournaments/$id/components/OverviewTab";
 import { TeamsTab } from "@/features/tournaments/$id/components/TeamsTab";
 import { BracketTab } from "@/features/tournaments/$id/components/BracketTab";
 import { RulesTab } from "@/features/tournaments/$id/components/RulesTab";
+import { useTournamentRegistrations } from "@/features/tournaments/hooks";
+import { mockTeamToTournamentTeam } from "@/features/tournaments/utils";
 import { mockTournamentDetails } from "@/lib/mock-tournament-details";
-import { mockTournaments } from "@/lib/mock-data";
+import { fetchTournamentById } from "@/features/tournaments/services";
 import type { Tab } from "@/features/tournaments/$id/components/TournamentTabs";
 import type { TournamentDetail } from "@/features/tournaments/types";
 
 export const Route = createFileRoute("/tournaments/$id")({
-  loader: ({ params }): { tournament: TournamentDetail } => {
-    // Try the rich detail record first
+  loader: async ({ params }): Promise<{ tournament: TournamentDetail }> => {
+    // Try the rich detail record first (has description, rules, schedule, bracket)
     const detail = mockTournamentDetails[params.id];
     if (detail) return { tournament: detail };
 
-    // Fall back to summary data from the directory for tournaments without detail records
-    const summary = mockTournaments.find((t) => t.id === params.id && t.status !== "Draft");
-    if (!summary) throw notFound();
+    // Fall back to the live service for tournaments without a detail record
+    const summary = await fetchTournamentById(params.id);
+    if (!summary || summary.status === "Draft") throw notFound();
 
-    // Synthesise a minimal TournamentDetail from the summary so the page still renders
     const fallback: TournamentDetail = {
       id: summary.id,
       name: summary.name,
@@ -70,33 +71,43 @@ export const Route = createFileRoute("/tournaments/$id")({
 });
 
 function TournamentDetailPage() {
-  const loaderData = Route.useLoaderData();
-  const tournament = loaderData!.tournament as TournamentDetail;
+  const { tournament } = Route.useLoaderData()!;
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+
+  // Live registrations — the admin service is the single source of truth.
+  // We show only Approved teams (filtered inside the hook).
+  const { registrations, isLoading: teamsLoading } = useTournamentRegistrations(tournament.id);
+
+  // Convert approved registrations → TournamentTeam for the public TeamsTab.
+  // Fall back to the static detail teams if live registrations haven't loaded yet.
+  const liveTeams = registrations.map(mockTeamToTournamentTeam);
+  const displayTeams = liveTeams.length > 0 ? liveTeams : tournament.teams;
+
+  // teamsRegistered shown in the hero: prefer live count once loaded
+  const liveDetail: TournamentDetail = {
+    ...tournament,
+    teamsRegistered: teamsLoading ? tournament.teamsRegistered : registrations.length,
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
 
-      <TournamentHero tournament={tournament} />
+      <TournamentHero tournament={liveDetail} />
 
-      <TournamentTabs
-        active={activeTab}
-        onChange={setActiveTab}
-        teamCount={tournament.teams.length}
-      />
+      <TournamentTabs active={activeTab} onChange={setActiveTab} teamCount={displayTeams.length} />
 
       <main className="relative bg-[oklch(0.05_0_0)]">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
         <div className="relative mx-auto max-w-7xl px-6 py-12">
           {activeTab === "overview" && (
             <div role="tabpanel" id="tab-panel-overview" aria-labelledby="tab-overview">
-              <OverviewTab tournament={tournament} />
+              <OverviewTab tournament={liveDetail} />
             </div>
           )}
           {activeTab === "teams" && (
             <div role="tabpanel" id="tab-panel-teams" aria-labelledby="tab-teams">
-              <TeamsTab teams={tournament.teams} />
+              <TeamsTab teams={displayTeams} isLoading={teamsLoading} />
             </div>
           )}
           {activeTab === "bracket" && (
