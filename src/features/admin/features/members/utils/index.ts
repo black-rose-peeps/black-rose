@@ -33,6 +33,19 @@ export function validateCreateMemberForm(
     errors.discordId = "Discord ID must be a 17–20 digit number.";
   }
 
+  if (values.role === "Admin") {
+    if (!values.password) {
+      errors.password = "Password is required for Admin accounts.";
+    } else if (values.password.length < 8) {
+      errors.password = "Password must be at least 8 characters.";
+    }
+    if (!values.confirmPassword) {
+      errors.confirmPassword = "Please confirm the password.";
+    } else if (values.password !== values.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match.";
+    }
+  }
+
   return errors;
 }
 
@@ -48,6 +61,7 @@ export function formValuesToCreateInput(values: CreateMemberFormValues): CreateM
     discordUsername: values.discordUsername.trim(),
     discordId: values.discordId.trim() || undefined,
     role: values.role,
+    password: values.role === "Admin" ? values.password : undefined,
   };
 }
 

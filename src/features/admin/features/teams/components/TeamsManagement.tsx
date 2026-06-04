@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -88,11 +89,33 @@ export function TeamsManagement() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    Loading teams…
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {/* Team tag + name */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-9 w-9 shrink-0" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    </TableCell>
+                    {/* Game */}
+                    <TableCell>
+                      <Skeleton className="h-3.5 w-20" />
+                    </TableCell>
+                    {/* Captain */}
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    {/* Roster */}
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    {/* Actions */}
+                    <TableCell className="text-right">
+                      <Skeleton className="ml-auto h-7 w-28 rounded-md" />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : teams.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">

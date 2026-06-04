@@ -1,4 +1,4 @@
-export type MemberRole = "User" | "Admin" | "Moderator";
+export type MemberRole = "User" | "Admin";
 export type MemberStatus = "Active" | "Suspended";
 
 export interface AdminMember {
@@ -17,6 +17,9 @@ export interface CreateMemberFormValues {
   discordUsername: string;
   discordId: string;
   role: MemberRole;
+  /** Required only when role is "Admin". */
+  password: string;
+  confirmPassword: string;
 }
 
 export interface CreateMemberInput {
@@ -24,4 +27,6 @@ export interface CreateMemberInput {
   discordUsername: string;
   discordId?: string;
   role: MemberRole;
+  /** Plain-text password — stored as a console credential when role is "Admin". */
+  password?: string;
 }
