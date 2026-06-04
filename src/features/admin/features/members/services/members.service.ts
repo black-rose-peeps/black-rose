@@ -1,58 +1,50 @@
-/**
- * Members data layer — replace mock store with Supabase when `profiles` exists.
- */
-
-import { mockUsers } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase";
 import type { AdminMember, CreateMemberInput } from "../types";
-import { buildAdminMemberFromInput, mapMockUserToAdminMember } from "../utils";
-
-const MOCK_LATENCY_MS = 200;
-
-let membersStore: AdminMember[] = mockUsers.map(mapMockUserToAdminMember);
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { rowToAdminMember } from "../utils";
 
 export async function fetchMembers(): Promise<AdminMember[]> {
-  await delay(MOCK_LATENCY_MS);
-  return [...membersStore].sort((a, b) => b.registrationDate.localeCompare(a.registrationDate));
+  const { data, error } = await supabase
+    .from("members")
+    .select("*")
+    .order("registered_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(rowToAdminMember);
 }
 
 export async function fetchMemberById(id: string): Promise<AdminMember | null> {
-  await delay(0);
-  return membersStore.find((m) => m.id === id) ?? null;
+  const { data, error } = await supabase.from("members").select("*").eq("id", id).single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null; // not found
+    throw new Error(error.message);
+  }
+  return data ? rowToAdminMember(data) : null;
 }
 
 export async function createMember(input: CreateMemberInput): Promise<AdminMember> {
-  await delay(MOCK_LATENCY_MS);
+  const { data, error } = await supabase
+    .from("members")
+    .insert({
+      username: input.username,
+      discord_username: input.discordUsername,
+      discord_id: input.discordId ?? null,
+      role: input.role,
+    })
+    .select()
+    .single();
 
-  const duplicateUsername = membersStore.some(
-    (m) => m.username.toLowerCase() === input.username.toLowerCase(),
-  );
-  if (duplicateUsername) {
-    throw new Error("A member with this username already exists.");
-  }
-
-  const duplicateDiscord = membersStore.some(
-    (m) => m.discordUsername.toLowerCase() === input.discordUsername.toLowerCase(),
-  );
-  if (duplicateDiscord) {
-    throw new Error("A member with this Discord username already exists.");
-  }
-
-  if (input.discordId) {
-    const duplicateId = membersStore.some((m) => m.discordId === input.discordId);
-    if (duplicateId) {
-      throw new Error("This Discord ID is already linked to another member.");
+  if (error) {
+    if (error.code === "23505") {
+      if (error.message.includes("username"))
+        throw new Error("That username is already registered.");
+      if (error.message.includes("discord_username"))
+        throw new Error("That Discord username is already registered.");
+      if (error.message.includes("discord_id"))
+        throw new Error("That Discord ID is already linked to another member.");
     }
+    throw new Error(error.message);
   }
 
-  const member = buildAdminMemberFromInput(input);
-  membersStore = [member, ...membersStore];
-  return member;
-}
-
-export function resetMembersStoreForTesting(): void {
-  membersStore = mockUsers.map(mapMockUserToAdminMember);
+  return rowToAdminMember(data);
 }

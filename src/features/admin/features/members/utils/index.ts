@@ -1,101 +1,113 @@
-import type { MockUser } from "@/lib/mock-data";
-import type { BadgeProps } from "@/components/ui/badge";
 import type {
   AdminMember,
-  AdminMemberStatus,
   CreateMemberFormValues,
   CreateMemberInput,
-  CreateMemberFieldErrors,
+  MemberStatus,
 } from "../types";
-import { DEFAULT_MEMBER_STATUS } from "../constants";
-
-export function normalizeDiscordUsername(value: string): string {
-  return value.trim().replace(/^@/, "");
-}
-
-export function mapMockUserToAdminMember(user: MockUser): AdminMember {
-  return {
-    id: user.id,
-    username: user.username,
-    discordUsername: user.username.toLowerCase(),
-    discordId: null,
-    role: user.role,
-    status: user.status,
-    registrationDate: user.registrationDate,
-    email: user.email,
-  };
-}
-
-export function formValuesToCreateInput(values: CreateMemberFormValues): CreateMemberInput {
-  return {
-    username: values.username.trim(),
-    discordUsername: normalizeDiscordUsername(values.discordUsername),
-    discordId: values.discordId.trim() || undefined,
-    role: values.role,
-  };
-}
-
-export function buildAdminMemberFromInput(input: CreateMemberInput): AdminMember {
-  return {
-    id: `u-${crypto.randomUUID().slice(0, 8)}`,
-    username: input.username,
-    discordUsername: input.discordUsername,
-    discordId: input.discordId ?? null,
-    role: input.role,
-    status: DEFAULT_MEMBER_STATUS,
-    registrationDate: new Date().toISOString().slice(0, 10),
-  };
-}
 
 export function validateCreateMemberForm(
   values: CreateMemberFormValues,
   existingMembers: AdminMember[],
-): CreateMemberFieldErrors {
-  const errors: CreateMemberFieldErrors = {};
-  const username = values.username.trim();
-  const discordUsername = normalizeDiscordUsername(values.discordUsername);
-  const discordId = values.discordId.trim();
+): Partial<Record<keyof CreateMemberFormValues, string>> {
+  const errors: Partial<Record<keyof CreateMemberFormValues, string>> = {};
 
-  if (!username) {
+  if (!values.username.trim()) {
     errors.username = "Username is required.";
-  } else if (!/^[a-zA-Z0-9_]{3,32}$/.test(username)) {
-    errors.username = "Use 3–32 characters: letters, numbers, and underscores only.";
-  } else if (existingMembers.some((m) => m.username.toLowerCase() === username.toLowerCase())) {
-    errors.username = "This username is already taken.";
-  }
-
-  if (!discordUsername) {
-    errors.discordUsername = "Discord username is required.";
-  } else if (!/^[a-z0-9._]{2,32}$/i.test(discordUsername)) {
-    errors.discordUsername = "Use 2–32 characters: letters, numbers, dots, and underscores.";
   } else if (
-    existingMembers.some((m) => m.discordUsername.toLowerCase() === discordUsername.toLowerCase())
+    existingMembers.some((m) => m.username.toLowerCase() === values.username.toLowerCase())
   ) {
-    errors.discordUsername = "This Discord username is already registered.";
+    errors.username = "Username is already taken.";
   }
 
-  if (discordId && !/^\d{17,20}$/.test(discordId)) {
-    errors.discordId = "Discord ID must be a 17–20 digit snowflake.";
-  } else if (discordId && existingMembers.some((m) => m.discordId === discordId)) {
-    errors.discordId = "This Discord ID is already linked.";
+  if (!values.discordUsername.trim()) {
+    errors.discordUsername = "Discord username is required.";
+  } else if (
+    existingMembers.some(
+      (m) => m.discordUsername.toLowerCase() === values.discordUsername.toLowerCase(),
+    )
+  ) {
+    errors.discordUsername = "Discord username is already registered.";
+  }
+
+  if (values.discordId && !/^\d{17,20}$/.test(values.discordId)) {
+    errors.discordId = "Discord ID must be a 17–20 digit number.";
   }
 
   return errors;
 }
 
-export function hasFormErrors(errors: CreateMemberFieldErrors): boolean {
-  return Object.keys(errors).length > 0;
+export function hasFormErrors(
+  errors: Partial<Record<keyof CreateMemberFormValues, string>>,
+): boolean {
+  return Object.values(errors).some(Boolean);
+}
+
+export function formValuesToCreateInput(values: CreateMemberFormValues): CreateMemberInput {
+  return {
+    username: values.username.trim(),
+    discordUsername: values.discordUsername.trim(),
+    discordId: values.discordId.trim() || undefined,
+    role: values.role,
+  };
+}
+
+export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
+  return {
+    id: row.id as string,
+    username: row.username as string,
+    discordUsername: row.discord_username as string,
+    discordId: row.discord_id as string | null,
+    role: row.role as AdminMember["role"],
+    status: row.status as AdminMember["status"],
+    registeredAt: row.registered_at as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+export function buildAdminMemberFromInput(input: CreateMemberInput): AdminMember {
+  return {
+    id: crypto.randomUUID(),
+    username: input.username,
+    discordUsername: input.discordUsername,
+    discordId: input.discordId ?? null,
+    role: input.role,
+    status: "Active",
+    registeredAt: new Date().toISOString().split("T")[0],
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function mapMockUserToAdminMember(user: {
+  id: string;
+  username: string;
+  discordUsername: string;
+  discordId?: string;
+  role: AdminMember["role"];
+  status: AdminMember["status"];
+  registeredAt: string;
+  createdAt: string;
+}): AdminMember {
+  return {
+    id: user.id,
+    username: user.username,
+    discordUsername: user.discordUsername,
+    discordId: user.discordId ?? null,
+    role: user.role,
+    status: user.status,
+    registeredAt: user.registeredAt,
+    createdAt: user.createdAt,
+  };
 }
 
 export function memberStatusBadgeVariant(
-  status: AdminMemberStatus,
-): NonNullable<BadgeProps["variant"]> {
+  status: MemberStatus,
+): "default" | "destructive" | "outline" | "secondary" {
   switch (status) {
     case "Active":
       return "default";
     case "Suspended":
-      return "secondary";
-    case "Banned":
       return "destructive";
+    default:
+      return "secondary";
   }
 }
