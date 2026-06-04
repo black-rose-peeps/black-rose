@@ -42,6 +42,8 @@ export function CreateMemberModal({
   >({});
   const { submit, isSubmitting, error, resetError } = useCreateMember();
 
+  const isAdmin = values.role === "Admin";
+
   useEffect(() => {
     if (!open) return;
     setValues(DEFAULT_CREATE_MEMBER_FORM);
@@ -53,7 +55,15 @@ export function CreateMemberModal({
     key: K,
     value: CreateMemberFormValues[K],
   ) {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setValues((prev) => {
+      const next = { ...prev, [key]: value };
+      // Clear password fields when switching away from Admin
+      if (key === "role" && value !== "Admin") {
+        next.password = "";
+        next.confirmPassword = "";
+      }
+      return next;
+    });
     setFieldErrors((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };
@@ -168,6 +178,53 @@ export function CreateMemberModal({
                 </SelectContent>
               </Select>
             </div>
+
+            {isAdmin && (
+              <>
+                <div className="space-y-2 sm:col-span-2">
+                  <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                    Admin Console Password
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    This password will be used to log in to the Admin Console.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="member-password">Password</Label>
+                  <Input
+                    id="member-password"
+                    type="password"
+                    value={values.password}
+                    onChange={(e) => updateField("password", e.target.value)}
+                    placeholder="Min. 8 characters"
+                    autoComplete="new-password"
+                    disabled={isSubmitting}
+                    className="bg-background/50"
+                  />
+                  {fieldErrors.password && (
+                    <p className="text-xs text-destructive">{fieldErrors.password}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="member-confirm-password">Confirm Password</Label>
+                  <Input
+                    id="member-confirm-password"
+                    type="password"
+                    value={values.confirmPassword}
+                    onChange={(e) => updateField("confirmPassword", e.target.value)}
+                    placeholder="Re-enter password"
+                    autoComplete="new-password"
+                    disabled={isSubmitting}
+                    className="bg-background/50"
+                  />
+                  {fieldErrors.confirmPassword && (
+                    <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {error && (

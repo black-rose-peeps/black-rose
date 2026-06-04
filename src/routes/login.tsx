@@ -1,9 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { AdminConsoleLogin } from "@/features/admin/auth/AdminConsoleLogin";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { DiscordButton } from "@/features/auth/components/DiscordButton";
 import { simulateDiscordLogin } from "@/features/auth/store/session";
 
+type LoginSearch = {
+  console?: string;
+};
+
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>): LoginSearch => ({
+    console: typeof search.console === "string" ? search.console : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign In — Black Rose" },
@@ -18,12 +27,29 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { console: consoleParam } = Route.useSearch();
+  const [showAdminConsole, setShowAdminConsole] = useState(consoleParam === "1");
 
   function handleLogin() {
     // TODO: Replace with real Discord OAuth2 redirect when backend is ready.
-    // Simulates a verified login → redirects to member dashboard.
     simulateDiscordLogin();
     navigate({ to: "/dashboard" });
+  }
+
+  if (showAdminConsole) {
+    return (
+      <AuthShell
+        headline="Operations"
+        subheadline="Tournament administrators sign in with credentials created in the Members panel."
+      >
+        <AdminConsoleLogin
+          onBack={() => {
+            setShowAdminConsole(false);
+            navigate({ to: "/login", search: {} });
+          }}
+        />
+      </AuthShell>
+    );
   }
 
   return (
@@ -31,7 +57,6 @@ function LoginPage() {
       headline="Welcome Back"
       subheadline="Sign in with your Discord account to manage your team, register for tournaments, and track your competitive journey."
     >
-      {/* Heading */}
       <div className="mb-10">
         <div className="mb-3 flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
           <span className="h-px w-10 bg-border" />
@@ -43,7 +68,6 @@ function LoginPage() {
         </p>
       </div>
 
-      {/* Discord CTA */}
       <div className="flex flex-col gap-4">
         <DiscordButton onClick={handleLogin} />
 
@@ -52,10 +76,8 @@ function LoginPage() {
         </p>
       </div>
 
-      {/* Divider */}
       <div className="my-8 h-px bg-border" />
 
-      {/* Footer links */}
       <div className="flex flex-col gap-3 text-center text-xs text-muted-foreground">
         <p>
           New to Black Rose?{" "}
@@ -65,9 +87,16 @@ function LoginPage() {
         </p>
         <p>
           Admin?{" "}
-          <Link to="/admin" className="text-foreground underline-offset-4 hover:underline">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAdminConsole(true);
+              navigate({ to: "/login", search: { console: "1" } });
+            }}
+            className="text-foreground underline-offset-4 hover:underline"
+          >
             Enter Console
-          </Link>
+          </button>
         </p>
       </div>
     </AuthShell>

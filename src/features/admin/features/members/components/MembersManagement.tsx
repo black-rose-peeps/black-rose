@@ -3,6 +3,7 @@ import { UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -77,11 +78,33 @@ export function MembersManagement() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    Loading members…
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {/* Username */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 shrink-0" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                    </TableCell>
+                    {/* Discord */}
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    {/* Role */}
+                    <TableCell>
+                      <Skeleton className="h-3.5 w-16" />
+                    </TableCell>
+                    {/* Registered */}
+                    <TableCell>
+                      <Skeleton className="h-3.5 w-20" />
+                    </TableCell>
+                    {/* Status */}
+                    <TableCell>
+                      <Skeleton className="h-5 w-14 rounded-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : members.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
@@ -111,7 +134,7 @@ export function MembersManagement() {
                       {member.role}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {member.registrationDate}
+                      {member.registeredAt}
                     </TableCell>
                     <TableCell>
                       <Badge variant={memberStatusBadgeVariant(member.status)}>

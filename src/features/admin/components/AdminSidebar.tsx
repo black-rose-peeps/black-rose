@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Trophy,
@@ -8,7 +8,9 @@ import {
   Megaphone,
   Settings,
   Shield,
+  LogOut,
 } from "lucide-react";
+import { logoutAdminConsole } from "@/features/admin/auth/admin-session";
 
 const navigation = [
   {
@@ -38,34 +40,37 @@ const navigation = [
     icon: UserCheck,
   },
 
-  {
-    name: "Announcements",
-    href: "/admin/announcements",
-    icon: Megaphone,
-  },
+  // {
+  //   name: "Announcements",
+  //   href: "/admin/announcements",
+  //   icon: Megaphone,
+  // },
 
-  {
-    name: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
+  // {
+  //   name: "Settings",
+  //   href: "/admin/settings",
+  //   icon: Settings,
+  // },
 ];
 
 export function AdminSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
       return location.pathname === href;
     }
-    return (
-      location.pathname === href ||
-      location.pathname.startsWith(`${href}/`)
-    );
+    return location.pathname === href || location.pathname.startsWith(`${href}/`);
   };
 
+  function handleLogout() {
+    logoutAdminConsole();
+    navigate({ to: "/login", search: { console: "1" } });
+  }
+
   return (
-    <div className="w-64 border-r border-border bg-card/50 backdrop-blur">
+    <div className="flex w-64 flex-col border-r border-border bg-card/50 backdrop-blur">
       <div className="p-6">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded bg-foreground">
@@ -78,7 +83,7 @@ export function AdminSidebar() {
         </div>
       </div>
 
-      <nav className="px-3 pb-6">
+      <nav className="flex-1 px-3 pb-4">
         <ul className="space-y-1">
           {navigation.map((item) => {
             const active = isActive(item.href, item.exact);
@@ -105,6 +110,17 @@ export function AdminSidebar() {
           })}
         </ul>
       </nav>
+
+      <div className="border-t border-border px-3 py-4">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOut className="h-4 w-4 group-hover:text-destructive" />
+          Sign Out
+        </button>
+      </div>
     </div>
   );
 }

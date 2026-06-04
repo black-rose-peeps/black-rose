@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchTeams } from "@/features/admin/features/teams/services/teams.service";
 import type { Team } from "@/features/teams/types";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
@@ -107,24 +108,34 @@ export function AddTeamToTournamentDialog({
                 Team cap reached. Remove a team or raise the cap to add more.
               </AlertDescription>
             </Alert>
+          ) : teamsLoading ? (
+            <div className="space-y-2">
+              <Label>Roster team</Label>
+              <div className="space-y-2 rounded-md border border-border bg-background/50 p-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="space-y-2">
               <Label htmlFor="add-team-select">Roster team</Label>
               <Select
                 value={selectedTeamId}
                 onValueChange={setSelectedTeamId}
-                disabled={isSubmitting || teamsLoading || eligibleTeams.length === 0}
+                disabled={isSubmitting || eligibleTeams.length === 0}
               >
                 <SelectTrigger id="add-team-select" className="bg-background/50">
                   <SelectValue
                     placeholder={
-                      teamsLoading
-                        ? "Loading teams…"
-                        : teamsLoadError
-                          ? "Could not load teams"
-                          : eligibleTeams.length === 0
-                            ? "No eligible teams — create one under Teams"
-                            : "Select a team"
+                      teamsLoadError
+                        ? "Could not load teams"
+                        : eligibleTeams.length === 0
+                          ? "No eligible teams — create one under Teams"
+                          : "Select a team"
                     }
                   />
                 </SelectTrigger>
@@ -157,7 +168,7 @@ export function AddTeamToTournamentDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || atCap || !selectedTeamId}
+              disabled={isSubmitting || atCap || !selectedTeamId || teamsLoading}
               className="font-tech uppercase tracking-wider"
             >
               {isSubmitting ? "Adding…" : "Add Team"}

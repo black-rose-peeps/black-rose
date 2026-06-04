@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { registerAdminCredential } from "@/features/admin/auth/admin-session";
 import type { AdminMember, CreateMemberInput } from "../types";
 import { rowToAdminMember } from "../utils";
 
@@ -41,7 +42,14 @@ export function useCreateMember() {
         throw new Error(sbError.message);
       }
 
-      return rowToAdminMember(data);
+      const member = rowToAdminMember(data);
+
+      // Register console credentials for Admin members so they can log in immediately.
+      if (input.role === "Admin" && input.password) {
+        registerAdminCredential(input.username, input.password);
+      }
+
+      return member;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       setError(message);

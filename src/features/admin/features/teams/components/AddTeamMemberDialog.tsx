@@ -133,7 +133,7 @@ export function AddTeamMemberDialog({
             )}
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="add-member-role">In-game Role</Label>
             <Select
               value={values.role}
@@ -151,7 +151,7 @@ export function AddTeamMemberDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
 
           {error && (
             <Alert variant="destructive">
