@@ -22,11 +22,7 @@ import type { AdminMember } from "@/features/admin/features/members/types";
 import { DEFAULT_ADD_TEAM_MEMBER_FORM } from "../constants";
 import { useAddTeamMember } from "../hooks";
 import type { AddTeamMemberFormValues, Team } from "../types";
-import {
-  formValuesToAddTeamMemberInput,
-  hasFormErrors,
-  validateAddTeamMemberForm,
-} from "../utils";
+import { formValuesToAddTeamMemberInput, hasFormErrors, validateAddTeamMemberForm } from "../utils";
 
 interface AddTeamMemberDialogProps {
   open: boolean;
@@ -51,9 +47,7 @@ export function AddTeamMemberDialog({
 
   const availableMembers = useMemo(() => {
     if (!team) return [];
-    const onTeam = new Set(
-      team.members.filter((m) => m.status !== "removed").map((m) => m.userId),
-    );
+    const onTeam = new Set(team.members.filter((m) => m.status !== "removed").map((m) => m.userId));
     return allMembers.filter((m) => !onTeam.has(m.id));
   }, [team, allMembers]);
 
@@ -122,9 +116,7 @@ export function AddTeamMemberDialog({
               <SelectTrigger id="add-member-select" className="bg-background/50">
                 <SelectValue
                   placeholder={
-                    availableMembers.length === 0
-                      ? "No available members"
-                      : "Select member"
+                    availableMembers.length === 0 ? "No available members" : "Select member"
                   }
                 />
               </SelectTrigger>
@@ -145,9 +137,7 @@ export function AddTeamMemberDialog({
             <Label htmlFor="add-member-role">In-game Role</Label>
             <Select
               value={values.role}
-              onValueChange={(role) =>
-                updateField("role", role as AddTeamMemberFormValues["role"])
-              }
+              onValueChange={(role) => updateField("role", role as AddTeamMemberFormValues["role"])}
               disabled={isSubmitting}
             >
               <SelectTrigger id="add-member-role" className="bg-background/50">
