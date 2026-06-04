@@ -158,6 +158,12 @@ export function BracketManager({
       newAssignments.push(null);
     }
     setAssignments(newAssignments);
+    // Invalidate managed bracket so it reflects the new seeding order
+    setManagedMatches([]);
+    setRoundMetas([]);
+    setRoundFormats({});
+    setBracketGenerated(false);
+    setStatus("not_generated");
   }
 
   function handleRandomSeed() {
@@ -168,6 +174,12 @@ export function BracketManager({
       newAssignments.push(null);
     }
     setAssignments(newAssignments);
+    // Invalidate managed bracket so it reflects the new seeding order
+    setManagedMatches([]);
+    setRoundMetas([]);
+    setRoundFormats({});
+    setBracketGenerated(false);
+    setStatus("not_generated");
   }
   function handleReset() {
     if (isPublished) {
@@ -227,9 +239,20 @@ export function BracketManager({
     [managedMatches, roundFormats],
   );
 
-  const handleRoundFormat = useCallback((roundId: string, format: BestOfFormat) => {
-    setRoundFormats((prev) => ({ ...prev, [roundId]: format }));
-  }, []);
+  const handleRoundFormat = useCallback(
+    (roundId: string, format: BestOfFormat) => {
+      // Block format change if any match in this round already has confirmed results
+      const hasConfirmed = managedMatches.some((m) => m.roundId === roundId && m.confirmed);
+      if (hasConfirmed) {
+        alert(
+          "Cannot change format: one or more matches in this round already have confirmed results. Reset those matches first.",
+        );
+        return;
+      }
+      setRoundFormats((prev) => ({ ...prev, [roundId]: format }));
+    },
+    [managedMatches],
+  );
 
   function onTeamSelect(slotIdx: number, teamId: string | null) {
     if (seedingLocked) return;

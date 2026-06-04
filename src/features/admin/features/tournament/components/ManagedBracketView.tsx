@@ -223,15 +223,11 @@ function BracketSection({
                         score={match.scoreA}
                         required={required}
                         isWinner={!!match.teamA && match.winner === match.teamA}
-                        isLoser={
-                          matchDecided && !!match.teamA && match.winner !== match.teamA
-                        }
+                        isLoser={matchDecided && !!match.teamA && match.winner !== match.teamA}
                         team={match.teamA ? teamByName.get(match.teamA) : undefined}
                         disabled={!match.teamA || !match.teamB}
                         matchLocked={matchDecided}
-                        onIncrement={() =>
-                          onScoreChange(match.id, match.scoreA + 1, match.scoreB)
-                        }
+                        onIncrement={() => onScoreChange(match.id, match.scoreA + 1, match.scoreB)}
                         onDecrement={() =>
                           onScoreChange(match.id, Math.max(0, match.scoreA - 1), match.scoreB)
                         }
@@ -242,15 +238,11 @@ function BracketSection({
                         score={match.scoreB}
                         required={required}
                         isWinner={!!match.teamB && match.winner === match.teamB}
-                        isLoser={
-                          matchDecided && !!match.teamB && match.winner !== match.teamB
-                        }
+                        isLoser={matchDecided && !!match.teamB && match.winner !== match.teamB}
                         team={match.teamB ? teamByName.get(match.teamB) : undefined}
                         disabled={!match.teamA || !match.teamB}
                         matchLocked={matchDecided}
-                        onIncrement={() =>
-                          onScoreChange(match.id, match.scoreA, match.scoreB + 1)
-                        }
+                        onIncrement={() => onScoreChange(match.id, match.scoreA, match.scoreB + 1)}
                         onDecrement={() =>
                           onScoreChange(match.id, match.scoreA, Math.max(0, match.scoreB - 1))
                         }
@@ -321,6 +313,7 @@ function ManagedTeamRow({
           controlsDisabled && "opacity-40",
         )}
         title={name && !matchLocked ? `Set ${name} as winner` : undefined}
+        aria-label={name && !matchLocked ? `Set ${name} as winner` : undefined}
       />
       <span
         className={cn(
@@ -346,14 +339,13 @@ function ManagedTeamRow({
           className="h-6 w-6"
           disabled={controlsDisabled || score <= 0}
           onClick={onDecrement}
+          aria-label={name ? `Decrease score for ${name}` : "Decrease score"}
         >
           <Minus className="h-3 w-3" />
         </Button>
         <span className="w-5 text-center text-xs font-bold tabular-nums">
           {isTbd ? "—" : score}
-          {!isTbd && (
-            <span className="text-[9px] text-muted-foreground">/{required}</span>
-          )}
+          {!isTbd && <span className="text-[9px] text-muted-foreground">/{required}</span>}
         </span>
         <Button
           type="button"
@@ -362,6 +354,7 @@ function ManagedTeamRow({
           className="h-6 w-6"
           disabled={controlsDisabled || score >= required}
           onClick={onIncrement}
+          aria-label={name ? `Increase score for ${name}` : "Increase score"}
         >
           <Plus className="h-3 w-3" />
         </Button>

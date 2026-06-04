@@ -40,17 +40,17 @@ const navigation = [
     icon: UserCheck,
   },
 
-  {
-    name: "Announcements",
-    href: "/admin/announcements",
-    icon: Megaphone,
-  },
+  // {
+  //   name: "Announcements",
+  //   href: "/admin/announcements",
+  //   icon: Megaphone,
+  // },
 
-  {
-    name: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
+  // {
+  //   name: "Settings",
+  //   href: "/admin/settings",
+  //   icon: Settings,
+  // },
 ];
 
 export function AdminSidebar() {

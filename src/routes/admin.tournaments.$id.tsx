@@ -64,25 +64,33 @@ function TournamentDetailPage() {
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
   const detail = mockTournamentDetails[tournament.id];
   const detailBracket = detail?.bracket ?? [];
-  const detailTeams =
-    detail?.teams ??
-    teams.map((t) => ({
-      id: t.id,
-      name: t.name,
-      tag: t.tag,
-      captain: t.captain,
-      players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
-    }));
 
-  const bracketNotice = formatBracketAvailability(tournament, detailTeams.length);
-  const supportsBracketManager = canUseBracketManager(tournament.format, detailTeams.length);
+  // Single source of truth: prefer live registrations, fall back to mock detail, then empty.
+  const computedTeams =
+    teams.length > 0
+      ? teams.map((t) => ({
+          id: t.id,
+          name: t.name,
+          tag: t.tag,
+          captain: t.captain,
+          players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
+        }))
+      : (detail?.teams ?? []);
+
+  const bracketNotice = formatBracketAvailability(tournament, computedTeams.length);
+  const supportsBracketManager = canUseBracketManager(tournament.format, computedTeams.length);
 
   return (
     <>
       <AdminTopbar title={tournament.name} subtitle="Tournament Operations" />
 
       <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
-        <Button variant="ghost" size="sm" className="w-fit gap-2 font-tech uppercase tracking-wider" asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit gap-2 font-tech uppercase tracking-wider"
+          asChild
+        >
           <Link to="/admin/tournaments">
             <ArrowLeft className="h-4 w-4" />
             Back to Tournaments
@@ -142,7 +150,9 @@ function TournamentDetailPage() {
                   <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                     Registrations
                   </p>
-                  <h2 className="font-display text-xl font-bold tracking-wider-2">Registered Teams</h2>
+                  <h2 className="font-display text-xl font-bold tracking-wider-2">
+                    Registered Teams
+                  </h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -286,7 +296,7 @@ function TournamentDetailPage() {
                     tournamentId={tournament.id}
                     tournamentName={tournament.name}
                     format={tournament.format}
-                    teams={detailTeams}
+                    teams={computedTeams}
                     initialBracket={detailBracket}
                   />
                 ) : (
@@ -296,7 +306,7 @@ function TournamentDetailPage() {
                         "Bracket management is not available for this tournament yet."}
                     </p>
                     <p className="mt-2 text-sm">
-                      {tournament.format} · {detailTeams.length}/{tournament.teamCap} teams
+                      {tournament.format} · {computedTeams.length}/{tournament.teamCap} teams
                       registered
                     </p>
                   </div>

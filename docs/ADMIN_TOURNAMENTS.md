@@ -220,7 +220,7 @@ create table public.bracket_rounds (
     'main', 'upper', 'lower', 'grand'
   )),
   best_of text not null default 'BO3' check (best_of in ('BO1', 'BO3', 'BO5')),
-  unique (tournament_id, id)
+  unique (tournament_id, sort_order)
 );
 
 create index bracket_rounds_tournament_idx

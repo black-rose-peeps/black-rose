@@ -133,6 +133,12 @@ export function buildDoubleElimMatches(teamNames: string[]): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
 } {
+  if (teamNames.length !== 8) {
+    throw new Error(
+      `buildDoubleElimMatches only supports exactly 8 teams; received ${teamNames.length}.`,
+    );
+  }
+
   const matches: ManagedMatch[] = [];
   const roundMetas: BracketRoundMeta[] = [];
 
@@ -292,9 +298,7 @@ export function updateMatchScores(
   else if (scoreB >= required) winner = source.teamB;
 
   const next = matches.map((x) =>
-    x.id === matchId
-      ? { ...x, scoreA, scoreB, winner, confirmed: winner !== null }
-      : x,
+    x.id === matchId ? { ...x, scoreA, scoreB, winner, confirmed: winner !== null } : x,
   );
 
   return recomputeAdvancements(next);

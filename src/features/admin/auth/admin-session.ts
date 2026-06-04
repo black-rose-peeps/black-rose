@@ -16,8 +16,17 @@ const SESSION_KEY = "br_admin_session";
 /** username → plain-text password (mock only — never do this in production) */
 const credentialStore = new Map<string, string>();
 
-/** Seed a mock admin account so you can log in immediately. */
-credentialStore.set("admin", "blackrose2026");
+/**
+ * Mock seed: loaded from VITE_ADMIN_SEED_USER / VITE_ADMIN_SEED_PASS env vars so
+ * the plain-text credential never has to be hard-coded in source.
+ * In production, replace this entire mock store with server-side session
+ * validation (e.g. supabase.auth.signInWithPassword + cookie/JWT).
+ */
+const seedUser = import.meta.env.VITE_ADMIN_SEED_USER as string | undefined;
+const seedPass = import.meta.env.VITE_ADMIN_SEED_PASS as string | undefined;
+if (seedUser && seedPass) {
+  credentialStore.set(seedUser.toLowerCase(), seedPass);
+}
 
 /**
  * Register a new admin credential when a member with role "Admin" is created.
