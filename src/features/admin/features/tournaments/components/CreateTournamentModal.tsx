@@ -29,11 +29,7 @@ import {
 } from "../constants";
 import { useCreateTournament } from "../hooks";
 import type { AdminTournament, CreateTournamentFormValues } from "../types";
-import {
-  formValuesToCreateInput,
-  hasFormErrors,
-  validateCreateTournamentForm,
-} from "../utils";
+import { formValuesToCreateInput, hasFormErrors, validateCreateTournamentForm } from "../utils";
 
 interface CreateTournamentModalProps {
   open: boolean;
@@ -90,7 +86,9 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
     <Dialog open={open} onOpenChange={(next) => !next && !isSubmitting && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl tracking-wider">Create Tournament</DialogTitle>
+          <DialogTitle className="font-display text-xl tracking-wider">
+            Create Tournament
+          </DialogTitle>
           <DialogDescription>
             Set up a new event. Single elimination unlocks the bracket manager for 16-team brackets.
           </DialogDescription>
@@ -262,7 +260,11 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="font-tech uppercase tracking-wider">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="font-tech uppercase tracking-wider"
+            >
               {isSubmitting ? "Creating…" : "Create Tournament"}
             </Button>
           </DialogFooter>

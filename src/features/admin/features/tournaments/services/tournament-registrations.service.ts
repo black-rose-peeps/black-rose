@@ -1,110 +1,153 @@
-/**
- * Tournament team registrations — mock store until Supabase.
- */
+import { supabase } from "@/lib/supabase";
+import type { MockTeam } from "@/lib/mock-data";
+import { fetchTeams } from "@/features/admin/features/teams/services/teams.service";
+import { assignTeamActiveTournament } from "@/features/admin/features/teams/services/teams.service";
+import { fetchTournamentById, syncTournamentTeamCount } from "./tournaments.service";
 
-import {
-  assignTeamActiveTournament,
-  fetchTeams,
-} from "@/features/admin/features/teams/services/teams.service";
-import type { Team } from "@/features/teams/types";
-import { mockTeams, type MockTeam } from "@/lib/mock-data";
-import { getTournamentByIdSync, syncTournamentTeamCount } from "./tournaments.service";
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const MOCK_LATENCY_MS = 150;
+async function fetchRegistrationWithPlayers(registrationId: string): Promise<MockTeam> {
+  const { data: reg, error: regErr } = await supabase
+    .from("tournament_registrations")
+    .select("*")
+    .eq("id", registrationId)
+    .single();
 
-let registrationsStore: MockTeam[] = [...mockTeams];
+  if (regErr) throw new Error(regErr.message);
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  const { data: players, error: playersErr } = await supabase
+    .from("tournament_registration_players")
+    .select("*")
+    .eq("registration_id", registrationId);
+
+  if (playersErr) throw new Error(playersErr.message);
+
+  return rowToMockTeam(reg, players ?? []);
 }
 
-function registrationId(tournamentId: string, rosterTeamId: string): string {
-  return `reg-${tournamentId}-${rosterTeamId}`;
-}
-
-function teamToRegistration(team: Team, tournamentId: string): MockTeam {
-  const captain =
-    team.members.find((m) => m.status === "captain") ??
-    team.members.find((m) => m.status === "active") ??
-    team.members[0];
-
+function rowToMockTeam(reg: Record<string, unknown>, players: Record<string, unknown>[]): MockTeam {
   return {
-    id: registrationId(tournamentId, team.id),
-    rosterTeamId: team.id,
-    name: team.name,
-    tag: team.tag,
-    captain: captain?.username ?? captain?.ign ?? "—",
-    members: team.members
-      .filter((m) => m.status === "captain" || m.status === "active")
-      .map((m) => ({
-        ign: m.ign,
-        role: m.role,
-        discord: `${m.username}#0000`,
-      })),
-    registrationDate: new Date().toISOString().slice(0, 10),
-    status: "Approved",
-    tournamentId,
-    history: [],
+    id: reg.id as string,
+    rosterTeamId: reg.roster_team_id as string,
+    name: reg.name as string,
+    tag: reg.tag as string,
+    captain: reg.captain as string,
+    members: players.map((p) => ({
+      ign: p.ign as string,
+      role: p.role as string,
+      discord: p.discord as string,
+    })),
+    registrationDate: reg.registration_date as string,
+    status: reg.status as MockTeam["status"],
+    tournamentId: reg.tournament_id as string,
+    history: (reg.history as string[]) ?? [],
   };
 }
 
+// ── Service functions ─────────────────────────────────────────────────────────
+
 export async function fetchTournamentRegistrations(tournamentId: string): Promise<MockTeam[]> {
-  await delay(MOCK_LATENCY_MS);
-  return registrationsStore.filter((t) => t.tournamentId === tournamentId);
+  const { data: regs, error: regsErr } = await supabase
+    .from("tournament_registrations")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .order("registration_date", { ascending: false });
+
+  if (regsErr) throw new Error(regsErr.message);
+  if (!regs?.length) return [];
+
+  const regIds = regs.map((r) => r.id as string);
+
+  const { data: players, error: playersErr } = await supabase
+    .from("tournament_registration_players")
+    .select("*")
+    .in("registration_id", regIds);
+
+  if (playersErr) throw new Error(playersErr.message);
+
+  const playersByReg = new Map<string, Record<string, unknown>[]>();
+  for (const p of players ?? []) {
+    const rid = p.registration_id as string;
+    if (!playersByReg.has(rid)) playersByReg.set(rid, []);
+    playersByReg.get(rid)!.push(p);
+  }
+
+  return regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
 }
 
 export async function fetchAllRegistrations(): Promise<MockTeam[]> {
-  await delay(MOCK_LATENCY_MS);
-  return [...registrationsStore].sort((a, b) =>
-    b.registrationDate.localeCompare(a.registrationDate),
-  );
+  const { data: regs, error: regsErr } = await supabase
+    .from("tournament_registrations")
+    .select("*")
+    .order("registration_date", { ascending: false });
+
+  if (regsErr) throw new Error(regsErr.message);
+  if (!regs?.length) return [];
+
+  const regIds = regs.map((r) => r.id as string);
+
+  const { data: players, error: playersErr } = await supabase
+    .from("tournament_registration_players")
+    .select("*")
+    .in("registration_id", regIds);
+
+  if (playersErr) throw new Error(playersErr.message);
+
+  const playersByReg = new Map<string, Record<string, unknown>[]>();
+  for (const p of players ?? []) {
+    const rid = p.registration_id as string;
+    if (!playersByReg.has(rid)) playersByReg.set(rid, []);
+    playersByReg.get(rid)!.push(p);
+  }
+
+  return regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
 }
 
 export async function updateRegistrationStatus(
   registrationId: string,
   status: MockTeam["status"],
 ): Promise<MockTeam> {
-  await delay(MOCK_LATENCY_MS);
+  const { error } = await supabase
+    .from("tournament_registrations")
+    .update({ status })
+    .eq("id", registrationId);
 
-  const index = registrationsStore.findIndex((t) => t.id === registrationId);
-  if (index === -1) {
-    throw new Error("Registration not found.");
-  }
-
-  const updated = { ...registrationsStore[index], status };
-  registrationsStore = registrationsStore.map((t, i) => (i === index ? updated : t));
-  return updated;
+  if (error) throw new Error(error.message);
+  return fetchRegistrationWithPlayers(registrationId);
 }
 
 export async function addTeamToTournament(
   tournamentId: string,
   rosterTeamId: string,
 ): Promise<MockTeam> {
-  await delay(MOCK_LATENCY_MS);
+  const tournament = await fetchTournamentById(tournamentId);
+  if (!tournament) throw new Error("Tournament not found.");
 
-  const tournament = getTournamentByIdSync(tournamentId);
-  if (!tournament) {
-    throw new Error("Tournament not found.");
-  }
+  // Check cap
+  const { count, error: countErr } = await supabase
+    .from("tournament_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId);
 
-  const current = registrationsStore.filter((t) => t.tournamentId === tournamentId);
-  if (current.length >= tournament.teamCap) {
+  if (countErr) throw new Error(countErr.message);
+  if ((count ?? 0) >= tournament.teamCap) {
     throw new Error(`Team cap reached (${tournament.teamCap}).`);
   }
 
-  if (
-    current.some(
-      (r) => r.rosterTeamId === rosterTeamId || r.id === registrationId(tournamentId, rosterTeamId),
-    )
-  ) {
-    throw new Error("This team is already registered for this tournament.");
-  }
+  // Check already registered
+  const { data: existing } = await supabase
+    .from("tournament_registrations")
+    .select("id")
+    .eq("tournament_id", tournamentId)
+    .eq("roster_team_id", rosterTeamId)
+    .maybeSingle();
 
+  if (existing) throw new Error("This team is already registered for this tournament.");
+
+  // Get roster team
   const allTeams = await fetchTeams();
   const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
-  if (!rosterTeam) {
-    throw new Error("Team not found. Create the team under Teams first.");
-  }
+  if (!rosterTeam) throw new Error("Team not found. Create the team under Teams first.");
 
   if (rosterTeam.game !== "Multi" && rosterTeam.game !== tournament.game) {
     throw new Error(
@@ -118,14 +161,49 @@ export async function addTeamToTournament(
     );
   }
 
-  const registration = teamToRegistration(rosterTeam, tournamentId);
-  registrationsStore = [registration, ...registrationsStore];
-  syncTournamentTeamCount(tournamentId, current.length + 1);
-  assignTeamActiveTournament(rosterTeam.id, tournamentId, tournament.name);
+  const captain =
+    rosterTeam.members.find((m) => m.status === "captain") ??
+    rosterTeam.members.find((m) => m.status === "active") ??
+    rosterTeam.members[0];
 
-  return registration;
-}
+  // Insert registration
+  const { data: reg, error: regErr } = await supabase
+    .from("tournament_registrations")
+    .insert({
+      tournament_id: tournamentId,
+      roster_team_id: rosterTeamId,
+      name: rosterTeam.name,
+      tag: rosterTeam.tag,
+      captain: captain?.username ?? "—",
+      status: "Approved",
+      history: [],
+    })
+    .select()
+    .single();
 
-export function resetRegistrationsStoreForTesting(): void {
-  registrationsStore = [...mockTeams];
+  if (regErr) throw new Error(regErr.message);
+
+  // Insert players
+  const activePlayers = rosterTeam.members.filter(
+    (m) => m.status === "captain" || m.status === "active",
+  );
+
+  if (activePlayers.length > 0) {
+    const { error: playersErr } = await supabase.from("tournament_registration_players").insert(
+      activePlayers.map((m) => ({
+        registration_id: reg.id,
+        ign: m.ign,
+        role: m.role,
+        discord: `${m.username}#0000`,
+      })),
+    );
+
+    if (playersErr) throw new Error(playersErr.message);
+  }
+
+  // Update team count and assign active tournament
+  await syncTournamentTeamCount(tournamentId, (count ?? 0) + 1);
+  await assignTeamActiveTournament(rosterTeamId, tournamentId, tournament.name);
+
+  return fetchRegistrationWithPlayers(reg.id as string);
 }

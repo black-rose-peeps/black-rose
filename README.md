@@ -238,7 +238,7 @@ The project is currently frontend-only and uses mock data for development.
 
 ### Notes
 
-- No backend has been implemented yet.
-- No database is connected.
+- No backend has been implemented yet.(DONE)
+- No database is connected. (DONE)
 - Authentication is not functional yet. Registration simulates a session in `sessionStorage` and redirects to `/waitlist`.
-- All users, teams, tournaments, and registrations currently use mock data.
+- All users, teams, tournaments, and registrations currently use mock data. (DONE)
