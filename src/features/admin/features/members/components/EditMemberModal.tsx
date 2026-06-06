@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,35 +19,42 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DEFAULT_CREATE_MEMBER_FORM, MEMBER_VERIFICATION_STATUSES } from "../constants";
-import { useCreateMember } from "../hooks";
+import { useUpdateMember } from "../hooks/useUpdateMember";
 import type { AdminMember, CreateMemberFormValues } from "../types";
-import { formValuesToCreateInput, hasFormErrors, validateCreateMemberForm } from "../utils";
+import {
+  formValuesToCreateInput,
+  hasFormErrors,
+  memberToFormValues,
+  validateCreateMemberForm,
+} from "../utils";
 
-interface CreateMemberModalProps {
+interface EditMemberModalProps {
   open: boolean;
-  onClose: () => void;
+  member: AdminMember | null;
   existingMembers: AdminMember[];
-  onCreated: (member: AdminMember) => void;
+  onClose: () => void;
+  onUpdated: (member: AdminMember) => void;
 }
 
-export function CreateMemberModal({
+export function EditMemberModal({
   open,
-  onClose,
+  member,
   existingMembers,
-  onCreated,
-}: CreateMemberModalProps) {
+  onClose,
+  onUpdated,
+}: EditMemberModalProps) {
   const [values, setValues] = useState<CreateMemberFormValues>(DEFAULT_CREATE_MEMBER_FORM);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof CreateMemberFormValues, string>>
   >({});
-  const { submit, isSubmitting, error, resetError } = useCreateMember();
+  const { submit, isSubmitting, error, resetError } = useUpdateMember();
 
   useEffect(() => {
-    if (!open) return;
-    setValues(DEFAULT_CREATE_MEMBER_FORM);
+    if (!open || !member) return;
+    setValues(memberToFormValues(member));
     setFieldErrors({});
     resetError();
-  }, [open, resetError]);
+  }, [open, member, resetError]);
 
   function updateField<K extends keyof CreateMemberFormValues>(
     key: K,
@@ -63,21 +70,24 @@ export function CreateMemberModal({
     resetError();
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!member) return;
 
-    const errors = validateCreateMemberForm(values, existingMembers);
+    const errors = validateCreateMemberForm(values, existingMembers, member.id);
     setFieldErrors(errors);
     if (hasFormErrors(errors)) return;
 
     try {
-      const member = await submit(formValuesToCreateInput(values));
-      onCreated(member);
+      const updated = await submit(member.id, formValuesToCreateInput(values));
+      onUpdated(updated);
       onClose();
     } catch {
-      // Shown via `error` from useCreateMember
+      // error shown in UI
     }
   }
+
+  if (!member) return null;
 
   return (
     <Dialog
@@ -88,22 +98,18 @@ export function CreateMemberModal({
     >
       <DialogContent className="border-border bg-card sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl tracking-wider">Register Member</DialogTitle>
-          <DialogDescription>
-            Manually register a player so they can be added to team rosters once verified.
-          </DialogDescription>
+          <DialogTitle className="font-display text-xl tracking-wider">Edit Member</DialogTitle>
+          <DialogDescription>Update {member.username}&apos;s profile and verification.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="member-username">Username</Label>
+              <Label htmlFor="edit-member-username">Username</Label>
               <Input
-                id="member-username"
+                id="edit-member-username"
                 value={values.username}
                 onChange={(e) => updateField("username", e.target.value)}
-                placeholder="e.g. CoyHa"
-                autoComplete="off"
                 disabled={isSubmitting}
                 className="bg-background/50"
               />
@@ -113,13 +119,11 @@ export function CreateMemberModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="member-discord-username">Discord Username</Label>
+              <Label htmlFor="edit-member-discord-username">Discord Username</Label>
               <Input
-                id="member-discord-username"
+                id="edit-member-discord-username"
                 value={values.discordUsername}
                 onChange={(e) => updateField("discordUsername", e.target.value)}
-                placeholder="e.g. coyha"
-                autoComplete="off"
                 disabled={isSubmitting}
                 className="bg-background/50"
               />
@@ -129,16 +133,11 @@ export function CreateMemberModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="member-discord-id">
-                Discord ID <span className="text-muted-foreground">(optional)</span>
-              </Label>
+              <Label htmlFor="edit-member-discord-id">Discord ID</Label>
               <Input
-                id="member-discord-id"
+                id="edit-member-discord-id"
                 value={values.discordId}
                 onChange={(e) => updateField("discordId", e.target.value)}
-                placeholder="17–20 digit snowflake"
-                inputMode="numeric"
-                autoComplete="off"
                 disabled={isSubmitting}
                 className="bg-background/50"
               />
@@ -148,7 +147,7 @@ export function CreateMemberModal({
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="member-status">Verification</Label>
+              <Label htmlFor="edit-member-status">Verification</Label>
               <Select
                 value={values.status}
                 onValueChange={(status) =>
@@ -156,8 +155,8 @@ export function CreateMemberModal({
                 }
                 disabled={isSubmitting}
               >
-                <SelectTrigger id="member-status" className="bg-background/50">
-                  <SelectValue placeholder="Select status" />
+                <SelectTrigger id="edit-member-status" className="bg-background/50">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {MEMBER_VERIFICATION_STATUSES.map((status) => (
@@ -185,7 +184,7 @@ export function CreateMemberModal({
               disabled={isSubmitting}
               className="font-tech uppercase tracking-wider"
             >
-              {isSubmitting ? "Saving…" : "Register Member"}
+              {isSubmitting ? "Saving…" : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>

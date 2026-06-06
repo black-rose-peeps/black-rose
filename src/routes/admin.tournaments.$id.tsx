@@ -1,6 +1,6 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Plus, Trophy, Users2 } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, RefreshCw, Trash2, Trophy, Users2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,12 @@ import { AdminTablePagination } from "@/features/admin/components/AdminTablePagi
 import { Panel } from "@/features/admin/components/ui";
 import { BracketManager } from "@/features/admin/features/tournament-details/components/BracketManager";
 import { TeamModal } from "@/features/admin/components/TeamModal";
+import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import { AddTeamToTournamentDialog } from "@/features/admin/features/tournaments/components/AddTeamToTournamentDialog";
+import { EditTournamentModal } from "@/features/admin/features/tournaments/components/EditTournamentModal";
 import { useTournamentRegistrations } from "@/features/admin/features/tournaments/hooks";
+import { useDeleteTournament } from "@/features/admin/features/tournaments/hooks/useDeleteTournament";
+import { removeTeamFromTournament } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import { fetchTournamentById } from "@/features/admin/features/tournaments/services/tournaments.service";
 import {
   formatBracketAvailability,
@@ -54,7 +58,7 @@ export const Route = createFileRoute("/admin/tournaments/$id")({
 // ── Client-side tournament fetch hook ─────────────────────────────────────
 
 function useTournament(id: string) {
-  const [tournament, setTournament] = useState<MockTournament | null>(null);
+  const [tournament, setTournamentState] = useState<MockTournament | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +73,7 @@ function useTournament(id: string) {
         if (!t) {
           setError("Tournament not found.");
         } else {
-          setTournament(t);
+          setTournamentState(t);
         }
       })
       .catch((err) => {
@@ -84,29 +88,48 @@ function useTournament(id: string) {
     };
   }, [id]);
 
-  return { tournament, isLoading, error };
+  const patchTournament = (next: MockTournament) => {
+    setTournamentState(next);
+  };
+
+  return { tournament, isLoading, error, patchTournament };
 }
 
 // ── Page component ─────────────────────────────────────────────────────────
 
 function TournamentDetailPage() {
+  const navigate = useNavigate();
   const { tournamentId } = Route.useLoaderData();
   const {
     tournament,
     isLoading: tournamentLoading,
     error: tournamentError,
+    patchTournament,
   } = useTournament(tournamentId);
 
   const {
     registrations: teams,
     isLoading: teamsLoading,
     error: teamsError,
-    prependRegistration,
+    prependRegistrations,
+    removeRegistration,
+    refetch: refetchRegistrations,
   } = useTournamentRegistrations(tournamentId);
 
   const teamsPagination = usePagination(teams);
   const [openTeam, setOpenTeam] = useState<MockTeam | null>(null);
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [removingRegistration, setRemovingRegistration] = useState<MockTeam | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const {
+    submit: deleteTournamentSubmit,
+    isDeleting,
+    error: deleteTournamentError,
+    resetError: resetDeleteTournamentError,
+  } = useDeleteTournament();
 
   // ── Loading state ──────────────────────────────────────────────────────
 
@@ -166,17 +189,44 @@ function TournamentDetailPage() {
       <AdminTopbar title={tournament.name} subtitle="Tournament Operations" />
 
       <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit gap-2 font-tech uppercase tracking-wider"
-          asChild
-        >
-          <Link to="/admin/tournaments">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Tournaments
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-fit gap-2 font-tech uppercase tracking-wider"
+            asChild
+          >
+            <Link to="/admin/tournaments">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Tournaments
+            </Link>
+          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+              onClick={() => setIsEditOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
+              onClick={() => {
+                resetDeleteTournamentError();
+                setIsDeleteOpen(true);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+          </div>
+        </div>
 
         <Panel className="clip-angle">
           <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-3 xl:grid-cols-7">
@@ -235,21 +285,34 @@ function TournamentDetailPage() {
                     Registered Teams
                   </h2>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="gap-2 font-tech uppercase tracking-wider"
-                  disabled={teams.length >= tournament.teamCap}
-                  title={
-                    teams.length >= tournament.teamCap
-                      ? "Team cap reached"
-                      : "Add a roster from Teams"
-                  }
-                  onClick={() => setIsAddTeamOpen(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Team
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+                    disabled={teamsLoading}
+                    onClick={() => refetchRegistrations()}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Refresh
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-2 font-tech uppercase tracking-wider"
+                    disabled={teams.length >= tournament.teamCap}
+                    title={
+                      teams.length >= tournament.teamCap
+                        ? "Team cap reached"
+                        : "Add a roster from Teams"
+                    }
+                    onClick={() => setIsAddTeamOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Teams
+                  </Button>
+                </div>
               </div>
 
               {teamsError && (
@@ -317,7 +380,7 @@ function TournamentDetailPage() {
                     ) : teams.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                          No teams registered yet. Use Add Team to register rosters from the Teams
+                          No teams registered yet. Use Add Teams to register rosters from the Teams
                           tab.
                         </TableCell>
                       </TableRow>
@@ -353,15 +416,29 @@ function TournamentDetailPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="font-tech text-[10px] uppercase tracking-wider"
-                              onClick={() => setOpenTeam(team)}
-                            >
-                              View
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="font-tech text-[10px] uppercase tracking-wider"
+                                onClick={() => setOpenTeam(team)}
+                              >
+                                View
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  setRemoveError(null);
+                                  setRemovingRegistration(team);
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -425,9 +502,67 @@ function TournamentDetailPage() {
         tournament={tournament}
         registeredTeams={teams}
         onClose={() => setIsAddTeamOpen(false)}
-        onAdded={(registration) => {
-          prependRegistration(registration);
+        onAdded={(registrations) => {
+          prependRegistrations(registrations);
           teamsPagination.setPage(1);
+          patchTournament({
+            ...tournament,
+            teamsRegistered: tournament.teamsRegistered + registrations.length,
+          });
+        }}
+      />
+
+      <EditTournamentModal
+        open={isEditOpen}
+        tournament={tournament}
+        onClose={() => setIsEditOpen(false)}
+        onUpdated={patchTournament}
+      />
+
+      <ConfirmDeleteDialog
+        open={isDeleteOpen}
+        title="Delete tournament?"
+        description={`This permanently removes ${tournament.name}. Remove all registered teams first.${deleteTournamentError ? ` ${deleteTournamentError}` : ""}`}
+        isDeleting={isDeleting}
+        onClose={() => {
+          resetDeleteTournamentError();
+          setIsDeleteOpen(false);
+        }}
+        onConfirm={async () => {
+          resetDeleteTournamentError();
+          try {
+            await deleteTournamentSubmit(tournament.id);
+            navigate({ to: "/admin/tournaments" });
+          } catch {
+            // error shown in dialog
+          }
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={removingRegistration !== null}
+        title="Remove team from tournament?"
+        description={`Remove ${removingRegistration?.name ?? "this team"} from the event? The roster team stays in Teams.${removeError ? ` ${removeError}` : ""}`}
+        isDeleting={isRemoving}
+        confirmLabel="Remove"
+        onClose={() => setRemovingRegistration(null)}
+        onConfirm={async () => {
+          if (!removingRegistration) return;
+          setIsRemoving(true);
+          setRemoveError(null);
+          try {
+            await removeTeamFromTournament(removingRegistration.id);
+            removeRegistration(removingRegistration.id);
+            patchTournament({
+              ...tournament,
+              teamsRegistered: Math.max(0, tournament.teamsRegistered - 1),
+            });
+            setRemovingRegistration(null);
+          } catch (err) {
+            setRemoveError(err instanceof Error ? err.message : "Failed to remove team.");
+          } finally {
+            setIsRemoving(false);
+          }
         }}
       />
     </>

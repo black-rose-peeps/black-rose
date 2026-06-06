@@ -28,5 +28,13 @@ export function useMembers() {
     setMembers((prev) => [member, ...prev]);
   }, []);
 
-  return { members, isLoading, error, refetch, prependMember };
+  const replaceMember = useCallback((member: AdminMember) => {
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? member : item)));
+  }, []);
+
+  const removeMember = useCallback((memberId: string) => {
+    setMembers((prev) => prev.filter((item) => item.id !== memberId));
+  }, []);
+
+  return { members, isLoading, error, refetch, prependMember, replaceMember, removeMember };
 }

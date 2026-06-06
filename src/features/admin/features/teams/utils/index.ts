@@ -29,13 +29,25 @@ export function formValuesToAddTeamMemberInput(
   };
 }
 
-export function validateCreateTeamForm(
-  values: CreateTeamFormValues,
+export function teamToEditFormValues(team: Team): Pick<CreateTeamFormValues, "name" | "tag" | "game"> {
+  return {
+    name: team.name,
+    tag: team.tag,
+    game: team.game,
+  };
+}
+
+function validateTeamNameAndTag(
+  values: Pick<CreateTeamFormValues, "name" | "tag">,
   existingTeams: Team[],
-): CreateTeamFieldErrors {
-  const errors: CreateTeamFieldErrors = {};
+  excludeTeamId?: string,
+): Pick<CreateTeamFieldErrors, "name" | "tag"> {
+  const errors: Pick<CreateTeamFieldErrors, "name" | "tag"> = {};
   const name = values.name.trim();
   const tag = values.tag.trim().toUpperCase();
+  const others = excludeTeamId
+    ? existingTeams.filter((team) => team.id !== excludeTeamId)
+    : existingTeams;
 
   if (!name) {
     errors.name = "Team name is required.";
@@ -47,15 +59,34 @@ export function validateCreateTeamForm(
     errors.tag = "Tag is required.";
   } else if (!/^[A-Z0-9]{2,5}$/.test(tag)) {
     errors.tag = "Use 2–5 uppercase letters or numbers.";
-  } else if (existingTeams.some((t) => t.tag === tag)) {
+  } else if (others.some((team) => team.tag.trim().toUpperCase() === tag)) {
     errors.tag = "This tag is already in use.";
   }
+
+  return errors;
+}
+
+export function validateCreateTeamForm(
+  values: CreateTeamFormValues,
+  existingTeams: Team[],
+): CreateTeamFieldErrors {
+  const errors: CreateTeamFieldErrors = {
+    ...validateTeamNameAndTag(values, existingTeams),
+  };
 
   if (!values.captainMemberId) {
     errors.captainMemberId = "Select a captain from registered members.";
   }
 
   return errors;
+}
+
+export function validateEditTeamForm(
+  values: Pick<CreateTeamFormValues, "name" | "tag" | "game">,
+  existingTeams: Team[],
+  teamId: string,
+): Pick<CreateTeamFieldErrors, "name" | "tag"> {
+  return validateTeamNameAndTag(values, existingTeams, teamId);
 }
 
 export function validateAddTeamMemberForm(
@@ -95,7 +126,7 @@ export function countActiveMembers(team: Team): number {
   return team.members.filter((m) => m.status === "captain" || m.status === "active").length;
 }
 
-/** Members who are not captain/active on any existing team — eligible as a new team captain. */
+/** Verified members not already on a team — eligible as a new team captain. */
 export function getMembersAvailableForNewTeam(members: AdminMember[], teams: Team[]): AdminMember[] {
   const onTeam = new Set<string>();
   for (const team of teams) {
@@ -105,5 +136,5 @@ export function getMembersAvailableForNewTeam(members: AdminMember[], teams: Tea
       }
     }
   }
-  return members.filter((m) => !onTeam.has(m.id));
+  return members.filter((m) => m.status === "Verified" && !onTeam.has(m.id));
 }

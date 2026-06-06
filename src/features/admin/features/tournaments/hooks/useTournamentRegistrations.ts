@@ -52,5 +52,29 @@ export function useTournamentRegistrations(tournamentId: string) {
     setRegistrations((prev) => [registration, ...prev]);
   }, []);
 
-  return { registrations, isLoading, error, refetch, prependRegistration };
+  const prependRegistrations = useCallback((items: MockTeam[]) => {
+    if (!items.length) return;
+    setRegistrations((prev) => [...items, ...prev]);
+  }, []);
+
+  const updateRegistration = useCallback((registration: MockTeam) => {
+    setRegistrations((prev) =>
+      prev.map((item) => (item.id === registration.id ? registration : item)),
+    );
+  }, []);
+
+  const removeRegistration = useCallback((registrationId: string) => {
+    setRegistrations((prev) => prev.filter((item) => item.id !== registrationId));
+  }, []);
+
+  return {
+    registrations,
+    isLoading,
+    error,
+    refetch,
+    prependRegistration,
+    prependRegistrations,
+    updateRegistration,
+    removeRegistration,
+  };
 }

@@ -1,13 +1,11 @@
-export type MemberRole = "User" | "Admin";
-export type MemberStatus = "Active" | "Suspended";
+export type MemberVerificationStatus = "Not Verified" | "Verified";
 
 export interface AdminMember {
   id: string;
   username: string;
   discordUsername: string;
   discordId?: string | null;
-  role: MemberRole;
-  status: MemberStatus;
+  status: MemberVerificationStatus;
   registeredAt: string; // "YYYY-MM-DD"
   createdAt: string;
 }
@@ -16,17 +14,12 @@ export interface CreateMemberFormValues {
   username: string;
   discordUsername: string;
   discordId: string;
-  role: MemberRole;
-  /** Required only when role is "Admin". */
-  password: string;
-  confirmPassword: string;
+  status: MemberVerificationStatus;
 }
 
 export interface CreateMemberInput {
   username: string;
   discordUsername: string;
   discordId?: string;
-  role: MemberRole;
-  /** Plain-text password — stored as a console credential when role is "Admin". */
-  password?: string;
+  status: MemberVerificationStatus;
 }

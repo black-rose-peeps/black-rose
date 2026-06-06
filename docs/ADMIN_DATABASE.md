@@ -3,7 +3,7 @@
 > **Start here:** [README.md](./README.md) — short table list and flow for the five admin feature folders.  
 > This file adds TypeScript mappings, enum literals, RLS notes, and wiring details.
 
-Reference for implementing the Black Rose **admin console** on **Supabase** (PostgreSQL + Auth + RLS). The frontend currently uses in-memory mock services; this doc lists **only what the admin feature folders define today**.
+Reference for implementing the Black Rose **admin console** on **Supabase** (PostgreSQL + Auth + RLS). **Supabase-backed today:** admin login (`admin_accounts` + RPC), members, teams, tournaments, registrations, and bracket state (see `src/features/admin/features/*/services/`). **Still mock or partial:** public tournament detail stubs (`mock-tournament-details.ts`), some bracket seed data, and Discord member OAuth (not admin console).
 
 ---
 
@@ -41,27 +41,27 @@ Members → Teams → Tournaments → Participants (registrations) → Bracket (
 ### TypeScript (strict)
 
 ```ts
-type AdminMemberRole = "User" | "Tournament Admin" | "Super Admin";
-type AdminMemberStatus = "Active" | "Suspended" | "Banned";
+type MemberVerificationStatus = "Not Verified" | "Verified";
 
 interface AdminMember {
   id: string;
   username: string;
   discordUsername: string;
   discordId: string | null;
-  role: AdminMemberRole;
-  status: AdminMemberStatus;
-  registrationDate: string; // ISO date "YYYY-MM-DD"
-  email?: string | null;    // legacy mock only
+  status: MemberVerificationStatus;
+  registeredAt: string; // ISO date "YYYY-MM-DD"
+  createdAt: string;
 }
 
 interface CreateMemberInput {
   username: string;
   discordUsername: string;
   discordId?: string;
-  role: AdminMemberRole;
+  status: MemberVerificationStatus;
 }
 ```
+
+**Admin console login** is separate from members — see `admin_accounts` table and `verify_admin_login` RPC in [sql/admin_accounts.sql](./sql/admin_accounts.sql).
 
 ### Supabase table: `profiles`
 
@@ -72,13 +72,12 @@ interface CreateMemberInput {
 | `discord_username` | `text` | NOT NULL, UNIQUE |
 | `discord_id` | `text` | NULL, UNIQUE |
 | `email` | `text` | NULL |
-| `role` | `text` | NOT NULL, CHECK in (`User`, `Tournament Admin`, `Super Admin`) |
-| `status` | `text` | NOT NULL, CHECK in (`Active`, `Suspended`, `Banned`) |
+| `status` | `text` | NOT NULL, CHECK in (`Not Verified`, `Verified`) only — run [sql/members_verification.sql](./sql/members_verification.sql) to convert legacy `Active` → `Verified` before the CHECK is applied |
 | `created_at` | `timestamptz` | NOT NULL, default `now()` |
 
 **Auth linkage:** `profiles.id` is the same UUID as the Supabase Auth user (`auth.users.id`). Create a profile row when a user signs up (database trigger on `auth.users` insert, or admin create flow). There is no separate profile UUID — `AdminMember.id` maps directly to `auth.uid()` for RLS.
 
-**Maps to:** `AdminMember` (`id` ← `profiles.id`, `registrationDate` ← `created_at::date`). When a profile is created by an admin without Auth, either provision an Auth user first or defer until the member signs in.
+**Maps to:** `AdminMember` (`id` ← `profiles.id`, `registeredAt` ← `registered_at` or `created_at::date`). When a profile is created by an admin without Auth, either provision an Auth user first or defer until the member signs in.
 
 ---
 

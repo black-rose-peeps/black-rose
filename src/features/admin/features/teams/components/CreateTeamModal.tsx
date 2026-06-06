@@ -186,7 +186,7 @@ export function CreateTeamModal({
                       members.length === 0
                         ? "Register members first"
                         : availableCaptains.length === 0
-                          ? "All members are already on a team"
+                          ? "No eligible members available"
                           : "Select captain"
                     }
                   />

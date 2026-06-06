@@ -12,37 +12,20 @@ What you need in **Supabase (PostgreSQL)** to back the admin console flow. The a
 
 The Admin Console (`/login?console=1` → `/admin`) uses a **username + password** flow separate from the Discord OAuth used by regular members.
 
-### How it works (mock / current)
+Admin credentials live in a dedicated **`admin_accounts`** table — not in `.env` and not on player `members` rows. The app calls `verify_admin_login` (Supabase RPC) on sign-in.
 
-Credentials are stored **in-memory** in `src/features/admin/auth/admin-session.ts`. A default seed account exists for development:
+**Setup (two steps in Supabase SQL Editor):**
 
-| Username | Password        |
-| -------- | --------------- |
-| `admin`  | `blackrose2026` |
-
-When you register a new member with the **Admin** role in the Members panel, you set a password at creation time. That credential is registered in the in-memory store immediately and can be used to log in to the console in the same browser session.
-
-> **Note:** The in-memory store is reset on every page refresh. Real credentials must be persisted to Supabase (see below).
-
-### Supabase — what to add for real admin login
-
-Add a `console_password_hash` column to the `members` table (or a separate `admin_credentials` table):
+1. Run the full script [sql/admin_accounts.sql](./sql/admin_accounts.sql) once (table + RPCs).
+2. Run [sql/create_admin_account.sql](./sql/create_admin_account.sql) — edit the username/password in that file first:
 
 ```sql
-alter table members
-  add column console_password_hash text null;
+select public.create_admin_account('admin', 'your-secure-password-here');
 ```
 
-When an Admin member is created, hash the password server-side (bcrypt / Supabase Edge Function) and store it in `console_password_hash`. On login, compare the submitted password against the stored hash. **Never store plain-text passwords.**
+Then sign in at `/login?console=1` with those credentials.
 
-Alternatively, use **Supabase Auth email+password** for admin accounts:
-
-1. Create a Supabase Auth user (`auth.users`) with `email = <username>@blackrose.admin` and the chosen password.
-2. Link it to the `members` row via the same UUID.
-3. Sign in with `supabase.auth.signInWithPassword()` in `AdminConsoleLogin.tsx`.
-4. Update `isAdminConsoleAuthenticated()` to check the Supabase session instead of `localStorage`.
-
-Required env vars (already needed for the rest of the app):
+Required env vars (Supabase only — no admin seed vars):
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
@@ -57,12 +40,12 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 Members → Teams → Tournaments → Participants → Bracket
 ```
 
-| Step | Admin folder                            | What happens                                                                       |
-| ---- | --------------------------------------- | ---------------------------------------------------------------------------------- |
-| 1    | `features/admin/features/members/`      | Register players                                                                   |
-| 2    | `features/admin/features/teams/`        | Create rosters, add members                                                        |
-| 3    | `features/admin/features/tournaments/`  | Create/list events — see [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md)            |
-| 4    | `features/admin/features/participants/` | Approve/reject team sign-ups (same table as registrations)                         |
+| Step | Admin folder                                  | What happens                                                                       |
+| ---- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1    | `features/admin/features/members/`            | Register players                                                                   |
+| 2    | `features/admin/features/teams/`              | Create rosters, add members                                                        |
+| 3    | `features/admin/features/tournaments/`        | Create/list events — see [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md)            |
+| 4    | `features/admin/features/participants/`       | Approve/reject team sign-ups (same table as registrations)                         |
 | 5    | `features/admin/features/tournament-details/` | Seed bracket, scores, publish — see [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md) |
 
 ---
@@ -73,19 +56,17 @@ Members → Teams → Tournaments → Participants → Bracket
 
 ### `members` — members (wired in app)
 
-| Column                  | Type        | Notes                   |
-| ----------------------- | ----------- | ----------------------- |
-| `id`                    | uuid        | **PK**                  |
-| `username`              | text        | unique                  |
-| `discord_username`      | text        | unique                  |
-| `discord_id`            | text        | nullable, unique        |
-| `role`                  | text        | `User` \| `Admin`       |
-| `status`                | text        | `Active` \| `Suspended` |
-| `console_password_hash` | text        | nullable — Admin only   |
-| `registered_at`         | date        |                         |
-| `created_at`            | timestamptz |                         |
+| Column             | Type        | Notes                        |
+| ------------------ | ----------- | ---------------------------- |
+| `id`               | uuid        | **PK**                       |
+| `username`         | text        | unique                       |
+| `discord_username` | text        | unique                       |
+| `discord_id`       | text        | nullable, unique             |
+| `status`           | text        | `Not Verified` \| `Verified` |
+| `registered_at`    | date        |                              |
+| `created_at`       | timestamptz |                              |
 
-> The `Moderator` role has been removed. Members are either `User` or `Admin`.
+> Player members have no admin role. Console access uses `admin_accounts` (see Admin Console Login).
 
 ---
 
@@ -218,7 +199,7 @@ Bracket matches point at **registrations**, not `teams` directly, so the same ro
 
 | Code path                                                  | Read                                            | Write                               |
 | ---------------------------------------------------------- | ----------------------------------------------- | ----------------------------------- |
-| `admin/auth/admin-session.ts`                              | `members` (password hash)                       | verify console login                |
+| `admin/auth/admin-session.ts`                              | `admin_accounts` via RPC                        | verify console login                |
 | `members/services/members.service.ts`                      | `members`                                       | insert `members`                    |
 | `teams/services/teams.service.ts`                          | `teams`, `team_members`, `profiles`             | insert/update teams & members       |
 | `tournaments/services/tournaments.service.ts`              | `tournaments`                                   | insert `tournaments`                |
@@ -233,9 +214,10 @@ Bracket matches point at **registrations**, not `teams` directly, so the same ro
 1. Create project, enable **Auth**.
 2. Create tables above (uuid PKs, `gen_random_uuid()`).
 3. Add **foreign keys** as listed.
-4. Enable **RLS** — admin mutations for `Admin` role on `members.role`.
-5. Add `console_password_hash` column to `members` for Admin accounts (or use Supabase Auth — see Admin Console Login section above).
-6. Set env vars and swap mock services for `@supabase/supabase-js`:
+4. Run [sql/admin_accounts.sql](./sql/admin_accounts.sql) and seed at least one admin account.
+5. Run [sql/members_verification.sql](./sql/members_verification.sql) so Register Member accepts `Not Verified` / `Verified`.
+6. Enable **RLS** on all tables.
+7. Set env vars and swap mock services for `@supabase/supabase-js`:
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co

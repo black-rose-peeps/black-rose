@@ -181,6 +181,61 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   return fetchTeamWithMembers(input.teamId);
 }
 
+export async function fetchTeamById(teamId: string): Promise<Team | null> {
+  try {
+    return await fetchTeamWithMembers(teamId);
+  } catch {
+    return null;
+  }
+}
+
+export async function updateTeam(
+  teamId: string,
+  input: Pick<CreateTeamInput, "name" | "tag" | "game">,
+): Promise<Team> {
+  const { error } = await supabase
+    .from("teams")
+    .update({
+      name: input.name,
+      tag: input.tag,
+      game: input.game,
+    })
+    .eq("id", teamId);
+
+  if (error) {
+    if (error.code === "23505") throw new Error("A team with this tag already exists.");
+    throw new Error(error.message);
+  }
+
+  return fetchTeamWithMembers(teamId);
+}
+
+export async function removeMemberFromTeam(teamId: string, userId: string): Promise<Team> {
+  const team = await fetchTeamWithMembers(teamId);
+  const member = team.members.find((m) => m.userId === userId);
+  if (!member) throw new Error("Member not found on this team.");
+  if (member.status === "captain") {
+    throw new Error("Cannot remove the captain. Edit the team or assign a new captain first.");
+  }
+
+  const { error } = await supabase
+    .from("team_members")
+    .update({ status: "removed" })
+    .eq("team_id", teamId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
+  return fetchTeamWithMembers(teamId);
+}
+
+export async function deleteTeam(teamId: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_team_and_members", {
+    p_team_id: teamId,
+  });
+
+  if (error) throw new Error(error.message);
+}
+
 export async function assignTeamActiveTournament(
   teamId: string,
   tournamentId: string,

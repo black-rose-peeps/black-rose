@@ -1,5 +1,9 @@
 import { useCallback, useState } from "react";
-import { addTeamToTournament } from "../services/tournament-registrations.service";
+import {
+  addTeamToTournament,
+  addTeamsToTournament,
+  type AddTeamsToTournamentResult,
+} from "../services/tournament-registrations.service";
 import type { MockTeam } from "@/lib/mock-data";
 
 export function useAddTeamToTournament(tournamentId: string) {
@@ -23,7 +27,28 @@ export function useAddTeamToTournament(tournamentId: string) {
     [tournamentId],
   );
 
+  const submitMany = useCallback(
+    async (rosterTeamIds: string[]): Promise<AddTeamsToTournamentResult> => {
+      setIsSubmitting(true);
+      setError(null);
+      try {
+        const result = await addTeamsToTournament(tournamentId, rosterTeamIds);
+        if (result.added.length === 0 && result.failed.length > 0) {
+          setError(result.failed.map((f) => f.message).join(" "));
+        }
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to add teams.";
+        setError(message);
+        throw err;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [tournamentId],
+  );
+
   const resetError = useCallback(() => setError(null), []);
 
-  return { submit, isSubmitting, error, resetError };
+  return { submit, submitMany, isSubmitting, error, resetError };
 }

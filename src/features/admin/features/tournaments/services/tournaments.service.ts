@@ -88,3 +88,39 @@ export async function updateTournamentStatus(
   if (error) throw new Error(error.message);
   return rowToTournament(data);
 }
+
+export async function updateTournament(
+  id: string,
+  input: CreateTournamentInput,
+): Promise<MockTournament> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .update({
+      name: input.name,
+      game: input.game,
+      format: input.format,
+      prize_pool: input.prizePool,
+      start_date: input.startDate,
+      registration_deadline: input.registrationDeadline,
+      team_cap: input.teamCap,
+      region: input.region,
+      ...(input.status !== undefined ? { status: input.status } : {}),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return rowToTournament(data);
+}
+
+export async function deleteTournament(id: string): Promise<void> {
+  const { data, error } = await supabase.rpc("delete_tournament_if_empty", {
+    p_tournament_id: id,
+  });
+
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error("Remove all registered teams before deleting this tournament.");
+  }
+}

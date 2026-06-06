@@ -4,6 +4,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
+import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import {
   Table,
   TableBody,
@@ -19,10 +21,20 @@ import { useMembers } from "../hooks";
 import type { AdminMember } from "../types";
 import { memberStatusBadgeVariant } from "../utils";
 import { CreateMemberModal } from "./CreateMemberModal";
+import { EditMemberModal } from "./EditMemberModal";
+import { useDeleteMember } from "../hooks/useDeleteMember";
 
 export function MembersManagement() {
-  const { members, isLoading, error, prependMember } = useMembers();
+  const { members, isLoading, error, prependMember, replaceMember, removeMember } = useMembers();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
+  const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
+  const {
+    submit: deleteMemberSubmit,
+    isDeleting,
+    error: deleteError,
+    resetError: resetDeleteError,
+  } = useDeleteMember();
   const pagination = usePagination(members);
 
   function handleCreated(member: AdminMember) {
@@ -66,13 +78,13 @@ export function MembersManagement() {
                   Discord
                 </TableHead>
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Role
-                </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Registered
                 </TableHead>
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Status
+                  Verification
+                </TableHead>
+                <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                  Actions
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -91,17 +103,16 @@ export function MembersManagement() {
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
-                    {/* Role */}
-                    <TableCell>
-                      <Skeleton className="h-3.5 w-16" />
-                    </TableCell>
                     {/* Registered */}
                     <TableCell>
                       <Skeleton className="h-3.5 w-20" />
                     </TableCell>
-                    {/* Status */}
+                    {/* Verification */}
                     <TableCell>
                       <Skeleton className="h-5 w-14 rounded-full" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="ml-auto h-8 w-8 rounded-md" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -130,9 +141,6 @@ export function MembersManagement() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                      {member.role}
-                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {member.registeredAt}
                     </TableCell>
@@ -140,6 +148,15 @@ export function MembersManagement() {
                       <Badge variant={memberStatusBadgeVariant(member.status)}>
                         {member.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <AdminRowActions
+                        onEdit={() => setEditingMember(member)}
+                        onDelete={() => {
+                          resetDeleteError();
+                          setDeletingMember(member);
+                        }}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
@@ -162,6 +179,37 @@ export function MembersManagement() {
         onClose={() => setIsCreateOpen(false)}
         existingMembers={members}
         onCreated={handleCreated}
+      />
+
+      <EditMemberModal
+        open={editingMember !== null}
+        member={editingMember}
+        existingMembers={members}
+        onClose={() => setEditingMember(null)}
+        onUpdated={replaceMember}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingMember !== null}
+        title="Delete member?"
+        description={`This permanently removes ${deletingMember?.username ?? "this member"}. They must not be on an active team roster.${deleteError ? ` ${deleteError}` : ""}`}
+        isDeleting={isDeleting}
+        onClose={() => {
+          resetDeleteError();
+          setDeletingMember(null);
+        }}
+        onConfirm={async () => {
+          if (!deletingMember) return;
+          resetDeleteError();
+          try {
+            await deleteMemberSubmit(deletingMember.id);
+            removeMember(deletingMember.id);
+            resetDeleteError();
+            setDeletingMember(null);
+          } catch {
+            // deleteError shown in dialog description
+          }
+        }}
       />
     </>
   );
