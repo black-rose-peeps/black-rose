@@ -66,13 +66,10 @@ export function MembersManagement() {
                   Discord
                 </TableHead>
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Role
-                </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Registered
                 </TableHead>
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Status
+                  Verification
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -91,15 +88,11 @@ export function MembersManagement() {
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
-                    {/* Role */}
-                    <TableCell>
-                      <Skeleton className="h-3.5 w-16" />
-                    </TableCell>
                     {/* Registered */}
                     <TableCell>
                       <Skeleton className="h-3.5 w-20" />
                     </TableCell>
-                    {/* Status */}
+                    {/* Verification */}
                     <TableCell>
                       <Skeleton className="h-5 w-14 rounded-full" />
                     </TableCell>
@@ -107,7 +100,7 @@ export function MembersManagement() {
                 ))
               ) : members.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                     No members yet. Register the first member to continue.
                   </TableCell>
                 </TableRow>
@@ -129,9 +122,6 @@ export function MembersManagement() {
                           {member.discordId}
                         </div>
                       )}
-                    </TableCell>
-                    <TableCell className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                      {member.role}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {member.registeredAt}

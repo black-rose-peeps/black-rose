@@ -207,3 +207,31 @@ export async function addTeamToTournament(
 
   return fetchRegistrationWithPlayers(reg.id as string);
 }
+
+export interface AddTeamsToTournamentResult {
+  added: MockTeam[];
+  failed: { rosterTeamId: string; message: string }[];
+}
+
+export async function addTeamsToTournament(
+  tournamentId: string,
+  rosterTeamIds: string[],
+): Promise<AddTeamsToTournamentResult> {
+  const uniqueIds = [...new Set(rosterTeamIds)];
+  const added: MockTeam[] = [];
+  const failed: AddTeamsToTournamentResult["failed"] = [];
+
+  for (const rosterTeamId of uniqueIds) {
+    try {
+      const registration = await addTeamToTournament(tournamentId, rosterTeamId);
+      added.push(registration);
+    } catch (err) {
+      failed.push({
+        rosterTeamId,
+        message: err instanceof Error ? err.message : "Failed to add team.",
+      });
+    }
+  }
+
+  return { added, failed };
+}

@@ -30,15 +30,18 @@ export function AdminConsoleLogin({ onBack }: AdminConsoleLoginProps) {
     // Small artificial delay so it doesn't feel instant
     await new Promise((r) => setTimeout(r, 300));
 
-    const ok = loginAdminConsole(username, password);
-    setIsLoading(false);
-
-    if (!ok) {
-      setError("Invalid username or password.");
-      return;
+    try {
+      const ok = await loginAdminConsole(username, password);
+      if (!ok) {
+        setError("Invalid username or password.");
+        return;
+      }
+      navigate({ to: "/admin" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in. Try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    navigate({ to: "/admin" });
   }
 
   return (
@@ -50,7 +53,7 @@ export function AdminConsoleLogin({ onBack }: AdminConsoleLoginProps) {
         </div>
         <h2 className="font-display text-4xl tracking-display">Operations</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Tournament administrators sign in with credentials created in the Members panel.
+          Tournament administrators sign in with credentials stored in the database.
         </p>
       </div>
 

@@ -248,7 +248,7 @@ function TournamentDetailPage() {
                   onClick={() => setIsAddTeamOpen(true)}
                 >
                   <Plus className="h-4 w-4" />
-                  Add Team
+                  Add Teams
                 </Button>
               </div>
 
@@ -317,7 +317,7 @@ function TournamentDetailPage() {
                     ) : teams.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                          No teams registered yet. Use Add Team to register rosters from the Teams
+                          No teams registered yet. Use Add Teams to register rosters from the Teams
                           tab.
                         </TableCell>
                       </TableRow>
@@ -425,8 +425,10 @@ function TournamentDetailPage() {
         tournament={tournament}
         registeredTeams={teams}
         onClose={() => setIsAddTeamOpen(false)}
-        onAdded={(registration) => {
-          prependRegistration(registration);
+        onAdded={(registrations) => {
+          for (const registration of registrations) {
+            prependRegistration(registration);
+          }
           teamsPagination.setPage(1);
         }}
       />

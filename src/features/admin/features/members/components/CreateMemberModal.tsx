@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ADMIN_MEMBER_ROLES, DEFAULT_CREATE_MEMBER_FORM } from "../constants";
+import { DEFAULT_CREATE_MEMBER_FORM, MEMBER_VERIFICATION_STATUSES } from "../constants";
 import { useCreateMember } from "../hooks";
 import type { AdminMember, CreateMemberFormValues } from "../types";
 import { formValuesToCreateInput, hasFormErrors, validateCreateMemberForm } from "../utils";
@@ -42,8 +42,6 @@ export function CreateMemberModal({
   >({});
   const { submit, isSubmitting, error, resetError } = useCreateMember();
 
-  const isAdmin = values.role === "Admin";
-
   useEffect(() => {
     if (!open) return;
     setValues(DEFAULT_CREATE_MEMBER_FORM);
@@ -55,15 +53,7 @@ export function CreateMemberModal({
     key: K,
     value: CreateMemberFormValues[K],
   ) {
-    setValues((prev) => {
-      const next = { ...prev, [key]: value };
-      // Clear password fields when switching away from Admin
-      if (key === "role" && value !== "Admin") {
-        next.password = "";
-        next.confirmPassword = "";
-      }
-      return next;
-    });
+    setValues((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };
@@ -100,7 +90,7 @@ export function CreateMemberModal({
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Register Member</DialogTitle>
           <DialogDescription>
-            Manually register a player so they can be added to team rosters.
+            Manually register a player so they can be added to team rosters once verified.
           </DialogDescription>
         </DialogHeader>
 
@@ -158,73 +148,26 @@ export function CreateMemberModal({
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="member-role">Role</Label>
+              <Label htmlFor="member-status">Verification</Label>
               <Select
-                value={values.role}
-                onValueChange={(role) =>
-                  updateField("role", role as CreateMemberFormValues["role"])
+                value={values.status}
+                onValueChange={(status) =>
+                  updateField("status", status as CreateMemberFormValues["status"])
                 }
                 disabled={isSubmitting}
               >
-                <SelectTrigger id="member-role" className="bg-background/50">
-                  <SelectValue placeholder="Select role" />
+                <SelectTrigger id="member-status" className="bg-background/50">
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ADMIN_MEMBER_ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
+                  {MEMBER_VERIFICATION_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
-            {isAdmin && (
-              <>
-                <div className="space-y-2 sm:col-span-2">
-                  <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                    Admin Console Password
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    This password will be used to log in to the Admin Console.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="member-password">Password</Label>
-                  <Input
-                    id="member-password"
-                    type="password"
-                    value={values.password}
-                    onChange={(e) => updateField("password", e.target.value)}
-                    placeholder="Min. 8 characters"
-                    autoComplete="new-password"
-                    disabled={isSubmitting}
-                    className="bg-background/50"
-                  />
-                  {fieldErrors.password && (
-                    <p className="text-xs text-destructive">{fieldErrors.password}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="member-confirm-password">Confirm Password</Label>
-                  <Input
-                    id="member-confirm-password"
-                    type="password"
-                    value={values.confirmPassword}
-                    onChange={(e) => updateField("confirmPassword", e.target.value)}
-                    placeholder="Re-enter password"
-                    autoComplete="new-password"
-                    disabled={isSubmitting}
-                    className="bg-background/50"
-                  />
-                  {fieldErrors.confirmPassword && (
-                    <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
-                  )}
-                </div>
-              </>
-            )}
           </div>
 
           {error && (

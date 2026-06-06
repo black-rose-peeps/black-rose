@@ -41,27 +41,27 @@ Members → Teams → Tournaments → Participants (registrations) → Bracket (
 ### TypeScript (strict)
 
 ```ts
-type AdminMemberRole = "User" | "Tournament Admin" | "Super Admin";
-type AdminMemberStatus = "Active" | "Suspended" | "Banned";
+type MemberVerificationStatus = "Not Verified" | "Verified";
 
 interface AdminMember {
   id: string;
   username: string;
   discordUsername: string;
   discordId: string | null;
-  role: AdminMemberRole;
-  status: AdminMemberStatus;
-  registrationDate: string; // ISO date "YYYY-MM-DD"
-  email?: string | null;    // legacy mock only
+  status: MemberVerificationStatus;
+  registeredAt: string; // ISO date "YYYY-MM-DD"
+  createdAt: string;
 }
 
 interface CreateMemberInput {
   username: string;
   discordUsername: string;
   discordId?: string;
-  role: AdminMemberRole;
+  status: MemberVerificationStatus;
 }
 ```
+
+**Admin console login** is separate from members — see `admin_accounts` table and `verify_admin_login` RPC in [sql/admin_accounts.sql](./sql/admin_accounts.sql).
 
 ### Supabase table: `profiles`
 
@@ -72,8 +72,7 @@ interface CreateMemberInput {
 | `discord_username` | `text` | NOT NULL, UNIQUE |
 | `discord_id` | `text` | NULL, UNIQUE |
 | `email` | `text` | NULL |
-| `role` | `text` | NOT NULL, CHECK in (`User`, `Tournament Admin`, `Super Admin`) |
-| `status` | `text` | NOT NULL, CHECK in (`Active`, `Suspended`, `Banned`) |
+| `status` | `text` | NOT NULL, CHECK in (`Not Verified`, `Verified`) — legacy `Active` maps to `Verified` in the app |
 | `created_at` | `timestamptz` | NOT NULL, default `now()` |
 
 **Auth linkage:** `profiles.id` is the same UUID as the Supabase Auth user (`auth.users.id`). Create a profile row when a user signs up (database trigger on `auth.users` insert, or admin create flow). There is no separate profile UUID — `AdminMember.id` maps directly to `auth.uid()` for RLS.

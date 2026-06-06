@@ -29,7 +29,8 @@ export async function createMember(input: CreateMemberInput): Promise<AdminMembe
       username: input.username,
       discord_username: input.discordUsername,
       discord_id: input.discordId ?? null,
-      role: input.role,
+      status: input.status,
+      registered_at: new Date().toISOString().split("T")[0],
     })
     .select()
     .single();

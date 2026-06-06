@@ -2,8 +2,16 @@ import type {
   AdminMember,
   CreateMemberFormValues,
   CreateMemberInput,
-  MemberStatus,
+  MemberVerificationStatus,
 } from "../types";
+
+const LEGACY_ACTIVE_STATUSES = new Set(["Active", "active"]);
+
+export function normalizeMemberStatus(raw: string): MemberVerificationStatus {
+  if (raw === "Verified" || raw === "Not Verified") return raw;
+  if (LEGACY_ACTIVE_STATUSES.has(raw)) return "Verified";
+  return "Not Verified";
+}
 
 export function validateCreateMemberForm(
   values: CreateMemberFormValues,
@@ -33,19 +41,6 @@ export function validateCreateMemberForm(
     errors.discordId = "Discord ID must be a 17–20 digit number.";
   }
 
-  if (values.role === "Admin") {
-    if (!values.password) {
-      errors.password = "Password is required for Admin accounts.";
-    } else if (values.password.length < 8) {
-      errors.password = "Password must be at least 8 characters.";
-    }
-    if (!values.confirmPassword) {
-      errors.confirmPassword = "Please confirm the password.";
-    } else if (values.password !== values.confirmPassword) {
-      errors.confirmPassword = "Passwords do not match.";
-    }
-  }
-
   return errors;
 }
 
@@ -60,8 +55,7 @@ export function formValuesToCreateInput(values: CreateMemberFormValues): CreateM
     username: values.username.trim(),
     discordUsername: values.discordUsername.trim(),
     discordId: values.discordId.trim() || undefined,
-    role: values.role,
-    password: values.role === "Admin" ? values.password : undefined,
+    status: values.status,
   };
 }
 
@@ -71,8 +65,7 @@ export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
     username: row.username as string,
     discordUsername: row.discord_username as string,
     discordId: row.discord_id as string | null,
-    role: row.role as AdminMember["role"],
-    status: row.status as AdminMember["status"],
+    status: normalizeMemberStatus(String(row.status ?? "Not Verified")),
     registeredAt: row.registered_at as string,
     createdAt: row.created_at as string,
   };
@@ -84,44 +77,21 @@ export function buildAdminMemberFromInput(input: CreateMemberInput): AdminMember
     username: input.username,
     discordUsername: input.discordUsername,
     discordId: input.discordId ?? null,
-    role: input.role,
-    status: "Active",
+    status: input.status,
     registeredAt: new Date().toISOString().split("T")[0],
     createdAt: new Date().toISOString(),
   };
 }
 
-export function mapMockUserToAdminMember(user: {
-  id: string;
-  username: string;
-  discordUsername: string;
-  discordId?: string;
-  role: AdminMember["role"];
-  status: AdminMember["status"];
-  registeredAt: string;
-  createdAt: string;
-}): AdminMember {
-  return {
-    id: user.id,
-    username: user.username,
-    discordUsername: user.discordUsername,
-    discordId: user.discordId ?? null,
-    role: user.role,
-    status: user.status,
-    registeredAt: user.registeredAt,
-    createdAt: user.createdAt,
-  };
-}
-
 export function memberStatusBadgeVariant(
-  status: MemberStatus,
+  status: MemberVerificationStatus,
 ): "default" | "destructive" | "outline" | "secondary" {
   switch (status) {
-    case "Active":
+    case "Verified":
       return "default";
-    case "Suspended":
-      return "destructive";
-    default:
+    case "Not Verified":
       return "secondary";
+    default:
+      return "outline";
   }
 }

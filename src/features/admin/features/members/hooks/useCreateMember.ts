@@ -1,8 +1,6 @@
 import { useCallback, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { registerAdminCredential } from "@/features/admin/auth/admin-session";
+import { createMember } from "../services/members.service";
 import type { AdminMember, CreateMemberInput } from "../types";
-import { rowToAdminMember } from "../utils";
 
 export function useCreateMember() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -15,41 +13,7 @@ export function useCreateMember() {
     setError(null);
 
     try {
-      const { data, error: sbError } = await supabase
-        .from("members")
-        .insert({
-          username: input.username,
-          discord_username: input.discordUsername,
-          discord_id: input.discordId ?? null,
-          role: input.role,
-        })
-        .select()
-        .single();
-
-      if (sbError) {
-        // Handle unique constraint violations gracefully
-        if (sbError.code === "23505") {
-          if (sbError.message.includes("username")) {
-            throw new Error("That username is already registered.");
-          }
-          if (sbError.message.includes("discord_username")) {
-            throw new Error("That Discord username is already registered.");
-          }
-          if (sbError.message.includes("discord_id")) {
-            throw new Error("That Discord ID is already linked to another member.");
-          }
-        }
-        throw new Error(sbError.message);
-      }
-
-      const member = rowToAdminMember(data);
-
-      // Register console credentials for Admin members so they can log in immediately.
-      if (input.role === "Admin" && input.password) {
-        registerAdminCredential(input.username, input.password);
-      }
-
-      return member;
+      return await createMember(input);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       setError(message);
