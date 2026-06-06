@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { TournamentHero } from "@/features/tournaments/$id/components/TournamentHero";
+import { TournamentDetailSkeleton } from "@/features/tournaments/$id/components/TournamentDetailSkeleton";
 import { TournamentTabs } from "@/features/tournaments/$id/components/TournamentTabs";
 import { OverviewTab } from "@/features/tournaments/$id/components/OverviewTab";
 import { TeamsTab } from "@/features/tournaments/$id/components/TeamsTab";
@@ -13,6 +14,7 @@ import {
   bracketFieldSize,
   mockTeamToTournamentTeam,
   resolveTournamentRules,
+  toPublicTournamentStatus,
 } from "@/features/tournaments/utils";
 import { mockTournamentDetails } from "@/lib/mock-tournament-details";
 import { fetchTournamentById } from "@/features/tournaments/services";
@@ -26,7 +28,7 @@ function detailFromSummary(summary: MockTournament): TournamentDetail {
     id: summary.id,
     name: summary.name,
     game: summary.game,
-    status: summary.status as TournamentDetail["status"],
+    status: toPublicTournamentStatus(summary.status),
     prizePool: summary.prizePool,
     startDate: summary.startDate,
     registrationDeadline: summary.registrationDeadline,
@@ -61,7 +63,7 @@ export const Route = createFileRoute("/tournaments/$id")({
         id: params.id,
         name: "Loading…",
         game: "Valorant",
-        status: "Draft" as TournamentDetail["status"],
+        status: "Registration Closed",
         prizePool: "",
         startDate: "",
         registrationDeadline: "",
@@ -165,6 +167,18 @@ function TournamentDetailPage() {
     game: tournament.game,
     teamCap: rulesBracketSize,
   });
+
+  const isLoadingDetail = tournament.name === "Loading…";
+
+  if (isLoadingDetail) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <TournamentDetailSkeleton />
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
