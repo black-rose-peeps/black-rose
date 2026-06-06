@@ -186,7 +186,7 @@ export function CreateTeamModal({
                       members.length === 0
                         ? "Register members first"
                         : availableCaptains.length === 0
-                          ? "No verified members available"
+                          ? "No eligible members available"
                           : "Select captain"
                     }
                   />

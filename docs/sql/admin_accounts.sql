@@ -13,10 +13,16 @@ create extension if not exists pgcrypto with schema extensions;
 -- -----------------------------------------------------------------------------
 create table if not exists public.admin_accounts (
   id uuid primary key default gen_random_uuid(),
-  username text not null unique,
+  username text not null,
   password_hash text not null,
   created_at timestamptz not null default now()
 );
+
+-- Case-insensitive username uniqueness (login compares lower(username))
+alter table public.admin_accounts drop constraint if exists admin_accounts_username_key;
+drop index if exists public.admin_accounts_username_lower_key;
+create unique index if not exists admin_accounts_username_lower_key
+  on public.admin_accounts (lower(username));
 
 alter table public.admin_accounts enable row level security;
 -- No SELECT/INSERT policies for anon — login only via RPC below.
@@ -46,6 +52,22 @@ end;
 $$;
 
 grant execute on function public.verify_admin_login(text, text) to anon, authenticated;
+
+-- Session check: username still exists (called on admin route load)
+create or replace function public.verify_admin_session(p_username text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.admin_accounts
+    where lower(username) = lower(trim(p_username))
+  );
+$$;
+
+grant execute on function public.verify_admin_session(text) to anon, authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Create admin (SQL Editor only — NOT exposed to the browser)

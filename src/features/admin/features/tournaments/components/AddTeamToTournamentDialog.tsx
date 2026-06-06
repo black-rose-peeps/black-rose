@@ -38,7 +38,9 @@ export function AddTeamToTournamentDialog({
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [teamsLoadError, setTeamsLoadError] = useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
-  const [partialErrors, setPartialErrors] = useState<string[]>([]);
+  const [partialErrors, setPartialErrors] = useState<
+    { rosterTeamId: string; message: string }[]
+  >([]);
   const { submitMany, isSubmitting, error, resetError } = useAddTeamToTournament(tournament.id);
 
   const registeredRosterIds = useMemo(
@@ -121,12 +123,16 @@ export function AddTeamToTournamentDialog({
       }
 
       if (result.failed.length > 0) {
-        const messages = result.failed.map((failure) => {
-          const team = teamById.get(failure.rosterTeamId);
-          const label = team ? `[${team.tag}] ${team.name}` : failure.rosterTeamId;
-          return `${label}: ${failure.message}`;
-        });
-        setPartialErrors(messages);
+        setPartialErrors(
+          result.failed.map((failure) => {
+            const team = teamById.get(failure.rosterTeamId);
+            const label = team ? `[${team.tag}] ${team.name}` : failure.rosterTeamId;
+            return {
+              rosterTeamId: failure.rosterTeamId,
+              message: `${label}: ${failure.message}`,
+            };
+          }),
+        );
         setSelectedTeamIds(new Set(result.failed.map((f) => f.rosterTeamId)));
         return;
       }
@@ -269,8 +275,8 @@ export function AddTeamToTournamentDialog({
               <AlertDescription>
                 <p className="mb-1 font-medium">Some teams could not be added:</p>
                 <ul className="list-inside list-disc space-y-0.5 text-sm">
-                  {partialErrors.map((message) => (
-                    <li key={message}>{message}</li>
+                  {partialErrors.map((failure) => (
+                    <li key={failure.rosterTeamId}>{failure.message}</li>
                   ))}
                 </ul>
               </AlertDescription>

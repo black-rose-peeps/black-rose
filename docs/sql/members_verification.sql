@@ -86,7 +86,9 @@ alter table public.members
   add constraint members_status_check
   check (status in ('Not Verified', 'Verified'));
 
--- RLS: admin console uses the anon key (localStorage session, not Supabase Auth)
+-- RLS: admin console uses the anon key (localStorage session, not Supabase Auth).
+-- Intentionally permissive until admin routes use Supabase Auth or write RPCs.
+-- Tightening to auth.uid() would block the current browser admin CRUD flow.
 alter table public.members enable row level security;
 
 drop policy if exists "Allow members read" on public.members;

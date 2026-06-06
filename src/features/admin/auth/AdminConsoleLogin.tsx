@@ -38,7 +38,8 @@ export function AdminConsoleLogin({ onBack }: AdminConsoleLoginProps) {
       }
       navigate({ to: "/admin" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not sign in. Try again.");
+      console.error("Admin console sign-in failed:", err);
+      setError("Could not sign in. Please check your credentials and try again.");
     } finally {
       setIsLoading(false);
     }

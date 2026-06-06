@@ -111,7 +111,7 @@ function TournamentDetailPage() {
     registrations: teams,
     isLoading: teamsLoading,
     error: teamsError,
-    prependRegistration,
+    prependRegistrations,
     removeRegistration,
     refetch: refetchRegistrations,
   } = useTournamentRegistrations(tournamentId);
@@ -499,9 +499,7 @@ function TournamentDetailPage() {
         registeredTeams={teams}
         onClose={() => setIsAddTeamOpen(false)}
         onAdded={(registrations) => {
-          for (const registration of registrations) {
-            prependRegistration(registration);
-          }
+          prependRegistrations(registrations);
           teamsPagination.setPage(1);
           patchTournament({
             ...tournament,

@@ -1,12 +1,13 @@
 import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
-import { isAdminConsoleAuthenticated } from "@/features/admin/auth/admin-session";
+import { ensureAdminConsoleSession } from "@/features/admin/auth/admin-session";
 
 export const Route = createFileRoute("/admin")({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === "undefined") return;
-    if (!isAdminConsoleAuthenticated()) {
+    const valid = await ensureAdminConsoleSession();
+    if (!valid) {
       throw redirect({
         to: "/login",
         search: { console: "1" },
@@ -26,9 +27,15 @@ function AdminLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAdminConsoleAuthenticated()) {
-      navigate({ to: "/login", search: { console: "1" } });
-    }
+    let cancelled = false;
+    ensureAdminConsoleSession().then((valid) => {
+      if (!cancelled && !valid) {
+        navigate({ to: "/login", search: { console: "1" } });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return (

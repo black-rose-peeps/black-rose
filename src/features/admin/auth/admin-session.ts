@@ -2,13 +2,22 @@
  * Admin Console session — localStorage flag after successful Supabase credential check.
  */
 
-import { verifyAdminCredentials } from "./admin-auth.service";
+import { validateAdminSession, verifyAdminCredentials } from "./admin-auth.service";
 
 const SESSION_KEY = "br_admin_session";
 
+/** Sync localStorage presence check only — call ensureAdminConsoleSession for server validation. */
 export function isAdminConsoleAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
   return !!localStorage.getItem(SESSION_KEY);
+}
+
+/** Validate session against Supabase; clears localStorage if the admin no longer exists. */
+export async function ensureAdminConsoleSession(): Promise<boolean> {
+  if (!isAdminConsoleAuthenticated()) return false;
+  const valid = await validateAdminSession();
+  if (!valid) logoutAdminConsole();
+  return valid;
 }
 
 export async function loginAdminConsole(username: string, password: string): Promise<boolean> {
