@@ -4,7 +4,7 @@
 
 import { validateAdminSession, verifyAdminCredentials } from "./admin-auth.service";
 
-const SESSION_KEY = "br_admin_session";
+export const SESSION_KEY = "br_admin_session";
 
 /** Sync localStorage presence check only — call ensureAdminConsoleSession for server validation. */
 export function isAdminConsoleAuthenticated(): boolean {

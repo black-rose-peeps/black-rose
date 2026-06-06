@@ -12,7 +12,12 @@ export function useRemoveTeamMember() {
     setError(null);
     try {
       const team = await removeMemberFromTeam(teamId, userId);
-      await resyncRegistrationsForTeam(teamId);
+      try {
+        await resyncRegistrationsForTeam(teamId);
+      } catch (resyncErr) {
+        console.error("Roster resync failed after removing member:", resyncErr);
+        setError("Member removed but roster sync to tournaments failed.");
+      }
       return team;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to remove member.";

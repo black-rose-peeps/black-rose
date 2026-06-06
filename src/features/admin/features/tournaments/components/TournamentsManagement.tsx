@@ -32,7 +32,12 @@ export function TournamentsManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<AdminTournament | null>(null);
   const [deletingTournament, setDeletingTournament] = useState<AdminTournament | null>(null);
-  const { submit: deleteTournamentSubmit, isDeleting, error: deleteError } = useDeleteTournament();
+  const {
+    submit: deleteTournamentSubmit,
+    isDeleting,
+    error: deleteError,
+    resetError: resetDeleteError,
+  } = useDeleteTournament();
   const pagination = usePagination(tournaments);
 
   function handleCreated(tournament: AdminTournament) {
@@ -159,10 +164,17 @@ export function TournamentsManagement() {
                     <TableCell>
                       <StatusPill status={t.status} />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell
+                      className="text-right"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
                       <AdminRowActions
                         onEdit={() => setEditingTournament(t)}
-                        onDelete={() => setDeletingTournament(t)}
+                        onDelete={() => {
+                          resetDeleteError();
+                          setDeletingTournament(t);
+                        }}
                       />
                     </TableCell>
                   </TableRow>
@@ -199,12 +211,17 @@ export function TournamentsManagement() {
         title="Delete tournament?"
         description={`This permanently removes ${deletingTournament?.name ?? "this tournament"}. Remove all registered teams first.${deleteError ? ` ${deleteError}` : ""}`}
         isDeleting={isDeleting}
-        onClose={() => setDeletingTournament(null)}
+        onClose={() => {
+          resetDeleteError();
+          setDeletingTournament(null);
+        }}
         onConfirm={async () => {
           if (!deletingTournament) return;
+          resetDeleteError();
           try {
             await deleteTournamentSubmit(deletingTournament.id);
             removeTournament(deletingTournament.id);
+            resetDeleteError();
             setDeletingTournament(null);
           } catch {
             // deleteError shown in dialog

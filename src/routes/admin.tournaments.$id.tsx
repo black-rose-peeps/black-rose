@@ -128,6 +128,7 @@ function TournamentDetailPage() {
     submit: deleteTournamentSubmit,
     isDeleting,
     error: deleteTournamentError,
+    resetError: resetDeleteTournamentError,
   } = useDeleteTournament();
 
   // ── Loading state ──────────────────────────────────────────────────────
@@ -216,7 +217,10 @@ function TournamentDetailPage() {
               variant="outline"
               size="sm"
               className="gap-2 font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
-              onClick={() => setIsDeleteOpen(true)}
+              onClick={() => {
+                resetDeleteTournamentError();
+                setIsDeleteOpen(true);
+              }}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
@@ -520,8 +524,12 @@ function TournamentDetailPage() {
         title="Delete tournament?"
         description={`This permanently removes ${tournament.name}. Remove all registered teams first.${deleteTournamentError ? ` ${deleteTournamentError}` : ""}`}
         isDeleting={isDeleting}
-        onClose={() => setIsDeleteOpen(false)}
+        onClose={() => {
+          resetDeleteTournamentError();
+          setIsDeleteOpen(false);
+        }}
         onConfirm={async () => {
+          resetDeleteTournamentError();
           try {
             await deleteTournamentSubmit(tournament.id);
             navigate({ to: "/admin/tournaments" });

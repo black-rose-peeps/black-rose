@@ -229,21 +229,10 @@ export async function removeMemberFromTeam(teamId: string, userId: string): Prom
 }
 
 export async function deleteTeam(teamId: string): Promise<void> {
-  const { data: registration, error: regErr } = await supabase
-    .from("tournament_registrations")
-    .select("id")
-    .eq("roster_team_id", teamId)
-    .limit(1);
+  const { error } = await supabase.rpc("delete_team_and_members", {
+    p_team_id: teamId,
+  });
 
-  if (regErr) throw new Error(regErr.message);
-  if (registration && registration.length > 0) {
-    throw new Error("Remove this team from all tournaments before deleting.");
-  }
-
-  const { error: membersErr } = await supabase.from("team_members").delete().eq("team_id", teamId);
-  if (membersErr) throw new Error(membersErr.message);
-
-  const { error } = await supabase.from("teams").delete().eq("id", teamId);
   if (error) throw new Error(error.message);
 }
 

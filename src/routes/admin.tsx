@@ -1,5 +1,4 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
 import { ensureAdminConsoleSession } from "@/features/admin/auth/admin-session";
 
@@ -24,20 +23,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminLayout() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    let cancelled = false;
-    ensureAdminConsoleSession().then((valid) => {
-      if (!cancelled && !valid) {
-        navigate({ to: "/login", search: { console: "1" } });
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate]);
-
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
       <AdminSidebar />

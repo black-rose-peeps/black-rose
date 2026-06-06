@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
-
-const SESSION_KEY = "br_admin_session";
+import { SESSION_KEY } from "./admin-session";
 
 /** Verify admin console credentials against `admin_accounts` via Supabase RPC. */
 export async function verifyAdminCredentials(

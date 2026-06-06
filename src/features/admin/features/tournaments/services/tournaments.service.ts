@@ -104,7 +104,7 @@ export async function updateTournament(
       registration_deadline: input.registrationDeadline,
       team_cap: input.teamCap,
       region: input.region,
-      status: input.status ?? "Draft",
+      ...(input.status !== undefined ? { status: input.status } : {}),
     })
     .eq("id", id)
     .select()
@@ -115,16 +115,12 @@ export async function updateTournament(
 }
 
 export async function deleteTournament(id: string): Promise<void> {
-  const { count, error: countErr } = await supabase
-    .from("tournament_registrations")
-    .select("id", { count: "exact", head: true })
-    .eq("tournament_id", id);
+  const { data, error } = await supabase.rpc("delete_tournament_if_empty", {
+    p_tournament_id: id,
+  });
 
-  if (countErr) throw new Error(countErr.message);
-  if ((count ?? 0) > 0) {
+  if (error) throw new Error(error.message);
+  if (!data) {
     throw new Error("Remove all registered teams before deleting this tournament.");
   }
-
-  const { error } = await supabase.from("tournaments").delete().eq("id", id);
-  if (error) throw new Error(error.message);
 }

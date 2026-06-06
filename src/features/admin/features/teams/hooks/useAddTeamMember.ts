@@ -12,7 +12,11 @@ export function useAddTeamMember() {
     setError(null);
     try {
       const team = await addMemberToTeam(input);
-      await resyncRegistrationsForTeam(input.teamId);
+      try {
+        await resyncRegistrationsForTeam(input.teamId);
+      } catch (resyncErr) {
+        console.error("Roster resync failed after adding member:", resyncErr);
+      }
       return team;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to add member.";

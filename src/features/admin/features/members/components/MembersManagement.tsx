@@ -29,7 +29,12 @@ export function MembersManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
-  const { submit: deleteMemberSubmit, isDeleting, error: deleteError } = useDeleteMember();
+  const {
+    submit: deleteMemberSubmit,
+    isDeleting,
+    error: deleteError,
+    resetError: resetDeleteError,
+  } = useDeleteMember();
   const pagination = usePagination(members);
 
   function handleCreated(member: AdminMember) {
@@ -147,7 +152,10 @@ export function MembersManagement() {
                     <TableCell className="text-right">
                       <AdminRowActions
                         onEdit={() => setEditingMember(member)}
-                        onDelete={() => setDeletingMember(member)}
+                        onDelete={() => {
+                          resetDeleteError();
+                          setDeletingMember(member);
+                        }}
                       />
                     </TableCell>
                   </TableRow>
@@ -186,12 +194,17 @@ export function MembersManagement() {
         title="Delete member?"
         description={`This permanently removes ${deletingMember?.username ?? "this member"}. They must not be on an active team roster.${deleteError ? ` ${deleteError}` : ""}`}
         isDeleting={isDeleting}
-        onClose={() => setDeletingMember(null)}
+        onClose={() => {
+          resetDeleteError();
+          setDeletingMember(null);
+        }}
         onConfirm={async () => {
           if (!deletingMember) return;
+          resetDeleteError();
           try {
             await deleteMemberSubmit(deletingMember.id);
             removeMember(deletingMember.id);
+            resetDeleteError();
             setDeletingMember(null);
           } catch {
             // deleteError shown in dialog description

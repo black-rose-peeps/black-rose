@@ -20,6 +20,7 @@ export interface AdminRowActionItem {
 
 interface AdminRowActionsProps {
   label?: string;
+  groupLabel?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   items?: AdminRowActionItem[];
@@ -27,6 +28,7 @@ interface AdminRowActionsProps {
 
 export function AdminRowActions({
   label = "More",
+  groupLabel = "Team",
   onEdit,
   onDelete,
   items = [],
@@ -44,6 +46,7 @@ export function AdminRowActions({
           size="sm"
           className="h-8 gap-1.5 px-2.5 font-tech text-[10px] uppercase tracking-wider"
           onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{label}</span>
@@ -54,11 +57,12 @@ export function AdminRowActions({
         align="end"
         className="w-56"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
       >
         {items.length > 0 && (
           <>
             <DropdownMenuLabel className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-              Team
+              {groupLabel}
             </DropdownMenuLabel>
             {items.map((item) => {
               const Icon = item.icon;

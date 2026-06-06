@@ -59,7 +59,7 @@ function validateTeamNameAndTag(
     errors.tag = "Tag is required.";
   } else if (!/^[A-Z0-9]{2,5}$/.test(tag)) {
     errors.tag = "Use 2–5 uppercase letters or numbers.";
-  } else if (others.some((team) => team.tag === tag)) {
+  } else if (others.some((team) => team.tag.trim().toUpperCase() === tag)) {
     errors.tag = "This tag is already in use.";
   }
 

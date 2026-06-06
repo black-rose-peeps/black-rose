@@ -120,6 +120,7 @@ export function TeamRosterDialog({ open, team, onClose, onUpdated }: TeamRosterD
                       className="text-destructive hover:text-destructive"
                       disabled={isSubmitting || member.status === "captain"}
                       title={member.status === "captain" ? "Cannot remove captain" : "Remove member"}
+                      aria-label={`Remove ${member.username}`}
                       onClick={() => handleRemove(member.userId)}
                     >
                       <Trash2 className="h-4 w-4" />

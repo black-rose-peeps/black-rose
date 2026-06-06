@@ -13,7 +13,11 @@ export function useUpdateTeam() {
       setError(null);
       try {
         const team = await updateTeam(teamId, input);
-        await resyncRegistrationsForTeam(teamId);
+        try {
+          await resyncRegistrationsForTeam(teamId);
+        } catch (resyncErr) {
+          console.error("Roster resync failed after updating team:", resyncErr);
+        }
         return team;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to update team.";

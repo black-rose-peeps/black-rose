@@ -2,6 +2,20 @@ import { supabase } from "@/lib/supabase";
 import type { AdminMember, CreateMemberInput } from "../types";
 import { rowToAdminMember } from "../utils";
 
+function throwMemberUniqueViolation(error: { message: string }): never {
+  const msg = error.message;
+  if (msg.includes("discord_username")) {
+    throw new Error("That Discord username is already registered.");
+  }
+  if (msg.includes("discord_id")) {
+    throw new Error("That Discord ID is already linked to another member.");
+  }
+  if (msg.includes("username")) {
+    throw new Error("That username is already registered.");
+  }
+  throw new Error(msg);
+}
+
 export async function fetchMembers(): Promise<AdminMember[]> {
   const { data, error } = await supabase
     .from("members")
@@ -35,14 +49,7 @@ export async function createMember(input: CreateMemberInput): Promise<AdminMembe
     .single();
 
   if (error) {
-    if (error.code === "23505") {
-      if (error.message.includes("username"))
-        throw new Error("That username is already registered.");
-      if (error.message.includes("discord_username"))
-        throw new Error("That Discord username is already registered.");
-      if (error.message.includes("discord_id"))
-        throw new Error("That Discord ID is already linked to another member.");
-    }
+    if (error.code === "23505") throwMemberUniqueViolation(error);
     throw new Error(error.message);
   }
 
@@ -66,14 +73,7 @@ export async function updateMember(
     .single();
 
   if (error) {
-    if (error.code === "23505") {
-      if (error.message.includes("username"))
-        throw new Error("That username is already registered.");
-      if (error.message.includes("discord_username"))
-        throw new Error("That Discord username is already registered.");
-      if (error.message.includes("discord_id"))
-        throw new Error("That Discord ID is already linked to another member.");
-    }
+    if (error.code === "23505") throwMemberUniqueViolation(error);
     throw new Error(error.message);
   }
 

@@ -35,7 +35,12 @@ export function TeamsManagement() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [rosterTeam, setRosterTeam] = useState<Team | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
-  const { submit: deleteTeamSubmit, isDeleting, error: deleteError } = useDeleteTeam();
+  const {
+    submit: deleteTeamSubmit,
+    isDeleting,
+    error: deleteError,
+    resetError: resetDeleteError,
+  } = useDeleteTeam();
   const pagination = usePagination(teams);
 
   return (
@@ -175,7 +180,10 @@ export function TeamsManagement() {
                         <AdminRowActions
                           label="More"
                           onEdit={() => setEditingTeam(team)}
-                          onDelete={() => setDeletingTeam(team)}
+                          onDelete={() => {
+                            resetDeleteError();
+                            setDeletingTeam(team);
+                          }}
                         />
                       </div>
                     </TableCell>
@@ -237,12 +245,17 @@ export function TeamsManagement() {
         title="Delete team?"
         description={`This permanently removes ${deletingTeam?.name ?? "this team"}. Remove them from tournaments first.${deleteError ? ` ${deleteError}` : ""}`}
         isDeleting={isDeleting}
-        onClose={() => setDeletingTeam(null)}
+        onClose={() => {
+          resetDeleteError();
+          setDeletingTeam(null);
+        }}
         onConfirm={async () => {
           if (!deletingTeam) return;
+          resetDeleteError();
           try {
             await deleteTeamSubmit(deletingTeam.id);
             removeTeam(deletingTeam.id);
+            resetDeleteError();
             setDeletingTeam(null);
           } catch {
             // deleteError shown in dialog
