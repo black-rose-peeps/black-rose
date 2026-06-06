@@ -16,23 +16,23 @@ export function normalizeMemberStatus(raw: string): MemberVerificationStatus {
 export function validateCreateMemberForm(
   values: CreateMemberFormValues,
   existingMembers: AdminMember[],
+  excludeMemberId?: string,
 ): Partial<Record<keyof CreateMemberFormValues, string>> {
   const errors: Partial<Record<keyof CreateMemberFormValues, string>> = {};
+  const others = excludeMemberId
+    ? existingMembers.filter((m) => m.id !== excludeMemberId)
+    : existingMembers;
 
   if (!values.username.trim()) {
     errors.username = "Username is required.";
-  } else if (
-    existingMembers.some((m) => m.username.toLowerCase() === values.username.toLowerCase())
-  ) {
+  } else if (others.some((m) => m.username.toLowerCase() === values.username.toLowerCase())) {
     errors.username = "Username is already taken.";
   }
 
   if (!values.discordUsername.trim()) {
     errors.discordUsername = "Discord username is required.";
   } else if (
-    existingMembers.some(
-      (m) => m.discordUsername.toLowerCase() === values.discordUsername.toLowerCase(),
-    )
+    others.some((m) => m.discordUsername.toLowerCase() === values.discordUsername.toLowerCase())
   ) {
     errors.discordUsername = "Discord username is already registered.";
   }
@@ -48,6 +48,15 @@ export function hasFormErrors(
   errors: Partial<Record<keyof CreateMemberFormValues, string>>,
 ): boolean {
   return Object.values(errors).some(Boolean);
+}
+
+export function memberToFormValues(member: AdminMember): CreateMemberFormValues {
+  return {
+    username: member.username,
+    discordUsername: member.discordUsername,
+    discordId: member.discordId ?? "",
+    status: member.status,
+  };
 }
 
 export function formValuesToCreateInput(values: CreateMemberFormValues): CreateMemberInput {

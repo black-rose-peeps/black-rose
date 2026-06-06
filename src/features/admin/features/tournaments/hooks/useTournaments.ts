@@ -28,5 +28,21 @@ export function useTournaments() {
     setTournaments((prev) => [tournament, ...prev]);
   }, []);
 
-  return { tournaments, isLoading, error, refetch, prependTournament };
+  const replaceTournament = useCallback((tournament: AdminTournament) => {
+    setTournaments((prev) => prev.map((item) => (item.id === tournament.id ? tournament : item)));
+  }, []);
+
+  const removeTournament = useCallback((tournamentId: string) => {
+    setTournaments((prev) => prev.filter((item) => item.id !== tournamentId));
+  }, []);
+
+  return {
+    tournaments,
+    isLoading,
+    error,
+    refetch,
+    prependTournament,
+    replaceTournament,
+    removeTournament,
+  };
 }

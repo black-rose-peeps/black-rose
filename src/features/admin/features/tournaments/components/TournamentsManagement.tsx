@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
+import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
+import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,11 +22,17 @@ import { GAME_LABELS } from "@/features/tournaments/constants";
 import { useTournaments } from "../hooks";
 import type { AdminTournament } from "../types";
 import { CreateTournamentModal } from "./CreateTournamentModal";
+import { EditTournamentModal } from "./EditTournamentModal";
+import { useDeleteTournament } from "../hooks/useDeleteTournament";
 
 export function TournamentsManagement() {
   const navigate = useNavigate();
-  const { tournaments, isLoading, error, prependTournament } = useTournaments();
+  const { tournaments, isLoading, error, prependTournament, replaceTournament, removeTournament } =
+    useTournaments();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingTournament, setEditingTournament] = useState<AdminTournament | null>(null);
+  const [deletingTournament, setDeletingTournament] = useState<AdminTournament | null>(null);
+  const { submit: deleteTournamentSubmit, isDeleting, error: deleteError } = useDeleteTournament();
   const pagination = usePagination(tournaments);
 
   function handleCreated(tournament: AdminTournament) {
@@ -79,6 +87,9 @@ export function TournamentsManagement() {
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Status
                 </TableHead>
+                <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -106,11 +117,14 @@ export function TournamentsManagement() {
                     <TableCell>
                       <Skeleton className="h-5 w-24 rounded-full" />
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="ml-auto h-8 w-8 rounded-md" />
+                    </TableCell>
                   </TableRow>
                 ))
               ) : tournaments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     No tournaments yet. Create your first event to get started.
                   </TableCell>
                 </TableRow>
@@ -145,6 +159,12 @@ export function TournamentsManagement() {
                     <TableCell>
                       <StatusPill status={t.status} />
                     </TableCell>
+                    <TableCell className="text-right">
+                      <AdminRowActions
+                        onEdit={() => setEditingTournament(t)}
+                        onDelete={() => setDeletingTournament(t)}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -165,6 +185,31 @@ export function TournamentsManagement() {
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onCreated={handleCreated}
+      />
+
+      <EditTournamentModal
+        open={editingTournament !== null}
+        tournament={editingTournament}
+        onClose={() => setEditingTournament(null)}
+        onUpdated={replaceTournament}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingTournament !== null}
+        title="Delete tournament?"
+        description={`This permanently removes ${deletingTournament?.name ?? "this tournament"}. Remove all registered teams first.${deleteError ? ` ${deleteError}` : ""}`}
+        isDeleting={isDeleting}
+        onClose={() => setDeletingTournament(null)}
+        onConfirm={async () => {
+          if (!deletingTournament) return;
+          try {
+            await deleteTournamentSubmit(deletingTournament.id);
+            removeTournament(deletingTournament.id);
+            setDeletingTournament(null);
+          } catch {
+            // deleteError shown in dialog
+          }
+        }}
       />
     </>
   );

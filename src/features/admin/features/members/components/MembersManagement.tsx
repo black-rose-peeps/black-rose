@@ -4,6 +4,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
+import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import {
   Table,
   TableBody,
@@ -19,10 +21,15 @@ import { useMembers } from "../hooks";
 import type { AdminMember } from "../types";
 import { memberStatusBadgeVariant } from "../utils";
 import { CreateMemberModal } from "./CreateMemberModal";
+import { EditMemberModal } from "./EditMemberModal";
+import { useDeleteMember } from "../hooks/useDeleteMember";
 
 export function MembersManagement() {
-  const { members, isLoading, error, prependMember } = useMembers();
+  const { members, isLoading, error, prependMember, replaceMember, removeMember } = useMembers();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
+  const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
+  const { submit: deleteMemberSubmit, isDeleting, error: deleteError } = useDeleteMember();
   const pagination = usePagination(members);
 
   function handleCreated(member: AdminMember) {
@@ -71,6 +78,9 @@ export function MembersManagement() {
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Verification
                 </TableHead>
+                <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -96,11 +106,14 @@ export function MembersManagement() {
                     <TableCell>
                       <Skeleton className="h-5 w-14 rounded-full" />
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="ml-auto h-8 w-8 rounded-md" />
+                    </TableCell>
                   </TableRow>
                 ))
               ) : members.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                     No members yet. Register the first member to continue.
                   </TableCell>
                 </TableRow>
@@ -131,6 +144,12 @@ export function MembersManagement() {
                         {member.status}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <AdminRowActions
+                        onEdit={() => setEditingMember(member)}
+                        onDelete={() => setDeletingMember(member)}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -152,6 +171,32 @@ export function MembersManagement() {
         onClose={() => setIsCreateOpen(false)}
         existingMembers={members}
         onCreated={handleCreated}
+      />
+
+      <EditMemberModal
+        open={editingMember !== null}
+        member={editingMember}
+        existingMembers={members}
+        onClose={() => setEditingMember(null)}
+        onUpdated={replaceMember}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingMember !== null}
+        title="Delete member?"
+        description={`This permanently removes ${deletingMember?.username ?? "this member"}. They must not be on an active team roster.${deleteError ? ` ${deleteError}` : ""}`}
+        isDeleting={isDeleting}
+        onClose={() => setDeletingMember(null)}
+        onConfirm={async () => {
+          if (!deletingMember) return;
+          try {
+            await deleteMemberSubmit(deletingMember.id);
+            removeMember(deletingMember.id);
+            setDeletingMember(null);
+          } catch {
+            // deleteError shown in dialog description
+          }
+        }}
       />
     </>
   );

@@ -49,3 +49,51 @@ export async function createMember(input: CreateMemberInput): Promise<AdminMembe
 
   return rowToAdminMember(data);
 }
+
+export async function updateMember(
+  id: string,
+  input: CreateMemberInput,
+): Promise<AdminMember> {
+  const { data, error } = await supabase
+    .from("members")
+    .update({
+      username: input.username,
+      discord_username: input.discordUsername,
+      discord_id: input.discordId ?? null,
+      status: input.status,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      if (error.message.includes("username"))
+        throw new Error("That username is already registered.");
+      if (error.message.includes("discord_username"))
+        throw new Error("That Discord username is already registered.");
+      if (error.message.includes("discord_id"))
+        throw new Error("That Discord ID is already linked to another member.");
+    }
+    throw new Error(error.message);
+  }
+
+  return rowToAdminMember(data);
+}
+
+export async function deleteMember(id: string): Promise<void> {
+  const { data: onTeam, error: teamErr } = await supabase
+    .from("team_members")
+    .select("id")
+    .eq("user_id", id)
+    .in("status", ["captain", "active"])
+    .limit(1);
+
+  if (teamErr) throw new Error(teamErr.message);
+  if (onTeam && onTeam.length > 0) {
+    throw new Error("Remove this member from their team before deleting.");
+  }
+
+  const { error } = await supabase.from("members").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Plus, UserPlus } from "lucide-react";
+import { Plus, UserPlus, Users } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
+import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import {
   Table,
   TableBody,
@@ -19,14 +21,21 @@ import { GAME_COLOR } from "@/features/teams/constants";
 import { useTeams } from "../hooks";
 import type { Team } from "../types";
 import { countActiveMembers, getTeamCaptainUsername } from "../utils";
+import { useDeleteTeam } from "../hooks/useDeleteTeam";
 import { AddTeamMemberDialog } from "./AddTeamMemberDialog";
 import { CreateTeamModal } from "./CreateTeamModal";
+import { EditTeamModal } from "./EditTeamModal";
+import { TeamRosterDialog } from "./TeamRosterDialog";
 
 export function TeamsManagement() {
   const { members, isLoading: membersLoading } = useMembers();
-  const { teams, isLoading, error, prependTeam, updateTeam } = useTeams();
+  const { teams, isLoading, error, prependTeam, updateTeam, removeTeam } = useTeams();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [addMemberTeam, setAddMemberTeam] = useState<Team | null>(null);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [rosterTeam, setRosterTeam] = useState<Team | null>(null);
+  const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
+  const { submit: deleteTeamSubmit, isDeleting, error: deleteError } = useDeleteTeam();
   const pagination = usePagination(teams);
 
   return (
@@ -91,26 +100,21 @@ export function TeamsManagement() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {/* Team tag + name */}
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Skeleton className="h-9 w-9 shrink-0" />
                         <Skeleton className="h-4 w-32" />
                       </div>
                     </TableCell>
-                    {/* Game */}
                     <TableCell>
                       <Skeleton className="h-3.5 w-20" />
                     </TableCell>
-                    {/* Captain */}
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
-                    {/* Roster */}
                     <TableCell>
                       <Skeleton className="h-4 w-16" />
                     </TableCell>
-                    {/* Actions */}
                     <TableCell className="text-right">
                       <Skeleton className="ml-auto h-7 w-28 rounded-md" />
                     </TableCell>
@@ -147,16 +151,33 @@ export function TeamsManagement() {
                       {countActiveMembers(team)} players
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-                        onClick={() => setAddMemberTeam(team)}
-                      >
-                        <UserPlus className="h-3.5 w-3.5" />
-                        Add Member
-                      </Button>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                          onClick={() => setRosterTeam(team)}
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                          Roster
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                          onClick={() => setAddMemberTeam(team)}
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          Add
+                        </Button>
+                        <AdminRowActions
+                          label="More"
+                          onEdit={() => setEditingTeam(team)}
+                          onDelete={() => setDeletingTeam(team)}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -182,12 +203,51 @@ export function TeamsManagement() {
         onCreated={prependTeam}
       />
 
+      <EditTeamModal
+        open={editingTeam !== null}
+        team={editingTeam}
+        existingTeams={teams}
+        onClose={() => setEditingTeam(null)}
+        onUpdated={updateTeam}
+      />
+
+      <TeamRosterDialog
+        open={rosterTeam !== null}
+        team={rosterTeam}
+        onClose={() => setRosterTeam(null)}
+        onUpdated={(team) => {
+          updateTeam(team);
+          setRosterTeam(team);
+        }}
+      />
+
       <AddTeamMemberDialog
         open={addMemberTeam !== null}
         team={addMemberTeam}
         allMembers={members}
         onClose={() => setAddMemberTeam(null)}
-        onUpdated={updateTeam}
+        onUpdated={(team) => {
+          updateTeam(team);
+          if (addMemberTeam?.id === team.id) setAddMemberTeam(team);
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingTeam !== null}
+        title="Delete team?"
+        description={`This permanently removes ${deletingTeam?.name ?? "this team"}. Remove them from tournaments first.${deleteError ? ` ${deleteError}` : ""}`}
+        isDeleting={isDeleting}
+        onClose={() => setDeletingTeam(null)}
+        onConfirm={async () => {
+          if (!deletingTeam) return;
+          try {
+            await deleteTeamSubmit(deletingTeam.id);
+            removeTeam(deletingTeam.id);
+            setDeletingTeam(null);
+          } catch {
+            // deleteError shown in dialog
+          }
+        }}
       />
     </>
   );

@@ -52,5 +52,23 @@ export function useTournamentRegistrations(tournamentId: string) {
     setRegistrations((prev) => [registration, ...prev]);
   }, []);
 
-  return { registrations, isLoading, error, refetch, prependRegistration };
+  const updateRegistration = useCallback((registration: MockTeam) => {
+    setRegistrations((prev) =>
+      prev.map((item) => (item.id === registration.id ? registration : item)),
+    );
+  }, []);
+
+  const removeRegistration = useCallback((registrationId: string) => {
+    setRegistrations((prev) => prev.filter((item) => item.id !== registrationId));
+  }, []);
+
+  return {
+    registrations,
+    isLoading,
+    error,
+    refetch,
+    prependRegistration,
+    updateRegistration,
+    removeRegistration,
+  };
 }

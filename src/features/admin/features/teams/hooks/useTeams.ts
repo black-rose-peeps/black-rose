@@ -32,5 +32,9 @@ export function useTeams() {
     setTeams((prev) => prev.map((t) => (t.id === team.id ? team : t)));
   }, []);
 
-  return { teams, isLoading, error, refetch, prependTeam, updateTeam };
+  const removeTeam = useCallback((teamId: string) => {
+    setTeams((prev) => prev.filter((t) => t.id !== teamId));
+  }, []);
+
+  return { teams, isLoading, error, refetch, prependTeam, updateTeam, removeTeam };
 }

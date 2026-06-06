@@ -1,4 +1,5 @@
-import { formatPrizePool, prizeDigitsToNumber } from "@/lib/currency";
+import { formatPrizePool, parseStoredPrizePool, prizeDigitsToNumber } from "@/lib/currency";
+import type { TournamentFormat } from "@/features/tournaments/constants/formats";
 import {
   isDoubleEliminationFormat,
   isSingleEliminationFormat,
@@ -30,6 +31,22 @@ export function supportsBracketManager(format: string, teamCount: number): boole
   if (isSingleEliminationFormat(format)) return teamCount >= 2;
   if (isDoubleEliminationFormat(format)) return teamCount >= 2;
   return false;
+}
+
+export function tournamentToFormValues(tournament: AdminTournament): CreateTournamentFormValues {
+  const { currency, digits } = parseStoredPrizePool(tournament.prizePool);
+  return {
+    name: tournament.name,
+    game: tournament.game,
+    format: tournament.format as TournamentFormat,
+    prizeCurrency: currency,
+    prizeAmount: digits,
+    startDate: tournament.startDate,
+    registrationDeadline: tournament.registrationDeadline,
+    teamCap: String(tournament.teamCap),
+    region: tournament.region,
+    status: tournament.status,
+  };
 }
 
 export function formValuesToCreateInput(values: CreateTournamentFormValues): CreateTournamentInput {

@@ -181,6 +181,72 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   return fetchTeamWithMembers(input.teamId);
 }
 
+export async function fetchTeamById(teamId: string): Promise<Team | null> {
+  try {
+    return await fetchTeamWithMembers(teamId);
+  } catch {
+    return null;
+  }
+}
+
+export async function updateTeam(
+  teamId: string,
+  input: Pick<CreateTeamInput, "name" | "tag" | "game">,
+): Promise<Team> {
+  const { error } = await supabase
+    .from("teams")
+    .update({
+      name: input.name,
+      tag: input.tag,
+      game: input.game,
+    })
+    .eq("id", teamId);
+
+  if (error) {
+    if (error.code === "23505") throw new Error("A team with this tag already exists.");
+    throw new Error(error.message);
+  }
+
+  return fetchTeamWithMembers(teamId);
+}
+
+export async function removeMemberFromTeam(teamId: string, userId: string): Promise<Team> {
+  const team = await fetchTeamWithMembers(teamId);
+  const member = team.members.find((m) => m.userId === userId);
+  if (!member) throw new Error("Member not found on this team.");
+  if (member.status === "captain") {
+    throw new Error("Cannot remove the captain. Edit the team or assign a new captain first.");
+  }
+
+  const { error } = await supabase
+    .from("team_members")
+    .update({ status: "removed" })
+    .eq("team_id", teamId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
+  return fetchTeamWithMembers(teamId);
+}
+
+export async function deleteTeam(teamId: string): Promise<void> {
+  const { data: registration, error: regErr } = await supabase
+    .from("tournament_registrations")
+    .select("id")
+    .eq("roster_team_id", teamId)
+    .limit(1);
+
+  if (regErr) throw new Error(regErr.message);
+  if (registration && registration.length > 0) {
+    throw new Error("Remove this team from all tournaments before deleting.");
+  }
+
+  const { error: membersErr } = await supabase.from("team_members").delete().eq("team_id", teamId);
+  if (membersErr) throw new Error(membersErr.message);
+
+  const { error } = await supabase.from("teams").delete().eq("id", teamId);
+  if (error) throw new Error(error.message);
+}
+
 export async function assignTeamActiveTournament(
   teamId: string,
   tournamentId: string,

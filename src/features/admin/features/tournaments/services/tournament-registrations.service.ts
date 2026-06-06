@@ -235,3 +235,123 @@ export async function addTeamsToTournament(
 
   return { added, failed };
 }
+
+async function resyncRegistrationRoster(registrationId: string): Promise<MockTeam> {
+  const { data: reg, error: regErr } = await supabase
+    .from("tournament_registrations")
+    .select("*")
+    .eq("id", registrationId)
+    .single();
+
+  if (regErr) throw new Error(regErr.message);
+
+  const rosterTeamId = reg.roster_team_id as string | null;
+  if (!rosterTeamId) return fetchRegistrationWithPlayers(registrationId);
+
+  const allTeams = await fetchTeams();
+  const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
+  if (!rosterTeam) return fetchRegistrationWithPlayers(registrationId);
+
+  const captain =
+    rosterTeam.members.find((m) => m.status === "captain") ??
+    rosterTeam.members.find((m) => m.status === "active") ??
+    rosterTeam.members[0];
+
+  const { error: updateErr } = await supabase
+    .from("tournament_registrations")
+    .update({
+      name: rosterTeam.name,
+      tag: rosterTeam.tag,
+      captain: captain?.username ?? "—",
+    })
+    .eq("id", registrationId);
+
+  if (updateErr) throw new Error(updateErr.message);
+
+  const { error: deleteErr } = await supabase
+    .from("tournament_registration_players")
+    .delete()
+    .eq("registration_id", registrationId);
+
+  if (deleteErr) throw new Error(deleteErr.message);
+
+  const activePlayers = rosterTeam.members.filter(
+    (m) => m.status === "captain" || m.status === "active",
+  );
+
+  if (activePlayers.length > 0) {
+    const { error: playersErr } = await supabase.from("tournament_registration_players").insert(
+      activePlayers.map((m) => ({
+        registration_id: registrationId,
+        ign: m.ign,
+        role: m.role,
+        discord: `${m.username}#0000`,
+      })),
+    );
+
+    if (playersErr) throw new Error(playersErr.message);
+  }
+
+  return fetchRegistrationWithPlayers(registrationId);
+}
+
+/** Refresh tournament registration snapshots from live team rosters. */
+export async function resyncRegistrationsForTeam(rosterTeamId: string): Promise<MockTeam[]> {
+  const { data: regs, error } = await supabase
+    .from("tournament_registrations")
+    .select("id")
+    .eq("roster_team_id", rosterTeamId);
+
+  if (error) throw new Error(error.message);
+  if (!regs?.length) return [];
+
+  const updated: MockTeam[] = [];
+  for (const reg of regs) {
+    updated.push(await resyncRegistrationRoster(reg.id as string));
+  }
+  return updated;
+}
+
+export async function removeTeamFromTournament(registrationId: string): Promise<void> {
+  const { data: reg, error: regErr } = await supabase
+    .from("tournament_registrations")
+    .select("tournament_id, roster_team_id")
+    .eq("id", registrationId)
+    .single();
+
+  if (regErr) throw new Error(regErr.message);
+
+  const tournamentId = reg.tournament_id as string;
+  const rosterTeamId = reg.roster_team_id as string | null;
+
+  const { error: playersErr } = await supabase
+    .from("tournament_registration_players")
+    .delete()
+    .eq("registration_id", registrationId);
+
+  if (playersErr) throw new Error(playersErr.message);
+
+  const { error: deleteErr } = await supabase
+    .from("tournament_registrations")
+    .delete()
+    .eq("id", registrationId);
+
+  if (deleteErr) throw new Error(deleteErr.message);
+
+  const { count, error: countErr } = await supabase
+    .from("tournament_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId);
+
+  if (countErr) throw new Error(countErr.message);
+  await syncTournamentTeamCount(tournamentId, count ?? 0);
+
+  if (rosterTeamId) {
+    const { error: teamErr } = await supabase
+      .from("teams")
+      .update({ active_tournament_id: null, active_tournament_name: null })
+      .eq("id", rosterTeamId);
+
+    if (teamErr) throw new Error(teamErr.message);
+  }
+}
