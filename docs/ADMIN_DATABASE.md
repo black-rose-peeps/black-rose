@@ -313,7 +313,7 @@ On **Approved**: set `teams.active_tournament_id = tournament_id`.
 
 ## 5. Tournament bracket (admin)
 
-**Code:** `src/features/admin/features/tournament/`  
+**Code:** `src/features/admin/features/tournament-details/`  
 **UI:** `BracketManager.tsx`, `ProfessionalMatchCard.tsx` (unchanged location)
 
 ### TypeScript (strict)
@@ -347,7 +347,7 @@ interface AdminBracketRound {
 - `winner` — registration team name in the UI; DB uses `winner_registration_id`.
 - Bracket engine `nextMatchSlot` uses camelCase (`"teamA" | "teamB"`) in TypeScript; persist as snake_case (`team_a`, `team_b`) in `next_match_slot`.
 
-From `src/features/admin/features/tournament/types/bracket-engine.ts`:
+From `src/features/admin/features/tournament-details/types/bracket-engine.ts`:
 
 ```ts
 interface BracketMatch {

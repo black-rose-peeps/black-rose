@@ -6,34 +6,25 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 let _supabase: SupabaseClient | null = null;
 
 function createSupabaseClient(): SupabaseClient {
-  if (typeof window !== "undefined") {
-    return createClient(supabaseUrl, supabaseAnonKey);
+  // supabase-js v2 synchronously checks globalThis.WebSocket when constructing
+  // the Realtime client. In Node < 22 (SSR) this throws even when Realtime is
+  // never used. Defer construction to the browser where WebSocket is always present.
+  if (typeof window === "undefined") {
+    // Return a proxy that throws a clear error only when actually called in SSR.
+    // Route loaders that call Supabase should guard with:
+    //   if (typeof window === 'undefined') return fallback;
+    // See admin.tournaments.$id.tsx loader.
+    return new Proxy({} as SupabaseClient, {
+      get(_target, prop) {
+        throw new Error(
+          `Supabase cannot be used during SSR (called property: ${String(prop)}). ` +
+            "Add a server-side guard or move this call to a client-side hook.",
+        );
+      },
+    });
   }
 
-  // Node SSR (Node < 22): provide ws transport — package is in devDependencies
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const ws = require("ws") as typeof WebSocket;
-    return createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-      realtime: {
-        transport: ws,
-      },
-    });
-  } catch {
-    // ws not available — create client without realtime (no SSR websocket needed)
-    return createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    });
-  }
+  return createClient(supabaseUrl, supabaseAnonKey);
 }
 
 export const supabase = new Proxy({} as SupabaseClient, {

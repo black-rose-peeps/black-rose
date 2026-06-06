@@ -72,3 +72,19 @@ export async function syncTournamentTeamCount(tournamentId: string, count: numbe
 
   if (error) throw new Error(error.message);
 }
+
+/** Set tournament status — e.g. Draft → Live when a bracket is published. */
+export async function updateTournamentStatus(
+  tournamentId: string,
+  status: MockTournament["status"],
+): Promise<MockTournament> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .update({ status })
+    .eq("id", tournamentId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return rowToTournament(data);
+}

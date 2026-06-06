@@ -19,4 +19,4 @@ export interface AdminBracketRound {
 export type BracketStatus = "not_generated" | "draft" | "published";
 
 // Export new bracket engine types
-export * from "../features/tournament/types/bracket-engine";
+export * from "../features/tournament-details/types/bracket-engine";

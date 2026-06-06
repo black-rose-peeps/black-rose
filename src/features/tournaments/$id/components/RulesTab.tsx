@@ -2,14 +2,25 @@ import type { RuleSection } from "../../types";
 
 interface RulesTabProps {
   rules: RuleSection[];
+  format: string;
   contact: string;
 }
 
-export function RulesTab({ rules, contact }: RulesTabProps) {
+export function RulesTab({ rules, format, contact }: RulesTabProps) {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="flex flex-col gap-5 lg:col-span-2">
-        {rules.map((section) => (
+        {format && (
+          <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+            Rules for <span className="text-foreground">{format}</span>
+          </p>
+        )}
+        {rules.length === 0 ? (
+          <div className="border border-white/8 bg-[oklch(0.07_0_0)] px-5 py-12 text-center text-sm text-muted-foreground">
+            Tournament rules will be posted soon.
+          </div>
+        ) : (
+          rules.map((section) => (
           <div key={section.title} className="border border-white/8 bg-[oklch(0.07_0_0)]">
             <div className="border-b border-white/8 px-5 py-4">
               <h3 className="text-[11px] font-tech uppercase tracking-wider-2 text-foreground">
@@ -25,7 +36,8 @@ export function RulesTab({ rules, contact }: RulesTabProps) {
               ))}
             </ul>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Right — contact */}

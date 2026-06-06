@@ -1,9 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Plus, Trophy, Users2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -16,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { Panel } from "@/features/admin/components/ui";
-import { BracketManager } from "@/features/admin/features/tournament/components/BracketManager";
+import { BracketManager } from "@/features/admin/features/tournament-details/components/BracketManager";
 import { TeamModal } from "@/features/admin/components/TeamModal";
 import { AddTeamToTournamentDialog } from "@/features/admin/features/tournaments/components/AddTeamToTournamentDialog";
 import { useTournamentRegistrations } from "@/features/admin/features/tournaments/hooks";
@@ -27,14 +28,15 @@ import {
 } from "@/features/admin/features/tournaments/utils";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
 import { usePagination } from "@/features/admin/hooks/usePagination";
-import type { MockTeam } from "@/lib/mock-data";
+import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import { mockTournamentDetails } from "@/lib/mock-tournament-details";
 
 export const Route = createFileRoute("/admin/tournaments/$id")({
-  loader: async ({ params }) => {
-    const tournament = await fetchTournamentById(params.id);
-    if (!tournament) throw notFound();
-    return { tournament };
+  loader: ({ params }) => {
+    // Return only the ID — all Supabase calls happen client-side in the component.
+    // This avoids the Node.js WebSocket error that occurs when supabase-js tries
+    // to initialise its Realtime client during SSR on Node < 22.
+    return { tournamentId: params.id };
   },
   component: TournamentDetailPage,
   notFoundComponent: () => (
@@ -49,26 +51,105 @@ export const Route = createFileRoute("/admin/tournaments/$id")({
   ),
 });
 
+// ── Client-side tournament fetch hook ─────────────────────────────────────
+
+function useTournament(id: string) {
+  const [tournament, setTournament] = useState<MockTournament | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
+    fetchTournamentById(id)
+      .then((t) => {
+        if (cancelled) return;
+        if (!t) {
+          setError("Tournament not found.");
+        } else {
+          setTournament(t);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load tournament.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return { tournament, isLoading, error };
+}
+
+// ── Page component ─────────────────────────────────────────────────────────
+
 function TournamentDetailPage() {
-  const { tournament } = Route.useLoaderData();
+  const { tournamentId } = Route.useLoaderData();
+  const {
+    tournament,
+    isLoading: tournamentLoading,
+    error: tournamentError,
+  } = useTournament(tournamentId);
+
   const {
     registrations: teams,
     isLoading: teamsLoading,
     error: teamsError,
     prependRegistration,
-  } = useTournamentRegistrations(tournament.id);
+  } = useTournamentRegistrations(tournamentId);
+
   const teamsPagination = usePagination(teams);
   const [openTeam, setOpenTeam] = useState<MockTeam | null>(null);
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+
+  // ── Loading state ──────────────────────────────────────────────────────
+
+  if (tournamentLoading) {
+    return (
+      <>
+        <AdminTopbar title="Loading…" subtitle="Tournament Operations" />
+        <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+          <Skeleton className="h-8 w-48" />
+          <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-3 xl:grid-cols-7">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="bg-card px-6 py-6">
+                <Skeleton className="h-3 w-16 mb-3" />
+                <Skeleton className="h-7 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ── Error / not found ──────────────────────────────────────────────────
+
+  if (tournamentError || !tournament) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        {tournamentError ?? "Tournament not found."}
+      </div>
+    );
+  }
+
+  // ── Loaded ─────────────────────────────────────────────────────────────
 
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
   const detail = mockTournamentDetails[tournament.id];
   const detailBracket = detail?.bracket ?? [];
 
   // Single source of truth: prefer live registrations, fall back to mock detail, then empty.
+  const approvedTeams = teams.filter((t) => t.status === "Approved");
   const computedTeams =
-    teams.length > 0
-      ? teams.map((t) => ({
+    approvedTeams.length > 0
+      ? approvedTeams.map((t) => ({
           id: t.id,
           name: t.name,
           tag: t.tag,
@@ -154,23 +235,21 @@ function TournamentDetailPage() {
                     Registered Teams
                   </h2>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="gap-2 font-tech uppercase tracking-wider"
-                    disabled={teams.length >= tournament.teamCap}
-                    title={
-                      teams.length >= tournament.teamCap
-                        ? "Team cap reached"
-                        : "Add a roster from Teams"
-                    }
-                    onClick={() => setIsAddTeamOpen(true)}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Team
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-2 font-tech uppercase tracking-wider"
+                  disabled={teams.length >= tournament.teamCap}
+                  title={
+                    teams.length >= tournament.teamCap
+                      ? "Team cap reached"
+                      : "Add a roster from Teams"
+                  }
+                  onClick={() => setIsAddTeamOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Team
+                </Button>
               </div>
 
               {teamsError && (
@@ -207,11 +286,34 @@ function TournamentDetailPage() {
                   </TableHeader>
                   <TableBody>
                     {teamsLoading && teams.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                          Loading teams…
-                        </TableCell>
-                      </TableRow>
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i} className="hover:bg-transparent">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="h-9 w-9 shrink-0" />
+                              <div className="space-y-1.5">
+                                <Skeleton className="h-4 w-32" />
+                                <Skeleton className="h-3 w-20" />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-20" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-16" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-20" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5 w-16 rounded-full" />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Skeleton className="ml-auto h-7 w-14 rounded-md" />
+                          </TableCell>
+                        </TableRow>
+                      ))
                     ) : teams.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
@@ -221,7 +323,7 @@ function TournamentDetailPage() {
                       </TableRow>
                     ) : (
                       teamsPagination.paginatedItems.map((team) => (
-                        <TableRow key={team.id}>
+                        <TableRow key={team.id} className="transition-colors hover:bg-secondary/40">
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="grid h-9 w-9 place-items-center border border-border bg-secondary text-[10px] font-tech">
@@ -232,7 +334,8 @@ function TournamentDetailPage() {
                                   {team.name}
                                 </div>
                                 <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
-                                  {team.id}
+                                  {team.members.length}{" "}
+                                  {team.members.length === 1 ? "player" : "players"}
                                 </div>
                               </div>
                             </div>
@@ -250,17 +353,15 @@ function TournamentDetailPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="font-tech text-[10px] uppercase tracking-wider"
-                                onClick={() => setOpenTeam(team)}
-                              >
-                                View
-                              </Button>
-                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="font-tech text-[10px] uppercase tracking-wider"
+                              onClick={() => setOpenTeam(team)}
+                            >
+                              View
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))

@@ -1,6 +1,6 @@
 # Admin Tournaments & Bracket — Supabase Setup
 
-Step-by-step guide for backing **`src/features/admin/features/tournaments/`** (events + registrations) and **`src/features/admin/features/tournament/`** (bracket manager) on Supabase.
+Step-by-step guide for backing **`src/features/admin/features/tournaments/`** (events + registrations) and **`src/features/admin/features/tournament-details/`** (bracket manager) on Supabase.
 
 **Prerequisites:** You already wired **Members** and **Teams** (`members`, `teams`, `team_members` tables and `members.service.ts` / `teams.service.ts`). Tournaments depend on those tables.
 
@@ -17,7 +17,7 @@ Step-by-step guide for backing **`src/features/admin/features/tournaments/`** (e
 | --------------------------------------- | ---------------------------------------------- | -------------------------------- | --------------------------------------------------------------- |
 | `features/admin/features/tournaments/`  | `/admin/tournaments`, `/admin/tournaments/$id` | Yes                              | `tournaments`, `tournament_registrations`                       |
 | `features/admin/features/participants/` | `/admin/participants`                          | Yes (uses registrations service) | `tournament_registrations` (+ join `tournaments`)               |
-| `features/admin/features/tournament/`   | Bracket tab on tournament detail               | Yes                              | `bracket_rounds`, `bracket_matches`, `tournament_bracket_state` |
+| `features/admin/features/tournament-details/` | Bracket tab on tournament detail           | Yes                              | `bracket_rounds`, `bracket_matches`, `tournament_bracket_state` |
 
 ```text
 Members + Teams (done)
@@ -184,7 +184,8 @@ Maps to `BracketManager.tsx` and `managed-bracket.ts`. State today is **in-memor
 | `tournament_id`  | `uuid`        | PK, FK → `tournaments.id` ON DELETE CASCADE                            |
 | `status`         | `text`        | `not_generated`, `draft`, `published`                                  |
 | `seeding_locked` | `boolean`     | default `false` — after publish, seeding locked, scores still editable |
-| `updated_at`     | `timestamptz` | default `now()`                                                        |
+| `bracket_data`   | `jsonb`       | Published snapshot: public `BracketRound[]` + admin editing state      |
+| `updated_at`     | `timestamptz` | default `now()` — bumped on every score/winner sync                    |
 
 ```sql
 create table public.tournament_bracket_state (
@@ -193,9 +194,30 @@ create table public.tournament_bracket_state (
     'not_generated', 'draft', 'published'
   )),
   seeding_locked boolean not null default false,
+  bracket_data jsonb,
   updated_at timestamptz not null default now()
 );
+
+-- Enable Realtime so public users see live score updates after publish
+alter publication supabase_realtime add table public.tournament_bracket_state;
+alter publication supabase_realtime add table public.tournaments;
 ```
+
+`bracket_data` shape (written by `bracket.service.ts`):
+
+```json
+{
+  "rounds": [{ "label": "Semifinals", "matches": [{ "id": "...", "teamA": "...", "scoreA": 2 }] }],
+  "admin": {
+    "managedMatches": [],
+    "roundMetas": [],
+    "roundFormats": {},
+    "assignmentTeamIds": []
+  }
+}
+```
+
+The app uses this JSON snapshot for persistence and Realtime today. Normalized `bracket_rounds` / `bracket_matches` (below) remain the long-term target if you need registration FKs and SQL reporting.
 
 ### 3b. `bracket_rounds`
 
@@ -344,7 +366,12 @@ create policy "admins manage registrations"
   using (public.is_tournament_admin())
   with check (public.is_tournament_admin());
 
--- Bracket: admins write; anyone read when published (optional)
+-- Bracket state: public read when published (required for public Bracket tab)
+create policy "public read published bracket state"
+  on public.tournament_bracket_state for select
+  using (status = 'published');
+
+-- Admins write bracket state (replace with is_tournament_admin() when auth is wired)
 create policy "admins manage bracket state"
   on public.tournament_bracket_state for all
   using (public.is_tournament_admin())
