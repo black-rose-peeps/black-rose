@@ -63,7 +63,7 @@ Members → Teams → Tournaments → Participants → Bracket
 | 2    | `features/admin/features/teams/`        | Create rosters, add members                                                        |
 | 3    | `features/admin/features/tournaments/`  | Create/list events — see [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md)            |
 | 4    | `features/admin/features/participants/` | Approve/reject team sign-ups (same table as registrations)                         |
-| 5    | `features/admin/features/tournament/`   | Seed bracket, scores, publish — see [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md) |
+| 5    | `features/admin/features/tournament-details/` | Seed bracket, scores, publish — see [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md) |
 
 ---
 

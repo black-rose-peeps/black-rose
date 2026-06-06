@@ -1,11 +1,11 @@
 import React from "react";
 import { Trophy, Check } from "lucide-react";
-import { ProfessionalMatchCard } from "../features/tournament/components/ProfessionalMatchCard";
+import { ProfessionalMatchCard } from "../features/tournament-details/components/ProfessionalMatchCard";
 import type {
   BracketEngine,
   BracketStructure,
   BracketMatch,
-} from "../features/tournament/types/bracket-engine";
+} from "../features/tournament-details/types/bracket-engine";
 
 interface ProfessionalBracketViewProps {
   bracketEngine: BracketEngine;

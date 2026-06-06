@@ -94,3 +94,16 @@ export function getTeamCaptainUsername(team: Team): string {
 export function countActiveMembers(team: Team): number {
   return team.members.filter((m) => m.status === "captain" || m.status === "active").length;
 }
+
+/** Members who are not captain/active on any existing team — eligible as a new team captain. */
+export function getMembersAvailableForNewTeam(members: AdminMember[], teams: Team[]): AdminMember[] {
+  const onTeam = new Set<string>();
+  for (const team of teams) {
+    for (const member of team.members) {
+      if (member.status === "captain" || member.status === "active") {
+        onTeam.add(member.userId);
+      }
+    }
+  }
+  return members.filter((m) => !onTeam.has(m.id));
+}

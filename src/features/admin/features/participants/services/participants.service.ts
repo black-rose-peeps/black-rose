@@ -6,16 +6,25 @@ import {
   fetchAllRegistrations,
   updateRegistrationStatus,
 } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
-import { getTournamentByIdSync } from "@/features/admin/features/tournaments/services/tournaments.service";
+import {
+  fetchTournamentById,
+  fetchTournaments,
+} from "@/features/admin/features/tournaments/services/tournaments.service";
 import type { MockTeam } from "@/lib/mock-data";
 import type { ParticipantRow } from "../types";
 
 export async function fetchParticipants(): Promise<ParticipantRow[]> {
-  const registrations = await fetchAllRegistrations();
+  const [registrations, tournaments] = await Promise.all([
+    fetchAllRegistrations(),
+    fetchTournaments(),
+  ]);
+
+  const tournamentNameById = new Map(tournaments.map((t) => [t.id, t.name]));
+
   return registrations.map((registration) => ({
     ...registration,
     tournamentName:
-      getTournamentByIdSync(registration.tournamentId)?.name ?? registration.tournamentId,
+      tournamentNameById.get(registration.tournamentId) ?? "Unknown tournament",
   }));
 }
 
@@ -24,9 +33,9 @@ export async function setParticipantStatus(
   status: MockTeam["status"],
 ): Promise<ParticipantRow> {
   const updated = await updateRegistrationStatus(registrationId, status);
+  const tournament = await fetchTournamentById(updated.tournamentId);
   return {
     ...updated,
-    tournamentName:
-      getTournamentByIdSync(updated.tournamentId)?.name ?? updated.tournamentId,
+    tournamentName: tournament?.name ?? "Unknown tournament",
   };
 }

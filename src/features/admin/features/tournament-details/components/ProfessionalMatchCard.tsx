@@ -1,5 +1,5 @@
 import { Check, Clock, Trophy, Users } from "lucide-react";
-import type { BracketMatch } from "@/features/admin/features/tournament/types/bracket-engine";
+import type { BracketMatch } from "@/features/admin/features/tournament-details/types/bracket-engine";
 
 interface ProfessionalMatchCardProps {
   match: BracketMatch;

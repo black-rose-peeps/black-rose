@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,12 @@ import type { AdminMember } from "@/features/admin/features/members/types";
 import { ADMIN_TEAM_GAMES, DEFAULT_CREATE_TEAM_FORM } from "../constants";
 import { useCreateTeam } from "../hooks";
 import type { CreateTeamFormValues, Team } from "../types";
-import { formValuesToCreateTeamInput, hasFormErrors, validateCreateTeamForm } from "../utils";
+import {
+  formValuesToCreateTeamInput,
+  getMembersAvailableForNewTeam,
+  hasFormErrors,
+  validateCreateTeamForm,
+} from "../utils";
 
 interface CreateTeamModalProps {
   open: boolean;
@@ -45,12 +50,27 @@ export function CreateTeamModal({
   >({});
   const { submit, isSubmitting, error, resetError } = useCreateTeam();
 
+  const availableCaptains = useMemo(
+    () => getMembersAvailableForNewTeam(members, existingTeams),
+    [members, existingTeams],
+  );
+
   useEffect(() => {
     if (!open) return;
     setValues(DEFAULT_CREATE_TEAM_FORM);
     setFieldErrors({});
     resetError();
   }, [open, resetError]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (
+      values.captainMemberId &&
+      !availableCaptains.some((m) => m.id === values.captainMemberId)
+    ) {
+      setValues((prev) => ({ ...prev, captainMemberId: "" }));
+    }
+  }, [open, availableCaptains, values.captainMemberId]);
 
   function updateField<K extends keyof CreateTeamFormValues>(
     key: K,
@@ -145,15 +165,21 @@ export function CreateTeamModal({
               <Select
                 value={values.captainMemberId}
                 onValueChange={(id) => updateField("captainMemberId", id)}
-                disabled={isSubmitting || members.length === 0}
+                disabled={isSubmitting || availableCaptains.length === 0}
               >
                 <SelectTrigger id="team-captain" className="bg-background/50">
                   <SelectValue
-                    placeholder={members.length === 0 ? "Register members first" : "Select captain"}
+                    placeholder={
+                      members.length === 0
+                        ? "Register members first"
+                        : availableCaptains.length === 0
+                          ? "All members are already on a team"
+                          : "Select captain"
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {members.map((m) => (
+                  {availableCaptains.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.username} · @{m.discordUsername}
                     </SelectItem>
@@ -178,7 +204,7 @@ export function CreateTeamModal({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || members.length === 0}
+              disabled={isSubmitting || availableCaptains.length === 0}
               className="font-tech uppercase tracking-wider"
             >
               {isSubmitting ? "Creating…" : "Create Team"}

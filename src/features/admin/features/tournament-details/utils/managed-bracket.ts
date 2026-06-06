@@ -128,15 +128,21 @@ export function buildSingleElimMatches(teamNames: string[]): {
   return { matches, roundMetas };
 }
 
-/** Double elimination for 8 teams (standard layout). */
+/** Double elimination for any power-of-2 team count ≥ 2. */
 export function buildDoubleElimMatches(teamNames: string[]): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
 } {
-  if (teamNames.length !== 8) {
-    throw new Error(
-      `buildDoubleElimMatches only supports exactly 8 teams; received ${teamNames.length}.`,
-    );
+  const n = teamNames.length;
+  if (n < 2 || (n & (n - 1)) !== 0) {
+    throw new Error(`buildDoubleElimMatches requires a power-of-2 team count ≥ 2; received ${n}.`);
+  }
+
+  // For small counts just use single elim (2 or 4 teams in DE is unusual but valid)
+  if (n <= 4) {
+    // Reuse SE logic with "double" labels — simple enough
+    const se = buildSingleElimMatches(teamNames);
+    return se;
   }
 
   const matches: ManagedMatch[] = [];
@@ -148,11 +154,9 @@ export function buildDoubleElimMatches(teamNames: string[]): {
     side: ManagedMatch["bracketSide"],
     count: number,
     labelFn?: (i: number) => string,
-  ): string[] => {
-    const matchIds: string[] = [];
+  ): void => {
     for (let i = 0; i < count; i++) {
       const mid = `${id}-m${i}`;
-      matchIds.push(mid);
       matches.push({
         id: mid,
         roundId: id,
@@ -169,55 +173,162 @@ export function buildDoubleElimMatches(teamNames: string[]): {
         loserNext: null,
       });
     }
-    roundMetas.push({ id, label, side, matchIds });
-    return matchIds;
+    roundMetas.push({
+      id,
+      label,
+      side,
+      matchIds: Array.from({ length: count }, (_, i) => `${id}-m${i}`),
+    });
   };
 
-  addRound("ub-r1", "Upper — Round 1", "upper", 4);
-  addRound("ub-sf", "Upper — Semifinals", "upper", 2);
-  addRound("ub-f", "Upper — Final", "upper", 1, () => "Upper Final");
+  // Number of upper-bracket rounds = log2(n)
+  const ubRounds = Math.log2(n); // e.g. n=8 → 3, n=16 → 4
+
+  // Build upper bracket rounds
+  let ubMatchCounts: number[] = [];
+  for (let r = 0; r < ubRounds; r++) {
+    ubMatchCounts.push(n / Math.pow(2, r + 1));
+  }
+
+  for (let r = 0; r < ubRounds; r++) {
+    const count = ubMatchCounts[r];
+    const id =
+      r === 0
+        ? "ub-r1"
+        : r === ubRounds - 1
+          ? "ub-f"
+          : r === ubRounds - 2
+            ? "ub-sf"
+            : r === ubRounds - 3
+              ? "ub-qf"
+              : `ub-r${r + 1}`;
+    const label =
+      r === 0
+        ? "Upper — Round 1"
+        : r === ubRounds - 1
+          ? "Upper — Final"
+          : r === ubRounds - 2
+            ? "Upper — Semifinals"
+            : r === ubRounds - 3
+              ? "Upper — Quarterfinals"
+              : `Upper — Round ${r + 1}`;
+    const side: ManagedMatch["bracketSide"] = "upper";
+    addRound(id, label, side, count, r === ubRounds - 1 ? () => "Upper Final" : undefined);
+  }
+
+  // Grand Final
   addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
-  addRound("lb-r1", "Lower — Round 1", "lower", 2);
-  addRound("lb-r2", "Lower — Round 2", "lower", 2);
-  addRound("lb-sf", "Lower — Semifinals", "lower", 1);
-  addRound("lb-f", "Lower — Final", "lower", 1, () => "Lower Final");
 
-  // Upper R1 → Upper SF
-  link(matches, "ub-r1-m0", "ub-sf-m0", "teamA");
-  link(matches, "ub-r1-m1", "ub-sf-m0", "teamB");
-  link(matches, "ub-r1-m2", "ub-sf-m1", "teamA");
-  link(matches, "ub-r1-m3", "ub-sf-m1", "teamB");
+  // Lower bracket: number of LB rounds = 2*(ubRounds-1)
+  const lbRoundCount = 2 * (ubRounds - 1);
+  const lbRoundIds: string[] = [];
+  const lbMatchCounts: number[] = [];
 
-  // Upper SF → Upper Final
-  link(matches, "ub-sf-m0", "ub-f-m0", "teamA");
-  link(matches, "ub-sf-m1", "ub-f-m0", "teamB");
+  // LB match counts per round — standard DE pattern:
+  // LR1: n/4, then alternates between same count and half
+  let lbMatches = n / 4;
+  for (let r = 0; r < lbRoundCount; r++) {
+    const id =
+      r === 0
+        ? "lb-r1"
+        : r === lbRoundCount - 1
+          ? "lb-f"
+          : r === lbRoundCount - 2
+            ? "lb-sf"
+            : `lb-r${r + 1}`;
+    lbRoundIds.push(id);
+    lbMatchCounts.push(lbMatches);
+    const isDropRound = r % 2 === 0; // odd UB drops go into even-indexed LB rounds
+    if (!isDropRound) lbMatches = Math.max(1, Math.floor(lbMatches / 2));
+  }
 
-  // Upper Final → Grand Final (winner)
+  for (let r = 0; r < lbRoundCount; r++) {
+    const id = lbRoundIds[r];
+    const count = lbMatchCounts[r];
+    const label =
+      id === "lb-f"
+        ? "Lower — Final"
+        : id === "lb-sf"
+          ? "Lower — Semifinals"
+          : id === "lb-r1"
+            ? "Lower — Round 1"
+            : `Lower — Round ${r + 1}`;
+    addRound(id, label, "lower", count, id === "lb-f" ? () => "Lower Final" : undefined);
+  }
+
+  // ── Upper bracket internal linking ────────────────────────────────────
+  const ubRoundIds = roundMetas.filter((m) => m.side === "upper").map((m) => m.id);
+  for (let r = 0; r < ubRoundIds.length - 1; r++) {
+    const fromId = ubRoundIds[r];
+    const toId = ubRoundIds[r + 1];
+    const fromCount = ubMatchCounts[r];
+    for (let i = 0; i < fromCount; i++) {
+      link(
+        matches,
+        `${fromId}-m${i}`,
+        `${toId}-m${Math.floor(i / 2)}`,
+        i % 2 === 0 ? "teamA" : "teamB",
+      );
+    }
+  }
+
+  // UF → Grand Final (winner)
   link(matches, "ub-f-m0", "gf-m0", "teamA");
+  // UF loser → LF (teamA)
+  link(matches, "ub-f-m0", `${lbRoundIds[lbRoundCount - 1]}-m0`, "teamA", true);
 
-  // Upper R1 losers → Lower R1
-  link(matches, "ub-r1-m0", "lb-r1-m0", "teamA", true);
-  link(matches, "ub-r1-m1", "lb-r1-m0", "teamB", true);
-  link(matches, "ub-r1-m2", "lb-r1-m1", "teamA", true);
-  link(matches, "ub-r1-m3", "lb-r1-m1", "teamB", true);
+  // ── UB → LB loser drops ───────────────────────────────────────────────
+  // UB R1 losers → LB R1
+  const ubR1Count = ubMatchCounts[0];
+  const lbR1Id = lbRoundIds[0];
+  for (let i = 0; i < ubR1Count; i++) {
+    link(
+      matches,
+      `ub-r1-m${i}`,
+      `${lbR1Id}-m${Math.floor(i / 2)}`,
+      i % 2 === 0 ? "teamA" : "teamB",
+      true,
+    );
+  }
 
-  // Lower R1 winners + Upper SF losers → Lower Round 2
-  link(matches, "lb-r1-m0", "lb-r2-m0", "teamA");
-  link(matches, "ub-sf-m1", "lb-r2-m0", "teamB", true);
-  link(matches, "lb-r1-m1", "lb-r2-m1", "teamA");
-  link(matches, "ub-sf-m0", "lb-r2-m1", "teamB", true);
+  // Remaining UB rounds (except final) drop losers into odd-indexed LB rounds
+  for (let r = 1; r < ubRoundIds.length - 1; r++) {
+    const ubId = ubRoundIds[r];
+    const lbDropId = lbRoundIds[r * 2 - 1] ?? lbRoundIds[lbRoundCount - 2];
+    const ubCount = ubMatchCounts[r];
+    for (let i = 0; i < ubCount; i++) {
+      link(matches, `${ubId}-m${i}`, `${lbDropId}-m${i}`, "teamB", true);
+    }
+  }
 
-  // Lower Round 2 winners → single Lower Semifinals match
-  link(matches, "lb-r2-m0", "lb-sf-m0", "teamA");
-  link(matches, "lb-r2-m1", "lb-sf-m0", "teamB");
+  // ── LB internal linking ───────────────────────────────────────────────
+  for (let r = 0; r < lbRoundCount - 1; r++) {
+    const fromId = lbRoundIds[r];
+    const toId = lbRoundIds[r + 1];
+    const fromCount = lbMatchCounts[r];
+    const toCount = lbMatchCounts[r + 1];
+    if (fromCount === toCount) {
+      // Same match count — winner goes as teamA
+      for (let i = 0; i < fromCount; i++) {
+        link(matches, `${fromId}-m${i}`, `${toId}-m${i}`, "teamA");
+      }
+    } else {
+      // Halving round
+      for (let i = 0; i < fromCount; i++) {
+        link(
+          matches,
+          `${fromId}-m${i}`,
+          `${toId}-m${Math.floor(i / 2)}`,
+          i % 2 === 0 ? "teamA" : "teamB",
+        );
+      }
+    }
+  }
 
-  // Lower Semifinals winner + Upper Final loser → Lower Final
-  link(matches, "lb-sf-m0", "lb-f-m0", "teamA");
-  link(matches, "ub-f-m0", "lb-f-m0", "teamB", true);
+  // LBF winner → Grand Final
+  link(matches, `${lbRoundIds[lbRoundCount - 1]}-m0`, "gf-m0", "teamB");
 
-  // Lower Final winner → Grand Final
-  link(matches, "lb-f-m0", "gf-m0", "teamB");
-
+  // Seed first round
   const ubR1 = matches.filter((m) => m.roundId === "ub-r1");
   for (let i = 0; i < ubR1.length; i++) {
     ubR1[i].teamA = teamNames[i * 2] ?? null;
@@ -244,19 +355,23 @@ function isFirstRoundMatch(m: ManagedMatch): boolean {
 }
 
 const ROUND_PROCESS_ORDER: Record<string, number> = {
+  // Single elimination
   "se-r0": 0,
   "se-r1": 1,
   "se-r2": 2,
   "se-r3": 3,
   "se-r4": 4,
+  // Double elimination (16 teams)
   "ub-r1": 0,
   "lb-r1": 1,
-  "ub-sf": 2,
+  "ub-qf": 2,
   "lb-r2": 3,
-  "lb-sf": 4,
-  "ub-f": 5,
-  "lb-f": 6,
-  gf: 7,
+  "lb-r3": 4,
+  "ub-sf": 5,
+  "lb-sf": 6,
+  "ub-f": 7,
+  "lb-f": 8,
+  gf: 9,
 };
 
 function processingOrder(matches: ManagedMatch[]): ManagedMatch[] {

@@ -6,8 +6,13 @@ import {
 import type { AdminTournament, CreateTournamentFormValues, CreateTournamentInput } from "../types";
 import type { CreateTournamentFieldErrors } from "../types";
 
-export const BRACKET_TEAM_COUNT_SINGLE = 16;
-export const BRACKET_TEAM_COUNT_DOUBLE = 8;
+export const BRACKET_TEAM_COUNT_SINGLE = 8;
+export const BRACKET_TEAM_COUNT_DOUBLE = 16;
+
+/** Returns true if n is a power of 2 and at least 2. */
+function isPowerOfTwo(n: number): boolean {
+  return n >= 2 && (n & (n - 1)) === 0;
+}
 
 export function requiredBracketTeamCount(format: string): number | null {
   if (isSingleEliminationFormat(format)) return BRACKET_TEAM_COUNT_SINGLE;
@@ -15,9 +20,16 @@ export function requiredBracketTeamCount(format: string): number | null {
   return null;
 }
 
+/**
+ * Returns true when the bracket manager can be unlocked for the given team count.
+ * Single elimination: any power-of-2 count ≥ 2.
+ * Double elimination: any power-of-2 count ≥ 2.
+ */
 export function supportsBracketManager(format: string, teamCount: number): boolean {
-  const required = requiredBracketTeamCount(format);
-  return required !== null && teamCount === required;
+  if (!isPowerOfTwo(teamCount)) return false;
+  if (isSingleEliminationFormat(format)) return teamCount >= 2;
+  if (isDoubleEliminationFormat(format)) return teamCount >= 2;
+  return false;
 }
 
 export function formValuesToCreateInput(values: CreateTournamentFormValues): CreateTournamentInput {
@@ -100,15 +112,19 @@ export function hasFormErrors(errors: CreateTournamentFieldErrors): boolean {
 }
 
 export function formatBracketAvailability(tournament: AdminTournament, teamCount: number): string {
-  const required = requiredBracketTeamCount(tournament.format);
-  if (required === null) {
+  if (
+    !isSingleEliminationFormat(tournament.format) &&
+    !isDoubleEliminationFormat(tournament.format)
+  ) {
     return `Bracket manager supports single and double elimination only. This event uses ${tournament.format}.`;
   }
-  if (teamCount !== required) {
-    const label = isDoubleEliminationFormat(tournament.format)
-      ? "Double elimination"
-      : "Single elimination";
-    return `${label} bracket manager requires exactly ${required} teams (currently ${teamCount}).`;
+  if (teamCount < 2) {
+    return `At least 2 teams are required to generate a bracket (currently ${teamCount}).`;
+  }
+  if ((teamCount & (teamCount - 1)) !== 0) {
+    const lower = Math.pow(2, Math.floor(Math.log2(teamCount)));
+    const upper = lower * 2;
+    return `Team count must be a power of 2 (e.g. ${lower} or ${upper}). Currently ${teamCount}.`;
   }
   return "";
 }

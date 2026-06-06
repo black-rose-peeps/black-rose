@@ -14,6 +14,49 @@ import {
   setMatchWinner,
   updateMatchScores,
 } from "../utils/managed-bracket";
+import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/bracket-store";
+import { fetchBracketState } from "../services/bracket.service";
+import type { PersistedBracketPayload } from "../services/bracket.service";
+import { updateTournamentStatus } from "@/features/admin/features/tournaments/services/tournaments.service";
+
+/** Convert admin ManagedMatch[] + roundMetas into the public BracketRound[] shape. */
+function managedMatchesToPublicRounds(
+  matches: ManagedMatch[],
+  roundMetas: BracketRoundMeta[],
+): BracketRound[] {
+  return roundMetas.map((meta) => ({
+    label: meta.label,
+    matches: meta.matchIds
+      .map((id) => matches.find((m) => m.id === id))
+      .filter((m): m is ManagedMatch => !!m)
+      .map((m) => ({
+        id: m.id,
+        round: m.roundLabel,
+        teamA: m.teamA,
+        teamB: m.teamB,
+        scoreA: m.scoreA,
+        scoreB: m.scoreB,
+        winner: m.winner ?? undefined,
+      })),
+  }));
+}
+
+function buildPersistedPayload(
+  managedMatches: ManagedMatch[],
+  roundMetas: BracketRoundMeta[],
+  roundFormats: Record<string, BestOfFormat>,
+  assignments: Array<TournamentTeam | null>,
+): PersistedBracketPayload {
+  return {
+    rounds: managedMatchesToPublicRounds(managedMatches, roundMetas),
+    admin: {
+      managedMatches,
+      roundMetas,
+      roundFormats,
+      assignmentTeamIds: assignments.map((t) => t?.id ?? null),
+    },
+  };
+}
 
 function buildManagedState(teamNames: string[], isDoubleElim: boolean) {
   const built = isDoubleElim
@@ -73,6 +116,7 @@ function deriveBracketState(
 }
 
 export function BracketManager({
+  tournamentId,
   tournamentName,
   format,
   teams,
@@ -99,11 +143,54 @@ export function BracketManager({
   const [assignments, setAssignments] = useState<Array<TournamentTeam | null>>(() =>
     Array(bracketSize).fill(null),
   );
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadedFromDb, setLoadedFromDb] = useState(false);
 
   const seedingLocked = bracketLocked;
   const isPublished = status === "published";
 
+  // Restore published bracket from Supabase (survives refresh; shared with public).
   useEffect(() => {
+    let cancelled = false;
+
+    fetchBracketState(tournamentId)
+      .then((state) => {
+        if (cancelled) return;
+        if (state?.status === "published" && state.payload?.admin?.managedMatches?.length) {
+          const admin = state.payload.admin;
+          setManagedMatches(admin.managedMatches);
+          setRoundMetas(admin.roundMetas);
+          setRoundFormats(admin.roundFormats);
+          setAssignments(
+            admin.assignmentTeamIds.map((id) =>
+              id ? (teams.find((t) => t.id === id) ?? null) : null,
+            ),
+          );
+          setBracketGenerated(true);
+          setBracketLocked(true);
+          setStatus("published");
+          syncLocalBracket(tournamentId, state.payload.rounds);
+        }
+      })
+      .catch((err) => {
+        console.error("[BracketManager] Failed to load bracket state:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadedFromDb(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId, teams]);
+
+  // Hydrate from mock/static initialBracket only — never wipe a bracket the admin
+  // just generated locally (Supabase tournaments have empty initialBracket).
+  useEffect(() => {
+    if (!loadedFromDb || status === "published") return;
+    if (bracketGenerated && managedMatches.length > 0) return;
+
     const derived = deriveBracketState(initialBracket, teams, bracketSize);
     setStatus(derived.status);
     setAssignments(derived.assignments);
@@ -125,7 +212,17 @@ export function BracketManager({
       setRoundMetas([]);
       setRoundFormats({});
     }
-  }, [initialBracket, teams, bracketSize, bracketEngine, isDoubleElim]);
+  }, [
+    initialBracket,
+    teams,
+    bracketSize,
+    bracketEngine,
+    isDoubleElim,
+    loadedFromDb,
+    status,
+    bracketGenerated,
+    managedMatches.length,
+  ]);
 
   const validation = bracketEngine.validateBracketIntegrity();
   const assignedCount = assignments.filter(Boolean).length;
@@ -181,7 +278,7 @@ export function BracketManager({
     setBracketGenerated(false);
     setStatus("not_generated");
   }
-  function handleReset() {
+  async function handleReset() {
     if (isPublished) {
       if (!confirm("Reset a published bracket? This clears all match results and unpublishes.")) {
         return;
@@ -193,15 +290,24 @@ export function BracketManager({
       return;
     }
 
-    setAssignments(Array(bracketSize).fill(null));
-    setBracketGenerated(false);
-    setBracketLocked(false);
-    setManagedMatches([]);
-    setRoundMetas([]);
-    setRoundFormats({});
-    setStatus("not_generated");
-    bracketEngine.reset();
-    setActiveTab("seeding");
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      if (isPublished) await clearPublishedBracket(tournamentId);
+      setAssignments(Array(bracketSize).fill(null));
+      setBracketGenerated(false);
+      setBracketLocked(false);
+      setManagedMatches([]);
+      setRoundMetas([]);
+      setRoundFormats({});
+      setStatus("not_generated");
+      bracketEngine.reset();
+      setActiveTab("seeding");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to reset bracket.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function toggleLock() {
@@ -209,34 +315,68 @@ export function BracketManager({
     setBracketLocked(!bracketLocked);
   }
 
-  function handlePublish() {
+  async function handlePublish() {
     if (!canPublish) {
       alert("Complete all requirements first.");
       return;
     }
-    setStatus("published");
-    setBracketLocked(true);
-    setActiveTab("bracket");
+
+    const payload = buildPersistedPayload(
+      managedMatches,
+      roundMetas,
+      roundFormats,
+      assignments,
+    );
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await publishBracket(tournamentId, payload, { isInitialPublish: true });
+      await updateTournamentStatus(tournamentId, "Live");
+      setStatus("published");
+      setBracketLocked(true);
+      setActiveTab("bracket");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to publish bracket.");
+    } finally {
+      setIsSaving(false);
+    }
   }
+
+  const pushLiveUpdate = useCallback(
+    (updatedMatches: ManagedMatch[]) => {
+      if (!isPublished) return;
+      const payload = buildPersistedPayload(updatedMatches, roundMetas, roundFormats, assignments);
+      void publishBracket(tournamentId, payload).catch((err) => {
+        console.error("[BracketManager] Live bracket sync failed:", err);
+        setSaveError(err instanceof Error ? err.message : "Failed to sync bracket.");
+      });
+    },
+    [isPublished, roundMetas, roundFormats, assignments, tournamentId],
+  );
 
   const handleMatchScore = useCallback(
     (matchId: string, scoreA: number, scoreB: number) => {
       const match = managedMatches.find((m) => m.id === matchId);
       if (!match) return;
-      const format = roundFormats[match.roundId] ?? "BO3";
-      setManagedMatches(updateMatchScores(managedMatches, matchId, scoreA, scoreB, format));
+      const fmt = roundFormats[match.roundId] ?? "BO3";
+      const updated = updateMatchScores(managedMatches, matchId, scoreA, scoreB, fmt);
+      setManagedMatches(updated);
+      pushLiveUpdate(updated);
     },
-    [managedMatches, roundFormats],
+    [managedMatches, roundFormats, pushLiveUpdate],
   );
 
   const handlePickWinner = useCallback(
     (matchId: string, winner: string) => {
       const match = managedMatches.find((m) => m.id === matchId);
       if (!match) return;
-      const format = roundFormats[match.roundId] ?? "BO3";
-      setManagedMatches(setMatchWinner(managedMatches, matchId, winner, format));
+      const fmt = roundFormats[match.roundId] ?? "BO3";
+      const updated = setMatchWinner(managedMatches, matchId, winner, fmt);
+      setManagedMatches(updated);
+      pushLiveUpdate(updated);
     },
-    [managedMatches, roundFormats],
+    [managedMatches, roundFormats, pushLiveUpdate],
   );
 
   const handleRoundFormat = useCallback(
@@ -283,6 +423,11 @@ export function BracketManager({
 
   return (
     <div className="flex flex-col text-foreground">
+      {saveError && (
+        <div className="border-b border-destructive/40 bg-destructive/10 px-8 py-3 text-sm text-destructive">
+          {saveError}
+        </div>
+      )}
       {/* Tournament Header Section */}
       <div className="border-b border-border px-8 py-7">
         <div className="flex items-start justify-between gap-6 flex-wrap">
@@ -386,10 +531,10 @@ export function BracketManager({
 
           <button
             onClick={handlePublish}
-            disabled={!canPublish || isPublished}
+            disabled={!canPublish || isPublished || isSaving}
             className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            ↑ Publish
+            {isSaving ? "Saving…" : "↑ Publish"}
           </button>
 
           <div className="ml-auto flex items-center gap-2">
@@ -636,10 +781,10 @@ export function BracketManager({
             <div className="mt-4">
               <button
                 onClick={handlePublish}
-                disabled={!canPublish || isPublished}
+                disabled={!canPublish || isPublished || isSaving}
                 className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                ↑ Publish Bracket
+                {isSaving ? "Saving…" : "↑ Publish Bracket"}
               </button>
             </div>
           </div>

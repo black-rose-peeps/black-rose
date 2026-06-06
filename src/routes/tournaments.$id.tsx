@@ -9,9 +9,10 @@ import { TeamsTab } from "@/features/tournaments/$id/components/TeamsTab";
 import { BracketTab } from "@/features/tournaments/$id/components/BracketTab";
 import { RulesTab } from "@/features/tournaments/$id/components/RulesTab";
 import { useTournamentRegistrations } from "@/features/tournaments/hooks";
-import { mockTeamToTournamentTeam } from "@/features/tournaments/utils";
+import { mockTeamToTournamentTeam, resolveTournamentRules } from "@/features/tournaments/utils";
 import { mockTournamentDetails } from "@/lib/mock-tournament-details";
 import { fetchTournamentById } from "@/features/tournaments/services";
+import { useLiveBracket } from "@/lib/bracket-store";
 import type { Tab } from "@/features/tournaments/$id/components/TournamentTabs";
 import type { TournamentDetail } from "@/features/tournaments/types";
 
@@ -20,6 +21,33 @@ export const Route = createFileRoute("/tournaments/$id")({
     // Try the rich detail record first (has description, rules, schedule, bracket)
     const detail = mockTournamentDetails[params.id];
     if (detail) return { tournament: detail };
+
+    // SSR guard — supabase-js throws on Node < 22 without native WebSocket.
+    // Fall back to a minimal stub; the component fetches the real data client-side.
+    if (typeof window === "undefined") {
+      const stub: TournamentDetail = {
+        id: params.id,
+        name: "Loading…",
+        game: "Valorant",
+        status: "Draft" as TournamentDetail["status"],
+        prizePool: "",
+        startDate: "",
+        registrationDeadline: "",
+        teamsRegistered: 0,
+        teamCap: 0,
+        format: "",
+        region: "",
+        description: "",
+        organizer: "",
+        contact: "",
+        prizeBreakdown: [],
+        schedule: [],
+        rules: [],
+        bracket: [],
+        teams: [],
+      };
+      return { tournament: stub };
+    }
 
     // Fall back to the live service for tournaments without a detail record
     const summary = await fetchTournamentById(params.id);
@@ -83,11 +111,22 @@ function TournamentDetailPage() {
   const liveTeams = registrations.map(mockTeamToTournamentTeam);
   const displayTeams = liveTeams.length > 0 ? liveTeams : tournament.teams;
 
+  // Bracket: subscribe to the live bracket store so the public page re-renders
+  // whenever the admin publishes, updates scores/winners, or resets.
+  // Falls back to the static mockTournamentDetails bracket when not yet published.
+  const { bracket: liveBracket, isLoading: bracketLoading } = useLiveBracket(tournament.id);
+  const displayBracket = liveBracket ?? tournament.bracket;
+
   // teamsRegistered shown in the hero: prefer live count once loaded
   const liveDetail: TournamentDetail = {
     ...tournament,
     teamsRegistered: teamsLoading ? tournament.teamsRegistered : registrations.length,
   };
+
+  const displayRules = resolveTournamentRules(tournament.format, tournament.rules, {
+    game: tournament.game,
+    teamCap: tournament.teamCap,
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -112,12 +151,20 @@ function TournamentDetailPage() {
           )}
           {activeTab === "bracket" && (
             <div role="tabpanel" id="tab-panel-bracket" aria-labelledby="tab-bracket">
-              <BracketTab bracket={tournament.bracket} format={tournament.format} />
+              <BracketTab
+                bracket={displayBracket}
+                format={tournament.format}
+                isLoading={bracketLoading}
+              />
             </div>
           )}
           {activeTab === "rules" && (
             <div role="tabpanel" id="tab-panel-rules" aria-labelledby="tab-rules">
-              <RulesTab rules={tournament.rules} contact={tournament.contact} />
+              <RulesTab
+                rules={displayRules}
+                format={tournament.format}
+                contact={tournament.contact}
+              />
             </div>
           )}
         </div>

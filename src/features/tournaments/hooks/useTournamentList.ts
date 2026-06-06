@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 import { fetchTournaments } from "../services";
 import { getPublicTournaments } from "../utils";
-import type { TournamentStatus, TournamentGame } from "../types";
+import type { TournamentStatus } from "../types";
 import type { MockTournament } from "@/lib/mock-data";
 
 export type PublicTournament = MockTournament & { status: TournamentStatus };
@@ -11,21 +12,39 @@ export function useTournamentList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const refetch = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const all = await fetchTournaments();
       setTournaments(getPublicTournaments(all));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tournaments.");
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refetch();
+    void refetch();
+
+    const supabase = getSupabaseClient();
+    const channel = supabase
+      .channel("tournaments-public-list")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tournaments" },
+        () => {
+          void refetch({ silent: true });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [refetch]);
 
   return { tournaments, isLoading, error, refetch };
