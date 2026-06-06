@@ -22,12 +22,18 @@ import type { AdminMember } from "@/features/admin/features/members/types";
 import { DEFAULT_ADD_TEAM_MEMBER_FORM } from "../constants";
 import { useAddTeamMember } from "../hooks";
 import type { AddTeamMemberFormValues, Team } from "../types";
-import { formValuesToAddTeamMemberInput, hasFormErrors, validateAddTeamMemberForm } from "../utils";
+import {
+  formValuesToAddTeamMemberInput,
+  getMembersAvailableForRoster,
+  hasFormErrors,
+  validateAddTeamMemberForm,
+} from "../utils";
 
 interface AddTeamMemberDialogProps {
   open: boolean;
   team: Team | null;
   allMembers: AdminMember[];
+  allTeams: Team[];
   onClose: () => void;
   onUpdated: (team: Team) => void;
 }
@@ -36,6 +42,7 @@ export function AddTeamMemberDialog({
   open,
   team,
   allMembers,
+  allTeams,
   onClose,
   onUpdated,
 }: AddTeamMemberDialogProps) {
@@ -45,11 +52,10 @@ export function AddTeamMemberDialog({
   >({});
   const { submit, isSubmitting, error, resetError } = useAddTeamMember();
 
-  const availableMembers = useMemo(() => {
-    if (!team) return [];
-    const onTeam = new Set(team.members.filter((m) => m.status !== "removed").map((m) => m.userId));
-    return allMembers.filter((m) => !onTeam.has(m.id));
-  }, [team, allMembers]);
+  const availableMembers = useMemo(
+    () => getMembersAvailableForRoster(allMembers, allTeams),
+    [allMembers, allTeams],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +122,9 @@ export function AddTeamMemberDialog({
               <SelectTrigger id="add-member-select" className="bg-background/50">
                 <SelectValue
                   placeholder={
-                    availableMembers.length === 0 ? "No available members" : "Select member"
+                    availableMembers.length === 0
+                      ? "No eligible members available"
+                      : "Select member"
                   }
                 />
               </SelectTrigger>

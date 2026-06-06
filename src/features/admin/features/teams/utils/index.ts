@@ -126,8 +126,7 @@ export function countActiveMembers(team: Team): number {
   return team.members.filter((m) => m.status === "captain" || m.status === "active").length;
 }
 
-/** Verified members not already on a team — eligible as a new team captain. */
-export function getMembersAvailableForNewTeam(members: AdminMember[], teams: Team[]): AdminMember[] {
+function getActiveTeamMemberIds(teams: Team[]): Set<string> {
   const onTeam = new Set<string>();
   for (const team of teams) {
     for (const member of team.members) {
@@ -136,5 +135,17 @@ export function getMembersAvailableForNewTeam(members: AdminMember[], teams: Tea
       }
     }
   }
+  return onTeam;
+}
+
+/** Verified members not already on a team — eligible as a new team captain. */
+export function getMembersAvailableForNewTeam(members: AdminMember[], teams: Team[]): AdminMember[] {
+  const onTeam = getActiveTeamMemberIds(teams);
   return members.filter((m) => m.status === "Verified" && !onTeam.has(m.id));
+}
+
+/** Members not on any active roster — eligible to join a team. */
+export function getMembersAvailableForRoster(members: AdminMember[], teams: Team[]): AdminMember[] {
+  const onTeam = getActiveTeamMemberIds(teams);
+  return members.filter((m) => !onTeam.has(m.id));
 }
