@@ -50,6 +50,11 @@ function detailFromSummary(summary: MockTournament): TournamentDetail {
   };
 }
 
+function tournamentPageTitle(name: string | undefined): string {
+  const label = name && name !== "Loading…" ? name : "Tournament";
+  return `${label} — Black Rose`;
+}
+
 export const Route = createFileRoute("/tournaments/$id")({
   loader: async ({ params }): Promise<{ tournament: TournamentDetail }> => {
     // Try the rich detail record first (has description, rules, schedule, bracket)
@@ -91,7 +96,7 @@ export const Route = createFileRoute("/tournaments/$id")({
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.tournament?.name ?? "Tournament"} — Black Rose` },
+      { title: tournamentPageTitle(loaderData?.tournament?.name) },
       {
         name: "description",
         content: loaderData?.tournament?.description ?? "Tournament details on Black Rose Arena.",
@@ -137,6 +142,11 @@ function TournamentDetailPage() {
       cancelled = true;
     };
   }, [id, navigate, tournament.name]);
+
+  useEffect(() => {
+    if (tournament.name === "Loading…") return;
+    document.title = tournamentPageTitle(tournament.name);
+  }, [tournament.name]);
 
   // Live registrations — the admin service is the single source of truth.
   // We show only Approved teams (filtered inside the hook).
