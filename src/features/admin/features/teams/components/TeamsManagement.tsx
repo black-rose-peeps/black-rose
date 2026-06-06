@@ -233,6 +233,7 @@ export function TeamsManagement() {
         open={addMemberTeam !== null}
         team={addMemberTeam}
         allMembers={members}
+        allTeams={teams}
         onClose={() => setAddMemberTeam(null)}
         onUpdated={(team) => {
           updateTeam(team);
