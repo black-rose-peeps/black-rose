@@ -20,7 +20,7 @@ interface TournamentHeroProps {
 }
 
 export function TournamentHero({ tournament: t }: TournamentHeroProps) {
-  const status = STATUS_CONFIG[t.status];
+  const status = STATUS_CONFIG[t.status] ?? STATUS_CONFIG["Registration Closed"];
   const isOver = t.status === "Completed" || t.status === "Archived";
 
   return (

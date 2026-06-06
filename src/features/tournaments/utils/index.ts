@@ -11,6 +11,11 @@ export const PUBLIC_STATUSES = new Set<string>([
   "Archived",
 ]);
 
+/** Map DB/mock statuses to a value safe for public UI (excludes Draft). */
+export function toPublicTournamentStatus(status: string): TournamentStatus {
+  return PUBLIC_STATUSES.has(status) ? (status as TournamentStatus) : "Registration Closed";
+}
+
 /**
  * Filter mock tournaments to only those visible on the public directory,
  * and narrow the status type to TournamentStatus (excludes "Draft").
