@@ -88,6 +88,19 @@ export function CreateTeamModal({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+
+    if (
+      values.captainMemberId &&
+      !availableCaptains.some((m) => m.id === values.captainMemberId)
+    ) {
+      setValues((prev) => ({ ...prev, captainMemberId: "" }));
+      setFieldErrors((prev) => ({
+        ...prev,
+        captainMemberId: "Selected captain is no longer available. Choose another.",
+      }));
+      return;
+    }
+
     const errors = validateCreateTeamForm(values, existingTeams);
     setFieldErrors(errors);
     if (hasFormErrors(errors)) return;

@@ -39,6 +39,7 @@ export function mockTeamToTournamentTeam(team: MockTeam, index: number): Tournam
 }
 
 export {
+  bracketFieldSize,
   buildTournamentRulesForFormat,
   resolveTournamentRules,
   type TournamentRulesOptions,

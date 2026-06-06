@@ -6,7 +6,14 @@ import type { RuleSection, TournamentGame } from "../types";
 
 export interface TournamentRulesOptions {
   game?: TournamentGame;
+  /** Bracket field size (power of 2), not registration cap. */
   teamCap?: number;
+}
+
+/** Next power-of-2 field size for bracket rules copy (e.g. 6 approved → 8). */
+export function bracketFieldSize(approvedTeamCount: number): number | undefined {
+  if (approvedTeamCount < 2) return undefined;
+  return Math.pow(2, Math.ceil(Math.log2(approvedTeamCount)));
 }
 
 function baseEligibility(game: TournamentGame | undefined, teamCap: number | undefined): RuleSection {
@@ -62,7 +69,7 @@ function doubleEliminationBracketRules(teamCap?: number): RuleSection {
       "All teams begin in the upper bracket.",
       "An upper-bracket loss drops your team into the lower bracket — you are not eliminated yet.",
       "A second loss (in the lower bracket) eliminates your team.",
-      "Lower bracket path: Lower Round 1 → Lower Round 2 → Lower Semifinals → Lower Final.",
+      "Lower bracket progresses through as many lower rounds as needed (e.g., Lower Round 1, Lower Round 2, …) and culminates in the Lower Semifinals and Lower Final.",
       "The upper-bracket winner and lower-bracket winner meet in the Grand Final.",
       "Grand Final is a single championship match unless staff announce a bracket-reset policy before play.",
       "Default match format is Best of 3 (BO3) unless a round is marked otherwise on the bracket.",

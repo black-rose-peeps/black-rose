@@ -138,11 +138,14 @@ export function buildDoubleElimMatches(teamNames: string[]): {
     throw new Error(`buildDoubleElimMatches requires a power-of-2 team count ≥ 2; received ${n}.`);
   }
 
-  // For small counts just use single elim (2 or 4 teams in DE is unusual but valid)
-  if (n <= 4) {
-    // Reuse SE logic with "double" labels — simple enough
-    const se = buildSingleElimMatches(teamNames);
-    return se;
+  if (n === 2) {
+    throw new Error(
+      "Double elimination requires at least 4 teams. Use single elimination for 2-team events.",
+    );
+  }
+
+  if (n === 4) {
+    return buildFourTeamDoubleElim(teamNames);
   }
 
   const matches: ManagedMatch[] = [];
@@ -274,8 +277,8 @@ export function buildDoubleElimMatches(teamNames: string[]): {
 
   // UF → Grand Final (winner)
   link(matches, "ub-f-m0", "gf-m0", "teamA");
-  // UF loser → LF (teamA)
-  link(matches, "ub-f-m0", `${lbRoundIds[lbRoundCount - 1]}-m0`, "teamA", true);
+  // UF loser → Lower Final (teamB — lb-sf winner feeds teamA)
+  link(matches, "ub-f-m0", `${lbRoundIds[lbRoundCount - 1]}-m0`, "teamB", true);
 
   // ── UB → LB loser drops ───────────────────────────────────────────────
   // UB R1 losers → LB R1
@@ -338,6 +341,69 @@ export function buildDoubleElimMatches(teamNames: string[]): {
   return { matches, roundMetas };
 }
 
+/** Minimal 4-team double elimination (upper R1 → upper F; lower R1 → lower F → GF). */
+function buildFourTeamDoubleElim(teamNames: string[]): {
+  matches: ManagedMatch[];
+  roundMetas: BracketRoundMeta[];
+} {
+  const matches: ManagedMatch[] = [];
+  const roundMetas: BracketRoundMeta[] = [];
+
+  const addRound = (
+    id: string,
+    label: string,
+    side: ManagedMatch["bracketSide"],
+    count: number,
+    labelFn?: (i: number) => string,
+  ): void => {
+    for (let i = 0; i < count; i++) {
+      matches.push({
+        id: `${id}-m${i}`,
+        roundId: id,
+        roundLabel: label,
+        label: labelFn ? labelFn(i) : count > 1 ? `Match ${i + 1}` : label,
+        bracketSide: side,
+        teamA: null,
+        teamB: null,
+        scoreA: 0,
+        scoreB: 0,
+        winner: null,
+        confirmed: false,
+        winnerNext: null,
+        loserNext: null,
+      });
+    }
+    roundMetas.push({
+      id,
+      label,
+      side,
+      matchIds: Array.from({ length: count }, (_, i) => `${id}-m${i}`),
+    });
+  };
+
+  addRound("ub-r1", "Upper — Semifinals", "upper", 2);
+  addRound("ub-f", "Upper — Final", "upper", 1, () => "Upper Final");
+  addRound("lb-r1", "Lower — Round 1", "lower", 1);
+  addRound("lb-f", "Lower — Final", "lower", 1, () => "Lower Final");
+  addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
+
+  link(matches, "ub-r1-m0", "ub-f-m0", "teamA");
+  link(matches, "ub-r1-m1", "ub-f-m0", "teamB");
+  link(matches, "ub-r1-m0", "lb-r1-m0", "teamA", true);
+  link(matches, "ub-r1-m1", "lb-r1-m0", "teamB", true);
+  link(matches, "ub-f-m0", "gf-m0", "teamA");
+  link(matches, "ub-f-m0", "lb-f-m0", "teamB", true);
+  link(matches, "lb-r1-m0", "lb-f-m0", "teamA");
+  link(matches, "lb-f-m0", "gf-m0", "teamB");
+
+  matches.find((m) => m.id === "ub-r1-m0")!.teamA = teamNames[0] ?? null;
+  matches.find((m) => m.id === "ub-r1-m0")!.teamB = teamNames[1] ?? null;
+  matches.find((m) => m.id === "ub-r1-m1")!.teamA = teamNames[2] ?? null;
+  matches.find((m) => m.id === "ub-r1-m1")!.teamB = teamNames[3] ?? null;
+
+  return { matches, roundMetas };
+}
+
 function placeTeam(
   matches: ManagedMatch[],
   matchId: string,
@@ -354,29 +420,40 @@ function isFirstRoundMatch(m: ManagedMatch): boolean {
   return m.roundId === "se-r0" || m.roundId === "ub-r1";
 }
 
-const ROUND_PROCESS_ORDER: Record<string, number> = {
-  // Single elimination
-  "se-r0": 0,
-  "se-r1": 1,
-  "se-r2": 2,
-  "se-r3": 3,
-  "se-r4": 4,
-  // Double elimination (16 teams)
-  "ub-r1": 0,
-  "lb-r1": 1,
-  "ub-qf": 2,
-  "lb-r2": 3,
-  "lb-r3": 4,
-  "ub-sf": 5,
-  "lb-sf": 6,
-  "ub-f": 7,
-  "lb-f": 8,
-  gf: 9,
-};
+/** Deterministic feeder order for any bracket graph produced by build*Matches. */
+function roundProcessRank(roundId: string): number {
+  if (roundId === "gf") return 1_000_000;
+
+  const seMatch = roundId.match(/^se-r(\d+)$/);
+  if (seMatch) return parseInt(seMatch[1], 10) * 10;
+
+  const ubSpecial: Record<string, number> = {
+    "ub-r1": 100,
+    "ub-qf": 300,
+    "ub-sf": 500,
+    "ub-f": 700,
+  };
+  if (roundId in ubSpecial) return ubSpecial[roundId];
+
+  const ubMatch = roundId.match(/^ub-r(\d+)$/);
+  if (ubMatch) return 100 + (parseInt(ubMatch[1], 10) - 1) * 100;
+
+  const lbSpecial: Record<string, number> = {
+    "lb-r1": 200,
+    "lb-sf": 600,
+    "lb-f": 800,
+  };
+  if (roundId in lbSpecial) return lbSpecial[roundId];
+
+  const lbMatch = roundId.match(/^lb-r(\d+)$/);
+  if (lbMatch) return 200 + (parseInt(lbMatch[1], 10) - 1) * 100;
+
+  return 99_999;
+}
 
 function processingOrder(matches: ManagedMatch[]): ManagedMatch[] {
   return [...matches].sort(
-    (a, b) => (ROUND_PROCESS_ORDER[a.roundId] ?? 99) - (ROUND_PROCESS_ORDER[b.roundId] ?? 99),
+    (a, b) => roundProcessRank(a.roundId) - roundProcessRank(b.roundId),
   );
 }
 

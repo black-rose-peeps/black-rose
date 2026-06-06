@@ -33,9 +33,18 @@ export async function setParticipantStatus(
   status: MockTeam["status"],
 ): Promise<ParticipantRow> {
   const updated = await updateRegistrationStatus(registrationId, status);
-  const tournament = await fetchTournamentById(updated.tournamentId);
-  return {
-    ...updated,
-    tournamentName: tournament?.name ?? "Unknown tournament",
-  };
+
+  try {
+    const tournament = await fetchTournamentById(updated.tournamentId);
+    return {
+      ...updated,
+      tournamentName: tournament?.name ?? "Unknown tournament",
+    };
+  } catch (err) {
+    console.warn("[participants] Failed to load tournament name after status update:", err);
+    return {
+      ...updated,
+      tournamentName: "Unknown tournament",
+    };
+  }
 }

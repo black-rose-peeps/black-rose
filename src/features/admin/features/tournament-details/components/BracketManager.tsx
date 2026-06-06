@@ -332,12 +332,23 @@ export function BracketManager({
     setSaveError(null);
     try {
       await publishBracket(tournamentId, payload, { isInitialPublish: true });
-      await updateTournamentStatus(tournamentId, "Live");
       setStatus("published");
       setBracketLocked(true);
       setActiveTab("bracket");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to publish bracket.");
+      return;
+    }
+
+    try {
+      await updateTournamentStatus(tournamentId, "Live");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to set tournament status to Live.";
+      setSaveError(
+        `Bracket published, but tournament status was not updated: ${message}. Retry from admin or update status manually.`,
+      );
+      console.error("[BracketManager] updateTournamentStatus failed after publish:", err);
     } finally {
       setIsSaving(false);
     }

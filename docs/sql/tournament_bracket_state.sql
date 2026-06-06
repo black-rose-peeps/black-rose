@@ -49,6 +49,9 @@ alter table public.tournament_bracket_state enable row level security;
 -- Drop old policies if re-running
 drop policy if exists "Public read published brackets" on public.tournament_bracket_state;
 drop policy if exists "Allow bracket state writes" on public.tournament_bracket_state;
+drop policy if exists "Allow bracket state insert" on public.tournament_bracket_state;
+drop policy if exists "Allow bracket state update" on public.tournament_bracket_state;
+drop policy if exists "Allow bracket state delete" on public.tournament_bracket_state;
 drop policy if exists "Admin manage bracket state" on public.tournament_bracket_state;
 
 -- Anyone (including anon) can read a published bracket
@@ -57,13 +60,23 @@ create policy "Public read published brackets"
   for select
   using (status = 'published');
 
--- Admin console currently uses the anon key (mock localStorage auth).
--- Allow writes until Supabase Auth is wired; then replace with is_tournament_admin().
-create policy "Allow bracket state writes"
+-- Writes are separate from SELECT (dev: open until Supabase Auth + is_tournament_admin()).
+-- Replace the three policies below with is_tournament_admin() once auth is wired.
+create policy "Allow bracket state insert"
   on public.tournament_bracket_state
-  for all
+  for insert
+  with check (true);
+
+create policy "Allow bracket state update"
+  on public.tournament_bracket_state
+  for update
   using (true)
   with check (true);
+
+create policy "Allow bracket state delete"
+  on public.tournament_bracket_state
+  for delete
+  using (true);
 
 -- ---------------------------------------------------------------------------
 -- OPTIONAL — use after Supabase Auth is connected (replace open write policy)

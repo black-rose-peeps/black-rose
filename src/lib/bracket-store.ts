@@ -45,6 +45,10 @@ function _clearLocal(tournamentId: string) {
   _notify(tournamentId);
 }
 
+function _snapshotLocal(tournamentId: string): StoredBracket | undefined {
+  return _store.get(tournamentId);
+}
+
 function _roundsFromPayload(payload: unknown): BracketRound[] | null {
   if (!payload || typeof payload !== "object") return null;
   const rounds = (payload as PersistedBracketPayload).rounds;
@@ -63,6 +67,7 @@ export async function publishBracket(
   options?: { isInitialPublish?: boolean },
 ): Promise<void> {
   const rounds = payload.rounds;
+  const previous = _snapshotLocal(tournamentId);
   _setLocal(tournamentId, rounds);
 
   try {
@@ -72,6 +77,11 @@ export async function publishBracket(
       await updatePublishedBracket(tournamentId, payload);
     }
   } catch (err) {
+    if (previous) {
+      _setLocal(tournamentId, previous.rounds, previous.updatedAt);
+    } else {
+      _clearLocal(tournamentId);
+    }
     console.error("[bracket-store] Failed to persist bracket:", err);
     throw err;
   }
@@ -79,10 +89,14 @@ export async function publishBracket(
 
 /** Clear a published bracket (admin Reset). */
 export async function clearPublishedBracket(tournamentId: string): Promise<void> {
+  const previous = _snapshotLocal(tournamentId);
   _clearLocal(tournamentId);
   try {
     await resetBracketState(tournamentId);
   } catch (err) {
+    if (previous) {
+      _setLocal(tournamentId, previous.rounds, previous.updatedAt);
+    }
     console.error("[bracket-store] Failed to reset bracket:", err);
     throw err;
   }
@@ -126,11 +140,15 @@ export function useLiveBracket(tournamentId: string): LiveBracketState {
           _setLocal(tournamentId, rounds);
           setBracket(rounds);
         } else {
-          setBracket(_store.get(tournamentId)?.rounds ?? null);
+          _clearLocal(tournamentId);
+          setBracket(null);
         }
       } catch (err) {
         console.error("[bracket-store] Failed to load bracket:", err);
-        if (!cancelled) setBracket(_store.get(tournamentId)?.rounds ?? null);
+        if (!cancelled) {
+          _clearLocal(tournamentId);
+          setBracket(null);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -162,6 +180,9 @@ export function useLiveBracket(tournamentId: string): LiveBracketState {
             if (rounds) {
               _setLocal(tournamentId, rounds, row.updated_at as string);
               setBracket(rounds);
+            } else {
+              _clearLocal(tournamentId);
+              setBracket(null);
             }
           } else {
             _clearLocal(tournamentId);

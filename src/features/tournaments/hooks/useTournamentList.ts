@@ -20,6 +20,7 @@ export function useTournamentList() {
     try {
       const all = await fetchTournaments();
       setTournaments(getPublicTournaments(all));
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tournaments.");
     } finally {

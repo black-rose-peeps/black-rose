@@ -366,7 +366,12 @@ create policy "admins manage registrations"
   using (public.is_tournament_admin())
   with check (public.is_tournament_admin());
 
--- Bracket: admins write; anyone read when published (optional)
+-- Bracket state: public read when published (required for public Bracket tab)
+create policy "public read published bracket state"
+  on public.tournament_bracket_state for select
+  using (status = 'published');
+
+-- Admins write bracket state (replace with is_tournament_admin() when auth is wired)
 create policy "admins manage bracket state"
   on public.tournament_bracket_state for all
   using (public.is_tournament_admin())
