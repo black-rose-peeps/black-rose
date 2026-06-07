@@ -166,9 +166,15 @@ async function unregisterAllTeamsFromTournament(tournamentId: string): Promise<v
 }
 
 export async function deleteTournament(id: string): Promise<void> {
-  const { data, error } = await supabase.rpc("delete_tournament_if_empty", {
+  let { data, error } = await supabase.rpc("delete_tournament_cascade", {
     p_tournament_id: id,
   });
+
+  if (error && isMissingRpcError(error.message)) {
+    ({ data, error } = await supabase.rpc("delete_tournament_if_empty", {
+      p_tournament_id: id,
+    }));
+  }
 
   if (!error && data) return;
 

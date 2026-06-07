@@ -102,7 +102,9 @@ create policy "Allow bracket state delete"
 --   using (public.is_tournament_admin())
 --   with check (public.is_tournament_admin());
 
--- 4) Security-definer RPCs (admin console uses anon key — bypasses RLS safely)
+-- 4) Security-definer RPCs (admin console uses anon key — bypasses RLS safely).
+-- Anon execute is intentional until admin uses Supabase Auth; then add is_tournament_admin()
+-- checks inside these functions and revoke execute from anon.
 create or replace function public.get_tournament_bracket_state(p_tournament_id uuid)
 returns jsonb
 language sql

@@ -341,9 +341,7 @@ export function BracketManager({
       await updateTournamentStatus(tournamentId, "Completed");
       onTournamentStatusChange?.("Completed");
     } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Failed to mark tournament as completed.",
-      );
+      setSaveError(err instanceof Error ? err.message : "Failed to mark tournament as completed.");
     } finally {
       setIsSaving(false);
     }
@@ -355,12 +353,7 @@ export function BracketManager({
       return;
     }
 
-    const payload = buildPersistedPayload(
-      managedMatches,
-      roundMetas,
-      roundFormats,
-      assignments,
-    );
+    const payload = buildPersistedPayload(managedMatches, roundMetas, roundFormats, assignments);
 
     setIsSaving(true);
     setSaveError(null);
@@ -575,9 +568,7 @@ export function BracketManager({
             onClick={handleReset}
             disabled={isTournamentCompleted || isSaving}
             title={
-              isTournamentCompleted
-                ? "Reset is disabled for completed tournaments"
-                : undefined
+              isTournamentCompleted ? "Reset is disabled for completed tournaments" : undefined
             }
             className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-red-400 hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed"
           >
@@ -604,7 +595,10 @@ export function BracketManager({
           ) : null}
 
           {tournamentStatus === "Completed" ? (
-            <Badge variant="outline" className="font-tech text-[10px] uppercase tracking-wider text-emerald-400 border-emerald-400/40">
+            <Badge
+              variant="outline"
+              className="font-tech text-[10px] uppercase tracking-wider text-emerald-400 border-emerald-400/40"
+            >
               Tournament completed
             </Badge>
           ) : null}

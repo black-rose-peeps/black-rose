@@ -19,8 +19,8 @@ begin
 end;
 $$;
 
--- Deletes the tournament and its registrations only (teams table is NOT touched).
-create or replace function public.delete_tournament_if_empty(p_tournament_id uuid)
+-- Deletes the tournament and unregisters teams (teams table rows are NOT deleted).
+create or replace function public.delete_tournament_cascade(p_tournament_id uuid)
 returns boolean
 language plpgsql
 security definer
@@ -48,5 +48,16 @@ begin
 end;
 $$;
 
+-- Back-compat alias (older DBs / scripts may still reference this name).
+create or replace function public.delete_tournament_if_empty(p_tournament_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select public.delete_tournament_cascade(p_tournament_id);
+$$;
+
 grant execute on function public.delete_team_and_members(uuid) to anon, authenticated;
+grant execute on function public.delete_tournament_cascade(uuid) to anon, authenticated;
 grant execute on function public.delete_tournament_if_empty(uuid) to anon, authenticated;
