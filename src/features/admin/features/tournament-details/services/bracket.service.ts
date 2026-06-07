@@ -47,14 +47,13 @@ function rowToState(row: Record<string, unknown>): TournamentBracketState {
 export async function fetchBracketState(
   tournamentId: string,
 ): Promise<TournamentBracketState | null> {
-  const { data, error } = await supabase
-    .from("tournament_bracket_state")
-    .select("*")
-    .eq("tournament_id", tournamentId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_tournament_bracket_state", {
+    p_tournament_id: tournamentId,
+  });
 
   if (error) throw new Error(error.message);
-  return data ? rowToState(data) : null;
+  if (!data || typeof data !== "object") return null;
+  return rowToState(data as Record<string, unknown>);
 }
 
 /** Published rounds only — for public display. Returns null when not published. */
@@ -73,23 +72,15 @@ export async function savePublishedBracket(
   tournamentId: string,
   payload: PersistedBracketPayload,
 ): Promise<TournamentBracketState> {
-  const { data, error } = await supabase
-    .from("tournament_bracket_state")
-    .upsert(
-      {
-        tournament_id: tournamentId,
-        status: "published",
-        seeding_locked: true,
-        bracket_data: payload,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "tournament_id" },
-    )
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("upsert_tournament_bracket_state", {
+    p_tournament_id: tournamentId,
+    p_status: "published",
+    p_seeding_locked: true,
+    p_bracket_data: payload,
+  });
 
   if (error) throw new Error(error.message);
-  return rowToState(data);
+  return rowToState(data as Record<string, unknown>);
 }
 
 /** Update an already-published bracket (scores, winners) without changing status. */
@@ -97,33 +88,20 @@ export async function updatePublishedBracket(
   tournamentId: string,
   payload: PersistedBracketPayload,
 ): Promise<TournamentBracketState> {
-  const { data, error } = await supabase
-    .from("tournament_bracket_state")
-    .update({
-      bracket_data: payload,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("tournament_id", tournamentId)
-    .eq("status", "published")
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("update_tournament_bracket_data", {
+    p_tournament_id: tournamentId,
+    p_bracket_data: payload,
+  });
 
   if (error) throw new Error(error.message);
-  return rowToState(data);
+  return rowToState(data as Record<string, unknown>);
 }
 
 /** Clear published bracket — admin reset. */
 export async function resetBracketState(tournamentId: string): Promise<void> {
-  const { error } = await supabase.from("tournament_bracket_state").upsert(
-    {
-      tournament_id: tournamentId,
-      status: "not_generated",
-      seeding_locked: false,
-      bracket_data: null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "tournament_id" },
-  );
+  const { error } = await supabase.rpc("reset_tournament_bracket_state", {
+    p_tournament_id: tournamentId,
+  });
 
   if (error) throw new Error(error.message);
 }

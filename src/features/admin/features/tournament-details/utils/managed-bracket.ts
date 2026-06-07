@@ -482,7 +482,6 @@ export function updateMatchScores(
 ): ManagedMatch[] {
   const source = matches.find((x) => x.id === matchId);
   if (!source || !source.teamA || !source.teamB) return matches;
-  if (source.confirmed && source.winner) return matches;
 
   const required = winsRequired(format);
   let winner: string | null = null;
@@ -504,13 +503,20 @@ export function setMatchWinner(
 ): ManagedMatch[] {
   const m = matches.find((x) => x.id === matchId);
   if (!m || !m.teamA || !m.teamB) return matches;
-  if (m.confirmed && m.winner) return matches;
   if (winner !== m.teamA && winner !== m.teamB) return matches;
 
   const required = winsRequired(format);
   const scoreA = winner === m.teamA ? required : 0;
   const scoreB = winner === m.teamB ? required : 0;
   return updateMatchScores(matches, matchId, scoreA, scoreB, format);
+}
+
+/** Clear a decided match so admins can fix misclicks. */
+export function clearMatchResult(matches: ManagedMatch[], matchId: string): ManagedMatch[] {
+  const next = matches.map((x) =>
+    x.id === matchId ? { ...x, scoreA: 0, scoreB: 0, winner: null, confirmed: false } : x,
+  );
+  return recomputeAdvancements(next);
 }
 
 function advanceWinner(matches: ManagedMatch[], matchId: string, winner: string): ManagedMatch[] {

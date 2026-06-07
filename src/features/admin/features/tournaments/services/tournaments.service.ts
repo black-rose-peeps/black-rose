@@ -2,6 +2,14 @@ import { supabase } from "@/lib/supabase";
 import type { MockTournament } from "@/lib/mock-data";
 import type { CreateTournamentInput } from "../types";
 
+function isMissingRpcError(message: string): boolean {
+  return (
+    message.includes("schema cache") ||
+    message.includes("Could not find the function") ||
+    message.includes("PGRST202")
+  );
+}
+
 function rowToTournament(row: Record<string, unknown>): MockTournament {
   return {
     id: row.id as string,
@@ -114,13 +122,73 @@ export async function updateTournament(
   return rowToTournament(data);
 }
 
+/** Unregister all teams from a tournament. Does not delete rows in `teams`. */
+async function unregisterAllTeamsFromTournament(tournamentId: string): Promise<void> {
+  const { data: regs, error: regErr } = await supabase
+    .from("tournament_registrations")
+    .select("id, roster_team_id")
+    .eq("tournament_id", tournamentId);
+
+  if (regErr) throw new Error(regErr.message);
+  if (!regs?.length) return;
+
+  const registrationIds = regs.map((reg) => reg.id as string);
+  const rosterTeamIds = [
+    ...new Set(
+      regs
+        .map((reg) => reg.roster_team_id as string | null)
+        .filter((teamId): teamId is string => !!teamId),
+    ),
+  ];
+
+  const { error: playersErr } = await supabase
+    .from("tournament_registration_players")
+    .delete()
+    .in("registration_id", registrationIds);
+
+  if (playersErr) throw new Error(playersErr.message);
+
+  const { error: deleteErr } = await supabase
+    .from("tournament_registrations")
+    .delete()
+    .eq("tournament_id", tournamentId);
+
+  if (deleteErr) throw new Error(deleteErr.message);
+
+  if (rosterTeamIds.length > 0) {
+    const { error: teamErr } = await supabase
+      .from("teams")
+      .update({ active_tournament_id: null, active_tournament_name: null })
+      .in("id", rosterTeamIds);
+
+    if (teamErr) throw new Error(teamErr.message);
+  }
+}
+
 export async function deleteTournament(id: string): Promise<void> {
-  const { data, error } = await supabase.rpc("delete_tournament_if_empty", {
+  let { data, error } = await supabase.rpc("delete_tournament_cascade", {
     p_tournament_id: id,
   });
 
-  if (error) throw new Error(error.message);
-  if (!data) {
-    throw new Error("Remove all registered teams before deleting this tournament.");
+  if (error && isMissingRpcError(error.message)) {
+    ({ data, error } = await supabase.rpc("delete_tournament_if_empty", {
+      p_tournament_id: id,
+    }));
   }
+
+  if (!error && data) return;
+
+  if (error && !isMissingRpcError(error.message)) {
+    throw new Error(error.message);
+  }
+
+  const tournament = await fetchTournamentById(id);
+  if (!tournament) {
+    throw new Error("Tournament not found or could not be deleted.");
+  }
+
+  await unregisterAllTeamsFromTournament(id);
+
+  const { error: deleteErr } = await supabase.from("tournaments").delete().eq("id", id);
+  if (deleteErr) throw new Error(deleteErr.message);
 }
