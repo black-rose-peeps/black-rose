@@ -101,3 +101,95 @@ create policy "Allow bracket state delete"
 --   on public.tournament_bracket_state for all
 --   using (public.is_tournament_admin())
 --   with check (public.is_tournament_admin());
+
+-- 4) Security-definer RPCs (admin console uses anon key — bypasses RLS safely)
+create or replace function public.get_tournament_bracket_state(p_tournament_id uuid)
+returns jsonb
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select to_jsonb(s)
+  from public.tournament_bracket_state s
+  where s.tournament_id = p_tournament_id;
+$$;
+
+create or replace function public.upsert_tournament_bracket_state(
+  p_tournament_id uuid,
+  p_status text,
+  p_seeding_locked boolean,
+  p_bracket_data jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  result public.tournament_bracket_state;
+begin
+  insert into public.tournament_bracket_state (
+    tournament_id, status, seeding_locked, bracket_data, updated_at
+  )
+  values (p_tournament_id, p_status, p_seeding_locked, p_bracket_data, now())
+  on conflict (tournament_id) do update set
+    status = excluded.status,
+    seeding_locked = excluded.seeding_locked,
+    bracket_data = excluded.bracket_data,
+    updated_at = now()
+  returning * into result;
+
+  return to_jsonb(result);
+end;
+$$;
+
+create or replace function public.update_tournament_bracket_data(
+  p_tournament_id uuid,
+  p_bracket_data jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  result public.tournament_bracket_state;
+begin
+  update public.tournament_bracket_state
+  set bracket_data = p_bracket_data, updated_at = now()
+  where tournament_id = p_tournament_id
+    and status = 'published'
+  returning * into result;
+
+  if result.tournament_id is null then
+    raise exception 'Published bracket not found for tournament %', p_tournament_id;
+  end if;
+
+  return to_jsonb(result);
+end;
+$$;
+
+create or replace function public.reset_tournament_bracket_state(p_tournament_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.tournament_bracket_state (
+    tournament_id, status, seeding_locked, bracket_data, updated_at
+  )
+  values (p_tournament_id, 'not_generated', false, null, now())
+  on conflict (tournament_id) do update set
+    status = 'not_generated',
+    seeding_locked = false,
+    bracket_data = null,
+    updated_at = now();
+end;
+$$;
+
+grant execute on function public.get_tournament_bracket_state(uuid) to anon, authenticated;
+grant execute on function public.upsert_tournament_bracket_state(uuid, text, boolean, jsonb) to anon, authenticated;
+grant execute on function public.update_tournament_bracket_data(uuid, jsonb) to anon, authenticated;
+grant execute on function public.reset_tournament_bracket_state(uuid) to anon, authenticated;

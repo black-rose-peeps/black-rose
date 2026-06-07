@@ -19,6 +19,7 @@ begin
 end;
 $$;
 
+-- Deletes the tournament and its registrations only (teams table is NOT touched).
 create or replace function public.delete_tournament_if_empty(p_tournament_id uuid)
 returns boolean
 language plpgsql
@@ -28,13 +29,20 @@ as $$
 declare
   deleted_count int;
 begin
-  if exists (
-    select 1 from tournament_registrations where tournament_id = p_tournament_id
-  ) then
-    return false;
-  end if;
+  delete from public.tournament_registration_players
+  where registration_id in (
+    select id from public.tournament_registrations
+    where tournament_id = p_tournament_id
+  );
 
-  delete from tournaments where id = p_tournament_id;
+  update public.teams
+  set active_tournament_id = null, active_tournament_name = null
+  where active_tournament_id = p_tournament_id;
+
+  delete from public.tournament_registrations
+  where tournament_id = p_tournament_id;
+
+  delete from public.tournaments where id = p_tournament_id;
   get diagnostics deleted_count = row_count;
   return deleted_count > 0;
 end;

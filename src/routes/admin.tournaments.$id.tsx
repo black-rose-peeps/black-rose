@@ -476,6 +476,10 @@ function TournamentDetailPage() {
                     format={tournament.format}
                     teams={computedTeams}
                     initialBracket={detailBracket}
+                    tournamentStatus={tournament.status}
+                    onTournamentStatusChange={(status) =>
+                      patchTournament({ ...tournament, status })
+                    }
                   />
                 ) : (
                   <div className="py-12 text-center text-muted-foreground">
@@ -522,7 +526,7 @@ function TournamentDetailPage() {
       <ConfirmDeleteDialog
         open={isDeleteOpen}
         title="Delete tournament?"
-        description={`This permanently removes ${tournament.name}. Remove all registered teams first.${deleteTournamentError ? ` ${deleteTournamentError}` : ""}`}
+        description={`This permanently removes ${tournament.name} and unregisters all teams from it. Teams stay in Teams.${deleteTournamentError ? ` ${deleteTournamentError}` : ""}`}
         isDeleting={isDeleting}
         onClose={() => {
           resetDeleteTournamentError();

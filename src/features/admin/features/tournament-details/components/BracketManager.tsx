@@ -10,6 +10,7 @@ import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/mana
 import {
   buildDoubleElimMatches,
   buildSingleElimMatches,
+  clearMatchResult,
   defaultRoundFormats,
   setMatchWinner,
   updateMatchScores,
@@ -18,6 +19,7 @@ import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/b
 import { fetchBracketState } from "../services/bracket.service";
 import type { PersistedBracketPayload } from "../services/bracket.service";
 import { updateTournamentStatus } from "@/features/admin/features/tournaments/services/tournaments.service";
+import type { MockTournament } from "@/lib/mock-data";
 
 /** Convert admin ManagedMatch[] + roundMetas into the public BracketRound[] shape. */
 function managedMatchesToPublicRounds(
@@ -75,6 +77,8 @@ interface BracketManagerProps {
   format: string;
   teams: TournamentTeam[];
   initialBracket: BracketRound[];
+  tournamentStatus: MockTournament["status"];
+  onTournamentStatusChange?: (status: MockTournament["status"]) => void;
 }
 
 function deriveBracketState(
@@ -121,6 +125,8 @@ export function BracketManager({
   format,
   teams,
   initialBracket,
+  tournamentStatus,
+  onTournamentStatusChange,
 }: BracketManagerProps) {
   const bracketEngine = useMemo(() => {
     const teamNames = teams.map((t) => t.name);
@@ -149,6 +155,7 @@ export function BracketManager({
 
   const seedingLocked = bracketLocked;
   const isPublished = status === "published";
+  const isTournamentCompleted = tournamentStatus === "Completed";
 
   // Restore published bracket from Supabase (survives refresh; shared with public).
   useEffect(() => {
@@ -279,6 +286,10 @@ export function BracketManager({
     setStatus("not_generated");
   }
   async function handleReset() {
+    if (isTournamentCompleted) {
+      alert("This tournament is completed. Reset is disabled.");
+      return;
+    }
     if (isPublished) {
       if (!confirm("Reset a published bracket? This clears all match results and unpublishes.")) {
         return;
@@ -293,7 +304,7 @@ export function BracketManager({
     setIsSaving(true);
     setSaveError(null);
     try {
-      if (isPublished) await clearPublishedBracket(tournamentId);
+      await clearPublishedBracket(tournamentId);
       setAssignments(Array(bracketSize).fill(null));
       setBracketGenerated(false);
       setBracketLocked(false);
@@ -313,6 +324,29 @@ export function BracketManager({
   function toggleLock() {
     if (isPublished) return;
     setBracketLocked(!bracketLocked);
+  }
+
+  async function handleMarkComplete() {
+    if (
+      !confirm(
+        "Mark this tournament as completed? The bracket stays published and you can still fix match results.",
+      )
+    ) {
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await updateTournamentStatus(tournamentId, "Completed");
+      onTournamentStatusChange?.("Completed");
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to mark tournament as completed.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function handlePublish() {
@@ -383,7 +417,10 @@ export function BracketManager({
       const match = managedMatches.find((m) => m.id === matchId);
       if (!match) return;
       const fmt = roundFormats[match.roundId] ?? "BO3";
-      const updated = setMatchWinner(managedMatches, matchId, winner, fmt);
+      const updated =
+        match.winner === winner
+          ? clearMatchResult(managedMatches, matchId)
+          : setMatchWinner(managedMatches, matchId, winner, fmt);
       setManagedMatches(updated);
       pushLiveUpdate(updated);
     },
@@ -534,8 +571,15 @@ export function BracketManager({
           <div className="w-px h-5 bg-border mx-1"></div>
 
           <button
+            type="button"
             onClick={handleReset}
-            className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-red-400 hover:bg-red-950/20"
+            disabled={isTournamentCompleted || isSaving}
+            title={
+              isTournamentCompleted
+                ? "Reset is disabled for completed tournaments"
+                : undefined
+            }
+            className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-red-400 hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             ✕ Reset
           </button>
@@ -547,6 +591,23 @@ export function BracketManager({
           >
             {isSaving ? "Saving…" : "↑ Publish"}
           </button>
+
+          {isPublished && tournamentStatus === "Live" ? (
+            <button
+              type="button"
+              onClick={handleMarkComplete}
+              disabled={isSaving}
+              className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-emerald-400/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-950/40 disabled:opacity-30"
+            >
+              ✓ Mark Complete
+            </button>
+          ) : null}
+
+          {tournamentStatus === "Completed" ? (
+            <Badge variant="outline" className="font-tech text-[10px] uppercase tracking-wider text-emerald-400 border-emerald-400/40">
+              Tournament completed
+            </Badge>
+          ) : null}
 
           <div className="ml-auto flex items-center gap-2">
             {isPublished && (

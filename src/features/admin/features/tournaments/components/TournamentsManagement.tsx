@@ -209,7 +209,7 @@ export function TournamentsManagement() {
       <ConfirmDeleteDialog
         open={deletingTournament !== null}
         title="Delete tournament?"
-        description={`This permanently removes ${deletingTournament?.name ?? "this tournament"}. Remove all registered teams first.${deleteError ? ` ${deleteError}` : ""}`}
+        description={`This permanently removes ${deletingTournament?.name ?? "this tournament"} and unregisters all teams from it. Teams stay in Teams.${deleteError ? ` ${deleteError}` : ""}`}
         isDeleting={isDeleting}
         onClose={() => {
           resetDeleteError();

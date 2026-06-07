@@ -95,8 +95,8 @@ export function ManagedBracketView({
         onPickWinner={onPickWinner}
       />
       <p className="text-xs text-muted-foreground">
-        Winners advance automatically. Set BO format per round; first to the required map wins
-        advances.
+        Winners advance automatically. Use +/- or click the dot to set or clear a winner — scores
+        stay editable after a match is final.
       </p>
     </div>
   );
@@ -226,7 +226,6 @@ function BracketSection({
                         isLoser={matchDecided && !!match.teamA && match.winner !== match.teamA}
                         team={match.teamA ? teamByName.get(match.teamA) : undefined}
                         disabled={!match.teamA || !match.teamB}
-                        matchLocked={matchDecided}
                         onIncrement={() => onScoreChange(match.id, match.scoreA + 1, match.scoreB)}
                         onDecrement={() =>
                           onScoreChange(match.id, Math.max(0, match.scoreA - 1), match.scoreB)
@@ -241,7 +240,6 @@ function BracketSection({
                         isLoser={matchDecided && !!match.teamB && match.winner !== match.teamB}
                         team={match.teamB ? teamByName.get(match.teamB) : undefined}
                         disabled={!match.teamA || !match.teamB}
-                        matchLocked={matchDecided}
                         onIncrement={() => onScoreChange(match.id, match.scoreA, match.scoreB + 1)}
                         onDecrement={() =>
                           onScoreChange(match.id, match.scoreA, Math.max(0, match.scoreB - 1))
@@ -268,7 +266,6 @@ function ManagedTeamRow({
   isLoser,
   team,
   disabled,
-  matchLocked,
   onIncrement,
   onDecrement,
   onSelectWinner,
@@ -280,7 +277,6 @@ function ManagedTeamRow({
   isLoser?: boolean;
   team?: TournamentTeam;
   disabled: boolean;
-  matchLocked: boolean;
   onIncrement: () => void;
   onDecrement: () => void;
   onSelectWinner: () => void;
@@ -288,7 +284,7 @@ function ManagedTeamRow({
   const isTbd = !name;
   const display = name ?? "TBD";
   const abbr = isTbd ? "?" : (team?.tag ?? name!.slice(0, 2).toUpperCase());
-  const controlsDisabled = disabled || isTbd || matchLocked;
+  const controlsDisabled = disabled || isTbd;
 
   return (
     <div
@@ -312,8 +308,20 @@ function ManagedTeamRow({
               : "border-muted-foreground/40 hover:bg-muted/30",
           controlsDisabled && "opacity-40",
         )}
-        title={name && !matchLocked ? `Set ${name} as winner` : undefined}
-        aria-label={name && !matchLocked ? `Set ${name} as winner` : undefined}
+        title={
+          name
+            ? isWinner
+              ? `Clear winner (${name})`
+              : `Set ${name} as winner`
+            : undefined
+        }
+        aria-label={
+          name
+            ? isWinner
+              ? `Clear winner (${name})`
+              : `Set ${name} as winner`
+            : undefined
+        }
       />
       <span
         className={cn(
