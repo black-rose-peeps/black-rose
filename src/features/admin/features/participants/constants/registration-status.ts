@@ -15,6 +15,28 @@ export function isBracketParticipantStatus(status: RegistrationStatus): boolean 
   return status === "Approved" || status === "Previously Competed";
 }
 
+/** Entrants that may seed a bracket for the given tournament phase. */
+export function isBracketSeedingStatus(
+  status: RegistrationStatus,
+  tournamentStatus: TournamentStatus | string,
+): boolean {
+  if (isTournamentConcluded(tournamentStatus)) {
+    return isBracketParticipantStatus(status);
+  }
+  return status === "Approved";
+}
+
+/** True when Pending / Previously Competed entries still need a decision on an active event. */
+export function tournamentHasUnresolvedRegistrations(
+  registrations: ReadonlyArray<{ status: RegistrationStatus }>,
+  tournamentStatus: TournamentStatus | string,
+): boolean {
+  if (isTournamentConcluded(tournamentStatus)) return false;
+  return registrations.some((registration) =>
+    registrationNeedsReview(registration.status, tournamentStatus),
+  );
+}
+
 /** Pending / veteran review only applies to open or live events — not after the event ends. */
 export function registrationNeedsReview(
   registrationStatus: RegistrationStatus,

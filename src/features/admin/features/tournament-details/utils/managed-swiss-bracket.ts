@@ -419,14 +419,74 @@ export function catchUpSwissRounds(
   return { matches: nextMatches, roundMetas: nextRoundMetas, swiss: nextSwiss };
 }
 
+function parseSwissRoundNum(roundId: string): number {
+  const parsed = Number.parseInt(roundId.replace("sw-r", ""), 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+/**
+ * Drop Swiss rounds after `throughRound`, recompute records from kept matches,
+ * then regenerate forward pairings when that round is complete.
+ */
+export function reconcileSwissFromRound(
+  matches: ManagedMatch[],
+  roundMetas: BracketRoundMeta[],
+  swiss: SwissBracketState,
+  teamNames: string[],
+  throughRound: number,
+): { matches: ManagedMatch[]; roundMetas: BracketRoundMeta[]; swiss: SwissBracketState } {
+  const keptMatches = matches.filter(
+    (match) => match.bracketSide !== "swiss" || (match.swissRound ?? 0) <= throughRound,
+  );
+
+  const keptMetas = roundMetas.filter((meta) => {
+    if (meta.side !== "swiss") return true;
+    return parseSwissRoundNum(meta.id) <= throughRound;
+  });
+
+  const byesByRound = { ...(swiss.byesByRound ?? {}) };
+  for (const key of Object.keys(byesByRound)) {
+    if (Number(key) > throughRound) {
+      delete byesByRound[key];
+    }
+  }
+
+  const recomputedSwiss = recomputeSwissStateFromMatches(
+    keptMatches,
+    teamNames,
+    swiss.winsToAdvance,
+    swiss.lossesToEliminate,
+    {
+      phase: "swiss",
+      byesByRound,
+      playoffsSeededTeams: undefined,
+      groupStageRecords: undefined,
+    },
+  );
+
+  if (!isSwissRoundCompleteWithByes(keptMatches, throughRound, recomputedSwiss)) {
+    return { matches: keptMatches, roundMetas: keptMetas, swiss: recomputedSwiss };
+  }
+
+  return catchUpSwissRounds(keptMatches, keptMetas, recomputedSwiss, teamNames);
+}
+
 export function applySwissMatchUpdates(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
   swiss: SwissBracketState,
   teamNames: string[],
+  editedRound?: number,
 ): { matches: ManagedMatch[]; roundMetas: BracketRoundMeta[]; swiss: SwissBracketState } {
   if (getSwissPhase(swiss) === "playoffs") {
     return { matches, roundMetas, swiss };
+  }
+
+  const maxRound = getCurrentSwissRound(matches, roundMetas);
+  const pivotRound = editedRound ?? maxRound;
+
+  if (pivotRound < maxRound) {
+    return reconcileSwissFromRound(matches, roundMetas, swiss, teamNames, pivotRound);
   }
 
   const currentRound = getCurrentSwissRound(matches, roundMetas);
