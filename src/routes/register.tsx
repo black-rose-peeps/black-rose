@@ -1,7 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { getSession } from "@/features/auth/store/session";
+import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
+import { getPostAuthPath } from "@/features/auth/utils/routes";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { DiscordButton } from "@/features/auth/components/DiscordButton";
-import { simulateDiscordRegister } from "@/features/auth/store/session";
+import { isDiscordOAuthConfigured, startDiscordOAuth } from "@/features/auth/services/discord";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
@@ -19,11 +23,41 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function redirectIfLoggedIn() {
+      const session = getSession();
+      if (!session) return;
+
+      try {
+        const updated = await syncSessionFromDatabase();
+        if (cancelled || !updated) return;
+        navigate({ to: getPostAuthPath(updated.role), replace: true });
+      } catch {
+        if (cancelled) return;
+        navigate({ to: getPostAuthPath(session.role), replace: true });
+      }
+    }
+
+    void redirectIfLoggedIn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   function handleRegister() {
-    // TODO: Replace with real Discord OAuth2 redirect when backend is ready.
-    simulateDiscordRegister();
-    navigate({ to: "/waitlist" });
+    setError(null);
+    if (!isDiscordOAuthConfigured()) {
+      setError(
+        "Discord sign-in is not configured. Set VITE_DISCORD_CLIENT_ID and VITE_DISCORD_REDIRECT_URI in your .env file.",
+      );
+      return;
+    }
+    startDiscordOAuth();
   }
 
   return (
@@ -59,7 +93,8 @@ function RegisterPage() {
 
       {/* Discord CTA */}
       <div className="flex flex-col gap-4">
-        <DiscordButton onClick={handleRegister} label="Register with Discord" />
+        <DiscordButton onClick={handleRegister} label="Continue with Discord" />
+        {error && <p className="text-center text-xs text-destructive">{error}</p>}
         <p className="text-center text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
           You will be redirected to Discord to authorize access.
           <br />

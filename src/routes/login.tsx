@@ -1,9 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getSession } from "@/features/auth/store/session";
+import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
+import { getPostAuthPath } from "@/features/auth/utils/routes";
 import { AdminConsoleLogin } from "@/features/admin/auth/AdminConsoleLogin";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { DiscordButton } from "@/features/auth/components/DiscordButton";
-import { simulateDiscordLogin } from "@/features/auth/store/session";
+import { isDiscordOAuthConfigured, startDiscordOAuth } from "@/features/auth/services/discord";
 
 type LoginSearch = {
   console?: string;
@@ -29,11 +32,43 @@ function LoginPage() {
   const navigate = useNavigate();
   const { console: consoleParam } = Route.useSearch();
   const [showAdminConsole, setShowAdminConsole] = useState(consoleParam === "1");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (showAdminConsole) return;
+
+    let cancelled = false;
+
+    async function redirectIfLoggedIn() {
+      const session = getSession();
+      if (!session) return;
+
+      try {
+        const updated = await syncSessionFromDatabase();
+        if (cancelled || !updated) return;
+        navigate({ to: getPostAuthPath(updated.role), replace: true });
+      } catch {
+        if (cancelled) return;
+        navigate({ to: getPostAuthPath(session.role), replace: true });
+      }
+    }
+
+    void redirectIfLoggedIn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, showAdminConsole]);
 
   function handleLogin() {
-    // TODO: Replace with real Discord OAuth2 redirect when backend is ready.
-    simulateDiscordLogin();
-    navigate({ to: "/dashboard" });
+    setError(null);
+    if (!isDiscordOAuthConfigured()) {
+      setError(
+        "Discord sign-in is not configured. Set VITE_DISCORD_CLIENT_ID and VITE_DISCORD_REDIRECT_URI in your .env file.",
+      );
+      return;
+    }
+    startDiscordOAuth();
   }
 
   if (showAdminConsole) {
@@ -64,12 +99,14 @@ function LoginPage() {
         </div>
         <h2 className="font-display text-4xl tracking-display">Sign In</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Black Rose uses Discord for authentication. One click, no passwords.
+          Black Rose uses Discord for authentication. One click, no passwords. If you don&apos;t
+          have an account yet, signing in will create one automatically.
         </p>
       </div>
 
       <div className="flex flex-col gap-4">
-        <DiscordButton onClick={handleLogin} />
+        <DiscordButton onClick={handleLogin} label="Continue with Discord" />
+        {error && <p className="text-center text-xs text-destructive">{error}</p>}
 
         <p className="text-center text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
           You will be redirected to Discord to authorize access.

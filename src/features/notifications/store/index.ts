@@ -1,10 +1,9 @@
 /**
- * Client-side notification store — frontend placeholder.
+ * Client-side notification store.
  *
  * Persists to sessionStorage so notifications survive page navigation
  * but reset when the tab closes (matching the session lifetime).
- *
- * TODO: Replace with real API calls (/api/notifications) when backend is ready.
+ * Starts empty until a notifications API is wired up.
  */
 
 import type { AppNotification } from "../types";

@@ -19,3 +19,10 @@ export const SOCIAL_PLATFORM_ORDER: SocialPlatform[] = [
   "instagram",
   "discord",
 ];
+
+export const PROFILE_GAME_OPTIONS = [
+  "Valorant",
+  "League of Legends",
+  "Teamfight Tactics",
+  "Where Winds Meet",
+] as const;

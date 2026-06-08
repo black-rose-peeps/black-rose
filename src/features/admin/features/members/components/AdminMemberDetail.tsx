@@ -1,0 +1,261 @@
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  CheckCircle,
+  ExternalLink,
+  Gamepad2,
+  MapPin,
+  Shield,
+  User,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  AdminDetailGrid,
+  AdminPageHero,
+  TechPanel,
+} from "@/features/admin/components/AdminShell";
+import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
+import { memberStatusBadgeVariant } from "../utils";
+import type { AdminMember } from "../types";
+import type { MemberProfile } from "@/features/member/types";
+
+interface AdminMemberDetailProps {
+  member: AdminMember | null;
+  profile: MemberProfile | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMemberDetailProps) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+        <Skeleton className="h-40 w-full rounded-none bg-white/5" />
+        <div className="grid gap-5 lg:grid-cols-3">
+          <Skeleton className="h-48 rounded-none bg-white/5 lg:col-span-2" />
+          <Skeleton className="h-48 rounded-none bg-white/5" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !member) {
+    return (
+      <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+        <AdminPageHero
+          title="Member Not Found"
+          description={error ?? "This member could not be loaded."}
+          backLink={
+            <Button
+              asChild
+              variant="ghost"
+              className="-ml-2 rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+            >
+              <Link to="/admin/users">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to Members
+              </Link>
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  const initials = profile?.avatarInitials ?? member.username.slice(0, 2).toUpperCase();
+
+  return (
+    <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+      <AdminPageHero
+        eyebrow="Member Detail"
+        title={profile?.displayName ?? member.username}
+        description={`@${member.discordUsername}${member.discordId ? ` · ${member.discordId}` : ""}`}
+        backLink={
+          <Button
+            asChild
+            variant="ghost"
+            className="-ml-2 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-foreground"
+          >
+            <Link to="/admin/users">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Members
+            </Link>
+          </Button>
+        }
+        actions={
+          <>
+            <Badge variant={memberStatusBadgeVariant(member.status)} className="rounded-none">
+              {member.status}
+            </Badge>
+            {profile?.slug && (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="clip-cta rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+              >
+                <Link to="/members/$slug" params={{ slug: profile.slug }} target="_blank">
+                  Public Profile
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      <AdminDetailGrid>
+        <div className="flex flex-col gap-5 lg:col-span-2">
+          <TechPanel label="Identity" title="Profile">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+              <Avatar className="h-20 w-20 rounded-none border-2 border-white/20">
+                <AvatarImage src={profile?.avatarUrl ?? undefined} alt="" />
+                <AvatarFallback className="rounded-none bg-white/5 font-display text-2xl tracking-display">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <dl className="grid flex-1 gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                    Username
+                  </dt>
+                  <dd className="mt-0.5 font-medium">{member.username}</dd>
+                </div>
+                <div>
+                  <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                    Registered
+                  </dt>
+                  <dd className="mt-0.5 text-muted-foreground">{member.registeredAt}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                    Headline
+                  </dt>
+                  <dd className="mt-0.5 text-muted-foreground">
+                    {profile?.headline || "—"}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                    Bio
+                  </dt>
+                  <dd className="mt-0.5 leading-relaxed text-muted-foreground">
+                    {profile?.bio || "No bio yet."}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </TechPanel>
+
+          <TechPanel label="Links" title="Social Accounts" noPadding>
+            <ul className="divide-y divide-white/6">
+              {SOCIAL_PLATFORM_ORDER.map((platform) => {
+                const link = profile?.socialLinks.find((s) => s.platform === platform);
+                return (
+                  <li
+                    key={platform}
+                    className="flex items-center justify-between gap-4 px-5 py-3.5"
+                  >
+                    <span className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                      {SOCIAL_PLATFORM_LABELS[platform]}
+                    </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      {link?.url ? (
+                        <>
+                          <Badge
+                            variant="outline"
+                            className={cnBadge(
+                              link.isPublic
+                                ? "border-emerald-400/20 text-emerald-400"
+                                : "border-amber-400/20 text-amber-400",
+                            )}
+                          >
+                            {link.isPublic ? "Public" : "Private"}
+                          </Badge>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="truncate text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            {link.url}
+                          </a>
+                          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">Not set</span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </TechPanel>
+        </div>
+
+        <div className="flex flex-col gap-5">
+          <TechPanel label="Player" title="Game Info">
+            <dl className="flex flex-col gap-3">
+              <div>
+                <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                  Main Game
+                </dt>
+                <dd className="mt-0.5 flex items-center gap-1.5 font-display text-lg tracking-display">
+                  <Gamepad2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  {profile?.mainGame || "—"}
+                </dd>
+              </div>
+              <div className="h-px bg-white/6" />
+              <div>
+                <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                  Role
+                </dt>
+                <dd className="mt-0.5 text-sm">{profile?.mainRole || "—"}</dd>
+              </div>
+              <div className="h-px bg-white/6" />
+              <div>
+                <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                  Region
+                </dt>
+                <dd className="mt-0.5 flex items-center gap-1.5 text-sm">
+                  <MapPin className="h-3 w-3 text-muted-foreground" />
+                  {profile?.region || "—"}
+                </dd>
+              </div>
+            </dl>
+          </TechPanel>
+
+          <TechPanel label="Account" title="Verification">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                {member.status === "Verified" ? (
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                ) : (
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="text-sm">{member.status}</span>
+              </div>
+              {profile && (
+                <div className="text-xs text-muted-foreground">
+                  Profile {profile.isPublic ? "public" : "private"} · {profile.profileCompletion}%
+                  complete
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <User className="h-3 w-3" />
+                ID: <span className="font-mono">{member.id}</span>
+              </div>
+            </div>
+          </TechPanel>
+        </div>
+      </AdminDetailGrid>
+    </div>
+  );
+}
+
+function cnBadge(extra: string) {
+  return `rounded-none font-tech text-[9px] uppercase tracking-wider-2 ${extra}`;
+}

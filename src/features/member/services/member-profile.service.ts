@@ -1,11 +1,22 @@
-import { getMemberBySlug, getMemberProfileByUserId } from "@/lib/mock-member";
+import {
+  fetchMemberProfileBySlug as fetchBySlugFn,
+  fetchMyMemberProfile as fetchMyFn,
+  updateMyMemberProfile as updateFn,
+  type UpdateMyMemberProfileInput,
+} from "../functions/member-profile.functions";
 import type { MemberProfile } from "../types";
 
-/** Member dashboard/profile — mock data until profile API is ready. */
-export async function fetchMemberProfileBySlug(slug: string): Promise<MemberProfile | null> {
-  return getMemberBySlug(slug);
+export async function fetchMemberProfileBySlug(
+  slug: string,
+  viewerMemberId?: string,
+): Promise<MemberProfile | null> {
+  return fetchBySlugFn({ data: { slug, viewerMemberId } });
 }
 
-export async function fetchMemberProfileById(id: string): Promise<MemberProfile | null> {
-  return getMemberProfileByUserId(id);
+export async function fetchMemberProfileById(memberId: string): Promise<MemberProfile | null> {
+  return fetchMyFn({ data: { memberId } });
+}
+
+export async function updateMemberProfile(input: UpdateMyMemberProfileInput): Promise<MemberProfile> {
+  return updateFn({ data: input });
 }

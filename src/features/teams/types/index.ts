@@ -18,6 +18,8 @@ export type TeamMemberRole =
   | "Roam"
   | "EXP"
   | "Gold"
+  | "DPS"
+  | "Tank"
   | "Sub"
   | "TBD";
 

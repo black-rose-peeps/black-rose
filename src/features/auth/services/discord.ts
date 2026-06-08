@@ -1,90 +1,85 @@
 /**
- * Discord OAuth2 — placeholder service
+ * Discord OAuth2 client helpers
  *
- * When you're ready to wire up real Discord auth, replace the stubs below
- * with actual API calls. The Discord OAuth2 flow works like this:
+ * Flow:
+ *  1. startDiscordOAuth() → redirect to Discord consent screen
+ *  2. Discord redirects to /auth/callback?code=...&state=...
+ *  3. Callback page calls completeDiscordAuth server function
  *
- *  1. Redirect the user to Discord's authorize URL (getDiscordOAuthUrl)
- *  2. Discord redirects back to your callback URL with a `code` query param
- *  3. Exchange the code for an access token (exchangeCodeForToken)
- *  4. Use the token to fetch the user's Discord profile (getDiscordUser)
- *  5. Create or look up the user in your database, then issue a session
- *
- * Docs: https://discord.com/developers/docs/topics/oauth2
+ * Docs: https://docs.discord.com/developers/topics/oauth2
+ * API base: https://discord.com/api/v10
  */
 
-// ── Config (replace with real values from your Discord app dashboard) ──────
-// https://discord.com/developers/applications → Your App → OAuth2
+import { DISCORD_LINKED_KEY, DISCORD_OAUTH_STATE_KEY } from "../constants";
 
-const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID ?? "YOUR_CLIENT_ID";
+const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID ?? "";
 const DISCORD_REDIRECT_URI =
   import.meta.env.VITE_DISCORD_REDIRECT_URI ?? "http://localhost:5173/auth/callback";
-const DISCORD_SCOPES = ["identify", "email", "guilds"].join(" ");
+const DISCORD_SCOPES = ["identify", "email", "connections"].join(" ");
 
-// ── Types ───────────────────────────────────────────────────────────────────
-
-export interface DiscordUser {
-  id: string;
-  username: string;
-  discriminator: string;
-  avatar: string | null;
-  email: string | null;
-  global_name: string | null;
+export function isDiscordOAuthConfigured(): boolean {
+  return Boolean(DISCORD_CLIENT_ID && DISCORD_REDIRECT_URI);
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+/** Build the Discord OAuth2 authorization URL with CSRF state. */
+export function getDiscordOAuthUrl(state: string): string {
+  if (!DISCORD_CLIENT_ID) {
+    throw new Error(
+      "VITE_DISCORD_CLIENT_ID is not set. Add it to your .env file from the Discord Developer Portal.",
+    );
+  }
 
-/**
- * Build the Discord OAuth2 authorization URL.
- * Redirect the user here to start the login flow.
- */
-export function getDiscordOAuthUrl(): string {
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: DISCORD_REDIRECT_URI,
     response_type: "code",
     scope: DISCORD_SCOPES,
+    state,
   });
 
-  return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+  // Returning users: skip consent if Discord already authorized this app.
+  // First-time users omit prompt so Discord shows the consent screen once.
+  if (typeof window !== "undefined" && localStorage.getItem(DISCORD_LINKED_KEY) === "1") {
+    params.set("prompt", "none");
+  }
+
+  return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }
 
-/**
- * Exchange the OAuth2 code for an access token.
- * Call this from a server function — never expose your client secret in the browser.
- *
- * @param code - The `code` query param from Discord's redirect callback
- * @returns The access token string
- *
- * TODO: Implement when backend is ready.
- */
-export async function exchangeCodeForToken(_code: string): Promise<string> {
-  throw new Error(
-    "Discord OAuth2 not implemented yet. " +
-      "Wire up a server function that calls https://discord.com/api/oauth2/token " +
-      "with your client_id, client_secret, and the authorization code.",
-  );
+export function markDiscordLinked(): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(DISCORD_LINKED_KEY, "1");
 }
 
-/**
- * Fetch the authenticated user's Discord profile.
- *
- * @param accessToken - Access token from exchangeCodeForToken
- * @returns DiscordUser profile object
- *
- * TODO: Implement when backend is ready.
- */
-export async function getDiscordUser(_accessToken: string): Promise<DiscordUser> {
-  throw new Error(
-    "Discord OAuth2 not implemented yet. " +
-      "Call GET https://discord.com/api/users/@me with the access token in the Authorization header.",
-  );
+export function clearDiscordLinked(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(DISCORD_LINKED_KEY);
 }
 
-/**
- * Trigger the Discord login flow from the browser.
- * Redirects the current page to Discord's OAuth2 consent screen.
- */
-export function redirectToDiscordLogin(): void {
-  window.location.href = getDiscordOAuthUrl();
+/** Redirect the browser to Discord OAuth. Stores CSRF state in sessionStorage. */
+export function startDiscordOAuth(): void {
+  const state = crypto.randomUUID();
+  sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
+  window.location.href = getDiscordOAuthUrl(state);
+}
+
+export function readStoredOAuthState(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(DISCORD_OAUTH_STATE_KEY);
+}
+
+export function clearStoredOAuthState(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
+}
+
+export function validateOAuthState(returnedState: string | undefined): boolean {
+  const expected = readStoredOAuthState();
+  clearStoredOAuthState();
+  return Boolean(expected && returnedState && expected === returnedState);
+}
+
+/** Discord returns error=consent_required when prompt=none but auth was revoked. */
+export function shouldRetryDiscordWithConsent(errorCode: string | undefined): boolean {
+  return errorCode === "consent_required" || errorCode === "interaction_required";
 }

@@ -1,7 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Copy, Check, Loader2 } from "lucide-react";
+import { useVerificationSync } from "@/features/auth/hooks/useVerificationSync";
+import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
 import { getSession, clearSession } from "@/features/auth/store/session";
+import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
 import { StepNum } from "@/features/waitlist/components/StepNum";
@@ -26,17 +29,51 @@ function WaitlistPage() {
   const [copiedGame, setCopiedGame] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
+  const goToDashboard = useCallback(() => {
+    navigate({ to: "/dashboard", replace: true });
+  }, [navigate]);
+
+  const { syncVerification, isChecking, checkError } = useVerificationSync({
+    onVerified: goToDashboard,
+    poll: true,
+  });
+
   useEffect(() => {
-    const session = getSession();
-    if (!session) {
-      navigate({ to: "/register" });
-      return;
+    let cancelled = false;
+
+    async function loadWaitlist() {
+      const session = getSession();
+      if (!session) {
+        navigate({ to: "/register" });
+        return;
+      }
+
+      try {
+        const updated = await syncSessionFromDatabase();
+        if (cancelled) return;
+
+        const active = updated ?? session;
+        if (hasFullMemberAccess(active.role)) {
+          navigate({ to: getPostAuthPath(active.role), replace: true });
+          return;
+        }
+
+        setUsername(active.displayName || active.username);
+      } catch {
+        if (cancelled) return;
+        if (hasFullMemberAccess(session.role)) {
+          navigate({ to: getPostAuthPath(session.role), replace: true });
+          return;
+        }
+        setUsername(session.displayName || session.username);
+      }
     }
-    if (session.role === "verified" || session.role === "admin") {
-      navigate({ to: "/" });
-      return;
-    }
-    setUsername(session.displayName || session.username);
+
+    void loadWaitlist();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   function handleSignOut() {
@@ -178,8 +215,26 @@ function WaitlistPage() {
             <div className="min-w-0">
               <p className="text-sm font-medium">Wait for briefing</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                An officer will reach out on Discord, brief you, and verify your account.
+                An officer will reach out on Discord, brief you, and verify your account. This page
+                checks automatically every few seconds — once you&apos;re verified, you&apos;ll be
+                sent to your dashboard.
               </p>
+              <button
+                type="button"
+                onClick={() => void syncVerification()}
+                disabled={isChecking}
+                className="mt-3 inline-flex h-8 items-center gap-2 border border-white/10 px-4 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground transition hover:border-white/25 hover:text-foreground disabled:opacity-50"
+              >
+                {isChecking ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Checking…
+                  </>
+                ) : (
+                  "Check verification status"
+                )}
+              </button>
+              {checkError && <p className="mt-2 text-xs text-destructive">{checkError}</p>}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { UserPlus } from "lucide-react";
+import { ChevronRight, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import { EditMemberModal } from "./EditMemberModal";
 import { useDeleteMember } from "../hooks/useDeleteMember";
 
 export function MembersManagement() {
+  const navigate = useNavigate();
   const { members, isLoading, error, prependMember, replaceMember, removeMember } = useMembers();
   const {
     updatingId,
@@ -48,13 +50,18 @@ export function MembersManagement() {
   const sortComparators = useMemo(
     () => ({
       registered: (a: AdminMember, b: AdminMember) =>
-        compareStrings(a.registeredAt, b.registeredAt),
+        compareStrings(a.createdAt, b.createdAt),
       verification: (a: AdminMember, b: AdminMember) =>
         compareByOrder(verificationOrder, a.status, b.status),
     }),
     [verificationOrder],
   );
-  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(members, sortComparators);
+  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(
+    members,
+    sortComparators,
+    "registered",
+    "desc",
+  );
   const pagination = usePagination(sortedItems);
 
   useEffect(() => {
@@ -71,7 +78,7 @@ export function MembersManagement() {
       <AdminSection
         eyebrow="Roster Pipeline"
         title="Members"
-        description="Register players manually. Registered members can be assigned to teams in the Teams console."
+        description="Register players manually. Click a member to view their profile, socials, and verification details."
         actions={
           <Button
             onClick={() => setIsCreateOpen(true)}
@@ -160,16 +167,26 @@ export function MembersManagement() {
                 </TableRow>
               ) : (
                 pagination.paginatedItems.map((member) => (
-                  <TableRow key={member.id} className="transition-colors hover:bg-secondary/40">
+                  <TableRow
+                    key={member.id}
+                    className="cursor-pointer transition-colors hover:bg-white/[0.03]"
+                    onClick={() => navigate({ to: "/admin/users/$memberId", params: { memberId: member.id } })}
+                  >
                     <TableCell className={adminTableCellClip}>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
+                      <Link
+                        to="/admin/users/$memberId"
+                        params={{ memberId: member.id }}
+                        className="flex min-w-0 items-center gap-3 hover:text-foreground"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="grid h-8 w-8 shrink-0 place-items-center border border-white/10 bg-white/5 text-[10px] font-tech tracking-wider-2">
                           {member.username.slice(0, 2).toUpperCase()}
                         </div>
                         <span className={cn("font-medium", adminTableTextTruncate)}>
                           {member.username}
                         </span>
-                      </div>
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                      </Link>
                     </TableCell>
                     <TableCell className={adminTableCellClip}>
                       <div className={cn("text-sm", adminTableTextTruncate)}>
@@ -194,7 +211,7 @@ export function MembersManagement() {
                         {member.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           type="button"

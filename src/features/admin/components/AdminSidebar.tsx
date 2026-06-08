@@ -5,11 +5,10 @@ import {
   Trophy,
   Users,
   UserCheck,
-  Megaphone,
-  Settings,
   Shield,
   LogOut,
 } from "lucide-react";
+import { Emblem } from "@/features/shared/components/Emblem";
 import { logoutAdminConsole } from "@/features/admin/auth/admin-session";
 
 const navigation = [
@@ -70,15 +69,18 @@ export function AdminSidebar() {
   }
 
   return (
-    <div className="flex w-64 flex-col border-r border-border bg-card/50 backdrop-blur">
-      <div className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-foreground">
-            <Shield className="h-4 w-4 text-background" />
-          </div>
+    <div className="flex w-64 flex-col border-r border-white/8 bg-[oklch(0.06_0_0)] backdrop-blur">
+      <div className="relative overflow-hidden border-b border-white/6 p-6">
+        <div className="pointer-events-none absolute -right-4 -top-4 opacity-[0.07]">
+          <Emblem className="h-24 w-24" spin />
+        </div>
+        <div className="relative flex items-center gap-3">
+          <Emblem className="h-9 w-9 shrink-0" />
           <div>
-            <div className="font-display text-lg font-bold tracking-wider-2">Admin</div>
-            <div className="text-xs text-muted-foreground">Control Panel</div>
+            <div className="font-display text-lg tracking-wider-2">BLACK ROSE</div>
+            <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+              Admin Console
+            </div>
           </div>
         </div>
       </div>
@@ -92,11 +94,11 @@ export function AdminSidebar() {
                 <Link
                   to={item.href}
                   className={`
-                    group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                    group flex items-center gap-3 px-3 py-2 font-tech text-[11px] uppercase tracking-wider-2 transition-colors
                     ${
                       active
-                        ? "bg-foreground/10 text-foreground"
-                        : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+                        ? "border-l-2 border-white bg-white/5 text-foreground"
+                        : "border-l-2 border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground"
                     }
                   `}
                 >
