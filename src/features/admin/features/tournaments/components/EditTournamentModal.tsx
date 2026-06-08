@@ -26,14 +26,17 @@ import {
   TOURNAMENT_GAMES,
   TOURNAMENT_REGIONS,
 } from "../constants";
+import { registrationCapLabel, resolveParticipationType } from "@/features/tournaments/types/participation";
 import { useUpdateTournament } from "../hooks/useUpdateTournament";
 import type { AdminTournament, CreateTournamentFormValues } from "../types";
 import {
+  applyGameToParticipationForm,
   formValuesToCreateInput,
   hasFormErrors,
   tournamentToFormValues,
   validateCreateTournamentForm,
 } from "../utils";
+import { ParticipationModeFields } from "./ParticipationModeFields";
 
 interface EditTournamentModalProps {
   open: boolean;
@@ -57,6 +60,9 @@ export function EditTournamentModal({
   const { submit, isSubmitting, error, resetError } = useUpdateTournament();
 
   const selectedFormat = TOURNAMENT_FORMATS.find((f) => f.value === values.format);
+  const capLabel = registrationCapLabel(
+    resolveParticipationType(values.game, values.wwmMode || null),
+  );
 
   useEffect(() => {
     if (!open || !tournament) return;
@@ -105,7 +111,7 @@ export function EditTournamentModal({
         if (!next && !isSubmitting) onClose();
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-xl">
+      <DialogContent className="custom-scrollbar max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Edit Tournament</DialogTitle>
           <DialogDescription>Update settings for {tournament.name}.</DialogDescription>
@@ -129,9 +135,20 @@ export function EditTournamentModal({
               <Label htmlFor="edit-tournament-game">Game</Label>
               <Select
                 value={values.game}
-                onValueChange={(game) =>
-                  updateField("game", game as CreateTournamentFormValues["game"])
-                }
+                onValueChange={(game) => {
+                  const nextGame = game as CreateTournamentFormValues["game"];
+                  setValues((prev) => ({
+                    ...prev,
+                    game: nextGame,
+                    ...applyGameToParticipationForm(nextGame),
+                  }));
+                  setFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.wwmMode;
+                    return next;
+                  });
+                  resetError();
+                }}
                 disabled={isSubmitting}
               >
                 <SelectTrigger id="edit-tournament-game" className="bg-background/50">
@@ -193,6 +210,13 @@ export function EditTournamentModal({
             )}
           </div>
 
+          <ParticipationModeFields
+            values={values}
+            disabled={isSubmitting}
+            fieldErrors={fieldErrors}
+            onWwmModeChange={(wwmMode) => updateField("wwmMode", wwmMode)}
+          />
+
           <PrizePoolInput
             id="edit-tournament-prize"
             currency={values.prizeCurrency}
@@ -224,7 +248,7 @@ export function EditTournamentModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-tournament-cap">Team Cap</Label>
+              <Label htmlFor="edit-tournament-cap">{capLabel}</Label>
               <Input
                 id="edit-tournament-cap"
                 type="number"

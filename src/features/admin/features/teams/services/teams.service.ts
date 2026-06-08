@@ -181,6 +181,54 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   return fetchTeamWithMembers(input.teamId);
 }
 
+export interface AddMembersToTeamFailure {
+  memberId: string;
+  message: string;
+}
+
+export interface AddMembersToTeamResult {
+  team: Team;
+  added: string[];
+  failed: AddMembersToTeamFailure[];
+}
+
+export async function addMembersToTeam(
+  teamId: string,
+  memberIds: string[],
+): Promise<AddMembersToTeamResult> {
+  const added: string[] = [];
+  const failed: AddMembersToTeamFailure[] = [];
+
+  for (const memberId of memberIds) {
+    try {
+      await addMemberToTeam({ teamId, memberId });
+      added.push(memberId);
+    } catch (err) {
+      failed.push({
+        memberId,
+        message: err instanceof Error ? err.message : "Failed to add member.",
+      });
+    }
+  }
+
+  const team = await fetchTeamWithMembers(teamId);
+  return { team, added, failed };
+}
+
+export async function fetchTeamForUser(userId: string): Promise<Team | null> {
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", userId)
+    .in("status", ["captain", "active"])
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data?.team_id) return null;
+
+  return fetchTeamById(data.team_id as string);
+}
+
 export async function fetchTeamById(teamId: string): Promise<Team | null> {
   try {
     return await fetchTeamWithMembers(teamId);

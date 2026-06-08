@@ -1,23 +1,26 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Plus, UserPlus, Users } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
 import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AdminManagementTable,
+  adminTableCellClip,
+  adminTableTextTruncate,
+} from "@/features/admin/components/AdminManagementTable";
 import { AdminSection } from "@/features/admin/components/AdminSection";
+import { TEAMS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
+import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { usePagination } from "@/features/admin/hooks/usePagination";
+import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { useMembers } from "@/features/admin/features/members/hooks";
-import { GAME_COLOR } from "@/features/teams/constants";
+import { compareByOrder } from "@/features/admin/utils/sort-comparators";
+import { GAME_COLOR, GAME_OPTIONS } from "@/features/teams/constants";
 import { useTeams } from "../hooks";
 import type { Team } from "../types";
 import { countActiveMembers, getTeamCaptainUsername } from "../utils";
@@ -41,7 +44,20 @@ export function TeamsManagement() {
     error: deleteError,
     resetError: resetDeleteError,
   } = useDeleteTeam();
-  const pagination = usePagination(teams);
+  const teamGameOrder = useMemo(() => GAME_OPTIONS.map((game) => game.value), []);
+  const sortComparators = useMemo(
+    () => ({
+      game: (a: Team, b: Team) => compareByOrder(teamGameOrder, a.game, b.game),
+      roster: (a: Team, b: Team) => countActiveMembers(a) - countActiveMembers(b),
+    }),
+    [teamGameOrder],
+  );
+  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(teams, sortComparators);
+  const pagination = usePagination(sortedItems);
+
+  useEffect(() => {
+    pagination.setPage(1);
+  }, [sortKey, direction, pagination.setPage]);
 
   return (
     <>
@@ -81,21 +97,29 @@ export function TeamsManagement() {
         )}
 
         <div className="p-6 pt-4">
-          <Table>
+          <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Team
                 </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Game
-                </TableHead>
+                <SortableTableHead
+                  label="Game"
+                  sortKey="game"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Captain
                 </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Roster
-                </TableHead>
+                <SortableTableHead
+                  label="Roster"
+                  sortKey="roster"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
                 <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
                   Actions
                 </TableHead>
@@ -134,23 +158,29 @@ export function TeamsManagement() {
               ) : (
                 pagination.paginatedItems.map((team) => (
                   <TableRow key={team.id} className="transition-colors hover:bg-secondary/40">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-9 w-9 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
+                    <TableCell className={adminTableCellClip}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
                           {team.tag}
                         </div>
-                        <span className="font-display text-base tracking-wider">{team.name}</span>
+                        <span className={cn("font-display text-base tracking-wider", adminTableTextTruncate)}>
+                          {team.name}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={adminTableCellClip}>
                       <span
-                        className={`text-[10px] font-tech uppercase tracking-wider-2 ${GAME_COLOR[team.game]}`}
+                        className={cn(
+                          "block text-[10px] font-tech uppercase tracking-wider-2",
+                          adminTableTextTruncate,
+                          GAME_COLOR[team.game],
+                        )}
                       >
                         {team.game}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {getTeamCaptainUsername(team)}
+                    <TableCell className={cn("text-sm text-muted-foreground", adminTableCellClip)}>
+                      <span className={adminTableTextTruncate}>{getTeamCaptainUsername(team)}</span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {countActiveMembers(team)} players
@@ -191,7 +221,7 @@ export function TeamsManagement() {
                 ))
               )}
             </TableBody>
-          </Table>
+          </AdminManagementTable>
           <AdminTablePagination
             page={pagination.page}
             totalPages={pagination.totalPages}

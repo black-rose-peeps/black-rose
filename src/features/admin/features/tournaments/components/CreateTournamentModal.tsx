@@ -27,9 +27,19 @@ import {
   TOURNAMENT_GAMES,
   TOURNAMENT_REGIONS,
 } from "../constants";
+import {
+  registrationCapLabel,
+  resolveParticipationType,
+} from "@/features/tournaments/types/participation";
 import { useCreateTournament } from "../hooks";
 import type { AdminTournament, CreateTournamentFormValues } from "../types";
-import { formValuesToCreateInput, hasFormErrors, validateCreateTournamentForm } from "../utils";
+import {
+  applyGameToParticipationForm,
+  formValuesToCreateInput,
+  hasFormErrors,
+  validateCreateTournamentForm,
+} from "../utils";
+import { ParticipationModeFields } from "./ParticipationModeFields";
 
 interface CreateTournamentModalProps {
   open: boolean;
@@ -45,6 +55,9 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
   const { submit, isSubmitting, error, resetError } = useCreateTournament();
 
   const selectedFormat = TOURNAMENT_FORMATS.find((f) => f.value === values.format);
+  const capLabel = registrationCapLabel(
+    resolveParticipationType(values.game, values.wwmMode || null),
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -84,13 +97,14 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !isSubmitting && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-xl">
+      <DialogContent className="custom-scrollbar max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">
             Create Tournament
           </DialogTitle>
           <DialogDescription>
-            Set up a new event. Single elimination unlocks the bracket manager for 16-team brackets.
+            Set up a new event, configure prize tiers, and manage brackets for single elimination,
+            double elimination, or Swiss formats.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,9 +127,20 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
               <Label htmlFor="tournament-game">Game</Label>
               <Select
                 value={values.game}
-                onValueChange={(game) =>
-                  updateField("game", game as CreateTournamentFormValues["game"])
-                }
+                onValueChange={(game) => {
+                  const nextGame = game as CreateTournamentFormValues["game"];
+                  setValues((prev) => ({
+                    ...prev,
+                    game: nextGame,
+                    ...applyGameToParticipationForm(nextGame),
+                  }));
+                  setFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.wwmMode;
+                    return next;
+                  });
+                  resetError();
+                }}
                 disabled={isSubmitting}
               >
                 <SelectTrigger id="tournament-game" className="bg-background/50">
@@ -177,6 +202,13 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
             )}
           </div>
 
+          <ParticipationModeFields
+            values={values}
+            disabled={isSubmitting}
+            fieldErrors={fieldErrors}
+            onWwmModeChange={(wwmMode) => updateField("wwmMode", wwmMode)}
+          />
+
           <PrizePoolInput
             id="tournament-prize"
             currency={values.prizeCurrency}
@@ -211,7 +243,7 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="tournament-cap">Team Cap</Label>
+              <Label htmlFor="tournament-cap">{capLabel}</Label>
               <Input
                 id="tournament-cap"
                 type="number"

@@ -8,7 +8,6 @@
  */
 
 import type { AppNotification } from "../types";
-import { MOCK_NOTIFICATIONS } from "../constants";
 
 const STORE_KEY = "br_notifications";
 
@@ -36,8 +35,8 @@ function load(): AppNotification[] | null {
 function getAll(): AppNotification[] {
   const stored = load();
   if (stored) return stored;
-  save(MOCK_NOTIFICATIONS);
-  return MOCK_NOTIFICATIONS;
+  save([]);
+  return [];
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

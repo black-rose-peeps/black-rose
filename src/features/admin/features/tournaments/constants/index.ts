@@ -9,6 +9,7 @@ export const TOURNAMENT_GAMES: TournamentGame[] = [
   "Valorant",
   "League of Legends",
   "Teamfight Tactics",
+  "Where Winds Meet",
 ];
 
 export const TOURNAMENT_REGIONS = ["PH", "SEA", "APAC", "Global"] as const;
@@ -31,4 +32,5 @@ export const DEFAULT_CREATE_TOURNAMENT_FORM: CreateTournamentFormValues = {
   teamCap: "16",
   region: "PH",
   status: "Draft",
+  wwmMode: "",
 };

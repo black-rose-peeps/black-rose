@@ -1,3 +1,7 @@
+import type { ParticipationType, WwmMode } from "./participation";
+
+export type { ParticipationType, WwmMode } from "./participation";
+
 export type TournamentStatus =
   | "Registration Open"
   | "Registration Closed"
@@ -5,7 +9,11 @@ export type TournamentStatus =
   | "Completed"
   | "Archived";
 
-export type TournamentGame = "Valorant" | "League of Legends" | "Teamfight Tactics";
+export type TournamentGame =
+  | "Valorant"
+  | "League of Legends"
+  | "Teamfight Tactics"
+  | "Where Winds Meet";
 
 export interface Tournament {
   id: string;
@@ -19,6 +27,8 @@ export interface Tournament {
   teamCap: number;
   format: string;
   region: string;
+  participationType?: ParticipationType;
+  wwmMode?: WwmMode | null;
 }
 
 // ── Detail-only types ────────────────────────────────────
@@ -68,6 +78,13 @@ export interface TournamentTeam {
   players: TournamentPlayer[];
 }
 
+export interface TournamentPlacementView {
+  rank: number;
+  label: string;
+  team: string;
+  prize?: string;
+}
+
 export interface TournamentDetail extends Tournament {
   description: string;
   organizer: string;
@@ -77,4 +94,5 @@ export interface TournamentDetail extends Tournament {
   rules: RuleSection[];
   bracket: BracketRound[];
   teams: TournamentTeam[];
+  placements?: TournamentPlacementView[];
 }

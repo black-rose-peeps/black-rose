@@ -6,9 +6,10 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import type { BracketRound } from "@/features/tournaments/types";
+import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
+import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import {
-  fetchPublishedBracket,
+  fetchPublishedBracketPayload,
   type PersistedBracketPayload,
   resetBracketState,
   savePublishedBracket,
@@ -17,6 +18,8 @@ import {
 
 interface StoredBracket {
   rounds: BracketRound[];
+  placements: TournamentPlacement[] | null;
+  prizeBreakdown: PrizeTier[] | null;
   updatedAt: string;
 }
 
@@ -35,8 +38,18 @@ function _subscribe(tournamentId: string, fn: () => void): () => void {
   return () => _listeners.get(tournamentId)?.delete(fn);
 }
 
-function _setLocal(tournamentId: string, rounds: BracketRound[], updatedAt?: string) {
-  _store.set(tournamentId, { rounds, updatedAt: updatedAt ?? new Date().toISOString() });
+function _payloadFromUnknown(payload: unknown): PersistedBracketPayload | null {
+  if (!payload || typeof payload !== "object") return null;
+  return payload as PersistedBracketPayload;
+}
+
+function _setLocal(tournamentId: string, payload: PersistedBracketPayload, updatedAt?: string) {
+  _store.set(tournamentId, {
+    rounds: payload.rounds,
+    placements: payload.placements ?? null,
+    prizeBreakdown: payload.prizeBreakdown ?? null,
+    updatedAt: updatedAt ?? new Date().toISOString(),
+  });
   _notify(tournamentId);
 }
 
@@ -47,12 +60,6 @@ function _clearLocal(tournamentId: string) {
 
 function _snapshotLocal(tournamentId: string): StoredBracket | undefined {
   return _store.get(tournamentId);
-}
-
-function _roundsFromPayload(payload: unknown): BracketRound[] | null {
-  if (!payload || typeof payload !== "object") return null;
-  const rounds = (payload as PersistedBracketPayload).rounds;
-  return Array.isArray(rounds) && rounds.length > 0 ? rounds : null;
 }
 
 // ── Public write API (called by admin BracketManager) ─────────────────────
@@ -66,9 +73,8 @@ export async function publishBracket(
   payload: PersistedBracketPayload,
   options?: { isInitialPublish?: boolean },
 ): Promise<void> {
-  const rounds = payload.rounds;
   const previous = _snapshotLocal(tournamentId);
-  _setLocal(tournamentId, rounds);
+  _setLocal(tournamentId, payload);
 
   try {
     if (options?.isInitialPublish) {
@@ -78,7 +84,15 @@ export async function publishBracket(
     }
   } catch (err) {
     if (previous) {
-      _setLocal(tournamentId, previous.rounds, previous.updatedAt);
+      _setLocal(
+        tournamentId,
+        {
+          rounds: previous.rounds,
+          placements: previous.placements ?? undefined,
+          prizeBreakdown: previous.prizeBreakdown ?? undefined,
+        },
+        previous.updatedAt,
+      );
     } else {
       _clearLocal(tournamentId);
     }
@@ -95,7 +109,15 @@ export async function clearPublishedBracket(tournamentId: string): Promise<void>
     await resetBracketState(tournamentId);
   } catch (err) {
     if (previous) {
-      _setLocal(tournamentId, previous.rounds, previous.updatedAt);
+      _setLocal(
+        tournamentId,
+        {
+          rounds: previous.rounds,
+          placements: previous.placements ?? undefined,
+          prizeBreakdown: previous.prizeBreakdown ?? undefined,
+        },
+        previous.updatedAt,
+      );
     }
     console.error("[bracket-store] Failed to reset bracket:", err);
     throw err;
@@ -110,11 +132,20 @@ export function getPublishedBracket(tournamentId: string): BracketRound[] | null
 
 /** Hydrate the in-memory store without writing to Supabase (e.g. admin reload). */
 export function syncLocalBracket(tournamentId: string, rounds: BracketRound[]): void {
-  _setLocal(tournamentId, rounds);
+  const existing = _snapshotLocal(tournamentId);
+  _store.set(tournamentId, {
+    rounds,
+    placements: existing?.placements ?? null,
+    prizeBreakdown: existing?.prizeBreakdown ?? null,
+    updatedAt: existing?.updatedAt ?? new Date().toISOString(),
+  });
+  _notify(tournamentId);
 }
 
 export interface LiveBracketState {
   bracket: BracketRound[] | null;
+  placements: TournamentPlacement[] | null;
+  prizeBreakdown: PrizeTier[] | null;
   isLoading: boolean;
 }
 
@@ -123,8 +154,13 @@ export interface LiveBracketState {
  * to Realtime updates on `tournament_bracket_state`.
  */
 export function useLiveBracket(tournamentId: string): LiveBracketState {
-  const [bracket, setBracket] = useState<BracketRound[] | null>(
-    () => _store.get(tournamentId)?.rounds ?? null,
+  const snapshot = _store.get(tournamentId);
+  const [bracket, setBracket] = useState<BracketRound[] | null>(snapshot?.rounds ?? null);
+  const [placements, setPlacements] = useState<TournamentPlacement[] | null>(
+    snapshot?.placements ?? null,
+  );
+  const [prizeBreakdown, setPrizeBreakdown] = useState<PrizeTier[] | null>(
+    snapshot?.prizeBreakdown ?? null,
   );
   const [isLoading, setIsLoading] = useState(true);
 
@@ -134,20 +170,26 @@ export function useLiveBracket(tournamentId: string): LiveBracketState {
     async function loadInitial() {
       setIsLoading(true);
       try {
-        const rounds = await fetchPublishedBracket(tournamentId);
+        const published = await fetchPublishedBracketPayload(tournamentId);
         if (cancelled) return;
-        if (rounds) {
-          _setLocal(tournamentId, rounds);
-          setBracket(rounds);
+        if (published?.rounds?.length) {
+          _setLocal(tournamentId, published);
+          setBracket(published.rounds);
+          setPlacements(published.placements ?? null);
+          setPrizeBreakdown(published.prizeBreakdown ?? null);
         } else {
           _clearLocal(tournamentId);
           setBracket(null);
+          setPlacements(null);
+          setPrizeBreakdown(null);
         }
       } catch (err) {
         console.error("[bracket-store] Failed to load bracket:", err);
         if (!cancelled) {
           _clearLocal(tournamentId);
           setBracket(null);
+          setPlacements(null);
+          setPrizeBreakdown(null);
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -172,28 +214,39 @@ export function useLiveBracket(tournamentId: string): LiveBracketState {
           if (!row) {
             _clearLocal(tournamentId);
             setBracket(null);
+            setPlacements(null);
+            setPrizeBreakdown(null);
             return;
           }
 
           if (row.status === "published") {
-            const rounds = _roundsFromPayload(row.bracket_data);
-            if (rounds) {
-              _setLocal(tournamentId, rounds, row.updated_at as string);
-              setBracket(rounds);
+            const parsed = _payloadFromUnknown(row.bracket_data);
+            if (parsed?.rounds?.length) {
+              _setLocal(tournamentId, parsed, row.updated_at as string);
+              setBracket(parsed.rounds);
+              setPlacements(parsed.placements ?? null);
+              setPrizeBreakdown(parsed.prizeBreakdown ?? null);
             } else {
               _clearLocal(tournamentId);
               setBracket(null);
+              setPlacements(null);
+              setPrizeBreakdown(null);
             }
           } else {
             _clearLocal(tournamentId);
             setBracket(null);
+            setPlacements(null);
+            setPrizeBreakdown(null);
           }
         },
       )
       .subscribe();
 
     const unsubscribeLocal = _subscribe(tournamentId, () => {
-      setBracket(_store.get(tournamentId)?.rounds ?? null);
+      const stored = _store.get(tournamentId);
+      setBracket(stored?.rounds ?? null);
+      setPlacements(stored?.placements ?? null);
+      setPrizeBreakdown(stored?.prizeBreakdown ?? null);
     });
 
     return () => {
@@ -203,5 +256,5 @@ export function useLiveBracket(tournamentId: string): LiveBracketState {
     };
   }, [tournamentId]);
 
-  return { bracket, isLoading };
+  return { bracket, placements, prizeBreakdown, isLoading };
 }

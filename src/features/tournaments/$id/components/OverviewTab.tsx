@@ -1,46 +1,105 @@
-import { Trophy, Calendar } from "lucide-react";
+import { useMemo } from "react";
+import { Calendar, Trophy } from "lucide-react";
+import { EliminationResultsBoard } from "../../components/EliminationResultsBoard";
+import { SwissResultsBoard } from "../../components/SwissResultsBoard";
+import { isSwissFormat } from "../../constants/formats";
+import { withTeamTags } from "../../utils/team-tags";
+import { computeSwissStandingsFromBracket } from "../../utils/swiss-standings";
 import type { TournamentDetail } from "../../types";
 
 interface OverviewTabProps {
   tournament: TournamentDetail;
+  teamTags?: Map<string, string>;
 }
 
-export function OverviewTab({ tournament: t }: OverviewTabProps) {
+export function OverviewTab({ tournament: t, teamTags }: OverviewTabProps) {
+  const isDone = t.status === "Completed" || t.status === "Archived";
+  const isSwiss = isSwissFormat(t.format);
+
+  const swissStandings = useMemo(() => {
+    if (!isSwiss || !t.bracket.length) return null;
+    return computeSwissStandingsFromBracket(t.bracket);
+  }, [isSwiss, t.bracket]);
+
+  const showSwissResults =
+    isDone &&
+    isSwiss &&
+    swissStandings !== null &&
+    swissStandings.some((entry) => entry.status === "advanced" || entry.status === "eliminated");
+
+  const showElimResults = isDone && (t.placements?.length ?? 0) > 0;
+  const showSwissPodium = isSwiss && showElimResults;
+  const showElimPodium = !isSwiss && showElimResults;
+
   return (
     <div className="grid gap-8 lg:grid-cols-3">
-      {/* Left col — prize + schedule */}
       <div className="flex flex-col gap-8 lg:col-span-2">
-        {/* Prize Breakdown */}
+        {showSwissResults && swissStandings && (
+          <section className="space-y-4">
+            <SwissResultsBoard
+              variant="public"
+              advanced={withTeamTags(
+                swissStandings
+                  .filter((entry) => entry.status === "advanced")
+                  .map((entry) => ({ team: entry.team, record: entry.record })),
+                teamTags,
+              )}
+              eliminated={withTeamTags(
+                swissStandings
+                  .filter((entry) => entry.status === "eliminated")
+                  .map((entry) => ({ team: entry.team, record: entry.record })),
+                teamTags,
+              )}
+            />
+          </section>
+        )}
+
+        {showSwissPodium && t.placements && (
+          <section className="space-y-4">
+            <EliminationResultsBoard placements={t.placements} teamTags={teamTags} />
+          </section>
+        )}
+
+        {showElimPodium && t.placements && (
+          <section className="space-y-4">
+            <EliminationResultsBoard placements={t.placements} teamTags={teamTags} />
+          </section>
+        )}
+
         <Card icon={<Trophy className="h-4 w-4" />} title="Prize Breakdown">
           <div className="divide-y divide-white/6">
-            {t.prizeBreakdown.map((tier, i) => (
-              <div key={tier.place} className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-4">
-                  {/* Placement number */}
+            {t.prizeBreakdown.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                Prize distribution will be announced by tournament staff.
+              </p>
+            ) : (
+              t.prizeBreakdown.map((tier, i) => (
+                <div key={`${tier.place}-${i}`} className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-4">
+                    <span
+                      className={`font-display text-2xl tracking-display ${
+                        i === 0 ? "text-white" : i === 1 ? "text-white/60" : "text-white/30"
+                      }`}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{tier.place}</span>
+                  </div>
                   <span
-                    className={`font-display text-2xl tracking-display ${
-                      i === 0 ? "text-white" : i === 1 ? "text-white/60" : "text-white/30"
-                    }`}
+                    className={`font-display text-xl tracking-display ${i === 0 ? "text-white" : "text-muted-foreground"}`}
                   >
-                    {String(i + 1).padStart(2, "0")}
+                    {tier.prize}
                   </span>
-                  <span className="text-sm text-muted-foreground">{tier.place}</span>
                 </div>
-                <span
-                  className={`font-display text-xl tracking-display ${i === 0 ? "text-white" : "text-muted-foreground"}`}
-                >
-                  {tier.prize}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </Card>
 
-        {/* Schedule */}
         <Card icon={<Calendar className="h-4 w-4" />} title="Tournament Schedule">
           <ol className="relative ml-2 border-l border-white/10">
             {t.schedule.map((entry, i) => (
-              <li key={i} className="mb-6 ml-6 last:mb-0">
+              <li key={`${entry.phase}-${i}`} className="mb-6 ml-6 last:mb-0">
                 <span className="absolute left-[-5px] mt-1.5 h-2.5 w-2.5 border border-white/20 bg-background" />
                 <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                   {entry.date}
@@ -55,7 +114,6 @@ export function OverviewTab({ tournament: t }: OverviewTabProps) {
         </Card>
       </div>
 
-      {/* Right col — organizer info */}
       <div className="flex flex-col gap-6">
         <Card title="Tournament Info">
           <dl className="flex flex-col gap-4">
@@ -64,6 +122,7 @@ export function OverviewTab({ tournament: t }: OverviewTabProps) {
             <InfoRow label="Format" value={t.format} />
             <InfoRow label="Region" value={t.region} />
             <InfoRow label="Registration Deadline" value={t.registrationDeadline} />
+            <InfoRow label="Start Date" value={t.startDate} />
           </dl>
         </Card>
 
@@ -91,8 +150,6 @@ export function OverviewTab({ tournament: t }: OverviewTabProps) {
   );
 }
 
-// ── Internal helpers ────────────────────────────────────
-
 function Card({
   title,
   icon,
@@ -106,9 +163,7 @@ function Card({
     <div className="border border-white/8 bg-[oklch(0.07_0_0)]">
       <div className="flex items-center gap-2.5 border-b border-white/8 px-5 py-4">
         {icon && <span className="text-muted-foreground">{icon}</span>}
-        <h3 className="text-[11px] font-tech uppercase tracking-wider-2 text-foreground">
-          {title}
-        </h3>
+        <h3 className="text-[11px] font-tech uppercase tracking-wider-2 text-foreground">{title}</h3>
       </div>
       <div className="px-5 py-5">{children}</div>
     </div>

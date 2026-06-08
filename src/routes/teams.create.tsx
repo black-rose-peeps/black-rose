@@ -4,7 +4,7 @@ import { ArrowLeft, AlertCircle } from "lucide-react";
 import { MemberNav } from "@/features/member/components/MemberNav";
 import { FormField } from "@/features/shared/components/FormField";
 import { getSession } from "@/features/auth/store/session";
-import { getTeamByUserId } from "@/lib/mock-teams";
+import { fetchTeamForUser } from "@/features/admin/features/teams/services/teams.service";
 import { GAME_OPTIONS, ROLE_OPTIONS, MAX_TEAM_SIZE } from "@/features/teams/constants";
 
 export const Route = createFileRoute("/teams/create")({
@@ -25,11 +25,14 @@ function CreateTeamPage() {
       navigate({ to: "/waitlist" });
       return;
     }
-    // Already in a team — redirect to team overview
-    if (getTeamByUserId(session.id)) {
-      navigate({ to: "/teams" });
-      return;
-    }
+    let cancelled = false;
+    fetchTeamForUser(session.id).then((team) => {
+      if (!cancelled && team) navigate({ to: "/teams" });
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate, session]);
 
   const [form, setForm] = useState({

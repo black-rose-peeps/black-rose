@@ -1,6 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Pencil, Plus, RefreshCw, Trash2, Trophy, Users2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  CalendarClock,
+  Coins,
+  Gamepad2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Trophy,
+  UserRound,
+  Users,
+  Users2,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +30,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
-import { Panel } from "@/features/admin/components/ui";
+import { TournamentMetaStrip } from "@/features/admin/components/TournamentMetaStrip";
+import { Panel, StatusPill } from "@/features/admin/components/ui";
 import { BracketManager } from "@/features/admin/features/tournament-details/components/BracketManager";
 import { TeamModal } from "@/features/admin/components/TeamModal";
 import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
+import { AddMembersToTournamentDialog } from "@/features/admin/features/tournaments/components/AddMembersToTournamentDialog";
 import { AddTeamToTournamentDialog } from "@/features/admin/features/tournaments/components/AddTeamToTournamentDialog";
 import { EditTournamentModal } from "@/features/admin/features/tournaments/components/EditTournamentModal";
+import { PrizeDistributionPanel } from "@/features/admin/features/tournaments/components/PrizeDistributionPanel";
 import { useTournamentRegistrations } from "@/features/admin/features/tournaments/hooks";
 import { useDeleteTournament } from "@/features/admin/features/tournaments/hooks/useDeleteTournament";
 import { removeTeamFromTournament } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
@@ -32,9 +49,13 @@ import {
 } from "@/features/admin/features/tournaments/utils";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
 import { usePagination } from "@/features/admin/hooks/usePagination";
+import {
+  isSoloTournament,
+  participationTypeLabel,
+  registrationCapLabel,
+  wwmModeLabel,
+} from "@/features/tournaments/types/participation";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
-import { mockTournamentDetails } from "@/lib/mock-tournament-details";
-
 export const Route = createFileRoute("/admin/tournaments/$id")({
   loader: ({ params }) => {
     // Return only the ID — all Supabase calls happen client-side in the component.
@@ -119,6 +140,7 @@ function TournamentDetailPage() {
   const teamsPagination = usePagination(teams);
   const [openTeam, setOpenTeam] = useState<MockTeam | null>(null);
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+  const [isAddPlayersOpen, setIsAddPlayersOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [removingRegistration, setRemovingRegistration] = useState<MockTeam | null>(null);
@@ -139,14 +161,7 @@ function TournamentDetailPage() {
         <AdminTopbar title="Loading…" subtitle="Tournament Operations" />
         <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
           <Skeleton className="h-8 w-48" />
-          <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-3 xl:grid-cols-7">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="bg-card px-6 py-6">
-                <Skeleton className="h-3 w-16 mb-3" />
-                <Skeleton className="h-7 w-24" />
-              </div>
-            ))}
-          </div>
+          <Skeleton className="h-24 w-full clip-angle" />
         </div>
       </>
     );
@@ -165,24 +180,21 @@ function TournamentDetailPage() {
   // ── Loaded ─────────────────────────────────────────────────────────────
 
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
-  const detail = mockTournamentDetails[tournament.id];
-  const detailBracket = detail?.bracket ?? [];
 
-  // Single source of truth: prefer live registrations, fall back to mock detail, then empty.
   const approvedTeams = teams.filter((t) => t.status === "Approved");
-  const computedTeams =
-    approvedTeams.length > 0
-      ? approvedTeams.map((t) => ({
-          id: t.id,
-          name: t.name,
-          tag: t.tag,
-          captain: t.captain,
-          players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
-        }))
-      : (detail?.teams ?? []);
+  const computedTeams = approvedTeams.map((t) => ({
+    id: t.id,
+    name: t.name,
+    tag: t.tag,
+    captain: t.captain,
+    players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
+  }));
 
   const bracketNotice = formatBracketAvailability(tournament, computedTeams.length);
   const supportsBracketManager = canUseBracketManager(tournament.format, computedTeams.length);
+  const soloEvent = isSoloTournament(tournament);
+  const capLabel = registrationCapLabel(tournament.participationType);
+  const wwmLabel = wwmModeLabel(tournament.wwmMode);
 
   return (
     <>
@@ -228,28 +240,53 @@ function TournamentDetailPage() {
           </div>
         </div>
 
-        <Panel className="clip-angle">
-          <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-3 xl:grid-cols-7">
-            {[
-              { label: "Game", value: tournament.game },
-              { label: "Status", value: tournament.status },
-              { label: "Prize Pool", value: tournament.prizePool },
-              { label: "Start Date", value: tournament.startDate },
-              { label: "Reg. Deadline", value: tournament.registrationDeadline },
-              { label: "Teams", value: `${teams.length}/${tournament.teamCap}` },
-              { label: "Players", value: totalPlayers },
-            ].map((cell) => (
-              <div key={cell.label} className="bg-card px-6 py-6">
-                <div className="text-xs font-tech uppercase tracking-wider-2 text-muted-foreground">
-                  {cell.label}
-                </div>
-                <div className="mt-3 font-display text-2xl font-semibold tracking-wider-2">
-                  {cell.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Panel>
+        <TournamentMetaStrip
+          className="clip-angle"
+          items={[
+            {
+              label: "Game",
+              value: tournament.game,
+              icon: <Gamepad2 className="h-3.5 w-3.5" />,
+            },
+            {
+              label: "Registration",
+              value: wwmLabel
+                ? `${participationTypeLabel(tournament.participationType)} · ${wwmLabel}`
+                : participationTypeLabel(tournament.participationType),
+              icon: <UserRound className="h-3.5 w-3.5" />,
+            },
+            {
+              label: "Status",
+              value: <StatusPill status={tournament.status} />,
+              icon: <Trophy className="h-3.5 w-3.5" />,
+            },
+            {
+              label: "Prize Pool",
+              value: tournament.prizePool,
+              highlight: true,
+            },
+            {
+              label: "Start Date",
+              value: tournament.startDate,
+              icon: <Calendar className="h-3.5 w-3.5" />,
+            },
+            {
+              label: "Reg. Deadline",
+              value: tournament.registrationDeadline,
+              icon: <CalendarClock className="h-3.5 w-3.5" />,
+            },
+            {
+              label: capLabel,
+              value: `${teams.length}/${tournament.teamCap}`,
+              icon: <Users className="h-3.5 w-3.5" />,
+            },
+            {
+              label: "Players",
+              value: totalPlayers,
+              icon: <Users2 className="h-3.5 w-3.5" />,
+            },
+          ]}
+        />
 
         <Tabs defaultValue="teams" className="flex flex-col gap-4">
           <TabsList className="h-auto w-full justify-start rounded-none border-b border-border bg-transparent p-0">
@@ -258,10 +295,17 @@ function TournamentDetailPage() {
               className="gap-2 rounded-none border-b-2 border-transparent px-6 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none"
             >
               <Users2 className="h-4 w-4" />
-              Registered Teams
+              {soloEvent ? "Registered Players" : "Registered Teams"}
               <Badge variant="secondary" className="font-tech text-[10px]">
                 {teams.length}
               </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="prizes"
+              className="gap-2 rounded-none border-b-2 border-transparent px-6 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none"
+            >
+              <Coins className="h-4 w-4" />
+              Prize Distribution
             </TabsTrigger>
             <TabsTrigger
               value="bracket"
@@ -274,6 +318,13 @@ function TournamentDetailPage() {
             </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="prizes" className="mt-0">
+            <PrizeDistributionPanel
+              tournament={tournament}
+              onUpdated={(updated) => patchTournament(updated)}
+            />
+          </TabsContent>
+
           <TabsContent value="teams" className="mt-0">
             <Panel>
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4">
@@ -282,7 +333,7 @@ function TournamentDetailPage() {
                     Registrations
                   </p>
                   <h2 className="font-display text-xl font-bold tracking-wider-2">
-                    Registered Teams
+                    {soloEvent ? "Registered Players" : "Registered Teams"}
                   </h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -304,13 +355,17 @@ function TournamentDetailPage() {
                     disabled={teams.length >= tournament.teamCap}
                     title={
                       teams.length >= tournament.teamCap
-                        ? "Team cap reached"
-                        : "Add a roster from Teams"
+                        ? `${capLabel} reached`
+                        : soloEvent
+                          ? "Register members directly"
+                          : "Add a roster from Teams"
                     }
-                    onClick={() => setIsAddTeamOpen(true)}
+                    onClick={() =>
+                      soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true)
+                    }
                   >
                     <Plus className="h-4 w-4" />
-                    Add Teams
+                    {soloEvent ? "Add Players" : "Add Teams"}
                   </Button>
                 </div>
               </div>
@@ -328,7 +383,7 @@ function TournamentDetailPage() {
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                        Team
+                        {soloEvent ? "Player" : "Team"}
                       </TableHead>
                       <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                         Captain
@@ -380,8 +435,9 @@ function TournamentDetailPage() {
                     ) : teams.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                          No teams registered yet. Use Add Teams to register rosters from the Teams
-                          tab.
+                          {soloEvent
+                            ? "No players registered yet. Use Add Players to register members directly."
+                            : "No teams registered yet. Use Add Teams to register rosters from the Teams tab."}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -475,8 +531,9 @@ function TournamentDetailPage() {
                     tournamentName={tournament.name}
                     format={tournament.format}
                     teams={computedTeams}
-                    initialBracket={detailBracket}
+                    initialBracket={[]}
                     tournamentStatus={tournament.status}
+                    prizeBreakdown={tournament.prizeBreakdown}
                     onTournamentStatusChange={(status) =>
                       patchTournament({ ...tournament, status })
                     }
@@ -501,20 +558,37 @@ function TournamentDetailPage() {
 
       {openTeam && <TeamModal team={openTeam} onClose={() => setOpenTeam(null)} />}
 
-      <AddTeamToTournamentDialog
-        open={isAddTeamOpen}
-        tournament={tournament}
-        registeredTeams={teams}
-        onClose={() => setIsAddTeamOpen(false)}
-        onAdded={(registrations) => {
-          prependRegistrations(registrations);
-          teamsPagination.setPage(1);
-          patchTournament({
-            ...tournament,
-            teamsRegistered: tournament.teamsRegistered + registrations.length,
-          });
-        }}
-      />
+      {soloEvent ? (
+        <AddMembersToTournamentDialog
+          open={isAddPlayersOpen}
+          tournament={tournament}
+          registeredEntries={teams}
+          onClose={() => setIsAddPlayersOpen(false)}
+          onAdded={(registrations) => {
+            prependRegistrations(registrations);
+            teamsPagination.setPage(1);
+            patchTournament({
+              ...tournament,
+              teamsRegistered: tournament.teamsRegistered + registrations.length,
+            });
+          }}
+        />
+      ) : (
+        <AddTeamToTournamentDialog
+          open={isAddTeamOpen}
+          tournament={tournament}
+          registeredTeams={teams}
+          onClose={() => setIsAddTeamOpen(false)}
+          onAdded={(registrations) => {
+            prependRegistrations(registrations);
+            teamsPagination.setPage(1);
+            patchTournament({
+              ...tournament,
+              teamsRegistered: tournament.teamsRegistered + registrations.length,
+            });
+          }}
+        />
+      )}
 
       <EditTournamentModal
         open={isEditOpen}
@@ -545,8 +619,8 @@ function TournamentDetailPage() {
 
       <ConfirmDeleteDialog
         open={removingRegistration !== null}
-        title="Remove team from tournament?"
-        description={`Remove ${removingRegistration?.name ?? "this team"} from the event? The roster team stays in Teams.${removeError ? ` ${removeError}` : ""}`}
+        title={soloEvent ? "Remove player from tournament?" : "Remove team from tournament?"}
+        description={`Remove ${removingRegistration?.name ?? (soloEvent ? "this player" : "this team")} from the event?${soloEvent ? "" : " The roster team stays in Teams."}${removeError ? ` ${removeError}` : ""}`}
         isDeleting={isRemoving}
         confirmLabel="Remove"
         onClose={() => setRemovingRegistration(null)}

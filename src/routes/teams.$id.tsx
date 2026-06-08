@@ -37,13 +37,11 @@ function TeamDetailPage() {
   const session = getSession();
   const { team: initialTeam } = Route.useLoaderData();
 
-  // Local state mirrors team so we can simulate invite/remove without a backend
   const [team, setTeam] = useState<Team>(initialTeam);
   const [inviteSearch, setInviteSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
-  // Reset local state when the loader provides a different team (param change)
   useEffect(() => {
     setTeam(initialTeam);
     setInviteSearch("");
@@ -67,7 +65,6 @@ function TeamDetailPage() {
   const isCaptain = team.captainUserId === session.id;
   const isMember = team.members.some((m) => m.userId === session.id && m.status !== "removed");
 
-  // Members not already on the team
   const existingIds = new Set(team.members.map((m) => m.userId));
   const searchResults = mockRegisteredMembers.filter(
     (m) =>

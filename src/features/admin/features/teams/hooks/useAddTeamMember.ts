@@ -1,7 +1,15 @@
 import { useCallback, useState } from "react";
 import { resyncRegistrationsForTeam } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
-import { addMemberToTeam } from "../services/teams.service";
+import { addMemberToTeam, addMembersToTeam, type AddMembersToTeamResult } from "../services/teams.service";
 import type { AddTeamMemberInput, Team } from "../types";
+
+async function resyncTeamRoster(teamId: string) {
+  try {
+    await resyncRegistrationsForTeam(teamId);
+  } catch (resyncErr) {
+    console.error("Roster resync failed after adding member:", resyncErr);
+  }
+}
 
 export function useAddTeamMember() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -12,11 +20,7 @@ export function useAddTeamMember() {
     setError(null);
     try {
       const team = await addMemberToTeam(input);
-      try {
-        await resyncRegistrationsForTeam(input.teamId);
-      } catch (resyncErr) {
-        console.error("Roster resync failed after adding member:", resyncErr);
-      }
+      await resyncTeamRoster(input.teamId);
       return team;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to add member.";
@@ -27,7 +31,31 @@ export function useAddTeamMember() {
     }
   }, []);
 
+  const submitMany = useCallback(
+    async (teamId: string, memberIds: string[]): Promise<AddMembersToTeamResult> => {
+      setIsSubmitting(true);
+      setError(null);
+      try {
+        const result = await addMembersToTeam(teamId, memberIds);
+        if (result.added.length > 0) {
+          await resyncTeamRoster(teamId);
+        }
+        if (result.added.length === 0 && result.failed.length > 0) {
+          setError(result.failed.map((failure) => failure.message).join(" "));
+        }
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to add members.";
+        setError(message);
+        throw err;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [],
+  );
+
   const resetError = useCallback(() => setError(null), []);
 
-  return { submit, isSubmitting, error, resetError };
+  return { submit, submitMany, isSubmitting, error, resetError };
 }

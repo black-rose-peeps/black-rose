@@ -14,7 +14,10 @@ export interface ManagedMatch {
   roundId: string;
   roundLabel: string;
   label: string;
-  bracketSide: "main" | "upper" | "lower" | "grand";
+  bracketSide: "main" | "upper" | "lower" | "grand" | "swiss" | "playoff";
+  /** Swiss pool key, e.g. "1-0" (wins-losses). */
+  swissPool?: string;
+  swissRound?: number;
   teamA: string | null;
   teamB: string | null;
   scoreA: number;
@@ -126,6 +129,131 @@ export function buildSingleElimMatches(teamNames: string[]): {
   }
 
   return { matches, roundMetas };
+}
+
+export interface PlayoffRound1Pairing {
+  teamA: string | null;
+  teamB: string | null;
+}
+
+export function playoffBracketSize(qualifiedCount: number): number {
+  return Math.pow(2, Math.ceil(Math.log2(Math.max(qualifiedCount, 2))));
+}
+
+export function playoffRound1MatchCount(qualifiedCount: number): number {
+  return playoffBracketSize(qualifiedCount) / 2;
+}
+
+/** Suggested round-1 pairings seeded by qualification order (1v2, 3v4, …). */
+export function defaultPlayoffRound1Pairings(qualifiedTeams: string[]): PlayoffRound1Pairing[] {
+  const matchCount = playoffRound1MatchCount(qualifiedTeams.length);
+  const pairings: PlayoffRound1Pairing[] = [];
+
+  for (let i = 0; i < matchCount; i++) {
+    pairings.push({
+      teamA: qualifiedTeams[i * 2] ?? null,
+      teamB: qualifiedTeams[i * 2 + 1] ?? null,
+    });
+  }
+
+  return pairings;
+}
+
+/** Single-elimination playoff bracket with admin-configured round-1 pairings. */
+export function buildPlayoffBracket(round1Pairings: PlayoffRound1Pairing[]): {
+  matches: ManagedMatch[];
+  roundMetas: BracketRoundMeta[];
+} {
+  const assignedCount = new Set(
+    round1Pairings.flatMap((pairing) =>
+      [pairing.teamA, pairing.teamB].filter((team): team is string => !!team),
+    ),
+  ).size;
+
+  if (assignedCount < 2) {
+    throw new Error("Playoffs require at least 2 qualified teams.");
+  }
+
+  const size = Math.max(
+    round1Pairings.length * 2,
+    playoffBracketSize(assignedCount),
+  );
+  const totalRounds = Math.log2(size);
+  const matches: ManagedMatch[] = [];
+  const roundMetas: BracketRoundMeta[] = [];
+
+  const roundLabels = (ri: number): string => {
+    const remaining = totalRounds - ri;
+    if (remaining === 1) return "Playoffs — Final";
+    if (remaining === 2) return "Playoffs — Semifinals";
+    if (remaining === 3) return "Playoffs — Quarterfinals";
+    return `Playoffs — Round ${ri + 1}`;
+  };
+
+  for (let ri = 0; ri < totalRounds; ri++) {
+    const count = size / Math.pow(2, ri + 1);
+    const roundId = `po-r${ri}`;
+    const roundLabel = roundLabels(ri);
+    const matchIds: string[] = [];
+
+    for (let mi = 0; mi < count; mi++) {
+      const id = `${roundId}-m${mi}`;
+      matchIds.push(id);
+      matches.push({
+        id,
+        roundId,
+        roundLabel,
+        label: count > 1 ? `Match ${mi + 1}` : roundLabel,
+        bracketSide: "playoff",
+        teamA: null,
+        teamB: null,
+        scoreA: 0,
+        scoreB: 0,
+        winner: null,
+        confirmed: false,
+        winnerNext: null,
+        loserNext: null,
+      });
+    }
+
+    roundMetas.push({ id: roundId, label: roundLabel, side: "playoff", matchIds });
+  }
+
+  for (let ri = 0; ri < totalRounds - 1; ri++) {
+    const count = size / Math.pow(2, ri + 1);
+    for (let mi = 0; mi < count; mi++) {
+      const fromId = `po-r${ri}-m${mi}`;
+      const toId = `po-r${ri + 1}-m${Math.floor(mi / 2)}`;
+      link(matches, fromId, toId, mi % 2 === 0 ? "teamA" : "teamB");
+    }
+  }
+
+  const pairings = [...round1Pairings];
+  while (pairings.length < size / 2) {
+    pairings.push({ teamA: null, teamB: null });
+  }
+
+  const r1 = matches.filter((match) => match.roundId === "po-r0");
+  for (let i = 0; i < r1.length; i++) {
+    const teamA = pairings[i]?.teamA ?? null;
+    const teamB = pairings[i]?.teamB ?? null;
+    r1[i].teamA = teamA;
+    r1[i].teamB = teamB;
+
+    if (teamA && !teamB) {
+      r1[i].winner = teamA;
+      r1[i].scoreA = 1;
+      r1[i].scoreB = 0;
+      r1[i].confirmed = true;
+    } else if (!teamA && teamB) {
+      r1[i].winner = teamB;
+      r1[i].scoreA = 0;
+      r1[i].scoreB = 1;
+      r1[i].confirmed = true;
+    }
+  }
+
+  return { matches: recomputeAdvancements(matches), roundMetas };
 }
 
 /** Double elimination for any power-of-2 team count ≥ 2. */
@@ -417,12 +545,15 @@ function placeTeam(
 }
 
 function isFirstRoundMatch(m: ManagedMatch): boolean {
-  return m.roundId === "se-r0" || m.roundId === "ub-r1";
+  return m.roundId === "se-r0" || m.roundId === "ub-r1" || m.roundId === "po-r0";
 }
 
 /** Deterministic feeder order for any bracket graph produced by build*Matches. */
 function roundProcessRank(roundId: string): number {
   if (roundId === "gf") return 1_000_000;
+
+  const poMatch = roundId.match(/^po-r(\d+)$/);
+  if (poMatch) return 10_000 + parseInt(poMatch[1], 10) * 10;
 
   const seMatch = roundId.match(/^se-r(\d+)$/);
   if (seMatch) return parseInt(seMatch[1], 10) * 10;
@@ -457,20 +588,31 @@ function processingOrder(matches: ManagedMatch[]): ManagedMatch[] {
   );
 }
 
-/** Re-apply all confirmed winners/losers without wiping sibling feeder slots. */
+function isEliminationMatch(match: ManagedMatch): boolean {
+  return match.bracketSide !== "swiss";
+}
+
+/** Re-apply elimination advancement without touching Swiss group-stage matches. */
 export function recomputeAdvancements(matches: ManagedMatch[]): ManagedMatch[] {
-  let next = matches.map((m) => {
-    if (isFirstRoundMatch(m)) return { ...m };
-    return { ...m, teamA: null, teamB: null };
+  const elimMatches = matches.filter(isEliminationMatch);
+  const swissMatches = matches.filter((match) => match.bracketSide === "swiss");
+
+  let nextElim = elimMatches.map((match) => {
+    if (isFirstRoundMatch(match)) return { ...match };
+    return { ...match, teamA: null, teamB: null };
   });
 
-  for (const m of processingOrder(next)) {
-    if (m.confirmed && m.winner) {
-      next = advanceWinner(next, m.id, m.winner);
+  for (const match of processingOrder(nextElim)) {
+    if (match.confirmed && match.winner) {
+      nextElim = advanceWinner(nextElim, match.id, match.winner);
     }
   }
 
-  return next;
+  const elimById = new Map(nextElim.map((match) => [match.id, match]));
+  return matches.map((match) => {
+    if (match.bracketSide === "swiss") return match;
+    return elimById.get(match.id) ?? match;
+  });
 }
 
 export function updateMatchScores(

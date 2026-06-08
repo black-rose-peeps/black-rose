@@ -3,10 +3,24 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BracketEngine } from "../types/bracket-engine";
 import type { BracketStatus } from "../../../types";
-import type { BracketRound, TournamentTeam } from "@/features/tournaments/types";
-import { isDoubleEliminationFormat } from "@/features/tournaments/constants/formats";
+import { EliminationResultsBoard } from "@/features/tournaments/components/EliminationResultsBoard";
+import type { BracketRound, PrizeTier, TournamentTeam } from "@/features/tournaments/types";
+import {
+  buildPodiumPlacements,
+  deriveManagedPlacements,
+} from "@/features/tournaments/utils/tournament-placements";
+import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
+import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
+import { BracketActionDialog } from "./BracketActionDialog";
 import { ManagedBracketView } from "./ManagedBracketView";
-import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
+import { PlayoffPairingDialog } from "./PlayoffPairingDialog";
+import { SwissBracketView } from "./SwissBracketView";
+import type {
+  BestOfFormat,
+  BracketRoundMeta,
+  ManagedMatch,
+  PlayoffRound1Pairing,
+} from "../utils/managed-bracket";
 import {
   buildDoubleElimMatches,
   buildSingleElimMatches,
@@ -14,7 +28,22 @@ import {
   defaultRoundFormats,
   setMatchWinner,
   updateMatchScores,
+  winsRequired,
 } from "../utils/managed-bracket";
+import {
+  applySwissMatchUpdates,
+  buildSwissRound1,
+  canStartSwissPlayoffs,
+  catchUpSwissRounds,
+  clearSwissMatchResult,
+  formatSwissPoolLabel,
+  getQualifiedTeams,
+  getSwissPhase,
+  recomputeSwissStateFromMatches,
+  startSwissPlayoffs,
+  updateSwissMatchScores,
+  type SwissBracketState,
+} from "../utils/managed-swiss-bracket";
 import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/bracket-store";
 import { fetchBracketState } from "../services/bracket.service";
 import type { PersistedBracketPayload } from "../services/bracket.service";
@@ -33,7 +62,9 @@ function managedMatchesToPublicRounds(
       .filter((m): m is ManagedMatch => !!m)
       .map((m) => ({
         id: m.id,
-        round: m.roundLabel,
+        round: m.swissPool
+          ? `${m.roundLabel} · ${formatSwissPoolLabel(m.swissPool)}`
+          : m.roundLabel,
         teamA: m.teamA,
         teamB: m.teamB,
         scoreA: m.scoreA,
@@ -48,26 +79,55 @@ function buildPersistedPayload(
   roundMetas: BracketRoundMeta[],
   roundFormats: Record<string, BestOfFormat>,
   assignments: Array<TournamentTeam | null>,
+  options: {
+    format: string;
+    prizeBreakdown?: PrizeTier[];
+    swiss?: SwissBracketState;
+    teamNames: string[];
+  },
 ): PersistedBracketPayload {
+  const placements = buildPodiumPlacements(
+    options.prizeBreakdown ?? [],
+    deriveManagedPlacements(
+      options.format,
+      managedMatches,
+      options.swiss,
+      options.teamNames,
+    ),
+  );
+
   return {
     rounds: managedMatchesToPublicRounds(managedMatches, roundMetas),
+    prizeBreakdown: options.prizeBreakdown,
+    placements,
     admin: {
       managedMatches,
       roundMetas,
       roundFormats,
       assignmentTeamIds: assignments.map((t) => t?.id ?? null),
+      swiss: options.swiss,
     },
   };
 }
 
-function buildManagedState(teamNames: string[], isDoubleElim: boolean) {
-  const built = isDoubleElim
+function buildManagedState(teamNames: string[], format: string) {
+  if (isSwissFormat(format)) {
+    const built = buildSwissRound1(teamNames);
+    return {
+      matches: built.matches,
+      roundMetas: built.roundMetas,
+      roundFormats: defaultRoundFormats(built.roundMetas),
+      swiss: built.swiss,
+    };
+  }
+  const built = isDoubleEliminationFormat(format)
     ? buildDoubleElimMatches(teamNames)
     : buildSingleElimMatches(teamNames);
   return {
     matches: built.matches,
     roundMetas: built.roundMetas,
     roundFormats: defaultRoundFormats(built.roundMetas),
+    swiss: undefined as SwissBracketState | undefined,
   };
 }
 
@@ -78,6 +138,7 @@ interface BracketManagerProps {
   teams: TournamentTeam[];
   initialBracket: BracketRound[];
   tournamentStatus: MockTournament["status"];
+  prizeBreakdown?: PrizeTier[];
   onTournamentStatusChange?: (status: MockTournament["status"]) => void;
 }
 
@@ -126,6 +187,7 @@ export function BracketManager({
   teams,
   initialBracket,
   tournamentStatus,
+  prizeBreakdown = [],
   onTournamentStatusChange,
 }: BracketManagerProps) {
   const bracketEngine = useMemo(() => {
@@ -133,11 +195,12 @@ export function BracketManager({
     return new BracketEngine(teamNames);
   }, [teams]);
 
-  const bracketSize = bracketEngine.getBracketStructure().totalTeams;
-  const firstRoundMatches = bracketSize / 2;
+  const isSwiss = isSwissFormat(format);
   const isDoubleElim = isDoubleEliminationFormat(format);
-  const formatAbbrev = isDoubleElim ? "DE" : "SE";
-  const totalRounds = Math.log2(bracketSize);
+  const bracketSize = isSwiss ? teams.length : bracketEngine.getBracketStructure().totalTeams;
+  const firstRoundMatches = bracketSize / 2;
+  const formatAbbrev = isSwiss ? "SW" : isDoubleElim ? "DE" : "SE";
+  const totalRounds = isSwiss ? 5 : Math.log2(bracketSize);
 
   const [status, setStatus] = useState<BracketStatus>("not_generated");
   const [activeTab, setActiveTab] = useState<"seeding" | "bracket" | "validation">("seeding");
@@ -152,10 +215,35 @@ export function BracketManager({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadedFromDb, setLoadedFromDb] = useState(false);
+  const [swissState, setSwissState] = useState<SwissBracketState | null>(null);
+  const [playoffDialogOpen, setPlayoffDialogOpen] = useState(false);
+  const [bracketDialog, setBracketDialog] = useState<
+    | {
+        kind: "confirm";
+        title: string;
+        description: string;
+        confirmLabel: string;
+        destructive?: boolean;
+        onConfirm: () => void;
+      }
+    | { kind: "info"; title: string; description: string }
+    | null
+  >(null);
 
   const seedingLocked = bracketLocked;
   const isPublished = status === "published";
+  const resultsLocked = isTournamentConcluded(tournamentStatus);
+  const seedingDisabled = seedingLocked || resultsLocked;
   const isTournamentCompleted = tournamentStatus === "Completed";
+  const teamNames = useMemo(() => teams.map((team) => team.name), [teams]);
+  const currentPlacements = useMemo(
+    () =>
+      buildPodiumPlacements(
+        prizeBreakdown,
+        deriveManagedPlacements(format, managedMatches, swissState, teamNames),
+      ),
+    [format, managedMatches, swissState, teamNames, prizeBreakdown],
+  );
 
   // Restore published bracket from Supabase (survives refresh; shared with public).
   useEffect(() => {
@@ -166,9 +254,72 @@ export function BracketManager({
         if (cancelled) return;
         if (state?.status === "published" && state.payload?.admin?.managedMatches?.length) {
           const admin = state.payload.admin;
-          setManagedMatches(admin.managedMatches);
-          setRoundMetas(admin.roundMetas);
-          setRoundFormats(admin.roundFormats);
+          const teamNames = teams.map((team) => team.name);
+          let restoredMatches = admin.managedMatches;
+          let restoredMetas = admin.roundMetas;
+          let restoredSwiss =
+            admin.swiss ??
+            (isSwissFormat(format)
+              ? recomputeSwissStateFromMatches(admin.managedMatches, teamNames)
+              : null);
+
+          if (isSwissFormat(format) && restoredSwiss) {
+            if (restoredMetas.some((meta) => meta.side === "playoff")) {
+              restoredSwiss = {
+                ...restoredSwiss,
+                phase: restoredSwiss.phase ?? "playoffs",
+                playoffsSeededTeams:
+                  restoredSwiss.playoffsSeededTeams ??
+                  getQualifiedTeams(teamNames, restoredSwiss),
+                groupStageRecords:
+                  restoredSwiss.groupStageRecords ?? { ...restoredSwiss.records },
+              };
+            }
+
+            const caught = catchUpSwissRounds(
+              restoredMatches,
+              restoredMetas,
+              restoredSwiss,
+              teamNames,
+            );
+            restoredMatches = caught.matches;
+            restoredMetas = caught.roundMetas;
+            restoredSwiss = caught.swiss;
+          }
+
+          const mergedFormats = { ...defaultRoundFormats(restoredMetas), ...admin.roundFormats };
+
+          setManagedMatches(restoredMatches);
+          setRoundMetas(restoredMetas);
+          setRoundFormats(mergedFormats);
+          setSwissState(restoredSwiss);
+
+          if (
+            isSwissFormat(format) &&
+            restoredSwiss &&
+            (restoredMatches.length !== admin.managedMatches.length ||
+              restoredMetas.length !== admin.roundMetas.length)
+          ) {
+            const payload = buildPersistedPayload(
+              restoredMatches,
+              restoredMetas,
+              mergedFormats,
+              admin.assignmentTeamIds.map((id) =>
+                id ? (teams.find((t) => t.id === id) ?? null) : null,
+              ),
+              {
+                format,
+                prizeBreakdown,
+                swiss: restoredSwiss,
+                teamNames,
+              },
+            );
+            void publishBracket(tournamentId, payload).catch((err) => {
+              console.error("[BracketManager] Swiss catch-up sync failed:", err);
+            });
+            syncLocalBracket(tournamentId, payload.rounds);
+          }
+
           setAssignments(
             admin.assignmentTeamIds.map((id) =>
               id ? (teams.find((t) => t.id === id) ?? null) : null,
@@ -209,21 +360,24 @@ export function BracketManager({
       const teamNames = derived.assignments.filter(Boolean).map((t) => t!.name);
       if (teamNames.length > 0) {
         bracketEngine.autoSeed(teamNames);
-        const managed = buildManagedState(teamNames, isDoubleElim);
+        const managed = buildManagedState(teamNames, format);
         setManagedMatches(managed.matches);
         setRoundMetas(managed.roundMetas);
         setRoundFormats(managed.roundFormats);
+        setSwissState(managed.swiss ?? null);
       }
     } else {
       setManagedMatches([]);
       setRoundMetas([]);
       setRoundFormats({});
+      setSwissState(null);
     }
   }, [
     initialBracket,
     teams,
     bracketSize,
     bracketEngine,
+    format,
     isDoubleElim,
     loadedFromDb,
     status,
@@ -234,11 +388,20 @@ export function BracketManager({
   const validation = bracketEngine.validateBracketIntegrity();
   const assignedCount = assignments.filter(Boolean).length;
   const allAssigned = assignedCount === bracketSize;
-  const canPublish = status === "draft" && validation.canPublish && bracketGenerated && allAssigned;
+  const canPublish =
+    status === "draft" &&
+    bracketGenerated &&
+    allAssigned &&
+    (isSwiss || validation.canPublish);
 
   function handleGenerate() {
+    if (resultsLocked) return;
     if (!allAssigned) {
-      alert(`Assign all ${bracketSize} teams before generating.`);
+      setBracketDialog({
+        kind: "info",
+        title: "Seeding incomplete",
+        description: `Assign all ${bracketSize} teams in the seeding panel before generating the bracket.`,
+      });
       setActiveTab("seeding");
       return;
     }
@@ -246,17 +409,18 @@ export function BracketManager({
     const teamNames = assignments.filter(Boolean).map((t) => t!.name);
     bracketEngine.autoSeed(teamNames);
 
-    const managed = buildManagedState(teamNames, isDoubleElim);
+    const managed = buildManagedState(teamNames, format);
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
+    setSwissState(managed.swiss ?? null);
     setBracketGenerated(true);
     setStatus("draft");
     setActiveTab("bracket");
   }
 
   function handleAutoSeed() {
-    if (seedingLocked) return;
+    if (seedingDisabled) return;
     const newAssignments: Array<TournamentTeam | null> = [...teams.slice(0, bracketSize)];
     while (newAssignments.length < bracketSize) {
       newAssignments.push(null);
@@ -265,13 +429,14 @@ export function BracketManager({
     // Invalidate managed bracket so it reflects the new seeding order
     setManagedMatches([]);
     setRoundMetas([]);
-    setRoundFormats({});
-    setBracketGenerated(false);
-    setStatus("not_generated");
+      setRoundFormats({});
+      setSwissState(null);
+      setBracketGenerated(false);
+      setStatus("not_generated");
   }
 
   function handleRandomSeed() {
-    if (seedingLocked) return;
+    if (seedingDisabled) return;
     const shuffled = [...teams].sort(() => Math.random() - 0.5).slice(0, bracketSize);
     const newAssignments: Array<TournamentTeam | null> = [...shuffled];
     while (newAssignments.length < bracketSize) {
@@ -282,25 +447,50 @@ export function BracketManager({
     setManagedMatches([]);
     setRoundMetas([]);
     setRoundFormats({});
+    setSwissState(null);
     setBracketGenerated(false);
     setStatus("not_generated");
   }
-  async function handleReset() {
-    if (isTournamentCompleted) {
-      alert("This tournament is completed. Reset is disabled.");
+  function requestReset() {
+    if (resultsLocked) {
+      setBracketDialog({
+        kind: "info",
+        title: "Reset unavailable",
+        description: "This tournament is completed. Reset is disabled to preserve final results.",
+      });
       return;
     }
     if (isPublished) {
-      if (!confirm("Reset a published bracket? This clears all match results and unpublishes.")) {
-        return;
-      }
-    } else if (seedingLocked) {
-      alert("Unlock seeding first.");
-      return;
-    } else if (!confirm("Reset the bracket? All results will be lost.")) {
+      setBracketDialog({
+        kind: "confirm",
+        title: "Reset published bracket?",
+        description:
+          "This clears every match result, removes the live bracket from the public page, and returns you to seeding.",
+        confirmLabel: "Reset bracket",
+        destructive: true,
+        onConfirm: () => void executeReset(),
+      });
       return;
     }
+    if (seedingLocked) {
+      setBracketDialog({
+        kind: "info",
+        title: "Unlock seeding first",
+        description: "Unlock seeding before resetting a draft bracket.",
+      });
+      return;
+    }
+    setBracketDialog({
+      kind: "confirm",
+      title: "Reset bracket?",
+      description: "All match results and bracket progress will be lost. This cannot be undone.",
+      confirmLabel: "Reset bracket",
+      destructive: true,
+      onConfirm: () => void executeReset(),
+    });
+  }
 
+  async function executeReset() {
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -311,6 +501,7 @@ export function BracketManager({
       setManagedMatches([]);
       setRoundMetas([]);
       setRoundFormats({});
+      setSwissState(null);
       setStatus("not_generated");
       bracketEngine.reset();
       setActiveTab("seeding");
@@ -322,19 +513,22 @@ export function BracketManager({
   }
 
   function toggleLock() {
-    if (isPublished) return;
+    if (isPublished || resultsLocked) return;
     setBracketLocked(!bracketLocked);
   }
 
-  async function handleMarkComplete() {
-    if (
-      !confirm(
-        "Mark this tournament as completed? The bracket stays published and you can still fix match results.",
-      )
-    ) {
-      return;
-    }
+  function requestMarkComplete() {
+    setBracketDialog({
+      kind: "confirm",
+      title: "Mark tournament completed?",
+      description:
+        "The bracket stays published on the public site. Match results and seeding will be locked — unlock by changing status back to Live if corrections are needed.",
+      confirmLabel: "Mark completed",
+      onConfirm: () => void executeMarkComplete(),
+    });
+  }
 
+  async function executeMarkComplete() {
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -347,13 +541,33 @@ export function BracketManager({
     }
   }
 
-  async function handlePublish() {
+  function requestPublish() {
     if (!canPublish) {
-      alert("Complete all requirements first.");
+      setBracketDialog({
+        kind: "info",
+        title: "Not ready to publish",
+        description: "Complete all validation requirements before publishing the bracket.",
+      });
       return;
     }
 
-    const payload = buildPersistedPayload(managedMatches, roundMetas, roundFormats, assignments);
+    setBracketDialog({
+      kind: "confirm",
+      title: "Publish bracket?",
+      description:
+        "Once published, the tournament goes live on the public site. Scores and winners will sync in real time for viewers.",
+      confirmLabel: "Publish & go live",
+      onConfirm: () => void executePublish(),
+    });
+  }
+
+  async function executePublish() {
+    const payload = buildPersistedPayload(managedMatches, roundMetas, roundFormats, assignments, {
+      format,
+      prizeBreakdown,
+      swiss: swissState ?? undefined,
+      teamNames,
+    });
 
     setIsSaving(true);
     setSaveError(null);
@@ -382,34 +596,162 @@ export function BracketManager({
   }
 
   const pushLiveUpdate = useCallback(
-    (updatedMatches: ManagedMatch[]) => {
+    (
+      updatedMatches: ManagedMatch[],
+      updatedRoundMetas = roundMetas,
+      updatedSwiss = swissState ?? undefined,
+    ) => {
       if (!isPublished) return;
-      const payload = buildPersistedPayload(updatedMatches, roundMetas, roundFormats, assignments);
+      const payload = buildPersistedPayload(
+        updatedMatches,
+        updatedRoundMetas,
+        roundFormats,
+        assignments,
+        {
+          format,
+          prizeBreakdown,
+          swiss: updatedSwiss,
+          teamNames,
+        },
+      );
       void publishBracket(tournamentId, payload).catch((err) => {
         console.error("[BracketManager] Live bracket sync failed:", err);
         setSaveError(err instanceof Error ? err.message : "Failed to sync bracket.");
       });
     },
-    [isPublished, roundMetas, roundFormats, assignments, tournamentId],
+    [
+      isPublished,
+      roundMetas,
+      roundFormats,
+      assignments,
+      swissState,
+      tournamentId,
+      format,
+      prizeBreakdown,
+      teamNames,
+    ],
+  );
+
+  const commitSwissUpdate = useCallback(
+    (updatedMatches: ManagedMatch[], nextSwiss: SwissBracketState) => {
+      const applied = applySwissMatchUpdates(updatedMatches, roundMetas, nextSwiss, teamNames);
+      const mergedFormats = { ...defaultRoundFormats(applied.roundMetas), ...roundFormats };
+      setSwissState(applied.swiss);
+      setRoundMetas(applied.roundMetas);
+      setRoundFormats(mergedFormats);
+      setManagedMatches(applied.matches);
+      pushLiveUpdate(applied.matches, applied.roundMetas, applied.swiss);
+    },
+    [roundMetas, roundFormats, teamNames, pushLiveUpdate],
+  );
+
+  const openPlayoffDialog = useCallback(() => {
+    if (resultsLocked) return;
+    if (!swissState || !canStartSwissPlayoffs(teamNames, swissState)) return;
+    setPlayoffDialogOpen(true);
+  }, [swissState, teamNames]);
+
+  const applyPlayoffPairings = useCallback(
+    (round1Pairings: PlayoffRound1Pairing[]) => {
+      if (!swissState) return;
+
+      try {
+        const next = startSwissPlayoffs(
+          managedMatches,
+          roundMetas,
+          swissState,
+          teamNames,
+          round1Pairings,
+        );
+        const playoffMetas = next.roundMetas.filter((meta) => meta.side === "playoff");
+        const mergedFormats = {
+          ...roundFormats,
+          ...defaultRoundFormats(playoffMetas),
+        };
+        setManagedMatches(next.matches);
+        setRoundMetas(next.roundMetas);
+        setSwissState(next.swiss);
+        setRoundFormats(mergedFormats);
+        pushLiveUpdate(next.matches, next.roundMetas, next.swiss);
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : "Failed to start playoffs.");
+      }
+    },
+    [swissState, teamNames, managedMatches, roundMetas, roundFormats, pushLiveUpdate],
   );
 
   const handleMatchScore = useCallback(
     (matchId: string, scoreA: number, scoreB: number) => {
+      if (resultsLocked) return;
       const match = managedMatches.find((m) => m.id === matchId);
       if (!match) return;
       const fmt = roundFormats[match.roundId] ?? "BO3";
+
+      if (isSwiss && swissState && match.bracketSide === "swiss") {
+        const { matches: updated, swiss: nextSwiss } = updateSwissMatchScores(
+          managedMatches,
+          swissState,
+          teamNames,
+          matchId,
+          scoreA,
+          scoreB,
+          fmt,
+        );
+        commitSwissUpdate(updated, nextSwiss);
+        return;
+      }
+
       const updated = updateMatchScores(managedMatches, matchId, scoreA, scoreB, fmt);
       setManagedMatches(updated);
       pushLiveUpdate(updated);
     },
-    [managedMatches, roundFormats, pushLiveUpdate],
+    [
+      managedMatches,
+      roundFormats,
+      pushLiveUpdate,
+      isSwiss,
+      swissState,
+      teamNames,
+      commitSwissUpdate,
+      resultsLocked,
+    ],
   );
 
   const handlePickWinner = useCallback(
     (matchId: string, winner: string) => {
+      if (resultsLocked) return;
       const match = managedMatches.find((m) => m.id === matchId);
       if (!match) return;
       const fmt = roundFormats[match.roundId] ?? "BO3";
+
+      if (isSwiss && swissState && match.bracketSide === "swiss") {
+        if (match.winner === winner) {
+          const { matches: updated, swiss: nextSwiss } = clearSwissMatchResult(
+            managedMatches,
+            swissState,
+            teamNames,
+            matchId,
+          );
+          commitSwissUpdate(updated, nextSwiss);
+          return;
+        }
+
+        const required = winsRequired(fmt);
+        const scoreA = winner === match.teamA ? required : 0;
+        const scoreB = winner === match.teamB ? required : 0;
+        const { matches: updated, swiss: nextSwiss } = updateSwissMatchScores(
+          managedMatches,
+          swissState,
+          teamNames,
+          matchId,
+          scoreA,
+          scoreB,
+          fmt,
+        );
+        commitSwissUpdate(updated, nextSwiss);
+        return;
+      }
+
       const updated =
         match.winner === winner
           ? clearMatchResult(managedMatches, matchId)
@@ -417,33 +759,50 @@ export function BracketManager({
       setManagedMatches(updated);
       pushLiveUpdate(updated);
     },
-    [managedMatches, roundFormats, pushLiveUpdate],
+    [
+      managedMatches,
+      roundFormats,
+      pushLiveUpdate,
+      isSwiss,
+      swissState,
+      teamNames,
+      commitSwissUpdate,
+      resultsLocked,
+    ],
   );
 
   const handleRoundFormat = useCallback(
     (roundId: string, format: BestOfFormat) => {
+      if (resultsLocked) return;
       // Block format change if any match in this round already has confirmed results
       const hasConfirmed = managedMatches.some((m) => m.roundId === roundId && m.confirmed);
       if (hasConfirmed) {
-        alert(
-          "Cannot change format: one or more matches in this round already have confirmed results. Reset those matches first.",
-        );
+        setBracketDialog({
+          kind: "info",
+          title: "Format locked",
+          description:
+            "One or more matches in this round already have confirmed results. Clear those results before changing the format.",
+        });
         return;
       }
       setRoundFormats((prev) => ({ ...prev, [roundId]: format }));
     },
-    [managedMatches],
+    [managedMatches, resultsLocked],
   );
 
   function onTeamSelect(slotIdx: number, teamId: string | null) {
-    if (seedingLocked) return;
+    if (seedingDisabled) return;
 
     const team = teamId ? teams.find((t) => t.id === teamId) || null : null;
 
     // Check for duplicates
     const newAssignments = [...assignments];
     if (team && newAssignments.some((t, idx) => idx !== slotIdx && t?.id === team.id)) {
-      alert("Cannot place same team in multiple slots.");
+      setBracketDialog({
+        kind: "info",
+        title: "Duplicate team",
+        description: "Each team can only occupy one seeding slot.",
+      });
       return;
     }
 
@@ -454,10 +813,11 @@ export function BracketManager({
       const teamNames = newAssignments.filter(Boolean).map((t) => t!.name);
       if (teamNames.length === bracketSize) {
         bracketEngine.autoSeed(teamNames);
-        const managed = buildManagedState(teamNames, isDoubleElim);
+        const managed = buildManagedState(teamNames, format);
         setManagedMatches(managed.matches);
         setRoundMetas(managed.roundMetas);
         setRoundFormats(managed.roundFormats);
+        setSwissState(managed.swiss ?? null);
       }
     }
   }
@@ -524,7 +884,7 @@ export function BracketManager({
           {!bracketGenerated ? (
             <button
               onClick={handleGenerate}
-              disabled={!allAssigned}
+              disabled={!allAssigned || resultsLocked}
               className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ⬡ Generate Bracket
@@ -533,7 +893,7 @@ export function BracketManager({
 
           <button
             onClick={handleRandomSeed}
-            disabled={seedingLocked}
+            disabled={seedingDisabled}
             className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-amber-400 hover:bg-amber-950/20 disabled:opacity-30"
           >
             ⟳ Random Seed
@@ -543,7 +903,7 @@ export function BracketManager({
 
           <button
             onClick={handleAutoSeed}
-            disabled={seedingLocked}
+            disabled={seedingDisabled}
             className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-muted-foreground hover:bg-muted/10 disabled:opacity-30"
           >
             ↓ Auto Seed
@@ -551,7 +911,7 @@ export function BracketManager({
 
           <button
             onClick={toggleLock}
-            disabled={isPublished}
+            disabled={isPublished || resultsLocked}
             className={`btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border ${
               seedingLocked
                 ? "bg-amber-950/20 text-amber-400"
@@ -565,19 +925,17 @@ export function BracketManager({
 
           <button
             type="button"
-            onClick={handleReset}
-            disabled={isTournamentCompleted || isSaving}
-            title={
-              isTournamentCompleted ? "Reset is disabled for completed tournaments" : undefined
-            }
+            onClick={requestReset}
+            disabled={resultsLocked || isSaving}
+            title={resultsLocked ? "Reset is disabled for completed tournaments" : undefined}
             className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-red-400 hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             ✕ Reset
           </button>
 
           <button
-            onClick={handlePublish}
-            disabled={!canPublish || isPublished || isSaving}
+                onClick={requestPublish}
+                disabled={!canPublish || isPublished || isSaving}
             className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {isSaving ? "Saving…" : "↑ Publish"}
@@ -586,7 +944,7 @@ export function BracketManager({
           {isPublished && tournamentStatus === "Live" ? (
             <button
               type="button"
-              onClick={handleMarkComplete}
+              onClick={requestMarkComplete}
               disabled={isSaving}
               className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-emerald-400/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-950/40 disabled:opacity-30"
             >
@@ -594,17 +952,17 @@ export function BracketManager({
             </button>
           ) : null}
 
-          {tournamentStatus === "Completed" ? (
+          {resultsLocked ? (
             <Badge
               variant="outline"
-              className="font-tech text-[10px] uppercase tracking-wider text-emerald-400 border-emerald-400/40"
+              className="font-tech text-[10px] uppercase tracking-wider text-violet-300 border-violet-400/40"
             >
-              Tournament completed
+              Results locked
             </Badge>
           ) : null}
 
           <div className="ml-auto flex items-center gap-2">
-            {isPublished && (
+            {isPublished && !resultsLocked && (
               <Badge variant="outline" className="font-tech text-[10px] uppercase tracking-wider">
                 Match management active
               </Badge>
@@ -702,7 +1060,7 @@ export function BracketManager({
                       <select
                         value={teamA?.id || ""}
                         onChange={(e) => onTeamSelect(teamAIdx, e.target.value || null)}
-                        disabled={seedingLocked}
+                        disabled={seedingDisabled}
                         className="w-full bg-input border border-border text-white font-display text-sm p-2 hover:border-border-bright focus:border-gray-500 disabled:opacity-50"
                       >
                         <option value="">— Team A</option>
@@ -726,7 +1084,7 @@ export function BracketManager({
                       <select
                         value={teamB?.id || ""}
                         onChange={(e) => onTeamSelect(teamBIdx, e.target.value || null)}
-                        disabled={seedingLocked}
+                        disabled={seedingDisabled}
                         className="w-full bg-input border border-border text-white font-display text-sm p-2 hover:border-border-bright focus:border-gray-500 disabled:opacity-50"
                       >
                         <option value="">— Team B</option>
@@ -800,16 +1158,80 @@ export function BracketManager({
                 </Button>
               </div>
             ) : (
-              <ManagedBracketView
-                matches={managedMatches}
-                roundMetas={roundMetas}
-                roundFormats={roundFormats}
-                teams={teams}
-                isDoubleElim={isDoubleElim}
-                onFormatChange={handleRoundFormat}
-                onScoreChange={handleMatchScore}
-                onPickWinner={handlePickWinner}
-              />
+              <div className="space-y-10">
+                {isSwiss && swissState ? (
+                  <>
+                    <SwissBracketView
+                      matches={managedMatches}
+                      roundMetas={roundMetas}
+                      roundFormats={roundFormats}
+                      teams={teams}
+                      swiss={swissState}
+                      tournamentStatus={tournamentStatus}
+                      readOnly={resultsLocked}
+                      canStartPlayoffs={
+                        !resultsLocked && canStartSwissPlayoffs(teamNames, swissState)
+                      }
+                      onStartPlayoffs={openPlayoffDialog}
+                      onFormatChange={handleRoundFormat}
+                      onScoreChange={handleMatchScore}
+                      onPickWinner={handlePickWinner}
+                    />
+                    {getSwissPhase(swissState) === "playoffs" && (
+                      <div className="space-y-4 border-t border-border pt-8">
+                        <div>
+                          <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                            Championship
+                          </p>
+                          <h3 className="font-display text-xl tracking-display">Playoff Bracket</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Single elimination among Swiss qualifiers — results determine prize
+                            placements.
+                          </p>
+                        </div>
+                        <ManagedBracketView
+                          matches={managedMatches}
+                          roundMetas={roundMetas.filter((meta) => meta.side === "playoff")}
+                          roundFormats={roundFormats}
+                          teams={teams}
+                          isDoubleElim={false}
+                          readOnly={resultsLocked}
+                          onFormatChange={handleRoundFormat}
+                          onScoreChange={handleMatchScore}
+                          onPickWinner={handlePickWinner}
+                        />
+                      </div>
+                    )}
+                    {getSwissPhase(swissState) === "playoffs" &&
+                      prizeBreakdown.length > 0 &&
+                      currentPlacements.length > 0 && (
+                        <EliminationResultsBoard
+                          placements={currentPlacements}
+                          teamTags={new Map(teams.map((team) => [team.name, team.tag]))}
+                        />
+                      )}
+                  </>
+                ) : (
+                  <ManagedBracketView
+                    matches={managedMatches}
+                    roundMetas={roundMetas}
+                    roundFormats={roundFormats}
+                    teams={teams}
+                    isDoubleElim={isDoubleElim}
+                    readOnly={resultsLocked}
+                    onFormatChange={handleRoundFormat}
+                    onScoreChange={handleMatchScore}
+                    onPickWinner={handlePickWinner}
+                  />
+                )}
+
+                {!isSwiss && prizeBreakdown.length > 0 && currentPlacements.length > 0 && (
+                  <EliminationResultsBoard
+                    placements={currentPlacements}
+                    teamTags={new Map(teams.map((team) => [team.name, team.tag]))}
+                  />
+                )}
+              </div>
             )}
           </div>
         )}
@@ -846,16 +1268,39 @@ export function BracketManager({
 
             <div className="mt-4">
               <button
-                onClick={handlePublish}
-                disabled={!canPublish || isPublished || isSaving}
-                className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {isSaving ? "Saving…" : "↑ Publish Bracket"}
+            onClick={requestPublish}
+            disabled={!canPublish || isPublished || isSaving}
+            className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {isSaving ? "Saving…" : "↑ Publish Bracket"}
               </button>
             </div>
           </div>
         )}
       </div>
+
+      <BracketActionDialog
+        open={bracketDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setBracketDialog(null);
+        }}
+        title={bracketDialog?.title ?? ""}
+        description={bracketDialog?.description ?? ""}
+        confirmLabel={bracketDialog?.kind === "confirm" ? bracketDialog.confirmLabel : "Got it"}
+        destructive={bracketDialog?.kind === "confirm" ? bracketDialog.destructive : false}
+        infoOnly={bracketDialog?.kind === "info"}
+        onConfirm={bracketDialog?.kind === "confirm" ? bracketDialog.onConfirm : undefined}
+      />
+
+      {swissState && (
+        <PlayoffPairingDialog
+          open={playoffDialogOpen}
+          onOpenChange={setPlayoffDialogOpen}
+          qualifiedTeams={getQualifiedTeams(teamNames, swissState)}
+          teams={teams}
+          onConfirm={applyPlayoffPairings}
+        />
+      )}
     </div>
   );
 }

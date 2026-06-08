@@ -49,3 +49,9 @@ export {
   resolveTournamentRules,
   type TournamentRulesOptions,
 } from "./tournament-rules";
+
+export {
+  buildTeamTagMap,
+  teamDisplayAbbr,
+  withTeamTags,
+} from "./team-tags";

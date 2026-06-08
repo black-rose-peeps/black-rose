@@ -9,8 +9,10 @@
  */
 
 import { cn } from "@/lib/utils";
-import { isDoubleEliminationFormat } from "@/features/tournaments/constants/formats";
+import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
 import type { BracketRound, BracketMatch } from "../../types";
+import { PublicBracketTeamSlot } from "./PublicBracketTeamSlot";
+import { SwissBracketTab } from "./SwissBracketTab";
 
 // ── Layout constants (match admin ManagedBracketView) ──────────────────────
 
@@ -26,11 +28,19 @@ interface BracketTabProps {
   bracket: BracketRound[];
   format: string;
   isLoading?: boolean;
+  teamTags?: Map<string, string>;
+  tournamentStatus?: string;
 }
 
 // ── Root component ─────────────────────────────────────────────────────────
 
-export function BracketTab({ bracket, format, isLoading = false }: BracketTabProps) {
+export function BracketTab({
+  bracket,
+  format,
+  isLoading = false,
+  teamTags,
+  tournamentStatus,
+}: BracketTabProps) {
   if (isLoading) {
     return <BracketSkeleton />;
   }
@@ -46,6 +56,17 @@ export function BracketTab({ bracket, format, isLoading = false }: BracketTabPro
           The bracket will be published once the tournament admin generates it.
         </p>
       </div>
+    );
+  }
+
+  if (isSwissFormat(format)) {
+    return (
+      <SwissBracketTab
+        bracket={bracket}
+        format={format}
+        teamTags={teamTags}
+        tournamentStatus={tournamentStatus}
+      />
     );
   }
 
@@ -65,8 +86,10 @@ export function BracketTab({ bracket, format, isLoading = false }: BracketTabPro
       <div className="flex flex-col gap-10">
         <BracketHeader format={format} />
 
-        <BracketSection title="Upper Bracket" rounds={upperRounds} />
-        {lowerRounds.length > 0 && <BracketSection title="Lower Bracket" rounds={lowerRounds} />}
+        <BracketSection title="Upper Bracket" rounds={upperRounds} teamTags={teamTags} />
+        {lowerRounds.length > 0 && (
+          <BracketSection title="Lower Bracket" rounds={lowerRounds} teamTags={teamTags} />
+        )}
 
         <BracketFooter isDoubleElim />
       </div>
@@ -77,7 +100,7 @@ export function BracketTab({ bracket, format, isLoading = false }: BracketTabPro
   return (
     <div className="flex flex-col gap-10">
       <BracketHeader format={format} />
-      <BracketSection rounds={bracket} />
+      <BracketSection rounds={bracket} teamTags={teamTags} />
       <BracketFooter />
     </div>
   );
@@ -107,7 +130,15 @@ function BracketFooter({ isDoubleElim = false }: { isDoubleElim?: boolean }) {
 
 // ── Canvas section ─────────────────────────────────────────────────────────
 
-function BracketSection({ title, rounds }: { title?: string; rounds: BracketRound[] }) {
+function BracketSection({
+  title,
+  rounds,
+  teamTags,
+}: {
+  title?: string;
+  rounds: BracketRound[];
+  teamTags?: Map<string, string>;
+}) {
   if (rounds.length === 0) return null;
 
   const maxMatches = Math.max(...rounds.map((r) => r.matches.length), 1);
@@ -180,6 +211,7 @@ function BracketSection({ title, rounds }: { title?: string; rounds: BracketRoun
                       x={x}
                       y={y}
                       sideBorder={sideBorder}
+                      teamTags={teamTags}
                     />
                   );
                 })}
@@ -199,11 +231,13 @@ function PublicMatchCard({
   x,
   y,
   sideBorder,
+  teamTags,
 }: {
   match: BracketMatch;
   x: number;
   y: number;
   sideBorder: string;
+  teamTags?: Map<string, string>;
 }) {
   const hasScores = match.scoreA !== undefined && match.scoreB !== undefined;
   const decided = !!match.winner;
@@ -226,8 +260,9 @@ function PublicMatchCard({
       </div>
 
       {/* Team A */}
-      <PublicTeamSlot
+      <PublicBracketTeamSlot
         name={match.teamA}
+        tag={match.teamA ? teamTags?.get(match.teamA) : undefined}
         score={match.scoreA}
         isWinner={decided && match.winner === match.teamA}
         isLoser={decided && !!match.teamA && match.winner !== match.teamA}
@@ -235,91 +270,14 @@ function PublicMatchCard({
       />
 
       {/* Team B */}
-      <PublicTeamSlot
+      <PublicBracketTeamSlot
         name={match.teamB}
+        tag={match.teamB ? teamTags?.get(match.teamB) : undefined}
         score={match.scoreB}
         isWinner={decided && match.winner === match.teamB}
         isLoser={decided && !!match.teamB && match.winner !== match.teamB}
         hasScores={hasScores}
       />
-    </div>
-  );
-}
-
-// ── Read-only team slot ────────────────────────────────────────────────────
-
-function PublicTeamSlot({
-  name,
-  score,
-  isWinner,
-  isLoser,
-  hasScores,
-}: {
-  name: string | null;
-  score?: number;
-  isWinner: boolean;
-  isLoser: boolean;
-  hasScores: boolean;
-}) {
-  const isTbd = name === null;
-  const abbr = isTbd
-    ? "?"
-    : name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .slice(0, 3)
-        .toUpperCase();
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2 border-b border-border/40 px-2 py-1.5 last:border-0",
-        isWinner && "bg-emerald-400/10",
-        isLoser && "opacity-60",
-        isTbd && "opacity-40",
-      )}
-    >
-      {/* Winner indicator dot */}
-      <span
-        className={cn(
-          "h-2 w-2 shrink-0 rounded-full border",
-          isWinner
-            ? "border-emerald-400 bg-emerald-400"
-            : "border-muted-foreground/30 bg-transparent",
-        )}
-      />
-
-      {/* Team abbr */}
-      <span className="w-6 shrink-0 text-center text-[10px] font-tech text-muted-foreground">
-        {abbr}
-      </span>
-
-      {/* Team name */}
-      <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-xs",
-          isTbd
-            ? "italic text-muted-foreground/50"
-            : isWinner
-              ? "font-semibold text-foreground"
-              : "text-muted-foreground",
-        )}
-      >
-        {isTbd ? "TBD" : name}
-      </span>
-
-      {/* Score */}
-      {hasScores && !isTbd && (
-        <span
-          className={cn(
-            "shrink-0 font-display text-sm tabular-nums",
-            isWinner ? "text-foreground" : "text-muted-foreground/50",
-          )}
-        >
-          {score}
-        </span>
-      )}
     </div>
   );
 }

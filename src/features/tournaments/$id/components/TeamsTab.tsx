@@ -298,7 +298,7 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
 function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="custom-scrollbar max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <div className="flex items-start gap-4 pr-6">
             <div className="grid h-12 w-12 shrink-0 place-items-center border border-border bg-secondary font-tech text-sm tracking-wider">
