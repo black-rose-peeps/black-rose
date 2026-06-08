@@ -47,7 +47,9 @@ import {
   formatBracketAvailability,
   supportsBracketManager as canUseBracketManager,
 } from "@/features/admin/features/tournaments/utils";
+import { isBracketParticipantStatus } from "@/features/admin/features/participants/constants/registration-status";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
+import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import {
   isSoloTournament,
@@ -181,8 +183,8 @@ function TournamentDetailPage() {
 
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
 
-  const approvedTeams = teams.filter((t) => t.status === "Approved");
-  const computedTeams = approvedTeams.map((t) => ({
+  const bracketTeams = teams.filter((t) => isBracketParticipantStatus(t.status));
+  const computedTeams = bracketTeams.map((t) => ({
     id: t.id,
     name: t.name,
     tag: t.tag,
@@ -191,7 +193,9 @@ function TournamentDetailPage() {
   }));
 
   const bracketNotice = formatBracketAvailability(tournament, computedTeams.length);
-  const supportsBracketManager = canUseBracketManager(tournament.format, computedTeams.length);
+  const supportsBracketManager =
+    canUseBracketManager(tournament.format, computedTeams.length) ||
+    (isTournamentConcluded(tournament.status) && computedTeams.length >= 2);
   const soloEvent = isSoloTournament(tournament);
   const capLabel = registrationCapLabel(tournament.participationType);
   const wwmLabel = wwmModeLabel(tournament.wwmMode);

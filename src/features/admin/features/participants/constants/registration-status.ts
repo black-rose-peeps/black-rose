@@ -10,6 +10,11 @@ export function isReviewQueueStatus(status: RegistrationStatus): boolean {
   return REVIEW_QUEUE_STATUSES.includes(status);
 }
 
+/** Entrants that count toward bracket seeding (including after event completion). */
+export function isBracketParticipantStatus(status: RegistrationStatus): boolean {
+  return status === "Approved" || status === "Previously Competed";
+}
+
 /** Pending / veteran review only applies to open or live events — not after the event ends. */
 export function registrationNeedsReview(
   registrationStatus: RegistrationStatus,
