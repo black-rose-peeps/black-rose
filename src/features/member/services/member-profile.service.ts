@@ -1,7 +1,4 @@
-import {
-  getMemberBySlug,
-  getMemberProfileByUserId,
-} from "@/lib/mock-member";
+import { getMemberBySlug, getMemberProfileByUserId } from "@/lib/mock-member";
 import type { MemberProfile } from "../types";
 
 /** Member dashboard/profile — mock data until profile API is ready. */

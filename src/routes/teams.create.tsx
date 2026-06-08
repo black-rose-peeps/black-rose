@@ -26,9 +26,13 @@ function CreateTeamPage() {
       return;
     }
     let cancelled = false;
-    fetchTeamForUser(session.id).then((team) => {
-      if (!cancelled && team) navigate({ to: "/teams" });
-    });
+    fetchTeamForUser(session.id)
+      .then((team) => {
+        if (!cancelled && team) navigate({ to: "/teams" });
+      })
+      .catch((err) => {
+        if (!cancelled) console.error("[teams/create] fetchTeamForUser failed:", err);
+      });
 
     return () => {
       cancelled = true;

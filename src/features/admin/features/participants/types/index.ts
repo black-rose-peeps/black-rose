@@ -4,5 +4,5 @@ export type ParticipantRegistration = MockTeam;
 
 export interface ParticipantRow extends MockTeam {
   tournamentName: string;
-  tournamentStatus: TournamentStatus;
+  tournamentStatus: TournamentStatus | null;
 }

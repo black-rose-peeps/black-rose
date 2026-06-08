@@ -38,8 +38,21 @@ function _subscribe(tournamentId: string, fn: () => void): () => void {
   return () => _listeners.get(tournamentId)?.delete(fn);
 }
 
+function isBracketRound(value: unknown): value is BracketRound {
+  if (!value || typeof value !== "object") return false;
+  const round = value as Record<string, unknown>;
+  if (typeof round.label !== "string" || !Array.isArray(round.matches)) return false;
+  return round.matches.every((match) => match && typeof match === "object");
+}
+
 function _payloadFromUnknown(payload: unknown): PersistedBracketPayload | null {
   if (!payload || typeof payload !== "object") return null;
+  const candidate = payload as Record<string, unknown>;
+  if (!Array.isArray(candidate.rounds) || !candidate.rounds.every(isBracketRound)) {
+    return null;
+  }
+  if (candidate.placements != null && !Array.isArray(candidate.placements)) return null;
+  if (candidate.prizeBreakdown != null && !Array.isArray(candidate.prizeBreakdown)) return null;
   return payload as PersistedBracketPayload;
 }
 

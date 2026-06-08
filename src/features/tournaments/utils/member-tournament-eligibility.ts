@@ -65,14 +65,39 @@ export async function getMemberTournamentBlockReason(
   memberUserId: string,
   tournamentId: string,
 ): Promise<string | null> {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingErr } = await supabase
     .from("tournament_registrations")
     .select("id")
     .eq("tournament_id", tournamentId)
     .eq("member_user_id", memberUserId)
     .maybeSingle();
 
+  if (existingErr) throw new Error(existingErr.message);
   if (existing) return "This player is already registered for this tournament.";
+
+  const { data: rosterRegs, error: rosterRegsErr } = await supabase
+    .from("tournament_registrations")
+    .select("roster_team_id")
+    .eq("tournament_id", tournamentId)
+    .not("roster_team_id", "is", null);
+
+  if (rosterRegsErr) throw new Error(rosterRegsErr.message);
+
+  if (rosterRegs?.length) {
+    const allTeams = await fetchTeams();
+    for (const reg of rosterRegs) {
+      const rosterTeamId = reg.roster_team_id as string;
+      const team = allTeams.find((t) => t.id === rosterTeamId);
+      if (
+        team?.members.some(
+          (m) =>
+            m.userId === memberUserId && (m.status === "captain" || m.status === "active"),
+        )
+      ) {
+        return "This player is already registered for this tournament.";
+      }
+    }
+  }
 
   const tournaments = await fetchTournaments();
   const blockingById = new Map(

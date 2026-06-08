@@ -37,7 +37,7 @@ export function supportsBracketManager(format: string, teamCount: number): boole
   if (!isPowerOfTwo(teamCount)) return false;
   if (isSingleEliminationFormat(format)) return teamCount >= 2;
   if (isDoubleEliminationFormat(format)) return teamCount >= 2;
-  if (isSwissFormat(format)) return teamCount >= 8;
+  if (isSwissFormat(format)) return teamCount >= BRACKET_TEAM_COUNT_SWISS;
   return false;
 }
 
@@ -167,8 +167,8 @@ export function formatBracketAvailability(tournament: AdminTournament, teamCount
   ) {
     return `Bracket manager supports single elimination, double elimination, and Swiss only. This event uses ${tournament.format}.`;
   }
-  if (isSwissFormat(tournament.format) && teamCount < 8) {
-    return `Swiss system requires at least 8 teams (currently ${teamCount}).`;
+  if (isSwissFormat(tournament.format) && teamCount < BRACKET_TEAM_COUNT_SWISS) {
+    return `Swiss system requires at least ${BRACKET_TEAM_COUNT_SWISS} teams (currently ${teamCount}).`;
   }
   if (teamCount < 2) {
     return `At least 2 teams are required to generate a bracket (currently ${teamCount}).`;

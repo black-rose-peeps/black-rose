@@ -157,7 +157,12 @@ export function ParticipantsManagement() {
                 return (
                   <TableRow key={team.id}>
                     <TableCell className={adminTableCellClip}>
-                      <div className={cn("font-display text-base tracking-wider-2", adminTableTextTruncate)}>
+                      <div
+                        className={cn(
+                          "font-display text-base tracking-wider-2",
+                          adminTableTextTruncate,
+                        )}
+                      >
                         {team.name}
                       </div>
                       <div

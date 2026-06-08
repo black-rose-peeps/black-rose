@@ -159,9 +159,7 @@ export function MembersManagement() {
                   </TableCell>
                 </TableRow>
               ) : (
-                pagination.paginatedItems.map((member) => {
-                  const isUpdating = updatingId === member.id;
-                  return (
+                pagination.paginatedItems.map((member) => (
                   <TableRow key={member.id} className="transition-colors hover:bg-secondary/40">
                     <TableCell className={adminTableCellClip}>
                       <div className="flex min-w-0 items-center gap-3">
@@ -202,7 +200,7 @@ export function MembersManagement() {
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={isUpdating || member.status === "Verified"}
+                          disabled={updatingId !== null || member.status === "Verified"}
                           className="font-tech text-[10px] uppercase tracking-wider-2"
                           onClick={async () => {
                             resetVerificationError();
@@ -220,7 +218,7 @@ export function MembersManagement() {
                           type="button"
                           size="sm"
                           variant="ghost"
-                          disabled={isUpdating || member.status === "Not Verified"}
+                          disabled={updatingId !== null || member.status === "Not Verified"}
                           className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
                           onClick={async () => {
                             resetVerificationError();
@@ -245,8 +243,7 @@ export function MembersManagement() {
                       </div>
                     </TableCell>
                   </TableRow>
-                  );
-                })
+                ))
               )}
             </TableBody>
           </AdminManagementTable>

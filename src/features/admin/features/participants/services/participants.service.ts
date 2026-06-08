@@ -26,7 +26,7 @@ export async function fetchParticipants(): Promise<ParticipantRow[]> {
     return {
       ...registration,
       tournamentName: tournament?.name ?? "Unknown tournament",
-      tournamentStatus: tournament?.status ?? "Draft",
+      tournamentStatus: tournament?.status ?? null,
     };
   });
 }
@@ -42,14 +42,14 @@ export async function setParticipantStatus(
     return {
       ...updated,
       tournamentName: tournament?.name ?? "Unknown tournament",
-      tournamentStatus: tournament?.status ?? "Draft",
+      tournamentStatus: tournament?.status ?? null,
     };
   } catch (err) {
     console.warn("[participants] Failed to load tournament name after status update:", err);
     return {
       ...updated,
       tournamentName: "Unknown tournament",
-      tournamentStatus: "Draft",
+      tournamentStatus: null,
     };
   }
 }

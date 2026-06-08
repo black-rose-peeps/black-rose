@@ -174,12 +174,7 @@ function PublicSwissMatchCard({
   const statusByTeam = new Map(standings.map((entry) => [entry.team, entry.status]));
 
   return (
-    <div
-      className={cn(
-        "border border-border bg-card",
-        decided && "ring-1 ring-emerald-400/30",
-      )}
-    >
+    <div className={cn("border border-border bg-card", decided && "ring-1 ring-emerald-400/30")}>
       {match.round && (
         <div className="flex items-center justify-between border-b border-border/60 px-2 py-1">
           <span className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">

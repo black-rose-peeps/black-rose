@@ -193,12 +193,18 @@ function SelectFormat({
   readOnly?: boolean;
   onFormatChange: (roundId: string, format: BestOfFormat) => void;
 }) {
+  const selectId = `swiss-round-format-${roundId}`;
+
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+      <label
+        htmlFor={selectId}
+        className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground"
+      >
         Format
-      </span>
+      </label>
       <select
+        id={selectId}
         value={value}
         disabled={readOnly}
         onChange={(event) => onFormatChange(roundId, event.target.value as BestOfFormat)}
@@ -316,6 +322,13 @@ function SwissTeamRow({
         type="button"
         onClick={onSelectWinner}
         disabled={controlsDisabled}
+        aria-label={
+          isTbd
+            ? "Set winner"
+            : isWinner
+              ? `Clear winner (${display})`
+              : `Set ${display} as winner`
+        }
         className={cn(
           "h-2 w-2 shrink-0 rounded-full border",
           isWinner
@@ -334,6 +347,7 @@ function SwissTeamRow({
           size="icon"
           className="h-6 w-6"
           disabled={controlsDisabled || score <= 0}
+          aria-label={isTbd ? "Decrease score" : `Decrease score for ${display}`}
           onClick={onDecrement}
         >
           <Minus className="h-3 w-3" />
@@ -348,6 +362,7 @@ function SwissTeamRow({
           size="icon"
           className="h-6 w-6"
           disabled={controlsDisabled || score >= required}
+          aria-label={isTbd ? "Increase score" : `Increase score for ${display}`}
           onClick={onIncrement}
         >
           <Plus className="h-3 w-3" />

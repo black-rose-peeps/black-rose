@@ -88,12 +88,7 @@ function buildPersistedPayload(
 ): PersistedBracketPayload {
   const placements = buildPodiumPlacements(
     options.prizeBreakdown ?? [],
-    deriveManagedPlacements(
-      options.format,
-      managedMatches,
-      options.swiss,
-      options.teamNames,
-    ),
+    deriveManagedPlacements(options.format, managedMatches, options.swiss, options.teamNames),
   );
 
   return {
@@ -198,7 +193,9 @@ export function BracketManager({
   const isSwiss = isSwissFormat(format);
   const isDoubleElim = isDoubleEliminationFormat(format);
   const bracketSize = isSwiss ? teams.length : bracketEngine.getBracketStructure().totalTeams;
-  const firstRoundMatches = bracketSize / 2;
+  const firstRoundMatches = Math.floor(bracketSize / 2);
+  const hasSwissByeSlot = isSwiss && bracketSize % 2 === 1;
+  const seedingMatchCount = hasSwissByeSlot ? firstRoundMatches + 1 : firstRoundMatches;
   const formatAbbrev = isSwiss ? "SW" : isDoubleElim ? "DE" : "SE";
   const totalRounds = isSwiss ? 5 : Math.log2(bracketSize);
 
@@ -269,10 +266,8 @@ export function BracketManager({
                 ...restoredSwiss,
                 phase: restoredSwiss.phase ?? "playoffs",
                 playoffsSeededTeams:
-                  restoredSwiss.playoffsSeededTeams ??
-                  getQualifiedTeams(teamNames, restoredSwiss),
-                groupStageRecords:
-                  restoredSwiss.groupStageRecords ?? { ...restoredSwiss.records },
+                  restoredSwiss.playoffsSeededTeams ?? getQualifiedTeams(teamNames, restoredSwiss),
+                groupStageRecords: restoredSwiss.groupStageRecords ?? { ...restoredSwiss.records },
               };
             }
 
@@ -389,10 +384,7 @@ export function BracketManager({
   const assignedCount = assignments.filter(Boolean).length;
   const allAssigned = assignedCount === bracketSize;
   const canPublish =
-    status === "draft" &&
-    bracketGenerated &&
-    allAssigned &&
-    (isSwiss || validation.canPublish);
+    status === "draft" && bracketGenerated && allAssigned && (isSwiss || validation.canPublish);
 
   function handleGenerate() {
     if (resultsLocked) return;
@@ -429,10 +421,10 @@ export function BracketManager({
     // Invalidate managed bracket so it reflects the new seeding order
     setManagedMatches([]);
     setRoundMetas([]);
-      setRoundFormats({});
-      setSwissState(null);
-      setBracketGenerated(false);
-      setStatus("not_generated");
+    setRoundFormats({});
+    setSwissState(null);
+    setBracketGenerated(false);
+    setStatus("not_generated");
   }
 
   function handleRandomSeed() {
@@ -600,12 +592,13 @@ export function BracketManager({
       updatedMatches: ManagedMatch[],
       updatedRoundMetas = roundMetas,
       updatedSwiss = swissState ?? undefined,
+      updatedRoundFormats = roundFormats,
     ) => {
       if (!isPublished) return;
       const payload = buildPersistedPayload(
         updatedMatches,
         updatedRoundMetas,
-        roundFormats,
+        updatedRoundFormats,
         assignments,
         {
           format,
@@ -640,7 +633,7 @@ export function BracketManager({
       setRoundMetas(applied.roundMetas);
       setRoundFormats(mergedFormats);
       setManagedMatches(applied.matches);
-      pushLiveUpdate(applied.matches, applied.roundMetas, applied.swiss);
+      pushLiveUpdate(applied.matches, applied.roundMetas, applied.swiss, mergedFormats);
     },
     [roundMetas, roundFormats, teamNames, pushLiveUpdate],
   );
@@ -672,7 +665,7 @@ export function BracketManager({
         setRoundMetas(next.roundMetas);
         setSwissState(next.swiss);
         setRoundFormats(mergedFormats);
-        pushLiveUpdate(next.matches, next.roundMetas, next.swiss);
+        pushLiveUpdate(next.matches, next.roundMetas, next.swiss, mergedFormats);
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : "Failed to start playoffs.");
       }
@@ -934,8 +927,8 @@ export function BracketManager({
           </button>
 
           <button
-                onClick={requestPublish}
-                disabled={!canPublish || isPublished || isSaving}
+            onClick={requestPublish}
+            disabled={!canPublish || isPublished || isSaving}
             className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {isSaving ? "Saving…" : "↑ Publish"}
@@ -1030,12 +1023,13 @@ export function BracketManager({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {Array.from({ length: firstRoundMatches }, (_, i) => {
-                const teamAIdx = i * 2;
+              {Array.from({ length: seedingMatchCount }, (_, i) => {
+                const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
+                const teamAIdx = isByeSlot ? bracketSize - 1 : i * 2;
                 const teamBIdx = i * 2 + 1;
                 const teamA = assignments[teamAIdx];
-                const teamB = assignments[teamBIdx];
-                const isComplete = teamA && teamB;
+                const teamB = isByeSlot ? null : assignments[teamBIdx];
+                const isComplete = isByeSlot ? !!teamA : teamA && teamB;
 
                 return (
                   <div
@@ -1051,7 +1045,9 @@ export function BracketManager({
                         Match {i + 1}
                       </span>
                       <span className="text-xs font-display border border-border px-2 py-1 text-muted-foreground">
-                        Seed {teamAIdx + 1} – {teamBIdx + 1}
+                        {isByeSlot
+                          ? `Seed ${teamAIdx + 1} — BYE`
+                          : `Seed ${teamAIdx + 1} – ${teamBIdx + 1}`}
                       </span>
                     </div>
 
@@ -1076,29 +1072,37 @@ export function BracketManager({
                         })}
                       </select>
 
-                      <div className="text-center py-1 font-display text-xs font-bold tracking-wider text-muted-foreground">
-                        VS
-                      </div>
+                      {isByeSlot ? (
+                        <div className="text-center py-2 font-display text-xs font-bold tracking-wider text-amber-400/80">
+                          BYE
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-center py-1 font-display text-xs font-bold tracking-wider text-muted-foreground">
+                            VS
+                          </div>
 
-                      {/* Team B Select */}
-                      <select
-                        value={teamB?.id || ""}
-                        onChange={(e) => onTeamSelect(teamBIdx, e.target.value || null)}
-                        disabled={seedingDisabled}
-                        className="w-full bg-input border border-border text-white font-display text-sm p-2 hover:border-border-bright focus:border-gray-500 disabled:opacity-50"
-                      >
-                        <option value="">— Team B</option>
-                        {teams.map((team) => {
-                          const isUsed = assignments.some(
-                            (t, idx) => idx !== teamBIdx && t?.id === team.id,
-                          );
-                          return (
-                            <option key={team.id} value={team.id} disabled={isUsed}>
-                              {team.name}
-                            </option>
-                          );
-                        })}
-                      </select>
+                          {/* Team B Select */}
+                          <select
+                            value={teamB?.id || ""}
+                            onChange={(e) => onTeamSelect(teamBIdx, e.target.value || null)}
+                            disabled={seedingDisabled}
+                            className="w-full bg-input border border-border text-white font-display text-sm p-2 hover:border-border-bright focus:border-gray-500 disabled:opacity-50"
+                          >
+                            <option value="">— Team B</option>
+                            {teams.map((team) => {
+                              const isUsed = assignments.some(
+                                (t, idx) => idx !== teamBIdx && t?.id === team.id,
+                              );
+                              return (
+                                <option key={team.id} value={team.id} disabled={isUsed}>
+                                  {team.name}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -1268,11 +1272,11 @@ export function BracketManager({
 
             <div className="mt-4">
               <button
-            onClick={requestPublish}
-            disabled={!canPublish || isPublished || isSaving}
-            className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {isSaving ? "Saving…" : "↑ Publish Bracket"}
+                onClick={requestPublish}
+                disabled={!canPublish || isPublished || isSaving}
+                className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {isSaving ? "Saving…" : "↑ Publish Bracket"}
               </button>
             </div>
           </div>

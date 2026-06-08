@@ -1,4 +1,3 @@
-import { concludeTournamentRegistrations } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import { concludeTournamentRegistrations } from "./tournament-registrations.service";
 import { supabase } from "@/lib/supabase";
 import type { MockTournament } from "@/lib/mock-data";

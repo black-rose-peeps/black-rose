@@ -46,7 +46,10 @@ function fromEditableTiers(tiers: EditableTier[]) {
 }
 
 export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistributionPanelProps) {
-  const { currency } = useMemo(() => parseStoredPrizePool(tournament.prizePool), [tournament.prizePool]);
+  const { currency } = useMemo(
+    () => parseStoredPrizePool(tournament.prizePool),
+    [tournament.prizePool],
+  );
   const poolDigits = useMemo(
     () => parsePrizeDigits(parseStoredPrizePool(tournament.prizePool).digits),
     [tournament.prizePool],
@@ -54,7 +57,9 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
   const poolTotal = prizeDigitsToNumber(poolDigits);
 
   const [tiers, setTiers] = useState<EditableTier[]>(() =>
-    toEditableTiers(tournament.prizeBreakdown?.length ? tournament.prizeBreakdown : DEFAULT_PRIZE_TIERS),
+    toEditableTiers(
+      tournament.prizeBreakdown?.length ? tournament.prizeBreakdown : DEFAULT_PRIZE_TIERS,
+    ),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,11 +67,16 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
 
   useEffect(() => {
     setTiers(
-      toEditableTiers(tournament.prizeBreakdown?.length ? tournament.prizeBreakdown : DEFAULT_PRIZE_TIERS),
+      toEditableTiers(
+        tournament.prizeBreakdown?.length ? tournament.prizeBreakdown : DEFAULT_PRIZE_TIERS,
+      ),
     );
   }, [tournament.id]);
 
-  const allocatedTotal = tiers.reduce((sum, tier) => sum + prizeDigitsToNumber(parsePrizeDigits(tier.prize)), 0);
+  const allocatedTotal = tiers.reduce(
+    (sum, tier) => sum + prizeDigitsToNumber(parsePrizeDigits(tier.prize)),
+    0,
+  );
   const overAllocated = poolTotal > 0 && allocatedTotal > poolTotal;
   const canSave = !overAllocated && tiers.some((tier) => tier.place.trim() || tier.prize.trim());
 
@@ -127,11 +137,13 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
   return (
     <Panel>
       <div className="border-b border-border px-6 py-4">
-        <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">Economy</p>
+        <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          Economy
+        </p>
         <h2 className="font-display text-xl font-bold tracking-wider-2">Prize Distribution</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Define podium slots for this event. The bracket podium only shows these placements — default
-          tiers are Champion, Runner-up, and Bronze.
+          Define podium slots for this event. The bracket podium only shows these placements —
+          default tiers are Champion, Runner-up, and Bronze.
         </p>
       </div>
 
@@ -145,8 +157,8 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
         {overAllocated && (
           <Alert variant="destructive">
             <AlertDescription>
-              Allocated {formatPrizePool(String(allocatedTotal), currency)} exceeds the pool total of{" "}
-              {tournament.prizePool}. Reduce tier amounts before saving.
+              Allocated {formatPrizePool(String(allocatedTotal), currency)} exceeds the pool total
+              of {tournament.prizePool}. Reduce tier amounts before saving.
             </AlertDescription>
           </Alert>
         )}

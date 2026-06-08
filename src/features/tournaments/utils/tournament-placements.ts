@@ -33,12 +33,29 @@ function findMatches(
   return matches.filter(predicate);
 }
 
+function normalizeRoundLabel(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[\u2013\u2014-]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 function isChampionshipFinal(match: ManagedMatch): boolean {
-  return match.roundLabel === "Final" || match.roundLabel === "Playoffs — Final";
+  const normalized = normalizeRoundLabel(match.roundLabel);
+  return /\bfinals?\b/i.test(normalized) && !/\bsemifinals?\b/i.test(normalized);
 }
 
 function isSemifinalRound(match: ManagedMatch): boolean {
-  return match.roundLabel === "Semifinals" || match.roundLabel === "Playoffs — Semifinals";
+  return /\bsemifinals?\b/i.test(normalizeRoundLabel(match.roundLabel));
+}
+
+function isThirdPlaceRound(match: ManagedMatch): boolean {
+  const normalized = normalizeRoundLabel(match.roundLabel);
+  return (
+    /\b(third|3rd)\s*place\b/i.test(normalized) ||
+    /\bbro(nze)?\b/i.test(normalized)
+  );
 }
 
 export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentPlacement[] {
@@ -62,8 +79,33 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
     .map(loserOf)
     .filter((team): team is string => !!team);
 
-  if (semifinalLosers[0]) {
-    placements.push({ rank: 3, label: "Bronze", team: semifinalLosers[0] });
+  const thirdPlaceMatch = findMatch(
+    matches,
+    (match) =>
+      isThirdPlaceRound(match) &&
+      match.confirmed &&
+      !!match.winner &&
+      !!match.teamA &&
+      !!match.teamB,
+  );
+
+  if (thirdPlaceMatch?.winner) {
+    placements.push({ rank: 3, label: "Bronze", team: thirdPlaceMatch.winner });
+  } else {
+    const loserSet = new Set(semifinalLosers);
+    const decidingMatch = findMatch(
+      matches,
+      (match) =>
+        match.confirmed &&
+        !!match.winner &&
+        !!match.teamA &&
+        !!match.teamB &&
+        loserSet.has(match.teamA) &&
+        loserSet.has(match.teamB),
+    );
+    if (decidingMatch?.winner) {
+      placements.push({ rank: 3, label: "Bronze", team: decidingMatch.winner });
+    }
   }
 
   return placements;

@@ -96,9 +96,7 @@ export function SwissPhaseBanner({
           <div
             className={cn(
               "grid h-10 w-10 shrink-0 place-items-center border",
-              completed
-                ? "border-violet-400/25 bg-violet-400/8"
-                : "border-white/15 bg-white/5",
+              completed ? "border-violet-400/25 bg-violet-400/8" : "border-white/15 bg-white/5",
             )}
           >
             {completed ? (
@@ -144,9 +142,7 @@ export function SwissPhaseBanner({
       <div
         className={cn(
           "pointer-events-none absolute inset-y-0 left-0 w-1 bg-linear-to-b to-transparent",
-          completed
-            ? "from-violet-400/80 via-violet-400/35"
-            : "from-amber-300/90 via-amber-400/40",
+          completed ? "from-violet-400/80 via-violet-400/35" : "from-amber-300/90 via-amber-400/40",
         )}
       />
 

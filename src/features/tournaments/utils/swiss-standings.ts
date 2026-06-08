@@ -24,6 +24,7 @@ export function computeSwissStandingsFromBracket(bracket: BracketRound[]): Swiss
       if (match.teamA) ensure(match.teamA);
       if (match.teamB) ensure(match.teamB);
       if (!match.winner || !match.teamA || !match.teamB) continue;
+      if (match.winner !== match.teamA && match.winner !== match.teamB) continue;
       const loser = match.winner === match.teamA ? match.teamB : match.teamA;
       records[match.winner].wins++;
       records[loser].losses++;

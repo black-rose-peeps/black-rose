@@ -36,6 +36,22 @@ create unique index if not exists tournament_registrations_tournament_member_uid
   on public.tournament_registrations (tournament_id, member_user_id)
   where member_user_id is not null;
 
+-- Exactly one of member_user_id or roster_team_id must be set (solo XOR team).
+-- Run the cleanup block below first if the constraint add fails.
+delete from public.tournament_registrations
+where (member_user_id is null and roster_team_id is null)
+   or (member_user_id is not null and roster_team_id is not null);
+
+alter table public.tournament_registrations
+  drop constraint if exists tournament_registrations_single_registration_identity_chk;
+
+alter table public.tournament_registrations
+  add constraint tournament_registrations_single_registration_identity_chk
+  check (
+    (member_user_id is not null and roster_team_id is null)
+    or (member_user_id is null and roster_team_id is not null)
+  );
+
 -- Backfill TFT events as solo if column was just added.
 update public.tournaments
 set participation_type = 'solo', wwm_mode = null

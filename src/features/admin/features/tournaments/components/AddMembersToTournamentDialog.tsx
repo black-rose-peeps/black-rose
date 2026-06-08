@@ -44,9 +44,9 @@ export function AddMembersToTournamentDialog({
   const [membersLoadError, setMembersLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
-  const [partialErrors, setPartialErrors] = useState<
-    { memberUserId: string; message: string }[]
-  >([]);
+  const [partialErrors, setPartialErrors] = useState<{ memberUserId: string; message: string }[]>(
+    [],
+  );
   const { submitMany, isSubmitting, error, resetError } = useAddMemberToTournament(tournament.id);
 
   const registeredMemberIds = useMemo(

@@ -81,10 +81,19 @@ export function recomputeSwissStateFromMatches(
   for (const match of matches) {
     if (match.bracketSide !== "swiss") continue;
     if (!match.confirmed || !match.winner || !match.teamA || !match.teamB) continue;
+    if (match.winner !== match.teamA && match.winner !== match.teamB) continue;
     const loser = match.winner === match.teamA ? match.teamB : match.teamA;
     records[match.winner].wins += 1;
     records[loser].losses += 1;
     playedPairs.push(pairKey(match.teamA, match.teamB));
+  }
+
+  if (preserve?.byesByRound) {
+    for (const byeTeams of Object.values(preserve.byesByRound)) {
+      for (const team of byeTeams) {
+        if (records[team]) records[team].wins += 1;
+      }
+    }
   }
 
   return {
@@ -253,13 +262,12 @@ export function generateSwissNextRound(
 
   const activeTeams = teamNames.filter((team) => getSwissTeamStatus(team, swiss) === "active");
   if (activeTeams.length === 0) return null;
-  if (activeTeams.length === 1) return null;
 
   const nextRound = currentRound + 1;
   const { pairs, byes } = pairSwissRoundTeams(activeTeams, swiss.records, swiss.playedPairs);
 
   if (pairs.length === 0 && byes.length === 0) return null;
-  if (pairs.length === 0 && byes.length === activeTeams.length) return null;
+  if (activeTeams.length === 1 && byes.length === 0) return null;
 
   const roundId = `sw-r${nextRound}`;
   const newMatches: ManagedMatch[] = [];
@@ -498,6 +506,14 @@ export function startSwissPlayoffs(
   teamNames: string[],
   round1Pairings: PlayoffRound1Pairing[],
 ): { matches: ManagedMatch[]; roundMetas: BracketRoundMeta[]; swiss: SwissBracketState } {
+  if (
+    getSwissPhase(swiss) === "playoffs" ||
+    swiss.playoffsSeededTeams ||
+    roundMetas.some((meta) => meta.side === "playoff" || meta.id.startsWith("po-r"))
+  ) {
+    throw new Error("Playoffs have already been started.");
+  }
+
   const qualified = getQualifiedTeams(teamNames, swiss);
   if (qualified.length < 2) {
     throw new Error("At least 2 teams must qualify before starting playoffs.");

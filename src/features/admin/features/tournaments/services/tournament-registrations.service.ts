@@ -224,7 +224,8 @@ export async function updateRegistrationStatus(
     const { error: teamErr } = await supabase
       .from("teams")
       .update({ active_tournament_id: null, active_tournament_name: null })
-      .eq("id", existing.rosterTeamId);
+      .eq("id", existing.rosterTeamId)
+      .eq("active_tournament_id", existing.tournamentId);
 
     if (teamErr) throw new Error(teamErr.message);
   }

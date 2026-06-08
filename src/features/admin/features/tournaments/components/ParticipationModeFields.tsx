@@ -53,7 +53,7 @@ export function ParticipationModeFields({
         <div className="space-y-2">
           <Label htmlFor="tournament-wwm-mode">Where Winds Meet Mode</Label>
           <Select
-            value={values.wwmMode || "group_strategy"}
+            value={values.wwmMode}
             onValueChange={(mode) => onWwmModeChange(mode as CreateTournamentFormValues["wwmMode"])}
             disabled={disabled}
           >

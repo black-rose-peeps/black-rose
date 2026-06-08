@@ -26,11 +26,13 @@ export function SortableTableHead({
   const Icon = !isActive ? ArrowUpDown : direction === "asc" ? ArrowUp : ArrowDown;
 
   return (
-    <TableHead className={cn("text-[10px] font-tech uppercase tracking-wider-2", className)}>
+    <TableHead
+      aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      className={cn("text-[10px] font-tech uppercase tracking-wider-2", className)}
+    >
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
         className={cn(
           "inline-flex max-w-full cursor-pointer select-none items-center gap-1.5 transition-colors hover:text-foreground",
           align === "right" ? "ml-auto justify-end" : "text-left",

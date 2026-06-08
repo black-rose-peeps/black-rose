@@ -47,9 +47,9 @@ export function AddTeamToTournamentDialog({
   const [teamsLoadError, setTeamsLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
-  const [partialErrors, setPartialErrors] = useState<
-    { rosterTeamId: string; message: string }[]
-  >([]);
+  const [partialErrors, setPartialErrors] = useState<{ rosterTeamId: string; message: string }[]>(
+    [],
+  );
   const { submitMany, isSubmitting, error, resetError } = useAddTeamToTournament(tournament.id);
 
   const registeredRosterIds = useMemo(
@@ -167,9 +167,9 @@ export function AddTeamToTournamentDialog({
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Add Teams</DialogTitle>
           <DialogDescription>
-            Select one or more rosters from Teams to register in {tournament.name}. Teams may
-            only be active in one live or upcoming event at a time — they become eligible again
-            once their current tournament is completed. {registeredTeams.length}/{tournament.teamCap}{" "}
+            Select one or more rosters from Teams to register in {tournament.name}. Teams may only
+            be active in one live or upcoming event at a time — they become eligible again once
+            their current tournament is completed. {registeredTeams.length}/{tournament.teamCap}{" "}
             slots used
             {!atCap && ` · ${slotsRemaining} slot${slotsRemaining === 1 ? "" : "s"} left`}.
           </DialogDescription>
