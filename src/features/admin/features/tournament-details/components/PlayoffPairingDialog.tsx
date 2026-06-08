@@ -232,7 +232,7 @@ export function PlayoffPairingDialog({
                 "relative w-full overflow-hidden border text-left transition duration-200",
                 includeThirdPlaceMatch
                   ? "border-orange-400/35 bg-orange-400/[0.06] shadow-[0_0_36px_-14px_rgba(251,146,60,0.4)]"
-                  : "border-white/10 bg-white/[0.02] hover:border-white/18 hover:bg-white/[0.04]",
+                  : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]",
               )}
             >
               <div

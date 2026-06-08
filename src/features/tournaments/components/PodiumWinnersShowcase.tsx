@@ -100,7 +100,7 @@ function TeamIdentity({
       <p className={cn("font-tech text-[10px] uppercase tracking-wider-2", theme.accent)}>{label}</p>
       <p
         className={cn(
-          "font-display tracking-display leading-snug text-balance wrap-break-word",
+          "font-display tracking-display leading-snug text-balance break-words",
           nameSize,
           theme.name,
         )}
@@ -381,7 +381,7 @@ export function PodiumWinnersShowcase({
                       {String(placement.rank).padStart(2, "0")}
                     </span>
                     <div className="min-w-0">
-                      <p className="font-display text-base tracking-display text-white/90 wrap-break-word">
+                      <p className="font-display text-base tracking-display text-white/90 break-words">
                         {placement.team}
                       </p>
                       <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
