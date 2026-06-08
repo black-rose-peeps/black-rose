@@ -77,7 +77,11 @@ export function SwissBracketView({
       )}
 
       {playoffsStarted && (
-        <SwissPhaseBanner variant="playoffs-live" completed={tournamentCompleted} />
+        <SwissPhaseBanner
+          variant="playoffs-live"
+          completed={tournamentCompleted}
+          thirdPlaceMatch={swiss.playoffThirdPlaceMatch}
+        />
       )}
 
       {swissRounds.map((round) => {

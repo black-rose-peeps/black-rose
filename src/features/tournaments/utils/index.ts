@@ -2,14 +2,18 @@ import type { TournamentStatus } from "../types";
 import type { MockTournament, MockTeam } from "@/lib/mock-data";
 import type { TournamentTeam } from "../types";
 
-/** Statuses visible on the public tournament directory (excludes Draft). */
+/** Statuses visible on the public tournament directory (excludes Draft and Archived). */
 export const PUBLIC_STATUSES = new Set<string>([
   "Registration Open",
   "Registration Closed",
   "Live",
   "Completed",
-  "Archived",
 ]);
+
+/** Tournament detail pages are hidden for draft and archived events. */
+export function isHiddenFromPublicTournament(status: string): boolean {
+  return status === "Draft" || status === "Archived";
+}
 
 /** Map DB/mock statuses to a value safe for public UI (excludes Draft). */
 export function toPublicTournamentStatus(status: string): TournamentStatus {

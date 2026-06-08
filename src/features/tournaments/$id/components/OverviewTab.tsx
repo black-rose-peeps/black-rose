@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Calendar, Trophy } from "lucide-react";
-import { EliminationResultsBoard } from "../../components/EliminationResultsBoard";
+import { PodiumWinnersShowcase } from "../../components/PodiumWinnersShowcase";
 import { SwissResultsBoard } from "../../components/SwissResultsBoard";
 import { isSwissFormat } from "../../constants/formats";
 import { withTeamTags } from "../../utils/team-tags";
@@ -54,15 +54,9 @@ export function OverviewTab({ tournament: t, teamTags }: OverviewTabProps) {
           </section>
         )}
 
-        {showSwissPodium && t.placements && (
+        {(showSwissPodium || showElimPodium) && t.placements && (
           <section className="space-y-4">
-            <EliminationResultsBoard placements={t.placements} teamTags={teamTags} />
-          </section>
-        )}
-
-        {showElimPodium && t.placements && (
-          <section className="space-y-4">
-            <EliminationResultsBoard placements={t.placements} teamTags={teamTags} />
+            <PodiumWinnersShowcase placements={t.placements} teamTags={teamTags} />
           </section>
         )}
 

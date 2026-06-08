@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Archive,
   ArrowLeft,
   Calendar,
   CalendarClock,
@@ -43,7 +44,10 @@ import { PrizeDistributionPanel } from "@/features/admin/features/tournaments/co
 import { useTournamentRegistrations } from "@/features/admin/features/tournaments/hooks";
 import { useDeleteTournament } from "@/features/admin/features/tournaments/hooks/useDeleteTournament";
 import { removeTeamFromTournament } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
-import { fetchTournamentById } from "@/features/admin/features/tournaments/services/tournaments.service";
+import {
+  fetchTournamentById,
+  updateTournamentStatus,
+} from "@/features/admin/features/tournaments/services/tournaments.service";
 import {
   formatBracketAvailability,
   supportsBracketManager as canUseBracketManager,
@@ -170,6 +174,9 @@ function TournamentDetailPage() {
   const [isAddPlayersOpen, setIsAddPlayersOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [removingRegistration, setRemovingRegistration] = useState<MockTeam | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -247,6 +254,21 @@ function TournamentDetailPage() {
             </Link>
           </Button>
           <div className="flex flex-wrap items-center gap-2">
+            {tournament.status === "Completed" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+                onClick={() => {
+                  setArchiveError(null);
+                  setIsArchiveOpen(true);
+                }}
+              >
+                <Archive className="h-3.5 w-3.5" />
+                Archive
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -674,6 +696,31 @@ function TournamentDetailPage() {
         tournament={tournament}
         onClose={() => setIsEditOpen(false)}
         onUpdated={patchTournament}
+      />
+
+      <ConfirmDeleteDialog
+        open={isArchiveOpen}
+        title="Archive tournament?"
+        description={`${tournament.name} will be hidden from the public site but kept in admin for your records.${archiveError ? ` ${archiveError}` : ""}`}
+        confirmLabel="Archive"
+        isDeleting={isArchiving}
+        onClose={() => {
+          setArchiveError(null);
+          setIsArchiveOpen(false);
+        }}
+        onConfirm={async () => {
+          setIsArchiving(true);
+          setArchiveError(null);
+          try {
+            const updated = await updateTournamentStatus(tournament.id, "Archived");
+            patchTournament(updated);
+            setIsArchiveOpen(false);
+          } catch (err) {
+            setArchiveError(err instanceof Error ? err.message : "Failed to archive tournament.");
+          } finally {
+            setIsArchiving(false);
+          }
+        }}
       />
 
       <ConfirmDeleteDialog
