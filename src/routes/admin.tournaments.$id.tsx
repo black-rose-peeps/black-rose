@@ -217,12 +217,9 @@ function TournamentDetailPage() {
     players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
   }));
 
-  const hasUnresolvedRegistrations = tournamentHasUnresolvedRegistrations(
-    teams,
-    tournament.status,
-  );
+  const hasUnresolvedRegistrations = tournamentHasUnresolvedRegistrations(teams, tournament.status);
   const bracketNotice = hasUnresolvedRegistrations
-    ? "Approve or reject all pending participant registrations before opening bracket management."
+    ? "Approve or reject all pending or previously competed participant registrations before opening bracket management."
     : formatBracketAvailability(tournament, computedTeams.length);
   const supportsBracketManager =
     !hasUnresolvedRegistrations &&
@@ -396,9 +393,7 @@ function TournamentDetailPage() {
                           ? "Register members directly"
                           : "Add a roster from Teams"
                     }
-                    onClick={() =>
-                      soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true)
-                    }
+                    onClick={() => (soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true))}
                   >
                     <Plus className="h-4 w-4" />
                     {soloEvent ? "Add Players" : "Add Teams"}
@@ -501,79 +496,85 @@ function TournamentDetailPage() {
                       </TableRow>
                     ) : (
                       teamsPagination.paginatedItems.map((team) => {
-                        const soloDiscord =
-                          team.members[0]?.discord ?? team.captain ?? "—";
+                        const soloDiscord = team.members[0]?.discord ?? team.captain ?? undefined;
 
                         return (
-                        <TableRow key={team.id} className="transition-colors hover:bg-secondary/40">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="grid h-9 w-9 place-items-center border border-border bg-secondary text-[10px] font-tech">
-                                {team.tag}
-                              </div>
-                              <div>
-                                <div className="font-display text-base tracking-wider-2">
-                                  {team.name}
+                          <TableRow
+                            key={team.id}
+                            className="transition-colors hover:bg-secondary/40"
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="grid h-9 w-9 place-items-center border border-border bg-secondary text-[10px] font-tech">
+                                  {team.tag}
                                 </div>
-                                {soloEvent ? (
-                                  <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
-                                    Member registration
+                                <div>
+                                  <div className="font-display text-base tracking-wider-2">
+                                    {team.name}
                                   </div>
-                                ) : (
-                                  <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
-                                    {team.members.length}{" "}
-                                    {team.members.length === 1 ? "player" : "players"}
-                                  </div>
-                                )}
+                                  {soloEvent ? (
+                                    <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+                                      Member registration
+                                    </div>
+                                  ) : (
+                                    <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+                                      {team.members.length}{" "}
+                                      {team.members.length === 1 ? "player" : "players"}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          {soloEvent ? (
-                            <TableCell className="text-muted-foreground">
-                              {soloDiscord.startsWith("@") ? soloDiscord : `@${soloDiscord}`}
                             </TableCell>
-                          ) : (
-                            <>
-                              <TableCell>{team.captain}</TableCell>
+                            {soloEvent ? (
                               <TableCell className="text-muted-foreground">
-                                {team.members.length} members
+                                {soloDiscord
+                                  ? soloDiscord.startsWith("@")
+                                    ? soloDiscord
+                                    : `@${soloDiscord}`
+                                  : "—"}
                               </TableCell>
-                            </>
-                          )}
-                          <TableCell className="text-muted-foreground">
-                            {team.registrationDate}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={registrationStatusVariant(team.status)}>
-                              {team.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="font-tech text-[10px] uppercase tracking-wider"
-                                onClick={() => setOpenTeam(team)}
-                              >
-                                View
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  setRemoveError(null);
-                                  setRemovingRegistration(team);
-                                }}
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                            ) : (
+                              <>
+                                <TableCell>{team.captain}</TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {team.members.length} members
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell className="text-muted-foreground">
+                              {team.registrationDate}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={registrationStatusVariant(team.status)}>
+                                {team.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="font-tech text-[10px] uppercase tracking-wider"
+                                  onClick={() => setOpenTeam(team)}
+                                >
+                                  View
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    setRemoveError(null);
+                                    setRemovingRegistration(team);
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         );
                       })
                     )}

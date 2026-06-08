@@ -627,11 +627,7 @@ export function BracketManager({
   );
 
   const commitSwissUpdate = useCallback(
-    (
-      updatedMatches: ManagedMatch[],
-      nextSwiss: SwissBracketState,
-      editedMatchId?: string,
-    ) => {
+    (updatedMatches: ManagedMatch[], nextSwiss: SwissBracketState, editedMatchId?: string) => {
       const editedRound = editedMatchId
         ? updatedMatches.find((match) => match.id === editedMatchId)?.swissRound
         : undefined;

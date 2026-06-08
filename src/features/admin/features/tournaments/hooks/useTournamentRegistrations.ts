@@ -8,20 +8,26 @@ export function useTournamentRegistrations(tournamentId: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) {
-      setIsLoading(true);
-      setError(null);
-    }
-    try {
-      const data = await fetchTournamentRegistrations(tournamentId);
-      setRegistrations(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load registrations.");
-    } finally {
-      if (!options?.silent) setIsLoading(false);
-    }
-  }, [tournamentId]);
+  const refetch = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setIsLoading(true);
+        setError(null);
+      }
+      try {
+        const data = await fetchTournamentRegistrations(tournamentId);
+        setRegistrations(data);
+        setError(null);
+      } catch (err) {
+        if (!options?.silent) {
+          setError(err instanceof Error ? err.message : "Failed to load registrations.");
+        }
+      } finally {
+        if (!options?.silent) setIsLoading(false);
+      }
+    },
+    [tournamentId],
+  );
 
   useEffect(() => {
     let cancelled = false;
