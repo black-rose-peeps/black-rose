@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { isBracketParticipantStatus } from "@/features/admin/features/participants/constants/registration-status";
 import { fetchTournamentRegistrations } from "../services";
 import type { MockTeam } from "@/lib/mock-data";
+
+function publicRegistrations(data: MockTeam[]): MockTeam[] {
+  return data.filter((r) => isBracketParticipantStatus(r.status));
+}
 
 export function useTournamentRegistrations(tournamentId: string) {
   const [registrations, setRegistrations] = useState<MockTeam[]>([]);
@@ -12,8 +17,7 @@ export function useTournamentRegistrations(tournamentId: string) {
     setError(null);
     try {
       const data = await fetchTournamentRegistrations(tournamentId);
-      // Public side shows only approved registrations
-      setRegistrations(data.filter((r) => r.status === "Approved"));
+      setRegistrations(publicRegistrations(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load teams.");
     } finally {
@@ -30,7 +34,7 @@ export function useTournamentRegistrations(tournamentId: string) {
       try {
         const data = await fetchTournamentRegistrations(tournamentId);
         if (!cancelled) {
-          setRegistrations(data.filter((r) => r.status === "Approved"));
+          setRegistrations(publicRegistrations(data));
         }
       } catch (err) {
         if (!cancelled) {

@@ -159,7 +159,7 @@ function TournamentDetailPage() {
   }, [tournament.name]);
 
   // Live registrations — the admin service is the single source of truth.
-  // We show only Approved teams (filtered inside the hook).
+  // Approved + Previously Competed entrants are shown (filtered inside the hook).
   const { registrations, isLoading: teamsLoading } = useTournamentRegistrations(tournament.id);
 
   // Convert approved registrations → TournamentTeam for the public TeamsTab.
