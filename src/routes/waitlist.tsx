@@ -83,10 +83,15 @@ function WaitlistPage() {
 
   function copyTemplate(game: string, fields: readonly string[]) {
     const text = `Application — ${game}\n\n${fields.join("\n")}`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedGame(game);
-      setTimeout(() => setCopiedGame(null), 2000);
-    });
+    void navigator.clipboard.writeText(text).then(
+      () => {
+        setCopiedGame(game);
+        setTimeout(() => setCopiedGame(null), 2000);
+      },
+      () => {
+        setCopiedGame(null);
+      },
+    );
   }
 
   return (

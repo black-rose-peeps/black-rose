@@ -96,12 +96,13 @@ function TeamsIndexPage() {
   const memberRole = session?.role;
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     if (openCreateFromUrl && !loading) {
       setCreateOpen(true);
-      navigate({ to: "/teams", search: { create: undefined }, replace: true });
+      navigate({ to: "/teams", search: { create: false }, replace: true });
     }
   }, [openCreateFromUrl, loading, navigate]);
 
@@ -117,12 +118,17 @@ function TeamsIndexPage() {
 
     let cancelled = false;
     setLoading(true);
+    setFetchError(null);
 
     fetchTeamsForUser(memberId)
       .then((data) => {
         if (!cancelled) setTeams(data);
       })
-      .catch((err) => console.error("[teams] fetchTeamsForUser failed:", err))
+      .catch((err) => {
+        if (!cancelled) {
+          setFetchError(err instanceof Error ? err.message : "Failed to load teams.");
+        }
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -165,7 +171,11 @@ function TeamsIndexPage() {
         }
       />
 
-      {teams.length > 0 ? (
+      {fetchError ? (
+        <TechPanel label="Teams" title="Could not load teams">
+          <p className="text-sm text-red-400">{fetchError}</p>
+        </TechPanel>
+      ) : teams.length > 0 ? (
         <div className="flex flex-col gap-5">
           {teams.map((team) => (
             <TeamSummaryCard

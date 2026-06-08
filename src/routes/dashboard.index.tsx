@@ -27,7 +27,33 @@ import { SOCIAL_PLATFORM_LABELS } from "@/features/member/constants";
 import { fetchMemberProfileById } from "@/features/member/services/member-profile.service";
 import { profileCompletionHint } from "@/features/member/utils/profile-completion";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
+import type { AppUser } from "@/features/auth/types";
 import type { MemberProfile } from "@/features/member/types";
+
+function profileFallbackFromSession(session: AppUser): MemberProfile {
+  const initials = session.displayName.slice(0, 2).toUpperCase();
+  return {
+    memberId: session.id,
+    slug: session.profileSlug ?? session.username,
+    displayName: session.displayName,
+    username: session.username,
+    headline: "Black Rose Member",
+    bio: "",
+    avatarInitials: initials,
+    avatarUrl: session.avatarUrl,
+    mainGame: "",
+    mainRole: "",
+    region: "",
+    isVerified: true,
+    isPublic: true,
+    socialLinks: [],
+    riotAccount: null,
+    tournamentHistory: [],
+    activeRegistrations: [],
+    upcomingMatches: [],
+    profileCompletion: 0,
+  };
+}
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -69,7 +95,9 @@ function DashboardPage() {
         }
 
         const memberProfile = await fetchMemberProfileById(updated.id);
-        if (!cancelled) setProfile(memberProfile);
+        if (!cancelled) {
+          setProfile(memberProfile ?? profileFallbackFromSession(updated));
+        }
       } catch {
         if (cancelled) return;
         if (!hasFullMemberAccess(current.role)) {
@@ -77,6 +105,7 @@ function DashboardPage() {
           return;
         }
         setLocalSession(current);
+        setProfile(profileFallbackFromSession(current));
       } finally {
         if (!cancelled) setIsSyncing(false);
       }

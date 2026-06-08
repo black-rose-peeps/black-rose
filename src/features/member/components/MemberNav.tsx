@@ -51,6 +51,7 @@ export function MemberNav() {
                   <Link
                     key={item.label}
                     to={item.to}
+                    search={item.to === "/teams" ? { create: false } : undefined}
                     className={`inline-flex items-center gap-1.5 transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
                   >
                     {Icon ? <Icon className="h-3 w-3" /> : null}

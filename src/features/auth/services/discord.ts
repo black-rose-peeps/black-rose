@@ -13,8 +13,7 @@
 import { DISCORD_LINKED_KEY, DISCORD_OAUTH_STATE_KEY } from "../constants";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID ?? "";
-const DISCORD_REDIRECT_URI =
-  import.meta.env.VITE_DISCORD_REDIRECT_URI ?? "http://localhost:5173/auth/callback";
+const DISCORD_REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI ?? "";
 const DISCORD_SCOPES = ["identify", "email", "connections"].join(" ");
 
 export function isDiscordOAuthConfigured(): boolean {

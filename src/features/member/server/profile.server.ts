@@ -11,6 +11,7 @@ import {
   type MemberSocialLinkRow,
 } from "../utils/build-member-profile";
 import { sanitizeSocialLinksForViewer } from "../utils/social-links";
+import { sanitizeHttpUrl } from "../utils/validate-social-url";
 import type { MemberProfile } from "../types";
 
 const DISCORD_CONNECTION_PLATFORMS: Record<string, SocialPlatform> = {
@@ -59,6 +60,8 @@ function connectionToUrl(type: string, name: string): string | null {
       return `https://www.instagram.com/${encoded}`;
     case "tiktok":
       return `https://www.tiktok.com/@${encoded}`;
+    case "facebook":
+      return `https://www.facebook.com/${encoded}`;
     default:
       return null;
   }
@@ -88,12 +91,18 @@ async function applyDiscordConnections(
   const supabase = getSupabaseAdmin();
 
   const discordProfileUrl = `https://discord.com/users/${discordId}`;
-  await supabase
+  const { error: discordLinkError } = await supabase
     .from("member_social_links")
     .update({ url: discordProfileUrl, is_public: true })
     .eq("member_id", memberId)
     .eq("platform", "discord")
     .is("url", null);
+
+  if (discordLinkError) {
+    throw new Error(
+      `Failed to sync Discord profile link for member ${memberId}: ${discordLinkError.message}`,
+    );
+  }
 
   for (const connection of connections) {
     if (connection.visibility !== 1) continue;
@@ -104,12 +113,18 @@ async function applyDiscordConnections(
     const url = connectionToUrl(connection.type, connection.name);
     if (!url) continue;
 
-    await supabase
+    const { error: linkError } = await supabase
       .from("member_social_links")
       .update({ url, is_public: true })
       .eq("member_id", memberId)
       .eq("platform", platform)
       .is("url", null);
+
+    if (linkError) {
+      throw new Error(
+        `Failed to sync ${platform} link for member ${memberId} (${connection.type}): ${linkError.message}`,
+      );
+    }
   }
 }
 
@@ -354,7 +369,7 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
     const { data: updatedRows, error: updateLinkError } = await supabase
       .from("member_social_links")
       .update({
-        url: link.url?.trim() || null,
+        url: sanitizeHttpUrl(link.url),
         is_public: link.isPublic,
         updated_at: new Date().toISOString(),
       })
@@ -368,7 +383,7 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
       const { error: insertError } = await supabase.from("member_social_links").insert({
         member_id: input.memberId,
         platform: link.platform,
-        url: link.url?.trim() || null,
+        url: sanitizeHttpUrl(link.url),
         is_public: link.isPublic,
       });
 

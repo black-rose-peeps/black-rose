@@ -8,6 +8,7 @@ import {
   Gamepad2,
   ArrowLeft,
   Pencil,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ function MemberProfilePage() {
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
 
@@ -50,6 +52,7 @@ function MemberProfilePage() {
     async function load() {
       setLoading(true);
       setNotFound(false);
+      setLoadError(null);
       try {
         const data = await fetchMemberProfileBySlug(slug, session?.id);
         if (cancelled) return;
@@ -59,6 +62,11 @@ function MemberProfilePage() {
         } else {
           setProfile(data);
         }
+      } catch (err) {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : "Failed to load profile.");
+        setNotFound(false);
+        setProfile(null);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -77,11 +85,36 @@ function MemberProfilePage() {
 
   if (loading) return <MemberProfileSkeleton />;
 
+  if (loadError) {
+    return (
+      <MemberPageLayout maxWidth="max-w-4xl">
+        <PanelEmptyState
+          icon={<AlertCircle className="h-10 w-10" />}
+          title="Could not load profile"
+          description={loadError}
+          action={
+            <Button
+              asChild
+              variant="outline"
+              className="clip-cta rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+            >
+              <Link to="/dashboard">Back to Dashboard</Link>
+            </Button>
+          }
+        />
+      </MemberPageLayout>
+    );
+  }
+
   if (notFound || !profile) {
     return (
       <MemberPageLayout maxWidth="max-w-4xl">
         <PanelEmptyState
-          icon={<span className="font-display text-5xl tracking-display text-muted-foreground/30">404</span>}
+          icon={
+            <span className="font-display text-5xl tracking-display text-muted-foreground/30">
+              404
+            </span>
+          }
           title="Member not found"
           action={
             <Button
@@ -98,23 +131,25 @@ function MemberProfilePage() {
   }
 
   const isOwnProfile = session?.id === profile.memberId;
+  const p = profile;
 
   async function handleAvatarChange(dataUrl: string) {
     if (!session || !isOwnProfile) return;
+    const previousAvatar = avatarUrl;
     setAvatarUrl(dataUrl);
     setAvatarSaving(true);
     try {
       const updated = await updateMemberProfile({
         memberId: session.id,
-        displayName: profile.displayName,
-        headline: profile.headline,
-        bio: profile.bio,
-        mainGame: profile.mainGame || null,
-        mainRole: profile.mainRole,
-        region: profile.region,
+        displayName: p.displayName,
+        headline: p.headline,
+        bio: p.bio,
+        mainGame: p.mainGame || null,
+        mainRole: p.mainRole,
+        region: p.region,
         avatarUrl: dataUrl,
-        isPublic: profile.isPublic,
-        socialLinks: profile.socialLinks.map((s) => ({
+        isPublic: p.isPublic,
+        socialLinks: p.socialLinks.map((s) => ({
           platform: s.platform,
           url: s.url,
           isPublic: s.isPublic,
@@ -122,6 +157,8 @@ function MemberProfilePage() {
       });
       setProfile(updated);
       setSession({ ...session, avatarUrl: updated.avatarUrl, profileSlug: updated.slug });
+    } catch {
+      setAvatarUrl(previousAvatar);
     } finally {
       setAvatarSaving(false);
     }
@@ -129,20 +166,21 @@ function MemberProfilePage() {
 
   async function handleAvatarRemove() {
     if (!session || !isOwnProfile) return;
+    const previousAvatar = avatarUrl;
     setAvatarUrl(null);
     setAvatarSaving(true);
     try {
       const updated = await updateMemberProfile({
         memberId: session.id,
-        displayName: profile.displayName,
-        headline: profile.headline,
-        bio: profile.bio,
-        mainGame: profile.mainGame || null,
-        mainRole: profile.mainRole,
-        region: profile.region,
+        displayName: p.displayName,
+        headline: p.headline,
+        bio: p.bio,
+        mainGame: p.mainGame || null,
+        mainRole: p.mainRole,
+        region: p.region,
         avatarUrl: null,
-        isPublic: profile.isPublic,
-        socialLinks: profile.socialLinks.map((s) => ({
+        isPublic: p.isPublic,
+        socialLinks: p.socialLinks.map((s) => ({
           platform: s.platform,
           url: s.url,
           isPublic: s.isPublic,
@@ -150,12 +188,13 @@ function MemberProfilePage() {
       });
       setProfile(updated);
       setSession({ ...session, avatarUrl: updated.avatarUrl });
+    } catch {
+      setAvatarUrl(previousAvatar);
     } finally {
       setAvatarSaving(false);
     }
   }
 
-  const p = profile;
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
     p.socialLinks.find((s) => s.platform === platform),
   ).filter((s): s is NonNullable<typeof s> => !!s && isSocialLinkPublic(s));
@@ -179,7 +218,7 @@ function MemberProfilePage() {
             variant="outline"
             className="clip-cta rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
           >
-            <Link to="/dashboard/profile">
+            <Link to="/dashboard/profile" search={{ tab: "identity" }}>
               <Pencil className="h-3.5 w-3.5" />
               Edit Profile
             </Link>
@@ -277,7 +316,9 @@ function MemberProfilePage() {
                       size="sm"
                       className="mt-1 rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
                     >
-                      <Link to="/dashboard/profile">Add Bio</Link>
+                      <Link to="/dashboard/profile" search={{ tab: "identity" }}>
+                        Add Bio
+                      </Link>
                     </Button>
                   }
                 />
@@ -308,7 +349,9 @@ function MemberProfilePage() {
                 <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                   Main Game
                 </dt>
-                <dd className="mt-0.5 font-display text-lg tracking-display">{p.mainGame || "—"}</dd>
+                <dd className="mt-0.5 font-display text-lg tracking-display">
+                  {p.mainGame || "—"}
+                </dd>
               </div>
               <div className="h-px bg-white/6" />
               <div>
@@ -350,9 +393,9 @@ function MemberProfilePage() {
                     <span className="text-xs text-muted-foreground">
                       {SOCIAL_PLATFORM_LABELS[platform]}
                     </span>
-                    {isPublic ? (
+                    {isPublic && link?.url ? (
                       <a
-                        href={link.url!}
+                        href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400 transition hover:text-emerald-300"

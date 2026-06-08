@@ -30,7 +30,7 @@ function AdminMemberDetailPage() {
       try {
         const [memberRow, profileRow] = await Promise.all([
           fetchMemberById(memberId),
-          fetchMemberProfileById(memberId).catch(() => null),
+          fetchMemberProfileById(memberId),
         ]);
         if (cancelled) return;
         if (!memberRow) {

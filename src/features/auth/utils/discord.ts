@@ -10,6 +10,10 @@ export function buildDiscordAvatarUrl(userId: string, avatarHash: string | null)
     return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.${ext}?size=256`;
   }
 
+  if (!isDiscordSnowflake(userId)) {
+    return "https://cdn.discordapp.com/embed/avatars/0.png";
+  }
+
   const index = Number((BigInt(userId) >> 22n) % 6n);
   return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
 }

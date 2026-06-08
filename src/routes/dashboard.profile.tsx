@@ -38,6 +38,7 @@ import {
 import { profileCompletionHint } from "@/features/member/utils/profile-completion";
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
+import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "identity" | "player" | "socials" | "privacy";
@@ -194,7 +195,7 @@ function ProfileEditPage() {
         isPublic,
         socialLinks: SOCIAL_PLATFORM_ORDER.map((platform) => ({
           platform,
-          url: socials[platform].url.trim() || null,
+          url: sanitizeHttpUrl(socials[platform].url),
           isPublic: socials[platform].isPublic,
         })),
       });

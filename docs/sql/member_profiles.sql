@@ -38,27 +38,27 @@ drop policy if exists "Allow member_profiles read" on public.member_profiles;
 drop policy if exists "Allow member_profiles insert" on public.member_profiles;
 drop policy if exists "Allow member_profiles update" on public.member_profiles;
 
+-- Public read only; writes go through service role (server functions).
 create policy "Allow member_profiles read"
-  on public.member_profiles for select to anon, authenticated using (true);
-
-create policy "Allow member_profiles insert"
-  on public.member_profiles for insert to anon, authenticated with check (true);
-
-create policy "Allow member_profiles update"
-  on public.member_profiles for update to anon, authenticated using (true) with check (true);
+  on public.member_profiles for select to anon, authenticated
+  using (is_public = true);
 
 drop policy if exists "Allow member_social_links read" on public.member_social_links;
 drop policy if exists "Allow member_social_links insert" on public.member_social_links;
 drop policy if exists "Allow member_social_links update" on public.member_social_links;
 
 create policy "Allow member_social_links read"
-  on public.member_social_links for select to anon, authenticated using (true);
-
-create policy "Allow member_social_links insert"
-  on public.member_social_links for insert to anon, authenticated with check (true);
-
-create policy "Allow member_social_links update"
-  on public.member_social_links for update to anon, authenticated using (true) with check (true);
+  on public.member_social_links for select to anon, authenticated
+  using (
+    is_public = true
+    and url is not null
+    and exists (
+      select 1
+      from public.member_profiles p
+      where p.member_id = member_social_links.member_id
+        and p.is_public = true
+    )
+  );
 
 -- Safe to re-run if member_social_links already existed without visibility
 alter table public.member_social_links
@@ -68,6 +68,8 @@ do $$
 begin
   alter publication supabase_realtime add table public.member_profiles;
 exception
-  when duplicate_object then null;
-  when others then raise notice 'member_profiles realtime: %', sqlerrm;
+  when duplicate_object then
+    raise notice 'member_profiles already in supabase_realtime publication';
+  when others then
+    raise;
 end $$;

@@ -6,5 +6,5 @@ exception
   when duplicate_object then
     raise notice 'members already in supabase_realtime publication';
   when others then
-    raise notice 'members realtime: %', sqlerrm;
+    raise;
 end $$;

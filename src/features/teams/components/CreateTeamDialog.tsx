@@ -21,7 +21,13 @@ import {
 import { createTeam } from "@/features/admin/features/teams/services/teams.service";
 import { fetchMemberProfileById } from "@/features/member/services/member-profile.service";
 import { techFieldClass } from "@/features/member/components/MemberShell";
-import { GAME_OPTIONS, MAX_TEAM_SIZE, MIN_TEAM_SIZE } from "@/features/teams/constants";
+import {
+  GAME_OPTIONS,
+  MAX_TEAM_SIZE,
+  MIN_TEAM_SIZE,
+  getRoleOptionsForGame,
+  normalizeGameKey,
+} from "@/features/teams/constants";
 import type { Team } from "@/features/teams/types";
 import type { TeamMemberRole } from "@/features/teams/types";
 
@@ -57,11 +63,15 @@ export function CreateTeamDialog({
     fetchMemberProfileById(memberId)
       .then((profile) => {
         if (cancelled || !profile) return;
-        if (profile.mainGame && GAME_OPTIONS.some((g) => g.value === profile.mainGame)) {
-          setGame(profile.mainGame as (typeof GAME_OPTIONS)[number]["value"]);
-        }
-        if (profile.mainRole) {
-          setProfileMainRole(profile.mainRole as TeamMemberRole);
+        const normalizedGame = normalizeGameKey(profile.mainGame);
+        if (normalizedGame && GAME_OPTIONS.some((g) => g.value === normalizedGame)) {
+          setGame(normalizedGame);
+          const roleOptions = getRoleOptionsForGame(normalizedGame);
+          if (profile.mainRole && roleOptions.includes(profile.mainRole as TeamMemberRole)) {
+            setProfileMainRole(profile.mainRole as TeamMemberRole);
+          } else {
+            setProfileMainRole("TBD");
+          }
         }
       })
       .catch(() => {});

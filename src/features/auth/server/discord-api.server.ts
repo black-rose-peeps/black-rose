@@ -1,5 +1,16 @@
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_USER_AGENT = "BlackRoseArena (https://blackrose.asia, 1.0.0)";
+const DISCORD_FETCH_TIMEOUT_MS = 5000;
+
+export class DiscordApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, detail: string) {
+    super(`Discord API request failed (${status}): ${detail}`);
+    this.name = "DiscordApiError";
+    this.status = status;
+  }
+}
 
 export interface DiscordOAuthUser {
   id: string;
@@ -51,6 +62,17 @@ function getDiscordRedirectUri(): string {
   return redirectUri;
 }
 
+async function discordFetch(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DISCORD_FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /** Exchange OAuth2 authorization code for an access token (server-only). */
 export async function exchangeDiscordCodeForToken(code: string): Promise<string> {
   const body = new URLSearchParams({
@@ -61,7 +83,7 @@ export async function exchangeDiscordCodeForToken(code: string): Promise<string>
     redirect_uri: getDiscordRedirectUri(),
   });
 
-  const response = await fetch(`${DISCORD_API_BASE}/oauth2/token`, {
+  const response = await discordFetch(`${DISCORD_API_BASE}/oauth2/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -72,7 +94,7 @@ export async function exchangeDiscordCodeForToken(code: string): Promise<string>
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Discord token exchange failed (${response.status}): ${detail}`);
+    throw new DiscordApiError(response.status, detail);
   }
 
   const payload = (await response.json()) as DiscordTokenResponse;
@@ -81,7 +103,7 @@ export async function exchangeDiscordCodeForToken(code: string): Promise<string>
 
 /** Fetch the authenticated Discord user profile. IDs are returned as strings (snowflakes). */
 export async function fetchDiscordUser(accessToken: string): Promise<DiscordOAuthUser> {
-  const response = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+  const response = await discordFetch(`${DISCORD_API_BASE}/users/@me`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "User-Agent": DISCORD_USER_AGENT,
@@ -90,7 +112,7 @@ export async function fetchDiscordUser(accessToken: string): Promise<DiscordOAut
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Discord profile fetch failed (${response.status}): ${detail}`);
+    throw new DiscordApiError(response.status, detail);
   }
 
   return (await response.json()) as DiscordOAuthUser;
@@ -98,7 +120,7 @@ export async function fetchDiscordUser(accessToken: string): Promise<DiscordOAut
 
 /** Fetch linked accounts (requires `connections` OAuth scope). */
 export async function fetchDiscordConnections(accessToken: string): Promise<DiscordConnection[]> {
-  const response = await fetch(`${DISCORD_API_BASE}/users/@me/connections`, {
+  const response = await discordFetch(`${DISCORD_API_BASE}/users/@me/connections`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "User-Agent": DISCORD_USER_AGENT,
@@ -107,7 +129,7 @@ export async function fetchDiscordConnections(accessToken: string): Promise<Disc
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Discord connections fetch failed (${response.status}): ${detail}`);
+    throw new DiscordApiError(response.status, detail);
   }
 
   return (await response.json()) as DiscordConnection[];

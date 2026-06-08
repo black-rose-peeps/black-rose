@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
 import { adminMemberToTeamMember } from "../utils";
@@ -55,6 +56,16 @@ async function fetchActiveTeamGamesForMember(memberId: string, excludeTeamId?: s
 
   if (teamErr) throw new Error(teamErr.message);
   return (teamRows ?? []).map((row) => row.game as string);
+}
+
+function countRosterMembers(members: TeamMember[]): number {
+  return members.filter((m) => m.status !== "removed").length;
+}
+
+async function assertRosterHasCapacity(team: Team): Promise<void> {
+  if (countRosterMembers(team.members) >= MAX_TEAM_SIZE) {
+    throw new Error(`Team is full (${MAX_TEAM_SIZE} members max).`);
+  }
 }
 
 async function assertMemberAvailableForGame(
@@ -156,7 +167,10 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
     status: "captain",
   });
 
-  if (memberErr) throw new Error(memberErr.message);
+  if (memberErr) {
+    await supabase.from("teams").delete().eq("id", teamRow.id);
+    throw new Error(memberErr.message);
+  }
 
   return fetchTeamWithMembers(teamRow.id as string);
 }
@@ -177,6 +191,7 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   if (onTeam) throw new Error(`${member.username} is already on this team.`);
 
   const team = await fetchTeamWithMembers(input.teamId);
+  await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
   const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
@@ -245,6 +260,7 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
   if (onTeam) throw new Error(`${member.username} is already on this team.`);
 
   const team = await fetchTeamWithMembers(input.teamId);
+  await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
   const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
@@ -288,11 +304,16 @@ export async function fetchTeamForUser(userId: string): Promise<Team | null> {
 }
 
 export async function fetchTeamById(teamId: string): Promise<Team | null> {
-  try {
-    return await fetchTeamWithMembers(teamId);
-  } catch {
-    return null;
-  }
+  const { data: teamRow, error: teamErr } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("id", teamId)
+    .maybeSingle();
+
+  if (teamErr) throw new Error(teamErr.message);
+  if (!teamRow) return null;
+
+  return fetchTeamWithMembers(teamId);
 }
 
 export async function updateTeam(
@@ -301,7 +322,12 @@ export async function updateTeam(
 ): Promise<Team> {
   const existing = await fetchTeamWithMembers(teamId);
   if (input.game !== existing.game) {
-    await assertMemberAvailableForGame(existing.captainUserId, input.game, teamId);
+    const activeMembers = existing.members.filter((m) => m.status !== "removed");
+    await Promise.all(
+      activeMembers.map((member) =>
+        assertMemberAvailableForGame(member.userId, input.game, teamId),
+      ),
+    );
   }
 
   const { error } = await supabase

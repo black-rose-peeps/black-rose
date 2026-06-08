@@ -77,10 +77,14 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-5">
           <div className="space-y-2">
-            <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+            <Label
+              htmlFor="team-name"
+              className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground"
+            >
               Team Name
             </Label>
             <Input
+              id="team-name"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -90,10 +94,14 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
           </div>
 
           <div className="space-y-2">
-            <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+            <Label
+              htmlFor="team-tag"
+              className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground"
+            >
               Team Tag (2–5 letters)
             </Label>
             <Input
+              id="team-tag"
               required
               value={tag}
               onChange={(e) => setTag(e.target.value.toUpperCase().slice(0, 5))}
@@ -105,7 +113,10 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
           </div>
 
           <div className="space-y-2">
-            <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+            <Label
+              htmlFor="team-game"
+              className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground"
+            >
               Primary Game
             </Label>
             <Select
@@ -113,7 +124,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
               onValueChange={(v) => setGame(v as Team["game"])}
               disabled={Boolean(team.activeTournamentId)}
             >
-              <SelectTrigger className={techFieldClass}>
+              <SelectTrigger id="team-game" className={techFieldClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">

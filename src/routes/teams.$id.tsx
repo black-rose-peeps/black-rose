@@ -47,6 +47,7 @@ function TeamDetailPage() {
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [inviteSearch, setInviteSearch] = useState("");
   const [invitePage, setInvitePage] = useState(1);
   const [inviteTotal, setInviteTotal] = useState(0);
@@ -58,22 +59,30 @@ function TeamDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [invitingId, setInvitingId] = useState<string | null>(null);
 
-  const loadTeam = useCallback(async (options?: { showLoader?: boolean }) => {
-    const showLoader = options?.showLoader ?? false;
-    if (showLoader) setLoading(true);
-    setNotFound(false);
-    try {
-      const data = await fetchTeamById(id);
-      if (!data) {
-        setNotFound(true);
+  const loadTeam = useCallback(
+    async (options?: { showLoader?: boolean }) => {
+      const showLoader = options?.showLoader ?? false;
+      if (showLoader) setLoading(true);
+      setNotFound(false);
+      setLoadError(null);
+      try {
+        const data = await fetchTeamById(id);
+        if (!data) {
+          setNotFound(true);
+          setTeam(null);
+        } else {
+          setTeam(data);
+        }
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : "Failed to load team.");
+        setNotFound(false);
         setTeam(null);
-      } else {
-        setTeam(data);
+      } finally {
+        if (showLoader) setLoading(false);
       }
-    } finally {
-      if (showLoader) setLoading(false);
-    }
-  }, [id]);
+    },
+    [id],
+  );
 
   useEffect(() => {
     if (!memberId) {
@@ -137,14 +146,40 @@ function TeamDetailPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <MemberPageLayout maxWidth="max-w-5xl">
+        <div className="flex flex-col items-center gap-4 py-24 text-center">
+          <p className="font-display text-2xl tracking-display">Could not load team</p>
+          <p className="text-sm text-muted-foreground">{loadError}</p>
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+          >
+            <Link to="/teams" search={{ create: false }}>
+              Back to Teams
+            </Link>
+          </Button>
+        </div>
+      </MemberPageLayout>
+    );
+  }
+
   if (notFound || !team) {
     return (
       <MemberPageLayout maxWidth="max-w-5xl">
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <p className="font-display text-5xl tracking-display">404</p>
           <p className="text-muted-foreground">Team not found.</p>
-          <Button asChild variant="outline" className="rounded-none font-tech text-[10px] uppercase tracking-wider-2">
-            <Link to="/teams">Back to Teams</Link>
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+          >
+            <Link to="/teams" search={{ create: false }}>
+              Back to Teams
+            </Link>
           </Button>
         </div>
       </MemberPageLayout>
@@ -159,8 +194,14 @@ function TeamDetailPage() {
       <MemberPageLayout maxWidth="max-w-5xl">
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <p className="text-muted-foreground">You are not a member of this team.</p>
-          <Button asChild variant="outline" className="rounded-none font-tech text-[10px] uppercase tracking-wider-2">
-            <Link to="/teams">Back to Teams</Link>
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+          >
+            <Link to="/teams" search={{ create: false }}>
+              Back to Teams
+            </Link>
           </Button>
         </div>
       </MemberPageLayout>
@@ -207,7 +248,7 @@ function TeamDetailPage() {
         variant="ghost"
         className="mb-6 -ml-2 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
       >
-        <Link to="/teams">
+        <Link to="/teams" search={{ create: false }}>
           <ArrowLeft className="h-3.5 w-3.5" />
           My Teams
         </Link>
@@ -291,9 +332,7 @@ function TeamDetailPage() {
         </div>
       </div>
 
-      {actionError && (
-        <p className="mb-4 text-sm text-red-400">{actionError}</p>
-      )}
+      {actionError && <p className="mb-4 text-sm text-red-400">{actionError}</p>}
 
       {inviteOpen && isCaptain && (
         <TechPanel
@@ -324,7 +363,7 @@ function TeamDetailPage() {
               placeholder="Search verified members…"
               value={inviteSearch}
               onChange={(e) => setInviteSearch(e.target.value)}
-              className="h-10 border-white/12 bg-white/[0.03] pl-9 rounded-none"
+              className="h-10 border-white/12 bg-white/3 pl-9 rounded-none"
             />
           </div>
 

@@ -29,8 +29,13 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
     let connections: Awaited<ReturnType<typeof fetchDiscordConnections>> = [];
     try {
       connections = await fetchDiscordConnections(accessToken);
-    } catch {
-      // connections scope may be missing on older authorizations — profile still works
+    } catch (err) {
+      const { DiscordApiError } = await import("../server/discord-api.server");
+      if (err instanceof DiscordApiError && (err.status === 401 || err.status === 403)) {
+        connections = [];
+      } else {
+        throw err;
+      }
     }
 
     const member = await upsertMemberFromDiscord(discordUser);

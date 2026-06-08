@@ -18,7 +18,7 @@ export function applyVerificationToSession(
     ...session,
     username: snapshot.username,
     discordId: snapshot.discordId ?? session.discordId,
-    role: memberStatusToUserRole(snapshot.status),
+    role: session.role === "admin" ? "admin" : memberStatusToUserRole(snapshot.status),
     registeredAt: snapshot.registeredAt,
   };
 }

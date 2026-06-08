@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
+import { escapePostgrestFilterValue, isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
 
 function throwMemberUniqueViolation(error: { message: string }): never {
@@ -140,11 +141,15 @@ export async function searchVerifiedMembersForInvite(
 
   const trimmed = query.trim();
   if (trimmed) {
-    builder = builder.or(`username.ilike.%${trimmed}%,discord_username.ilike.%${trimmed}%`);
+    const token = escapePostgrestFilterValue(trimmed);
+    builder = builder.or(`username.ilike."%${token}%",discord_username.ilike."%${token}%"`);
   }
 
   if (excludeIds.length > 0) {
-    builder = builder.not("id", "in", `(${excludeIds.map((id) => `"${id}"`).join(",")})`);
+    const validIds = excludeIds.filter(isUuid);
+    if (validIds.length > 0) {
+      builder = builder.not("id", "in", `(${validIds.map((id) => `"${id}"`).join(",")})`);
+    }
   }
 
   const { data, error, count } = await builder.range(from, to);
