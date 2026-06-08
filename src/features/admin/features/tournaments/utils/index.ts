@@ -14,12 +14,9 @@ import type { CreateTournamentFieldErrors } from "../types";
 
 export const BRACKET_TEAM_COUNT_SINGLE = 8;
 export const BRACKET_TEAM_COUNT_DOUBLE = 16;
+/** Typical Swiss field size; bracket manager unlocks at {@link BRACKET_MIN_TEAMS_SWISS}. */
 export const BRACKET_TEAM_COUNT_SWISS = 16;
-
-/** Returns true if n is a power of 2 and at least 2. */
-function isPowerOfTwo(n: number): boolean {
-  return n >= 2 && (n & (n - 1)) === 0;
-}
+export const BRACKET_MIN_TEAMS_SWISS = 8;
 
 export function requiredBracketTeamCount(format: string): number | null {
   if (isSingleEliminationFormat(format)) return BRACKET_TEAM_COUNT_SINGLE;
@@ -30,14 +27,13 @@ export function requiredBracketTeamCount(format: string): number | null {
 
 /**
  * Returns true when the bracket manager can be unlocked for the given team count.
- * Single elimination: any power-of-2 count ≥ 2.
- * Double elimination: any power-of-2 count ≥ 2.
+ * SE/DE pad to the next power of 2 inside BracketEngine (byes for empty slots).
+ * Swiss uses the exact approved entrant count (minimum 8).
  */
 export function supportsBracketManager(format: string, teamCount: number): boolean {
-  if (!isPowerOfTwo(teamCount)) return false;
-  if (isSingleEliminationFormat(format)) return teamCount >= 2;
-  if (isDoubleEliminationFormat(format)) return teamCount >= 2;
-  if (isSwissFormat(format)) return teamCount >= BRACKET_TEAM_COUNT_SWISS;
+  if (teamCount < 2) return false;
+  if (isSingleEliminationFormat(format) || isDoubleEliminationFormat(format)) return true;
+  if (isSwissFormat(format)) return teamCount >= BRACKET_MIN_TEAMS_SWISS;
   return false;
 }
 
@@ -167,16 +163,11 @@ export function formatBracketAvailability(tournament: AdminTournament, teamCount
   ) {
     return `Bracket manager supports single elimination, double elimination, and Swiss only. This event uses ${tournament.format}.`;
   }
-  if (isSwissFormat(tournament.format) && teamCount < BRACKET_TEAM_COUNT_SWISS) {
-    return `Swiss system requires at least ${BRACKET_TEAM_COUNT_SWISS} teams (currently ${teamCount}).`;
+  if (isSwissFormat(tournament.format) && teamCount < BRACKET_MIN_TEAMS_SWISS) {
+    return `Swiss system requires at least ${BRACKET_MIN_TEAMS_SWISS} teams (currently ${teamCount}).`;
   }
   if (teamCount < 2) {
     return `At least 2 teams are required to generate a bracket (currently ${teamCount}).`;
-  }
-  if ((teamCount & (teamCount - 1)) !== 0) {
-    const lower = Math.pow(2, Math.floor(Math.log2(teamCount)));
-    const upper = lower * 2;
-    return `Team count must be a power of 2 (e.g. ${lower} or ${upper}). Currently ${teamCount}.`;
   }
   return "";
 }

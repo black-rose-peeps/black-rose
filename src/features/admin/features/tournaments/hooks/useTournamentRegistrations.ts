@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { MockTeam } from "@/lib/mock-data";
+import { getSupabaseClient } from "@/lib/supabase";
 import { fetchTournamentRegistrations } from "../services/tournament-registrations.service";
 
 export function useTournamentRegistrations(tournamentId: string) {
@@ -7,16 +8,18 @@ export function useTournamentRegistrations(tournamentId: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const refetch = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const data = await fetchTournamentRegistrations(tournamentId);
       setRegistrations(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load registrations.");
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) setIsLoading(false);
     }
   }, [tournamentId]);
 
@@ -47,6 +50,30 @@ export function useTournamentRegistrations(tournamentId: string) {
       cancelled = true;
     };
   }, [tournamentId]);
+
+  // Keep in sync when registrations are approved/updated elsewhere (e.g. Participants page).
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    const channel = supabase
+      .channel(`tournament-regs:${tournamentId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tournament_registrations",
+          filter: `tournament_id=eq.${tournamentId}`,
+        },
+        () => {
+          void refetch({ silent: true });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [tournamentId, refetch]);
 
   const prependRegistration = useCallback((registration: MockTeam) => {
     setRegistrations((prev) => [registration, ...prev]);

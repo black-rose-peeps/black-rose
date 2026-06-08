@@ -575,6 +575,7 @@ export function BracketManager({
 
     try {
       await updateTournamentStatus(tournamentId, "Live");
+      onTournamentStatusChange?.("Live");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to set tournament status to Live.";
@@ -626,8 +627,21 @@ export function BracketManager({
   );
 
   const commitSwissUpdate = useCallback(
-    (updatedMatches: ManagedMatch[], nextSwiss: SwissBracketState) => {
-      const applied = applySwissMatchUpdates(updatedMatches, roundMetas, nextSwiss, teamNames);
+    (
+      updatedMatches: ManagedMatch[],
+      nextSwiss: SwissBracketState,
+      editedMatchId?: string,
+    ) => {
+      const editedRound = editedMatchId
+        ? updatedMatches.find((match) => match.id === editedMatchId)?.swissRound
+        : undefined;
+      const applied = applySwissMatchUpdates(
+        updatedMatches,
+        roundMetas,
+        nextSwiss,
+        teamNames,
+        editedRound,
+      );
       const mergedFormats = { ...defaultRoundFormats(applied.roundMetas), ...roundFormats };
       setSwissState(applied.swiss);
       setRoundMetas(applied.roundMetas);
@@ -690,7 +704,7 @@ export function BracketManager({
           scoreB,
           fmt,
         );
-        commitSwissUpdate(updated, nextSwiss);
+        commitSwissUpdate(updated, nextSwiss, matchId);
         return;
       }
 
@@ -725,7 +739,7 @@ export function BracketManager({
             teamNames,
             matchId,
           );
-          commitSwissUpdate(updated, nextSwiss);
+          commitSwissUpdate(updated, nextSwiss, matchId);
           return;
         }
 
@@ -741,7 +755,7 @@ export function BracketManager({
           scoreB,
           fmt,
         );
-        commitSwissUpdate(updated, nextSwiss);
+        commitSwissUpdate(updated, nextSwiss, matchId);
         return;
       }
 

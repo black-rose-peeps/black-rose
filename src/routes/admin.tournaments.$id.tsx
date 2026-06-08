@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { TournamentMetaStrip } from "@/features/admin/components/TournamentMetaStrip";
 import { Panel, StatusPill } from "@/features/admin/components/ui";
@@ -47,8 +48,14 @@ import {
   formatBracketAvailability,
   supportsBracketManager as canUseBracketManager,
 } from "@/features/admin/features/tournaments/utils";
-import { isBracketParticipantStatus } from "@/features/admin/features/participants/constants/registration-status";
+import {
+  isBracketSeedingStatus,
+  REGISTRATION_STATUS_SORT_ORDER,
+  tournamentHasUnresolvedRegistrations,
+} from "@/features/admin/features/participants/constants/registration-status";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
+import { useTableSort } from "@/features/admin/hooks/useTableSort";
+import { compareByOrder } from "@/features/admin/utils/sort-comparators";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import {
@@ -139,7 +146,25 @@ function TournamentDetailPage() {
     refetch: refetchRegistrations,
   } = useTournamentRegistrations(tournamentId);
 
-  const teamsPagination = usePagination(teams);
+  const registrationStatusOrder = useMemo(() => REGISTRATION_STATUS_SORT_ORDER, []);
+  const teamSortComparators = useMemo(
+    () => ({
+      status: (a: MockTeam, b: MockTeam) =>
+        compareByOrder(registrationStatusOrder, a.status, b.status),
+    }),
+    [registrationStatusOrder],
+  );
+  const {
+    sortedItems: sortedTeams,
+    sortKey: teamSortKey,
+    direction: teamSortDirection,
+    toggleSort: toggleTeamSort,
+  } = useTableSort(teams, teamSortComparators);
+  const teamsPagination = usePagination(sortedTeams);
+
+  useEffect(() => {
+    teamsPagination.setPage(1);
+  }, [teamSortKey, teamSortDirection, teamsPagination.setPage]);
   const [openTeam, setOpenTeam] = useState<MockTeam | null>(null);
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
   const [isAddPlayersOpen, setIsAddPlayersOpen] = useState(false);
@@ -183,7 +208,7 @@ function TournamentDetailPage() {
 
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
 
-  const bracketTeams = teams.filter((t) => isBracketParticipantStatus(t.status));
+  const bracketTeams = teams.filter((t) => isBracketSeedingStatus(t.status, tournament.status));
   const computedTeams = bracketTeams.map((t) => ({
     id: t.id,
     name: t.name,
@@ -192,10 +217,17 @@ function TournamentDetailPage() {
     players: t.members.map((m) => ({ ign: m.ign, role: m.role })),
   }));
 
-  const bracketNotice = formatBracketAvailability(tournament, computedTeams.length);
+  const hasUnresolvedRegistrations = tournamentHasUnresolvedRegistrations(
+    teams,
+    tournament.status,
+  );
+  const bracketNotice = hasUnresolvedRegistrations
+    ? "Approve or reject all pending participant registrations before opening bracket management."
+    : formatBracketAvailability(tournament, computedTeams.length);
   const supportsBracketManager =
-    canUseBracketManager(tournament.format, computedTeams.length) ||
-    (isTournamentConcluded(tournament.status) && computedTeams.length >= 2);
+    !hasUnresolvedRegistrations &&
+    (canUseBracketManager(tournament.format, computedTeams.length) ||
+      (isTournamentConcluded(tournament.status) && computedTeams.length >= 2));
   const soloEvent = isSoloTournament(tournament);
   const capLabel = registrationCapLabel(tournament.participationType);
   const wwmLabel = wwmModeLabel(tournament.wwmMode);
@@ -389,18 +421,30 @@ function TournamentDetailPage() {
                       <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                         {soloEvent ? "Player" : "Team"}
                       </TableHead>
-                      <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                        Captain
-                      </TableHead>
-                      <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                        Members
-                      </TableHead>
+                      {soloEvent ? (
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          Discord
+                        </TableHead>
+                      ) : (
+                        <>
+                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                            Captain
+                          </TableHead>
+                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                            Members
+                          </TableHead>
+                        </>
+                      )}
                       <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                         Registered
                       </TableHead>
-                      <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                        Status
-                      </TableHead>
+                      <SortableTableHead
+                        label="Status"
+                        sortKey="status"
+                        activeKey={teamSortKey}
+                        direction={teamSortDirection}
+                        onSort={toggleTeamSort}
+                      />
                       <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
                         Actions
                       </TableHead>
@@ -419,12 +463,20 @@ function TournamentDetailPage() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-4 w-20" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-4 w-16" />
-                          </TableCell>
+                          {soloEvent ? (
+                            <TableCell>
+                              <Skeleton className="h-4 w-24" />
+                            </TableCell>
+                          ) : (
+                            <>
+                              <TableCell>
+                                <Skeleton className="h-4 w-20" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-4 w-16" />
+                              </TableCell>
+                            </>
+                          )}
                           <TableCell>
                             <Skeleton className="h-4 w-20" />
                           </TableCell>
@@ -438,14 +490,21 @@ function TournamentDetailPage() {
                       ))
                     ) : teams.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                        <TableCell
+                          colSpan={soloEvent ? 5 : 6}
+                          className="py-12 text-center text-muted-foreground"
+                        >
                           {soloEvent
                             ? "No players registered yet. Use Add Players to register members directly."
                             : "No teams registered yet. Use Add Teams to register rosters from the Teams tab."}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      teamsPagination.paginatedItems.map((team) => (
+                      teamsPagination.paginatedItems.map((team) => {
+                        const soloDiscord =
+                          team.members[0]?.discord ?? team.captain ?? "—";
+
+                        return (
                         <TableRow key={team.id} className="transition-colors hover:bg-secondary/40">
                           <TableCell>
                             <div className="flex items-center gap-3">
@@ -456,17 +515,31 @@ function TournamentDetailPage() {
                                 <div className="font-display text-base tracking-wider-2">
                                   {team.name}
                                 </div>
-                                <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
-                                  {team.members.length}{" "}
-                                  {team.members.length === 1 ? "player" : "players"}
-                                </div>
+                                {soloEvent ? (
+                                  <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+                                    Member registration
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+                                    {team.members.length}{" "}
+                                    {team.members.length === 1 ? "player" : "players"}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>{team.captain}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {team.members.length} members
-                          </TableCell>
+                          {soloEvent ? (
+                            <TableCell className="text-muted-foreground">
+                              {soloDiscord.startsWith("@") ? soloDiscord : `@${soloDiscord}`}
+                            </TableCell>
+                          ) : (
+                            <>
+                              <TableCell>{team.captain}</TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {team.members.length} members
+                              </TableCell>
+                            </>
+                          )}
                           <TableCell className="text-muted-foreground">
                             {team.registrationDate}
                           </TableCell>
@@ -501,7 +574,8 @@ function TournamentDetailPage() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
