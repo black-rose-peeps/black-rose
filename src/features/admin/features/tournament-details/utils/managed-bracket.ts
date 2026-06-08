@@ -160,7 +160,14 @@ export function defaultPlayoffRound1Pairings(qualifiedTeams: string[]): PlayoffR
 }
 
 /** Single-elimination playoff bracket with admin-configured round-1 pairings. */
-export function buildPlayoffBracket(round1Pairings: PlayoffRound1Pairing[]): {
+export interface BuildPlayoffBracketOptions {
+  includeThirdPlaceMatch?: boolean;
+}
+
+export function buildPlayoffBracket(
+  round1Pairings: PlayoffRound1Pairing[],
+  options?: BuildPlayoffBracketOptions,
+): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
 } {
@@ -250,6 +257,43 @@ export function buildPlayoffBracket(round1Pairings: PlayoffRound1Pairing[]): {
       r1[i].scoreA = 0;
       r1[i].scoreB = 1;
       r1[i].confirmed = true;
+    }
+  }
+
+  if (options?.includeThirdPlaceMatch && totalRounds >= 2) {
+    const semiRoundIndex = totalRounds - 2;
+    const semiRoundId = `po-r${semiRoundIndex}`;
+    const semiMatches = matches.filter((match) => match.roundId === semiRoundId);
+
+    if (semiMatches.length === 2) {
+      const thirdMatchId = "po-3rd-m0";
+      const thirdRoundId = "po-3rd";
+
+      matches.push({
+        id: thirdMatchId,
+        roundId: thirdRoundId,
+        roundLabel: "Playoffs — Third Place",
+        label: "3rd Place Match",
+        bracketSide: "playoff",
+        teamA: null,
+        teamB: null,
+        scoreA: 0,
+        scoreB: 0,
+        winner: null,
+        confirmed: false,
+        winnerNext: null,
+        loserNext: null,
+      });
+
+      roundMetas.push({
+        id: thirdRoundId,
+        label: "Playoffs — Third Place",
+        side: "playoff",
+        matchIds: [thirdMatchId],
+      });
+
+      link(matches, semiMatches[0].id, thirdMatchId, "teamA", true);
+      link(matches, semiMatches[1].id, thirdMatchId, "teamB", true);
     }
   }
 

@@ -34,6 +34,8 @@ export interface SwissBracketState {
   playoffsSeededTeams?: string[];
   /** Frozen Swiss records for standings after playoffs begin. */
   groupStageRecords?: Record<string, SwissTeamRecord>;
+  /** Whether a bronze match was generated for semifinal losers. */
+  playoffThirdPlaceMatch?: boolean;
 }
 
 export function getSwissPhase(swiss: SwissBracketState): SwissPhase {
@@ -559,12 +561,17 @@ export function validatePlayoffRound1Pairings(
   return null;
 }
 
+export interface StartSwissPlayoffsOptions {
+  includeThirdPlaceMatch?: boolean;
+}
+
 export function startSwissPlayoffs(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
   swiss: SwissBracketState,
   teamNames: string[],
   round1Pairings: PlayoffRound1Pairing[],
+  options?: StartSwissPlayoffsOptions,
 ): { matches: ManagedMatch[]; roundMetas: BracketRoundMeta[]; swiss: SwissBracketState } {
   if (
     getSwissPhase(swiss) === "playoffs" ||
@@ -584,7 +591,8 @@ export function startSwissPlayoffs(
     throw new Error(validationError);
   }
 
-  const playoff = buildPlayoffBracket(round1Pairings);
+  const includeThirdPlaceMatch = options?.includeThirdPlaceMatch ?? false;
+  const playoff = buildPlayoffBracket(round1Pairings, { includeThirdPlaceMatch });
 
   return {
     matches: [...matches, ...playoff.matches],
@@ -594,6 +602,7 @@ export function startSwissPlayoffs(
       phase: "playoffs",
       playoffsSeededTeams: qualified,
       groupStageRecords: { ...swiss.records },
+      playoffThirdPlaceMatch: includeThirdPlaceMatch,
     },
   };
 }

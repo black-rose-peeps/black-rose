@@ -143,7 +143,7 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
         <h2 className="font-display text-xl font-bold tracking-wider-2">Prize Distribution</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Define podium slots for this event. The bracket podium only shows these placements —
-          default tiers are Champion, Runner-up, and Bronze.
+          default tiers are Champion, Runner-up, and 3rd Place.
         </p>
       </div>
 
@@ -176,7 +176,7 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
                 <Input
                   value={tier.place}
                   onChange={(event) => updateTier(tier.id, { place: event.target.value })}
-                  placeholder="Champion, Runner-up, Bronze…"
+                  placeholder="Champion, Runner-up, 3rd Place…"
                 />
               </div>
               <div>

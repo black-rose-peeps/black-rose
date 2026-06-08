@@ -655,7 +655,7 @@ export function BracketManager({
   }, [swissState, teamNames]);
 
   const applyPlayoffPairings = useCallback(
-    (round1Pairings: PlayoffRound1Pairing[]) => {
+    (round1Pairings: PlayoffRound1Pairing[], includeThirdPlaceMatch = false) => {
       if (!swissState) return;
 
       try {
@@ -665,6 +665,7 @@ export function BracketManager({
           swissState,
           teamNames,
           round1Pairings,
+          { includeThirdPlaceMatch },
         );
         const playoffMetas = next.roundMetas.filter((meta) => meta.side === "playoff");
         const mergedFormats = {
@@ -1192,17 +1193,31 @@ export function BracketManager({
                       onPickWinner={handlePickWinner}
                     />
                     {getSwissPhase(swissState) === "playoffs" && (
-                      <div className="space-y-4 border-t border-border pt-8">
-                        <div>
-                          <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
-                            Championship
-                          </p>
-                          <h3 className="font-display text-xl tracking-display">Playoff Bracket</h3>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            Single elimination among Swiss qualifiers — results determine prize
-                            placements.
-                          </p>
+                      <div className="space-y-5">
+                        <div className="relative overflow-hidden border border-white/10 bg-[oklch(0.08_0_0)]">
+                          <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
+                          <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-linear-to-b from-amber-300/60 via-white/10 to-transparent" />
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/15 to-transparent" />
+
+                          <div className="relative px-5 py-4">
+                            <p className="font-tech text-[10px] uppercase tracking-wider-2 text-white/40">
+                              Championship Bracket
+                            </p>
+                            <h3 className="mt-1 font-display text-xl tracking-display text-white">
+                              Playoff Stage
+                            </h3>
+                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/50">
+                              Single elimination among Swiss qualifiers. Record match results below
+                              to advance teams and determine final placements.
+                              {swissState.playoffThirdPlaceMatch && (
+                                <span className="mt-1 block text-orange-300/75">
+                                  3rd place match is active for semifinal losers.
+                                </span>
+                              )}
+                            </p>
+                          </div>
                         </div>
+
                         <ManagedBracketView
                           matches={managedMatches}
                           roundMetas={roundMetas.filter((meta) => meta.side === "playoff")}

@@ -101,7 +101,7 @@ export const Route = createFileRoute("/tournaments/$id")({
 
     // Fall back to the live service for tournaments without a detail record
     const summary = await fetchTournamentById(params.id);
-    if (!summary || summary.status === "Draft") throw notFound();
+    if (!summary || summary.status === "Draft" || summary.status === "Archived") throw notFound();
 
     return { tournament: detailFromSummary(summary) };
   },
@@ -138,7 +138,7 @@ function TournamentDetailPage() {
     fetchTournamentById(id)
       .then((summary) => {
         if (cancelled) return;
-        if (!summary || summary.status === "Draft") {
+        if (!summary || summary.status === "Draft" || summary.status === "Archived") {
           navigate({ to: "/tournaments" });
           return;
         }
@@ -182,7 +182,7 @@ function TournamentDetailPage() {
     let cancelled = false;
 
     function applySummary(summary: MockTournament) {
-      if (cancelled || summary.status === "Draft") return;
+      if (cancelled || summary.status === "Draft" || summary.status === "Archived") return;
       setTournament((prev) => ({
         ...detailFromSummary(summary, liveBracket ?? prev.bracket),
         teams: prev.teams,

@@ -90,7 +90,7 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
   );
 
   if (thirdPlaceMatch?.winner) {
-    placements.push({ rank: 3, label: "Bronze", team: thirdPlaceMatch.winner });
+    placements.push({ rank: 3, label: "3rd Place", team: thirdPlaceMatch.winner });
   } else {
     const loserSet = new Set(semifinalLosers);
     const decidingMatch = findMatch(
@@ -104,7 +104,7 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
         loserSet.has(match.teamB),
     );
     if (decidingMatch?.winner) {
-      placements.push({ rank: 3, label: "Bronze", team: decidingMatch.winner });
+      placements.push({ rank: 3, label: "3rd Place", team: decidingMatch.winner });
     }
   }
 
@@ -135,7 +135,7 @@ export function deriveDoubleElimPlacements(matches: ManagedMatch[]): TournamentP
   );
   const lowerFinalLoser = lowerFinal ? loserOf(lowerFinal) : null;
   if (lowerFinalLoser) {
-    placements.push({ rank: 3, label: "Bronze", team: lowerFinalLoser });
+    placements.push({ rank: 3, label: "3rd Place", team: lowerFinalLoser });
   }
 
   return placements;
@@ -276,7 +276,7 @@ export function mergePlacementsWithPrizes(
 export const DEFAULT_PRIZE_TIERS: PrizeTier[] = [
   { place: "Champion", prize: "" },
   { place: "Runner-up", prize: "" },
-  { place: "Bronze", prize: "" },
+  { place: "3rd Place", prize: "" },
 ];
 
 export function prizeTiersToBreakdown(tiers: PrizeTier[]): PrizeTier[] {

@@ -10,6 +10,8 @@ interface SwissPhaseBannerProps {
   qualifiedCount?: number;
   /** When true, playoffs messaging reflects a concluded tournament. */
   completed?: boolean;
+  /** Swiss playoff bracket includes a 3rd place match between semifinal losers. */
+  thirdPlaceMatch?: boolean;
   onStartPlayoffs?: () => void;
   startDisabled?: boolean;
   className?: string;
@@ -20,6 +22,7 @@ export function SwissPhaseBanner({
   variant,
   qualifiedCount = 0,
   completed = false,
+  thirdPlaceMatch = false,
   onStartPlayoffs,
   startDisabled,
   className,
@@ -178,6 +181,11 @@ export function SwissPhaseBanner({
               ? "Results are locked. Review the championship bracket below for final standings and prizes."
               : "Manage the championship bracket below to record results and crown a winner."}
           </p>
+          {thirdPlaceMatch && (
+            <p className="mt-2 text-xs text-orange-300/70">
+              3rd place match enabled — semifinal losers will meet after semis are decided.
+            </p>
+          )}
         </div>
       </div>
     </div>
