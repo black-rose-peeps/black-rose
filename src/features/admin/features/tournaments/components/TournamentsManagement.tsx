@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
@@ -6,19 +7,22 @@ import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDi
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AdminManagementTable,
+  adminTableCellClip,
+  adminTableTextTruncate,
+} from "@/features/admin/components/AdminManagementTable";
 import { AdminSection } from "@/features/admin/components/AdminSection";
+import { TOURNAMENTS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
+import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { StatusPill } from "@/features/admin/components/ui";
 import { usePagination } from "@/features/admin/hooks/usePagination";
+import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
 import { GAME_LABELS } from "@/features/tournaments/constants";
+import type { TournamentStatus } from "@/lib/mock-data";
 import { useTournaments } from "../hooks";
 import type { AdminTournament } from "../types";
 import { CreateTournamentModal } from "./CreateTournamentModal";
@@ -38,7 +42,35 @@ export function TournamentsManagement() {
     error: deleteError,
     resetError: resetDeleteError,
   } = useDeleteTournament();
-  const pagination = usePagination(tournaments);
+  const tournamentStatusOrder = useMemo(
+    () =>
+      [
+        "Draft",
+        "Registration Open",
+        "Registration Closed",
+        "Live",
+        "Completed",
+        "Archived",
+      ] as const satisfies readonly TournamentStatus[],
+    [],
+  );
+  const sortComparators = useMemo(
+    () => ({
+      format: (a: AdminTournament, b: AdminTournament) => compareStrings(a.format, b.format),
+      status: (a: AdminTournament, b: AdminTournament) =>
+        compareByOrder(tournamentStatusOrder, a.status, b.status),
+    }),
+    [tournamentStatusOrder],
+  );
+  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(
+    tournaments,
+    sortComparators,
+  );
+  const pagination = usePagination(sortedItems);
+
+  useEffect(() => {
+    pagination.setPage(1);
+  }, [sortKey, direction, pagination.setPage]);
 
   function handleCreated(tournament: AdminTournament) {
     prependTournament(tournament);
@@ -53,7 +85,7 @@ export function TournamentsManagement() {
       <AdminSection
         eyebrow="Events"
         title="Tournaments"
-        description="Create and manage competitive events. Single-elimination brackets use the bracket manager when you have 16 teams registered."
+        description="Create and manage competitive events. Use bracket management for single elimination, double elimination, and Swiss formats once enough teams are approved."
         actions={
           <Button
             onClick={() => setIsCreateOpen(true)}
@@ -74,24 +106,32 @@ export function TournamentsManagement() {
         )}
 
         <div className="p-6 pt-4">
-          <Table>
+          <AdminManagementTable columnWidths={TOURNAMENTS_TABLE_COLUMNS}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Tournament
                 </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Format
-                </TableHead>
+                <SortableTableHead
+                  label="Format"
+                  sortKey="format"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Prize
                 </TableHead>
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Teams
                 </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Status
-                </TableHead>
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
                 <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
                   Actions
                 </TableHead>
@@ -148,16 +188,22 @@ export function TournamentsManagement() {
                       }
                     }}
                   >
-                    <TableCell>
+                    <TableCell className={adminTableCellClip}>
                       <div>
-                        <div className="font-display text-base tracking-wider">{t.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className={cn("font-display text-base tracking-wider", adminTableTextTruncate)}>
+                          {t.name}
+                        </div>
+                        <div className={cn("text-xs text-muted-foreground", adminTableTextTruncate)}>
                           {GAME_LABELS[t.game]} · {t.region}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{t.format}</TableCell>
-                    <TableCell className="text-sm">{t.prizePool}</TableCell>
+                    <TableCell className={cn("text-sm text-muted-foreground", adminTableCellClip)}>
+                      <span className={adminTableTextTruncate}>{t.format}</span>
+                    </TableCell>
+                    <TableCell className={cn("text-sm", adminTableCellClip)}>
+                      <span className={adminTableTextTruncate}>{t.prizePool}</span>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {t.teamsRegistered}/{t.teamCap}
                     </TableCell>
@@ -181,7 +227,7 @@ export function TournamentsManagement() {
                 ))
               )}
             </TableBody>
-          </Table>
+          </AdminManagementTable>
           <AdminTablePagination
             page={pagination.page}
             totalPages={pagination.totalPages}

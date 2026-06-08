@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,12 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { matchesAdminSearch } from "@/features/admin/utils/search";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchTeams } from "@/features/admin/features/teams/services/teams.service";
 import type { Team } from "@/features/teams/types";
+import { canTeamRegisterForTournament } from "@/features/tournaments/utils/team-tournament-eligibility";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
+import { fetchTournaments } from "../services/tournaments.service";
 import { useAddTeamToTournament } from "../hooks/useAddTeamToTournament";
 
 interface AddTeamToTournamentDialogProps {
@@ -35,12 +40,16 @@ export function AddTeamToTournamentDialog({
   onAdded,
 }: AddTeamToTournamentDialogProps) {
   const [rosterTeams, setRosterTeams] = useState<Team[]>([]);
+  const [tournamentStatusById, setTournamentStatusById] = useState<Map<string, string>>(
+    () => new Map(),
+  );
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [teamsLoadError, setTeamsLoadError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
-  const [partialErrors, setPartialErrors] = useState<
-    { rosterTeamId: string; message: string }[]
-  >([]);
+  const [partialErrors, setPartialErrors] = useState<{ rosterTeamId: string; message: string }[]>(
+    [],
+  );
   const { submitMany, isSubmitting, error, resetError } = useAddTeamToTournament(tournament.id);
 
   const registeredRosterIds = useMemo(
@@ -53,12 +62,17 @@ export function AddTeamToTournamentDialog({
     return rosterTeams.filter((team) => {
       if (registeredRosterIds.has(team.id)) return false;
       if (team.game !== "Multi" && team.game !== tournament.game) return false;
-      if (team.activeTournamentId && team.activeTournamentId !== tournament.id) {
-        return false;
-      }
-      return true;
+      if (!canTeamRegisterForTournament(team, tournament.id, tournamentStatusById)) return false;
+      return matchesAdminSearch(searchQuery, team.name, team.tag, team.game);
     });
-  }, [rosterTeams, registeredRosterIds, tournament.game, tournament.id]);
+  }, [
+    rosterTeams,
+    registeredRosterIds,
+    tournament.game,
+    tournament.id,
+    tournamentStatusById,
+    searchQuery,
+  ]);
 
   const slotsRemaining = Math.max(0, tournament.teamCap - registeredTeams.length);
   const atCap = slotsRemaining === 0;
@@ -71,12 +85,16 @@ export function AddTeamToTournamentDialog({
   useEffect(() => {
     if (!open) return;
     setSelectedTeamIds(new Set());
+    setSearchQuery("");
     setPartialErrors([]);
     resetError();
     setTeamsLoadError(null);
     setTeamsLoading(true);
-    fetchTeams()
-      .then(setRosterTeams)
+    Promise.all([fetchTeams(), fetchTournaments()])
+      .then(([teams, tournaments]) => {
+        setRosterTeams(teams);
+        setTournamentStatusById(new Map(tournaments.map((entry) => [entry.id, entry.status])));
+      })
       .catch((err) => {
         setRosterTeams([]);
         setTeamsLoadError(err instanceof Error ? err.message : "Failed to load teams.");
@@ -149,8 +167,10 @@ export function AddTeamToTournamentDialog({
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Add Teams</DialogTitle>
           <DialogDescription>
-            Select one or more rosters from Teams to register in {tournament.name}.{" "}
-            {registeredTeams.length}/{tournament.teamCap} slots used
+            Select one or more rosters from Teams to register in {tournament.name}. Teams may only
+            be active in one live or upcoming event at a time — they become eligible again once
+            their current tournament is completed. {registeredTeams.length}/{tournament.teamCap}{" "}
+            slots used
             {!atCap && ` · ${slotsRemaining} slot${slotsRemaining === 1 ? "" : "s"} left`}.
           </DialogDescription>
         </DialogHeader>
@@ -209,11 +229,24 @@ export function AddTeamToTournamentDialog({
                 )}
               </div>
 
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name, tag, or game…"
+                  disabled={isSubmitting}
+                  className="bg-background/50 pl-9"
+                />
+              </div>
+
               {eligibleTeams.length === 0 ? (
                 <p className="rounded-md border border-dashed border-border bg-background/50 px-3 py-6 text-center text-sm text-muted-foreground">
                   {teamsLoadError
                     ? "Could not load teams."
-                    : "No eligible teams — create one under Teams or free up rosters already in another event."}
+                    : searchQuery.trim()
+                      ? "No teams match your search."
+                      : "No eligible teams — create one under Teams or free up rosters already in another event."}
                 </p>
               ) : (
                 <ScrollArea className="h-64 rounded-md border border-border bg-background/50">

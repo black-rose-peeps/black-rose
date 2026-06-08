@@ -1,17 +1,22 @@
 import { supabase } from "@/lib/supabase";
-import type { BracketRound } from "@/features/tournaments/types";
+import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
+import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
+import type { SwissBracketState } from "../utils/managed-swiss-bracket";
 
 export type BracketStateStatus = "not_generated" | "draft" | "published";
 
 /** Full snapshot persisted to Supabase — public rounds + admin editing state. */
 export interface PersistedBracketPayload {
   rounds: BracketRound[];
+  prizeBreakdown?: PrizeTier[];
+  placements?: TournamentPlacement[];
   admin?: {
     managedMatches: ManagedMatch[];
     roundMetas: BracketRoundMeta[];
     roundFormats: Record<string, BestOfFormat>;
     assignmentTeamIds: Array<string | null>;
+    swiss?: SwissBracketState;
   };
 }
 
@@ -29,6 +34,8 @@ function parseBracketData(raw: unknown): PersistedBracketPayload | null {
   if (!Array.isArray(data.rounds)) return null;
   return {
     rounds: data.rounds as BracketRound[],
+    prizeBreakdown: data.prizeBreakdown as PrizeTier[] | undefined,
+    placements: data.placements as TournamentPlacement[] | undefined,
     admin: data.admin as PersistedBracketPayload["admin"],
   };
 }
@@ -60,11 +67,19 @@ export async function fetchBracketState(
 export async function fetchPublishedBracket(
   tournamentId: string,
 ): Promise<BracketRound[] | null> {
+  const payload = await fetchPublishedBracketPayload(tournamentId);
+  return payload?.rounds ?? null;
+}
+
+/** Full published snapshot — rounds, placements, and prize metadata. */
+export async function fetchPublishedBracketPayload(
+  tournamentId: string,
+): Promise<PersistedBracketPayload | null> {
   const state = await fetchBracketState(tournamentId);
   if (!state || state.status !== "published" || !state.payload?.rounds.length) {
     return null;
   }
-  return state.payload.rounds;
+  return state.payload;
 }
 
 /** Upsert published bracket snapshot and lock seeding. */

@@ -40,7 +40,6 @@ function DashboardPage() {
 
   if (!session || session.role === "not_verified") return null;
 
-  // TODO: replace with real /api/profile/me fetch
   const p = mockMemberProfile;
   const addedSocials = p.socialLinks.filter((s) => s.url).length;
   const totalSocials = p.socialLinks.length;

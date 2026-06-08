@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -6,19 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
 import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AdminManagementTable,
+  adminTableCellClip,
+  adminTableTextTruncate,
+} from "@/features/admin/components/AdminManagementTable";
 import { AdminSection } from "@/features/admin/components/AdminSection";
+import { MEMBERS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
+import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { usePagination } from "@/features/admin/hooks/usePagination";
-import { useMembers } from "../hooks";
+import { useTableSort } from "@/features/admin/hooks/useTableSort";
+import { useMembers, useUpdateMemberVerification } from "../hooks";
 import type { AdminMember } from "../types";
+import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
 import { memberStatusBadgeVariant } from "../utils";
 import { CreateMemberModal } from "./CreateMemberModal";
 import { EditMemberModal } from "./EditMemberModal";
@@ -26,6 +29,12 @@ import { useDeleteMember } from "../hooks/useDeleteMember";
 
 export function MembersManagement() {
   const { members, isLoading, error, prependMember, replaceMember, removeMember } = useMembers();
+  const {
+    updatingId,
+    error: verificationError,
+    updateVerification,
+    resetError: resetVerificationError,
+  } = useUpdateMemberVerification();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
@@ -35,7 +44,22 @@ export function MembersManagement() {
     error: deleteError,
     resetError: resetDeleteError,
   } = useDeleteMember();
-  const pagination = usePagination(members);
+  const verificationOrder = useMemo(() => ["Not Verified", "Verified"] as const, []);
+  const sortComparators = useMemo(
+    () => ({
+      registered: (a: AdminMember, b: AdminMember) =>
+        compareStrings(a.registeredAt, b.registeredAt),
+      verification: (a: AdminMember, b: AdminMember) =>
+        compareByOrder(verificationOrder, a.status, b.status),
+    }),
+    [verificationOrder],
+  );
+  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(members, sortComparators);
+  const pagination = usePagination(sortedItems);
+
+  useEffect(() => {
+    pagination.setPage(1);
+  }, [sortKey, direction, pagination.setPage]);
 
   function handleCreated(member: AdminMember) {
     prependMember(member);
@@ -59,16 +83,16 @@ export function MembersManagement() {
           </Button>
         }
       >
-        {error && (
+        {(error || verificationError) && (
           <div className="px-6 pt-4">
             <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{error ?? verificationError}</AlertDescription>
             </Alert>
           </div>
         )}
 
         <div className="p-6 pt-4">
-          <Table>
+          <AdminManagementTable columnWidths={MEMBERS_TABLE_COLUMNS}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
@@ -77,12 +101,20 @@ export function MembersManagement() {
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                   Discord
                 </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Registered
-                </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Verification
-                </TableHead>
+                <SortableTableHead
+                  label="Registered"
+                  sortKey="registered"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
+                <SortableTableHead
+                  label="Verification"
+                  sortKey="verification"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
                 <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
                   Actions
                 </TableHead>
@@ -112,7 +144,11 @@ export function MembersManagement() {
                       <Skeleton className="h-5 w-14 rounded-full" />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Skeleton className="ml-auto h-8 w-8 rounded-md" />
+                      <div className="ml-auto flex items-center justify-end gap-2">
+                        <Skeleton className="h-7 w-16 rounded-md" />
+                        <Skeleton className="h-7 w-16 rounded-md" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -125,18 +161,27 @@ export function MembersManagement() {
               ) : (
                 pagination.paginatedItems.map((member) => (
                   <TableRow key={member.id} className="transition-colors hover:bg-secondary/40">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-8 w-8 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
+                    <TableCell className={adminTableCellClip}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
                           {member.username.slice(0, 2).toUpperCase()}
                         </div>
-                        <span className="font-medium">{member.username}</span>
+                        <span className={cn("font-medium", adminTableTextTruncate)}>
+                          {member.username}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="text-sm">@{member.discordUsername}</div>
+                    <TableCell className={adminTableCellClip}>
+                      <div className={cn("text-sm", adminTableTextTruncate)}>
+                        @{member.discordUsername}
+                      </div>
                       {member.discordId && (
-                        <div className="text-xs text-muted-foreground font-mono">
+                        <div
+                          className={cn(
+                            "text-xs text-muted-foreground font-mono",
+                            adminTableTextTruncate,
+                          )}
+                        >
                           {member.discordId}
                         </div>
                       )}
@@ -150,19 +195,58 @@ export function MembersManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <AdminRowActions
-                        onEdit={() => setEditingMember(member)}
-                        onDelete={() => {
-                          resetDeleteError();
-                          setDeletingMember(member);
-                        }}
-                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={updatingId !== null || member.status === "Verified"}
+                          className="font-tech text-[10px] uppercase tracking-wider-2"
+                          onClick={async () => {
+                            resetVerificationError();
+                            try {
+                              const updated = await updateVerification(member.id, "Verified");
+                              replaceMember(updated);
+                            } catch {
+                              // verificationError shown in alert
+                            }
+                          }}
+                        >
+                          Verify
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={updatingId !== null || member.status === "Not Verified"}
+                          className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
+                          onClick={async () => {
+                            resetVerificationError();
+                            try {
+                              const updated = await updateVerification(member.id, "Not Verified");
+                              replaceMember(updated);
+                            } catch {
+                              // verificationError shown in alert
+                            }
+                          }}
+                        >
+                          Unverify
+                        </Button>
+                        <AdminRowActions
+                          groupLabel="Member"
+                          onEdit={() => setEditingMember(member)}
+                          onDelete={() => {
+                            resetDeleteError();
+                            setDeletingMember(member);
+                          }}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
-          </Table>
+          </AdminManagementTable>
           <AdminTablePagination
             page={pagination.page}
             totalPages={pagination.totalPages}

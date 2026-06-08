@@ -7,12 +7,14 @@ const GAME_ACCENT: Record<Tournament["game"], string> = {
   Valorant: "from-red-500/20 via-red-500/5 to-transparent",
   "League of Legends": "from-blue-500/20 via-blue-500/5 to-transparent",
   "Teamfight Tactics": "from-violet-500/20 via-violet-500/5 to-transparent",
+  "Where Winds Meet": "from-cyan-500/20 via-cyan-500/5 to-transparent",
 };
 
 const GAME_TAG_COLOR: Record<Tournament["game"], string> = {
   Valorant: "text-red-400",
   "League of Legends": "text-blue-400",
   "Teamfight Tactics": "text-violet-400",
+  "Where Winds Meet": "text-cyan-400",
 };
 
 const CTA_LABEL: Record<Tournament["status"], string> = {

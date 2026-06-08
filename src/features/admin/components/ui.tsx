@@ -10,7 +10,12 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border border-border bg-card shadow-lg ${className}`}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-lg border border-border bg-card shadow-lg",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -88,6 +93,8 @@ export function StatusPill({ status }: { status: string }) {
         return "border-emerald-400/40 bg-emerald-400/10 text-emerald-400";
       case "pending":
         return "border-amber-400/40 bg-amber-400/10 text-amber-400";
+      case "previously competed":
+        return "border-violet-400/40 bg-violet-400/10 text-violet-300";
       case "rejected":
       case "banned":
         return "border-red-400/40 bg-red-400/10 text-red-400";
@@ -130,14 +137,27 @@ export function StatCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          {change && <p className="text-xs text-muted-foreground mt-1">{change}</p>}
+    <div className="relative overflow-hidden rounded-lg border border-white/[0.08] bg-[oklch(0.09_0_0)] p-6 shadow-lg">
+      <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
+
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+            {title}
+          </p>
+          <p className="mt-2 font-display text-3xl font-semibold tracking-wider text-foreground">
+            {value}
+          </p>
+          {change && (
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/90">{change}</p>
+          )}
         </div>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
+        {icon && (
+          <div className="grid h-10 w-10 shrink-0 place-items-center border border-white/10 bg-white/[0.04] text-muted-foreground">
+            {icon}
+          </div>
+        )}
       </div>
     </div>
   );

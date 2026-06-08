@@ -1,6 +1,5 @@
 // Mock team data — frontend placeholder only
 import type { Team } from "@/features/teams/types";
-import { generateMockRosterTeams } from "./generate-mock-rosters";
 
 const novellinoEsports: Team = {
   id: "team-ne",
@@ -75,21 +74,22 @@ const novellinoEsports: Team = {
   ],
 };
 
-/** 48 roster teams for admin Teams console pagination testing. */
-export const mockTeams: Team[] = [novellinoEsports, ...generateMockRosterTeams(47)];
+export const mockTeams: Team[] = [novellinoEsports];
 
 export function getTeamByUserId(userId: string): Team | null {
   return (
-    mockTeams.find((t) =>
-      t.members.some(
-        (m) => m.userId === userId && (m.status === "captain" || m.status === "active"),
+    mockTeams.find((team) =>
+      team.members.some(
+        (member) =>
+          member.userId === userId &&
+          (member.status === "captain" || member.status === "active"),
       ),
     ) ?? null
   );
 }
 
 export function getTeamById(id: string): Team | null {
-  return mockTeams.find((t) => t.id === id) ?? null;
+  return mockTeams.find((team) => team.id === id) ?? null;
 }
 
 export const mockRegisteredMembers = [

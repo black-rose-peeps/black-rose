@@ -1,4 +1,5 @@
-import { Minus, Plus } from "lucide-react";
+import { Crown, Minus, Plus } from "lucide-react";
+import { ChampionBanner } from "./ChampionBanner";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -24,6 +25,7 @@ interface ManagedBracketViewProps {
   roundFormats: Record<string, BestOfFormat>;
   teams: TournamentTeam[];
   isDoubleElim: boolean;
+  readOnly?: boolean;
   onFormatChange: (roundId: string, format: BestOfFormat) => void;
   onScoreChange: (matchId: string, scoreA: number, scoreB: number) => void;
   onPickWinner: (matchId: string, winner: string) => void;
@@ -35,6 +37,7 @@ export function ManagedBracketView({
   roundFormats,
   teams,
   isDoubleElim,
+  readOnly = false,
   onFormatChange,
   onScoreChange,
   onPickWinner,
@@ -48,6 +51,7 @@ export function ManagedBracketView({
   }
 
   const teamByName = new Map(teams.map((t) => [t.name, t]));
+  const championship = findChampionship(matches);
 
   if (isDoubleElim) {
     const upperRounds = roundMetas.filter((r) => r.side === "upper" || r.side === "grand");
@@ -55,12 +59,20 @@ export function ManagedBracketView({
 
     return (
       <div className="space-y-8">
+        {championship && (
+          <ChampionBanner
+            champion={championship.winner}
+            team={teamByName.get(championship.winner)}
+            variant={championship.variant}
+          />
+        )}
         <BracketSection
           title="Upper Bracket"
           roundMetas={upperRounds}
           matches={matches}
           roundFormats={roundFormats}
           teamByName={teamByName}
+          readOnly={readOnly}
           onFormatChange={onFormatChange}
           onScoreChange={onScoreChange}
           onPickWinner={onPickWinner}
@@ -71,6 +83,7 @@ export function ManagedBracketView({
           matches={matches}
           roundFormats={roundFormats}
           teamByName={teamByName}
+          readOnly={readOnly}
           onFormatChange={onFormatChange}
           onScoreChange={onScoreChange}
           onPickWinner={onPickWinner}
@@ -85,19 +98,29 @@ export function ManagedBracketView({
 
   return (
     <div className="space-y-3">
+      {championship && (
+        <ChampionBanner
+          champion={championship.winner}
+          team={teamByName.get(championship.winner)}
+          variant={championship.variant}
+        />
+      )}
       <BracketSection
         roundMetas={roundMetas}
         matches={matches}
         roundFormats={roundFormats}
         teamByName={teamByName}
+        readOnly={readOnly}
         onFormatChange={onFormatChange}
         onScoreChange={onScoreChange}
         onPickWinner={onPickWinner}
       />
-      <p className="text-xs text-muted-foreground">
-        Winners advance automatically. Use +/- or click the dot to set or clear a winner — scores
-        stay editable after a match is final.
-      </p>
+      {!readOnly && (
+        <p className="text-xs text-muted-foreground">
+          Winners advance automatically. Use +/- or click the dot to set or clear a winner — scores
+          stay editable after a match is final.
+        </p>
+      )}
     </div>
   );
 }
@@ -108,6 +131,7 @@ function BracketSection({
   matches,
   roundFormats,
   teamByName,
+  readOnly,
   onFormatChange,
   onScoreChange,
   onPickWinner,
@@ -117,6 +141,7 @@ function BracketSection({
   matches: ManagedMatch[];
   roundFormats: Record<string, BestOfFormat>;
   teamByName: Map<string, TournamentTeam>;
+  readOnly?: boolean;
   onFormatChange: (roundId: string, format: BestOfFormat) => void;
   onScoreChange: (matchId: string, scoreA: number, scoreB: number) => void;
   onPickWinner: (matchId: string, winner: string) => void;
@@ -180,6 +205,7 @@ function BracketSection({
                   </span>
                   <Select
                     value={format}
+                    disabled={readOnly}
                     onValueChange={(v) => onFormatChange(round.id, v as BestOfFormat)}
                   >
                     <SelectTrigger className="h-7 text-[10px] font-tech uppercase tracking-wider bg-background/50">
@@ -198,23 +224,50 @@ function BracketSection({
                   const matchFormat = roundFormats[round.id] ?? "BO3";
                   const required = winsRequired(matchFormat);
                   const matchDecided = match.confirmed && match.winner !== null;
+                  const isChampionship =
+                    match.bracketSide === "grand" ||
+                    match.roundLabel === "Final" ||
+                    match.roundLabel === "Playoffs — Final";
+                  const championCrowned = isChampionship && matchDecided && !!match.winner;
 
                   return (
                     <div
                       key={match.id}
                       className={cn(
                         "absolute bg-card border",
-                        sideBorder,
-                        matchDecided && "ring-1 ring-emerald-400/30",
+                        isChampionship ? "border-amber-400/55" : sideBorder,
+                        matchDecided && !isChampionship && "ring-1 ring-emerald-400/30",
+                        championCrowned &&
+                          "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
                       )}
                       style={{ left: `${x}px`, top: `${y}px`, width: CARD_W }}
                     >
-                      <div className="flex items-center justify-between border-b border-border/60 px-2 py-1">
-                        <span className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+                      <div
+                        className={cn(
+                          "flex items-center justify-between border-b px-2 py-1",
+                          isChampionship
+                            ? "border-amber-400/25 bg-amber-400/5"
+                            : "border-border/60",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex items-center gap-1 text-[10px] font-tech uppercase tracking-wider",
+                            isChampionship ? "text-amber-300/90" : "text-muted-foreground",
+                          )}
+                        >
+                          {championCrowned && <Crown className="h-3 w-3" />}
                           {match.label}
                         </span>
-                        <span className="text-[9px] font-tech text-muted-foreground/70">
-                          {matchDecided ? "Final" : matchFormat}
+                        <span
+                          className={cn(
+                            "text-[9px] font-tech uppercase tracking-wider",
+                            championCrowned
+                              ? "text-amber-300/80"
+                              : "text-muted-foreground/70",
+                          )}
+                        >
+                          {championCrowned ? "Champion" : matchDecided ? "Final" : matchFormat}
                         </span>
                       </div>
 
@@ -224,8 +277,9 @@ function BracketSection({
                         required={required}
                         isWinner={!!match.teamA && match.winner === match.teamA}
                         isLoser={matchDecided && !!match.teamA && match.winner !== match.teamA}
+                        isChampionRow={championCrowned && match.winner === match.teamA}
                         team={match.teamA ? teamByName.get(match.teamA) : undefined}
-                        disabled={!match.teamA || !match.teamB}
+                        disabled={readOnly || !match.teamA || !match.teamB}
                         onIncrement={() => onScoreChange(match.id, match.scoreA + 1, match.scoreB)}
                         onDecrement={() =>
                           onScoreChange(match.id, Math.max(0, match.scoreA - 1), match.scoreB)
@@ -238,8 +292,9 @@ function BracketSection({
                         required={required}
                         isWinner={!!match.teamB && match.winner === match.teamB}
                         isLoser={matchDecided && !!match.teamB && match.winner !== match.teamB}
+                        isChampionRow={championCrowned && match.winner === match.teamB}
                         team={match.teamB ? teamByName.get(match.teamB) : undefined}
-                        disabled={!match.teamA || !match.teamB}
+                        disabled={readOnly || !match.teamA || !match.teamB}
                         onIncrement={() => onScoreChange(match.id, match.scoreA, match.scoreB + 1)}
                         onDecrement={() =>
                           onScoreChange(match.id, match.scoreA, Math.max(0, match.scoreB - 1))
@@ -258,12 +313,37 @@ function BracketSection({
   );
 }
 
+function findChampionship(
+  matches: ManagedMatch[],
+): { winner: string; variant: "grand" | "final" } | null {
+  const grand = matches.find(
+    (match) => match.bracketSide === "grand" && match.confirmed && match.winner,
+  );
+  if (grand?.winner) return { winner: grand.winner, variant: "grand" };
+
+  const final = matches.find(
+    (match) =>
+      (match.roundLabel === "Final" || match.roundLabel === "Playoffs — Final") &&
+      match.confirmed &&
+      match.winner,
+  );
+  if (final?.winner) {
+    return {
+      winner: final.winner,
+      variant: final.roundLabel === "Playoffs — Final" ? "final" : "final",
+    };
+  }
+
+  return null;
+}
+
 function ManagedTeamRow({
   name,
   score,
   required,
   isWinner,
   isLoser,
+  isChampionRow,
   team,
   disabled,
   onIncrement,
@@ -275,6 +355,7 @@ function ManagedTeamRow({
   required: number;
   isWinner: boolean;
   isLoser?: boolean;
+  isChampionRow?: boolean;
   team?: TournamentTeam;
   disabled: boolean;
   onIncrement: () => void;
@@ -290,7 +371,8 @@ function ManagedTeamRow({
     <div
       className={cn(
         "flex items-center gap-1 border-b border-border/40 px-2 py-1.5 last:border-0",
-        isWinner && "bg-emerald-400/10",
+        isChampionRow && "bg-amber-400/15",
+        isWinner && !isChampionRow && "bg-emerald-400/10",
         isLoser && "bg-muted/15 opacity-80",
         isTbd && "bg-muted/25",
       )}
@@ -301,11 +383,13 @@ function ManagedTeamRow({
         disabled={controlsDisabled}
         className={cn(
           "h-2 w-2 shrink-0 rounded-full border",
-          isWinner
-            ? "border-emerald-400 bg-emerald-400"
-            : isTbd
-              ? "border-muted-foreground/25 bg-muted-foreground/15"
-              : "border-muted-foreground/40 hover:bg-muted/30",
+          isChampionRow
+            ? "border-amber-300 bg-amber-300"
+            : isWinner
+              ? "border-emerald-400 bg-emerald-400"
+              : isTbd
+                ? "border-muted-foreground/25 bg-muted-foreground/15"
+                : "border-muted-foreground/40 hover:bg-muted/30",
           controlsDisabled && "opacity-40",
         )}
         title={

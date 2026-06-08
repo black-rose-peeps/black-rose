@@ -36,7 +36,7 @@ export interface Team {
   id: string;
   name: string;
   tag: string;
-  game: "Valorant" | "League of Legends" | "Teamfight Tactics" | "Multi";
+  game: "Valorant" | "League of Legends" | "Teamfight Tactics" | "Where Winds Meet" | "Multi";
   captainUserId: string;
   members: TeamMember[];
   createdAt: string;

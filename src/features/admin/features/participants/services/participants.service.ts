@@ -19,13 +19,16 @@ export async function fetchParticipants(): Promise<ParticipantRow[]> {
     fetchTournaments(),
   ]);
 
-  const tournamentNameById = new Map(tournaments.map((t) => [t.id, t.name]));
+  const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
 
-  return registrations.map((registration) => ({
-    ...registration,
-    tournamentName:
-      tournamentNameById.get(registration.tournamentId) ?? "Unknown tournament",
-  }));
+  return registrations.map((registration) => {
+    const tournament = tournamentById.get(registration.tournamentId);
+    return {
+      ...registration,
+      tournamentName: tournament?.name ?? "Unknown tournament",
+      tournamentStatus: tournament?.status ?? null,
+    };
+  });
 }
 
 export async function setParticipantStatus(
@@ -39,12 +42,14 @@ export async function setParticipantStatus(
     return {
       ...updated,
       tournamentName: tournament?.name ?? "Unknown tournament",
+      tournamentStatus: tournament?.status ?? null,
     };
   } catch (err) {
     console.warn("[participants] Failed to load tournament name after status update:", err);
     return {
       ...updated,
       tournamentName: "Unknown tournament",
+      tournamentStatus: null,
     };
   }
 }

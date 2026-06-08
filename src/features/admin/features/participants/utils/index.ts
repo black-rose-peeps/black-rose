@@ -8,6 +8,8 @@ export function registrationStatusVariant(
       return "default";
     case "Pending":
       return "secondary";
+    case "Previously Competed":
+      return "outline";
     case "Rejected":
       return "destructive";
     default:

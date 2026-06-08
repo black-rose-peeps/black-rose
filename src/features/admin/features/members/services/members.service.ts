@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { AdminMember, CreateMemberInput } from "../types";
+import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { rowToAdminMember } from "../utils";
 
 function throwMemberUniqueViolation(error: { message: string }): never {
@@ -53,6 +53,21 @@ export async function createMember(input: CreateMemberInput): Promise<AdminMembe
     throw new Error(error.message);
   }
 
+  return rowToAdminMember(data);
+}
+
+export async function updateMemberVerificationStatus(
+  id: string,
+  status: MemberVerificationStatus,
+): Promise<AdminMember> {
+  const { data, error } = await supabase
+    .from("members")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
   return rowToAdminMember(data);
 }
 

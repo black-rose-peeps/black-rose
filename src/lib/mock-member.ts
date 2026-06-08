@@ -1,6 +1,8 @@
 // Mock member profile data — frontend placeholder only
 import type { MemberProfile } from "@/features/member/types";
 
+export const MOCK_VERIFIED_USER_ID = "mock_verified_001";
+
 export const mockMemberProfile: MemberProfile = {
   slug: "CoyHa",
   displayName: "CoyHa",
@@ -52,12 +54,15 @@ export const mockMemberProfile: MemberProfile = {
   tournamentHistory: ["Valorant Onyx Series — Top 8", "Valorant Spring Open — Champions"],
 };
 
-/**
- * Look up a member profile by slug.
- * Replace with a real API call when the backend is ready.
- */
+/** Look up a member profile by slug (mock data until profile API is ready). */
 export function getMemberBySlug(slug: string): MemberProfile | null {
-  if (slug.trim().toLowerCase() === mockMemberProfile.slug.trim().toLowerCase())
+  if (slug.trim().toLowerCase() === mockMemberProfile.slug.trim().toLowerCase()) {
     return mockMemberProfile;
+  }
+  return null;
+}
+
+export function getMemberProfileByUserId(userId: string): MemberProfile | null {
+  if (userId === MOCK_VERIFIED_USER_ID) return mockMemberProfile;
   return null;
 }

@@ -1,6 +1,6 @@
 import type { MockTournament, TournamentStatus } from "@/lib/mock-data";
 import type { TournamentFormat } from "@/features/tournaments/constants/formats";
-import type { TournamentGame } from "@/features/tournaments/types";
+import type { ParticipationType, TournamentGame, WwmMode } from "@/features/tournaments/types";
 import type { PrizeCurrency } from "@/lib/currency";
 
 export type AdminTournament = MockTournament;
@@ -15,6 +15,8 @@ export interface CreateTournamentInput {
   teamCap: number;
   region: string;
   status?: TournamentStatus;
+  participationType: ParticipationType;
+  wwmMode?: WwmMode | null;
 }
 
 export interface CreateTournamentFormValues {
@@ -28,6 +30,7 @@ export interface CreateTournamentFormValues {
   teamCap: string;
   region: string;
   status: TournamentStatus;
+  wwmMode: WwmMode | "";
 }
 
 export type CreateTournamentFieldErrors = Partial<Record<keyof CreateTournamentFormValues, string>>;

@@ -3,12 +3,18 @@ import type { TournamentFormat } from "@/features/tournaments/constants/formats"
 import {
   isDoubleEliminationFormat,
   isSingleEliminationFormat,
+  isSwissFormat,
 } from "@/features/tournaments/constants/formats";
+import {
+  defaultWwmModeForGame,
+  resolveParticipationType,
+} from "@/features/tournaments/types/participation";
 import type { AdminTournament, CreateTournamentFormValues, CreateTournamentInput } from "../types";
 import type { CreateTournamentFieldErrors } from "../types";
 
 export const BRACKET_TEAM_COUNT_SINGLE = 8;
 export const BRACKET_TEAM_COUNT_DOUBLE = 16;
+export const BRACKET_TEAM_COUNT_SWISS = 16;
 
 /** Returns true if n is a power of 2 and at least 2. */
 function isPowerOfTwo(n: number): boolean {
@@ -18,6 +24,7 @@ function isPowerOfTwo(n: number): boolean {
 export function requiredBracketTeamCount(format: string): number | null {
   if (isSingleEliminationFormat(format)) return BRACKET_TEAM_COUNT_SINGLE;
   if (isDoubleEliminationFormat(format)) return BRACKET_TEAM_COUNT_DOUBLE;
+  if (isSwissFormat(format)) return BRACKET_TEAM_COUNT_SWISS;
   return null;
 }
 
@@ -30,6 +37,7 @@ export function supportsBracketManager(format: string, teamCount: number): boole
   if (!isPowerOfTwo(teamCount)) return false;
   if (isSingleEliminationFormat(format)) return teamCount >= 2;
   if (isDoubleEliminationFormat(format)) return teamCount >= 2;
+  if (isSwissFormat(format)) return teamCount >= BRACKET_TEAM_COUNT_SWISS;
   return false;
 }
 
@@ -46,10 +54,25 @@ export function tournamentToFormValues(tournament: AdminTournament): CreateTourn
     teamCap: String(tournament.teamCap),
     region: tournament.region,
     status: tournament.status,
+    wwmMode: tournament.wwmMode ?? "",
   };
 }
 
+export function applyGameToParticipationForm(
+  game: CreateTournamentFormValues["game"],
+): Pick<CreateTournamentFormValues, "wwmMode"> {
+  if (game === "Where Winds Meet") {
+    return { wwmMode: defaultWwmModeForGame(game) ?? "group_strategy" };
+  }
+  return { wwmMode: "" };
+}
+
 export function formValuesToCreateInput(values: CreateTournamentFormValues): CreateTournamentInput {
+  const wwmMode =
+    values.game === "Where Winds Meet"
+      ? (values.wwmMode || "group_strategy")
+      : null;
+
   return {
     name: values.name.trim(),
     game: values.game,
@@ -60,6 +83,8 @@ export function formValuesToCreateInput(values: CreateTournamentFormValues): Cre
     teamCap: Number.parseInt(values.teamCap, 10),
     region: values.region,
     status: values.status,
+    participationType: resolveParticipationType(values.game, wwmMode),
+    wwmMode,
   };
 }
 
@@ -82,6 +107,8 @@ export function buildTournamentFromInput(input: CreateTournamentInput): AdminTou
     teamCap: input.teamCap,
     format: input.format,
     region: input.region,
+    participationType: input.participationType,
+    wwmMode: input.wwmMode ?? null,
   };
 }
 
@@ -116,9 +143,13 @@ export function validateCreateTournamentForm(
   }
 
   if (!values.teamCap.trim()) {
-    errors.teamCap = "Team cap is required.";
+    errors.teamCap = "Registration cap is required.";
   } else if (Number.isNaN(teamCap) || teamCap < 4 || teamCap > 64) {
-    errors.teamCap = "Team cap must be between 4 and 64.";
+    errors.teamCap = "Registration cap must be between 4 and 64.";
+  }
+
+  if (values.game === "Where Winds Meet" && !values.wwmMode) {
+    errors.wwmMode = "Select a Where Winds Meet mode.";
   }
 
   return errors;
@@ -131,9 +162,13 @@ export function hasFormErrors(errors: CreateTournamentFieldErrors): boolean {
 export function formatBracketAvailability(tournament: AdminTournament, teamCount: number): string {
   if (
     !isSingleEliminationFormat(tournament.format) &&
-    !isDoubleEliminationFormat(tournament.format)
+    !isDoubleEliminationFormat(tournament.format) &&
+    !isSwissFormat(tournament.format)
   ) {
-    return `Bracket manager supports single and double elimination only. This event uses ${tournament.format}.`;
+    return `Bracket manager supports single elimination, double elimination, and Swiss only. This event uses ${tournament.format}.`;
+  }
+  if (isSwissFormat(tournament.format) && teamCount < BRACKET_TEAM_COUNT_SWISS) {
+    return `Swiss system requires at least ${BRACKET_TEAM_COUNT_SWISS} teams (currently ${teamCount}).`;
   }
   if (teamCount < 2) {
     return `At least 2 teams are required to generate a bracket (currently ${teamCount}).`;

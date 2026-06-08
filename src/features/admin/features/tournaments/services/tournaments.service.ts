@@ -1,5 +1,9 @@
+import { concludeTournamentRegistrations } from "./tournament-registrations.service";
 import { supabase } from "@/lib/supabase";
 import type { MockTournament } from "@/lib/mock-data";
+import type { PrizeTier } from "@/features/tournaments/types";
+import type { ParticipationType, WwmMode } from "@/features/tournaments/types/participation";
+import { resolveParticipationType } from "@/features/tournaments/types/participation";
 import type { CreateTournamentInput } from "../types";
 
 function isMissingRpcError(message: string): boolean {
@@ -10,20 +14,48 @@ function isMissingRpcError(message: string): boolean {
   );
 }
 
+function parsePrizeBreakdown(raw: unknown): PrizeTier[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const tiers = raw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const tier = entry as Record<string, unknown>;
+      const place = typeof tier.place === "string" ? tier.place : "";
+      const prize = typeof tier.prize === "string" ? tier.prize : "";
+      if (!place && !prize) return null;
+      return { place, prize };
+    })
+    .filter((tier): tier is PrizeTier => !!tier);
+  return tiers.length > 0 ? tiers : undefined;
+}
+
 function rowToTournament(row: Record<string, unknown>): MockTournament {
+  const game = row.game as MockTournament["game"];
+  const wwmMode = (row.wwm_mode as WwmMode | null) ?? null;
+  const participationType =
+    (row.participation_type as ParticipationType | undefined) ??
+    resolveParticipationType(game, wwmMode);
+
   return {
     id: row.id as string,
     name: row.name as string,
-    game: row.game as MockTournament["game"],
+    game,
     status: row.status as MockTournament["status"],
     prizePool: row.prize_pool as string,
+    prizeBreakdown: parsePrizeBreakdown(row.prize_breakdown),
     startDate: row.start_date as string,
     registrationDeadline: row.registration_deadline as string,
     teamsRegistered: row.teams_registered as number,
     teamCap: row.team_cap as number,
     format: row.format as string,
     region: row.region as string,
+    participationType,
+    wwmMode,
   };
+}
+
+function participationColumnsMissing(message: string): boolean {
+  return message.includes("participation_type") || message.includes("wwm_mode");
 }
 
 export async function fetchTournaments(): Promise<MockTournament[]> {
@@ -64,11 +96,20 @@ export async function createTournament(input: CreateTournamentInput): Promise<Mo
       region: input.region,
       status: input.status ?? "Draft",
       teams_registered: 0,
+      participation_type: input.participationType,
+      wwm_mode: input.wwmMode ?? null,
     })
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (participationColumnsMissing(error.message)) {
+      throw new Error(
+        "Participation mode columns are missing. Run docs/sql/tournament_participation_mode.sql in Supabase.",
+      );
+    }
+    throw new Error(error.message);
+  }
   return rowToTournament(data);
 }
 
@@ -77,6 +118,15 @@ export async function syncTournamentTeamCount(tournamentId: string, count: numbe
     .from("tournaments")
     .update({ teams_registered: count })
     .eq("id", tournamentId);
+
+  if (error) throw new Error(error.message);
+}
+
+async function releaseTeamsFromTournament(tournamentId: string): Promise<void> {
+  const { error } = await supabase
+    .from("teams")
+    .update({ active_tournament_id: null, active_tournament_name: null })
+    .eq("active_tournament_id", tournamentId);
 
   if (error) throw new Error(error.message);
 }
@@ -94,6 +144,34 @@ export async function updateTournamentStatus(
     .single();
 
   if (error) throw new Error(error.message);
+
+  if (status === "Completed" || status === "Archived") {
+    await concludeTournamentRegistrations(tournamentId);
+    await releaseTeamsFromTournament(tournamentId);
+  }
+
+  return rowToTournament(data);
+}
+
+export async function updateTournamentPrizeBreakdown(
+  id: string,
+  prizeBreakdown: PrizeTier[],
+): Promise<MockTournament> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .update({ prize_breakdown: prizeBreakdown })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.message.includes("prize_breakdown")) {
+      throw new Error(
+        "Prize breakdown column is missing. Run docs/sql/tournament_prize_breakdown.sql in Supabase.",
+      );
+    }
+    throw new Error(error.message);
+  }
   return rowToTournament(data);
 }
 
@@ -112,14 +190,30 @@ export async function updateTournament(
       registration_deadline: input.registrationDeadline,
       team_cap: input.teamCap,
       region: input.region,
+      participation_type: input.participationType,
+      wwm_mode: input.wwmMode ?? null,
       ...(input.status !== undefined ? { status: input.status } : {}),
     })
     .eq("id", id)
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
-  return rowToTournament(data);
+  if (error) {
+    if (participationColumnsMissing(error.message)) {
+      throw new Error(
+        "Participation mode columns are missing. Run docs/sql/tournament_participation_mode.sql in Supabase.",
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  const updated = rowToTournament(data);
+  if (updated.status === "Completed" || updated.status === "Archived") {
+    await concludeTournamentRegistrations(id);
+    await releaseTeamsFromTournament(id);
+  }
+
+  return updated;
 }
 
 /** Unregister all teams from a tournament. Does not delete rows in `teams`. */
