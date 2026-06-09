@@ -253,14 +253,15 @@ export function buildPodiumPlacements(
   const sorted = [...rawPlacements].sort((a, b) => a.rank - b.rank);
 
   return prizeTiers
-    .map((tier, index) => {
+    .map((tier, index): TournamentPlacement | null => {
       const team = sorted[index]?.team;
       if (!team) return null;
+      const prize = tier.prize.trim();
       return {
         rank: index + 1,
         label: tier.place.trim() || sorted[index]?.label || `Placement ${index + 1}`,
-        prize: tier.prize,
         team,
+        ...(prize ? { prize } : {}),
       };
     })
     .filter((placement): placement is TournamentPlacement => placement !== null);
