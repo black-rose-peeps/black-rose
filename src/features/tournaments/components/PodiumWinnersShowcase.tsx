@@ -186,7 +186,7 @@ function SoloWinnerLayout({
   placement: TournamentPlacement;
   teamTags?: Map<string, string>;
 }) {
-  const theme = RANK_THEMES[1];
+  const theme = themeForRank(placement.rank);
   const tag = teamTags?.get(placement.team);
 
   return (
@@ -212,7 +212,7 @@ function SoloWinnerLayout({
               theme.watermark,
             )}
           >
-            01
+            {String(placement.rank).padStart(2, "0")}
           </span>
 
           <div className="relative flex flex-col items-center gap-5">
@@ -240,7 +240,8 @@ function DuoWinnersLayout({
   teamTags?: Map<string, string>;
 }) {
   const [first, second] = placements;
-  const champion = first.rank === 1 ? first : (placements.find((p) => p.rank === 1) ?? first);
+  const rankOne = placementForRank(placements, 1);
+  const champion = rankOne ?? first;
   const other = champion === first ? second : first;
 
   const championTheme = themeForRank(champion.rank);
