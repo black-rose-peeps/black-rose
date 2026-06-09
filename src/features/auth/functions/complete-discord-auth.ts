@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import { isAllowedDiscordRedirectUri } from "@/lib/app-url";
 import type { AppUser } from "../types";
 import { buildDiscordAvatarUrl, memberStatusToUserRole } from "../utils/discord";
 
 export interface CompleteDiscordAuthInput {
   code: string;
+  redirectUri: string;
 }
 
 export interface CompleteDiscordAuthResult {
@@ -15,7 +17,11 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
     if (!data?.code?.trim()) {
       throw new Error("Missing Discord authorization code.");
     }
-    return { code: data.code.trim() };
+    const redirectUri = data.redirectUri?.trim() ?? "";
+    if (!isAllowedDiscordRedirectUri(redirectUri)) {
+      throw new Error("Invalid Discord redirect URI.");
+    }
+    return { code: data.code.trim(), redirectUri };
   })
   .handler(async ({ data }): Promise<CompleteDiscordAuthResult> => {
     const { exchangeDiscordCodeForToken, fetchDiscordUser, fetchDiscordConnections } =
@@ -23,7 +29,7 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
     const { upsertMemberFromDiscord } = await import("../server/member-auth.server");
     const { ensureMemberProfile } = await import("@/features/member/server/profile.server");
 
-    const accessToken = await exchangeDiscordCodeForToken(data.code);
+    const accessToken = await exchangeDiscordCodeForToken(data.code, data.redirectUri);
     const discordUser = await fetchDiscordUser(accessToken);
 
     let connections: Awaited<ReturnType<typeof fetchDiscordConnections>> = [];

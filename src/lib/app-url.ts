@@ -1,39 +1,39 @@
-/** Strip a trailing slash so URL joins stay predictable. */
-function trimTrailingSlash(url: string): string {
-  return url.replace(/\/$/, "");
+const DISCORD_CALLBACK_PATH = "/auth/callback";
+
+function parseUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Public site origin used for OAuth redirects and absolute links.
- *
- * Resolution order:
- *  1. VITE_APP_URL — set explicitly in Vercel / .env for production
- *  2. Browser origin — correct at runtime on any deployed domain
- *  3. VERCEL_URL — available during SSR on Vercel builds
- *  4. Local dev fallback
+ * Discord OAuth redirect URIs we accept from the browser / server function.
+ * Uses the live site URL — no env var needed. Discord still requires each URL
+ * to be registered in the Developer Portal.
  */
-export function getAppOrigin(): string {
-  const configured = import.meta.env.VITE_APP_URL as string | undefined;
-  if (configured) return trimTrailingSlash(configured);
+export function isAllowedDiscordRedirectUri(uri: string): boolean {
+  const url = parseUrl(uri);
+  if (!url || url.pathname !== DISCORD_CALLBACK_PATH) return false;
 
-  if (typeof window !== "undefined") {
-    return window.location.origin;
+  if (url.hostname === "localhost" && (url.protocol === "http:" || url.protocol === "https:")) {
+    return true;
   }
 
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`;
-
-  return "http://localhost:5173";
+  return url.protocol === "https:";
 }
 
-/** Discord OAuth callback — must match the URI registered in the Discord Developer Portal. */
+/** Build the OAuth callback URL for the current browser origin. */
 export function getDiscordRedirectUri(): string {
-  const configured =
-    (typeof window !== "undefined"
-      ? import.meta.env.VITE_DISCORD_REDIRECT_URI
-      : process.env.VITE_DISCORD_REDIRECT_URI ?? process.env.DISCORD_REDIRECT_URI) ?? "";
+  if (typeof window === "undefined") {
+    throw new Error("getDiscordRedirectUri() must run in the browser.");
+  }
 
-  if (configured) return configured;
+  const redirectUri = `${window.location.origin}${DISCORD_CALLBACK_PATH}`;
+  if (!isAllowedDiscordRedirectUri(redirectUri)) {
+    throw new Error("This site URL is not allowed for Discord sign-in.");
+  }
 
-  return `${getAppOrigin()}/auth/callback`;
+  return redirectUri;
 }

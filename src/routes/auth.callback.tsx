@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { completeDiscordAuth } from "@/features/auth/functions/complete-discord-auth";
+import { getDiscordRedirectUri } from "@/lib/app-url";
 import { DISCORD_OAUTH_STATE_KEY } from "@/features/auth/constants";
 import {
   clearDiscordLinked,
   getDiscordOAuthUrl,
   markDiscordLinked,
+  readStoredOAuthRedirectUri,
   shouldRetryDiscordWithConsent,
   validateOAuthState,
 } from "@/features/auth/services/discord";
@@ -69,7 +71,10 @@ function AuthCallbackPage() {
       }
 
       try {
-        const { user } = await completeDiscordAuth({ data: { code: search.code } });
+        const redirectUri = readStoredOAuthRedirectUri() ?? getDiscordRedirectUri();
+        const { user } = await completeDiscordAuth({
+          data: { code: search.code, redirectUri },
+        });
         if (cancelled) return;
 
         setSession(user);

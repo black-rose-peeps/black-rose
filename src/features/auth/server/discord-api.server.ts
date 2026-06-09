@@ -1,4 +1,4 @@
-import { getDiscordRedirectUri } from "@/lib/app-url";
+import { isAllowedDiscordRedirectUri } from "@/lib/app-url";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_USER_AGENT = "BlackRoseArena (https://blackrose.asia, 1.0.0)";
@@ -68,13 +68,20 @@ async function discordFetch(url: string, init?: RequestInit): Promise<Response> 
 }
 
 /** Exchange OAuth2 authorization code for an access token (server-only). */
-export async function exchangeDiscordCodeForToken(code: string): Promise<string> {
+export async function exchangeDiscordCodeForToken(
+  code: string,
+  redirectUri: string,
+): Promise<string> {
+  if (!isAllowedDiscordRedirectUri(redirectUri)) {
+    throw new Error("Invalid Discord redirect URI.");
+  }
+
   const body = new URLSearchParams({
     client_id: getDiscordClientId(),
     client_secret: getDiscordClientSecret(),
     grant_type: "authorization_code",
     code,
-    redirect_uri: getDiscordRedirectUri(),
+    redirect_uri: redirectUri,
   });
 
   const response = await discordFetch(`${DISCORD_API_BASE}/oauth2/token`, {
@@ -127,8 +134,4 @@ export async function fetchDiscordConnections(accessToken: string): Promise<Disc
   }
 
   return (await response.json()) as DiscordConnection[];
-}
-
-export function getServerDiscordRedirectUri(): string {
-  return getDiscordRedirectUri();
 }
