@@ -132,11 +132,12 @@ function ProfileEditPage() {
       return;
     }
 
+    const id = memberId;
     let cancelled = false;
 
     async function load() {
       try {
-        const data = await fetchMemberProfileById(memberId);
+        const data = await fetchMemberProfileById(id);
         if (cancelled) return;
         if (!data) {
           setError("Profile not found. Try signing in again.");
@@ -169,7 +170,7 @@ function ProfileEditPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, memberId, session?.role]);
+  }, [navigate, memberId, session]);
 
   if (!session || !hasFullMemberAccess(session.role)) return null;
   if (loading) return <MemberDashboardSkeleton />;
@@ -273,7 +274,13 @@ function ProfileEditPage() {
       />
 
       <form onSubmit={handleSubmit}>
-        <Tabs value={tab} onValueChange={(v) => navigate({ to: "/dashboard/profile", search: { tab: v as ProfileTab } })} className="gap-6">
+        <Tabs
+          value={tab}
+          onValueChange={(v) =>
+            navigate({ to: "/dashboard/profile", search: { tab: v as ProfileTab } })
+          }
+          className="gap-6"
+        >
           <TabsList className="h-auto w-full justify-start gap-1 rounded-none border border-white/8 bg-[oklch(0.07_0_0)] p-1">
             <TabsTrigger
               value="identity"
@@ -430,7 +437,10 @@ function ProfileEditPage() {
             <TechPanel label="Links" title="Social Profiles" noPadding>
               <ul className="divide-y divide-white/6">
                 {SOCIAL_PLATFORM_ORDER.map((platform) => (
-                  <li key={platform} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+                  <li
+                    key={platform}
+                    className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
+                  >
                     <span className="w-36 shrink-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
                       {SOCIAL_PLATFORM_LABELS[platform]}
                     </span>
