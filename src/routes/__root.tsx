@@ -3,6 +3,7 @@ import { Outlet, createRootRouteWithContext, HeadContent, Scripts } from "@tanst
 import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import favicon from "@/assets/black-rose-emblem-black.png";
 import { NotFoundPage } from "@/features/shared/components/NotFoundPage";
 import { ErrorPage } from "@/features/shared/components/ErrorPage";
 
@@ -34,6 +35,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
     links: [
+      {
+        rel: "icon",
+        type: "image/png",
+        href: favicon,
+      },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",
