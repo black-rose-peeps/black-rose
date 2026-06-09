@@ -23,6 +23,11 @@ import {
   fetchRegistrationsForTeam,
   pendingRegistrations,
 } from "@/features/tournaments/services/team-registration.service";
+import { fetchTeamChampionships } from "@/features/championships/services/championship.service";
+import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
+import { RoseStarMark } from "@/features/championships/components/RoseStarMark";
+import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
+import type { ChampionshipTitle } from "@/features/championships/types";
 import { RosterTable } from "@/features/teams/components/RosterTable";
 import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember } from "@/features/teams/types";
@@ -49,6 +54,7 @@ function TeamDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [respondingInvite, setRespondingInvite] = useState(false);
   const [registrations, setRegistrations] = useState<MockTeam[]>([]);
+  const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
 
   const loadTeam = useCallback(
     async (options?: { showLoader?: boolean }) => {
@@ -63,8 +69,12 @@ function TeamDetailPage() {
           setTeam(null);
         } else {
           setTeam(data);
-          const teamRegs = await fetchRegistrationsForTeam(data.id);
+          const [teamRegs, titles] = await Promise.all([
+            fetchRegistrationsForTeam(data.id),
+            fetchTeamChampionships(data.id),
+          ]);
           setRegistrations(teamRegs);
+          setChampionships(titles);
         }
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : "Failed to load team.");
@@ -237,12 +247,23 @@ function TeamDetailPage() {
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
         <div className="relative flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-5">
-            <div className="grid h-20 w-20 shrink-0 place-items-center border-2 border-white/15 bg-white/5 font-display text-2xl tracking-display">
+            <div className="relative grid h-20 w-20 shrink-0 place-items-center border-2 border-white/15 bg-white/5 font-display text-2xl tracking-display">
               {team.tag}
+              {championships.length > 0 && (
+                <span
+                  className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center border border-white/15 bg-[oklch(0.07_0_0)] text-white/60"
+                  title={championships.map((c) => c.tournamentName).join(" · ")}
+                >
+                  <RoseStarMark size={11} />
+                </span>
+              )}
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h1 className="font-display text-3xl tracking-display sm:text-4xl">{team.name}</h1>
+                {championships.length > 0 && (
+                  <ChampionMarkGroup titles={championships} size="md" showLabel />
+                )}
                 {isCaptain && <Crown className="h-4 w-4 text-white/40" aria-label="Captain" />}
               </div>
               <span
@@ -324,6 +345,12 @@ function TeamDetailPage() {
       )}
 
       {actionError && <p className="mb-4 text-sm text-red-400">{actionError}</p>}
+
+      {championships.length > 0 && (
+        <div className="mb-6">
+          <ChampionshipTitlesCard titles={championships} label="Championship Legacy" />
+        </div>
+      )}
 
       <TechPanel
         label="Roster"

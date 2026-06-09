@@ -23,6 +23,10 @@ import {
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
 import { getSession } from "@/features/auth/store/session";
 import { fetchMemberProfileBySlug } from "@/features/member/services/member-profile.service";
+import { fetchMemberChampionships } from "@/features/championships/services/championship.service";
+import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
+import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
+import type { ChampionshipTitle } from "@/features/championships/types";
 import type { MemberProfile } from "@/features/member/types";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
 
@@ -40,6 +44,7 @@ function MemberProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +61,8 @@ function MemberProfilePage() {
           setProfile(null);
         } else {
           setProfile(data);
+          const titles = await fetchMemberChampionships(data.memberId);
+          if (!cancelled) setChampionships(titles);
         }
       } catch (err) {
         if (cancelled) return;
@@ -159,33 +166,38 @@ function MemberProfilePage() {
         title={p.displayName}
         subtitle={p.headline}
         meta={
-          <div className="flex flex-wrap items-center gap-3">
-            {p.isVerified && (
-              <Badge
-                variant="outline"
-                className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
-              >
-                <CheckCircle className="mr-1 h-3 w-3" />
-                Verified
-              </Badge>
-            )}
-            {p.mainGame && (
-              <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
-                <Gamepad2 className="h-3 w-3" />
-                {p.mainGame}
-              </span>
-            )}
-            {p.region && (
-              <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
-                <MapPin className="h-3 w-3" />
-                {p.region}
-              </span>
-            )}
-            {p.riotAccount?.isLinked && (
-              <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
-                <CheckCircle className="h-3 w-3" />
-                Riot Linked
-              </span>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              {p.isVerified && (
+                <Badge
+                  variant="outline"
+                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
+                >
+                  <CheckCircle className="mr-1 h-3 w-3" />
+                  Verified
+                </Badge>
+              )}
+              {p.mainGame && (
+                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <Gamepad2 className="h-3 w-3" />
+                  {p.mainGame}
+                </span>
+              )}
+              {p.region && (
+                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  {p.region}
+                </span>
+              )}
+              {p.riotAccount?.isLinked && (
+                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
+                  <CheckCircle className="h-3 w-3" />
+                  Riot Linked
+                </span>
+              )}
+            </div>
+            {championships.length > 0 && (
+              <ChampionMarkGroup titles={championships} size="md" showLabel />
             )}
           </div>
         }
@@ -251,6 +263,10 @@ function MemberProfilePage() {
                 />
               </ProfileCard>
             )
+          )}
+
+          {championships.length > 0 && (
+            <ChampionshipTitlesCard titles={championships} />
           )}
 
           {p.tournamentHistory.length > 0 && (

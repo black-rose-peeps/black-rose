@@ -25,6 +25,10 @@ import { MemberHeroBanner, MemberPageLayout, PanelEmptyState } from "@/features/
 import { getSession } from "@/features/auth/store/session";
 import { SOCIAL_PLATFORM_LABELS } from "@/features/member/constants";
 import { fetchMemberProfileById } from "@/features/member/services/member-profile.service";
+import { fetchMemberChampionships } from "@/features/championships/services/championship.service";
+import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
+import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
+import type { ChampionshipTitle } from "@/features/championships/types";
 import { fetchMemberTournamentDashboard } from "@/features/member/services/member-dashboard.service";
 import { profileCompletionHint } from "@/features/member/utils/profile-completion";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
@@ -68,6 +72,7 @@ function DashboardPage() {
   const [session, setLocalSession] = useState(() => getSession());
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [isSyncing, setIsSyncing] = useState(true);
+  const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,9 +100,10 @@ function DashboardPage() {
           return;
         }
 
-        const [memberProfile, tournamentDashboard] = await Promise.all([
+        const [memberProfile, tournamentDashboard, titles] = await Promise.all([
           fetchMemberProfileById(updated.id),
           fetchMemberTournamentDashboard(updated.id),
+          fetchMemberChampionships(updated.id),
         ]);
         if (!cancelled) {
           const base = memberProfile ?? profileFallbackFromSession(updated);
@@ -107,6 +113,7 @@ function DashboardPage() {
             upcomingMatches: tournamentDashboard.upcomingMatches,
             tournamentHistory: tournamentDashboard.tournamentHistory,
           });
+          setChampionships(titles);
         }
       } catch {
         if (cancelled) return;
@@ -135,7 +142,10 @@ function DashboardPage() {
 
     async function refreshTournamentData() {
       try {
-        const tournamentDashboard = await fetchMemberTournamentDashboard(memberId);
+        const [tournamentDashboard, titles] = await Promise.all([
+          fetchMemberTournamentDashboard(memberId),
+          fetchMemberChampionships(memberId),
+        ]);
         setProfile((current) =>
           current
             ? {
@@ -146,6 +156,7 @@ function DashboardPage() {
               }
             : current,
         );
+        setChampionships(titles);
       } catch {
         // Keep last loaded dashboard data
       }
@@ -176,33 +187,38 @@ function DashboardPage() {
         title={session.displayName}
         subtitle={p.headline || "Black Rose verified member"}
         meta={
-          <div className="flex flex-wrap items-center gap-2">
-            {p.isVerified && (
-              <Badge
-                variant="outline"
-                className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
-              >
-                <Shield className="mr-1 h-3 w-3" />
-                Verified
-              </Badge>
-            )}
-            {p.mainGame && (
-              <Badge
-                variant="outline"
-                className="rounded-none border-white/12 bg-white/5 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
-              >
-                <Gamepad2 className="mr-1 h-3 w-3" />
-                {p.mainGame}
-              </Badge>
-            )}
-            {p.mainRole && (
-              <Badge
-                variant="outline"
-                className="rounded-none border-white/12 bg-white/5 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
-              >
-                <Users2 className="mr-1 h-3 w-3" />
-                {p.mainRole}
-              </Badge>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {p.isVerified && (
+                <Badge
+                  variant="outline"
+                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
+                >
+                  <Shield className="mr-1 h-3 w-3" />
+                  Verified
+                </Badge>
+              )}
+              {p.mainGame && (
+                <Badge
+                  variant="outline"
+                  className="rounded-none border-white/12 bg-white/5 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
+                >
+                  <Gamepad2 className="mr-1 h-3 w-3" />
+                  {p.mainGame}
+                </Badge>
+              )}
+              {p.mainRole && (
+                <Badge
+                  variant="outline"
+                  className="rounded-none border-white/12 bg-white/5 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
+                >
+                  <Users2 className="mr-1 h-3 w-3" />
+                  {p.mainRole}
+                </Badge>
+              )}
+            </div>
+            {championships.length > 0 && (
+              <ChampionMarkGroup titles={championships} size="md" showLabel />
             )}
           </div>
         }
@@ -253,8 +269,12 @@ function DashboardPage() {
         />
         <QuickStat
           icon={<Trophy className="h-4 w-4" />}
-          label="Tournaments"
-          value={`${p.tournamentHistory.length} played`}
+          label="Championships"
+          value={
+            championships.length > 0
+              ? `${championships.length} title${championships.length === 1 ? "" : "s"}`
+              : `${p.tournamentHistory.length} played`
+          }
         />
         <QuickStat
           icon={<Calendar className="h-4 w-4" />}
@@ -512,6 +532,12 @@ function DashboardPage() {
           </ul>
         </DashboardSection>
       </div>
+
+      {championships.length > 0 && (
+        <div className="mt-6">
+          <ChampionshipTitlesCard titles={championships} />
+        </div>
+      )}
     </MemberPageLayout>
   );
 }

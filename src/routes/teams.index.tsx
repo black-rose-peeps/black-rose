@@ -16,6 +16,10 @@ import { CreateTeamDialog } from "@/features/teams/components/CreateTeamDialog";
 import { TeamInviteCard } from "@/features/teams/components/TeamInviteCard";
 import { GAME_COLOR, GAME_ACCENT } from "@/features/teams/constants";
 import { useMemberTeamMembershipRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
+import { fetchTeamsChampionshipMap } from "@/features/championships/services/championship.service";
+import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
+import { RoseStarMark } from "@/features/championships/components/RoseStarMark";
+import type { ChampionshipTitle } from "@/features/championships/types";
 import { isActiveMember, isPendingInvite } from "@/features/teams/utils/membership";
 import type { Team } from "@/features/teams/types";
 
@@ -27,7 +31,15 @@ export const Route = createFileRoute("/teams/")({
   component: TeamsIndexPage,
 });
 
-function TeamSummaryCard({ team, isCaptain }: { team: Team; isCaptain: boolean }) {
+function TeamSummaryCard({
+  team,
+  isCaptain,
+  championships = [],
+}: {
+  team: Team;
+  isCaptain: boolean;
+  championships?: ChampionshipTitle[];
+}) {
   const activeCount = team.members.filter(
     (m) => m.status !== "removed" && m.status !== "invited",
   ).length;
@@ -38,12 +50,23 @@ function TeamSummaryCard({ team, isCaptain }: { team: Team; isCaptain: boolean }
       <div className={`h-[3px] w-full bg-linear-to-r ${GAME_ACCENT[team.game]}`} />
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-5">
-          <div className="grid h-16 w-16 shrink-0 place-items-center border border-white/15 bg-white/5 font-display text-xl tracking-display">
+          <div className="relative grid h-16 w-16 shrink-0 place-items-center border border-white/15 bg-white/5 font-display text-xl tracking-display">
             {team.tag}
+            {championships.length > 0 && (
+              <span
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center border border-white/15 bg-[oklch(0.07_0_0)] text-white/60"
+                title={championships.map((c) => c.tournamentName).join(" · ")}
+              >
+                <RoseStarMark size={10} />
+              </span>
+            )}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display text-3xl tracking-display">{team.name}</h2>
+              {championships.length > 0 && (
+                <ChampionMarkGroup titles={championships} size="md" showLabel />
+              )}
               {isCaptain && (
                 <Crown className="h-4 w-4 text-white/40" aria-label="You are the captain" />
               )}
@@ -108,6 +131,9 @@ function TeamsIndexPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [respondingTeamId, setRespondingTeamId] = useState<string | null>(null);
+  const [championshipsByTeam, setChampionshipsByTeam] = useState<
+    Map<string, ChampionshipTitle[]>
+  >(new Map());
 
   const invitedTeams = teams.filter((team) => memberId && isPendingInvite(team, memberId));
   const activeTeams = teams.filter((team) => memberId && isActiveMember(team, memberId));
@@ -120,6 +146,8 @@ function TeamsIndexPage() {
     if (!memberId) return;
     const data = await fetchTeamsForUser(memberId);
     setTeams(data);
+    const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
+    setChampionshipsByTeam(champMap);
     await syncTeamMembershipNotifications(memberId);
   }, [memberId]);
 
@@ -181,6 +209,8 @@ function TeamsIndexPage() {
       .then(async (data) => {
         if (cancelled) return;
         setTeams(data);
+        const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
+        if (!cancelled) setChampionshipsByTeam(champMap);
         await syncTeamMembershipNotifications(memberId);
       })
       .catch((err) => {
@@ -258,6 +288,7 @@ function TeamsIndexPage() {
               key={team.id}
               team={team}
               isCaptain={team.captainUserId === session.id}
+              championships={championshipsByTeam.get(team.id) ?? []}
             />
           ))}
         </div>
