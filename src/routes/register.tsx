@@ -62,7 +62,7 @@ function RegisterPage() {
 
   return (
     <AuthShell
-      headline="Forge Your Legacy"
+      headline="FIGHT AS ONE"
       subheadline="Create your Black Rose account to build teams, register for tournaments, and rise through the brackets."
     >
       {/* Heading */}

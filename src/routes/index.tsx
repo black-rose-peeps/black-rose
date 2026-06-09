@@ -11,13 +11,13 @@ import { Footer } from "@/features/landing/components/Footer";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Black Rose — Fight as One" },
+      { title: "Black Rose — FIGHT AS ONE" },
       {
         name: "description",
         content:
           "Black Rose is a premium community esports tournament platform. Build teams, register for tournaments, and compete in professionally managed brackets.",
       },
-      { property: "og:title", content: "Black Rose — Fight as One" },
+      { property: "og:title", content: "Black Rose — FIGHT AS ONE" },
       {
         property: "og:description",
         content:
