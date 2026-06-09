@@ -4,12 +4,24 @@ import { getSession } from "@/features/auth/store/session";
 import { MemberNav } from "@/features/member/components/MemberNav";
 
 const GUEST_NAV = [
-  { label: "Tournaments", href: "/tournaments" },
-  { label: "Champions", href: "/" },
+  { label: "Tournaments", to: "/tournaments" as const },
+  { label: "Champion", to: "/" as const, hash: "champions" },
+  { label: "Community", to: "/" as const, hash: "community" },
 ] as const;
 
 function GuestHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hash = useRouterState({ select: (s) => s.location.hash });
+
+  function isGuestNavActive(item: (typeof GUEST_NAV)[number]): boolean {
+    if (item.to === "/tournaments") {
+      return pathname === "/tournaments" || pathname.startsWith("/tournaments/");
+    }
+    if ("hash" in item && item.hash) {
+      return pathname === "/" && hash === item.hash;
+    }
+    return pathname === item.to;
+  }
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
@@ -23,11 +35,10 @@ function GuestHeader() {
           {GUEST_NAV.map((item) => (
             <Link
               key={item.label}
-              to={item.href}
+              to={item.to}
+              {...("hash" in item && item.hash ? { hash: item.hash } : {})}
               className={`transition-colors hover:text-foreground ${
-                pathname === item.href || pathname.startsWith(`${item.href}/`)
-                  ? "text-foreground"
-                  : ""
+                isGuestNavActive(item) ? "text-foreground" : ""
               }`}
             >
               {item.label}

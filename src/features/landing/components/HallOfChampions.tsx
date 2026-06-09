@@ -33,7 +33,10 @@ const champs = [
 
 export function HallOfChampions() {
   return (
-    <section className="relative border-t border-white/[0.06] bg-background py-24 md:py-32 overflow-hidden">
+    <section
+      id="champions"
+      className="relative border-t border-white/[0.06] bg-background py-24 md:py-32 overflow-hidden scroll-mt-16"
+    >
       {/* Subtle diagonal line texture */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.025]"
