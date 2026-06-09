@@ -1,34 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  UserPlus,
-  Trophy,
-  ChevronRight,
-  Search,
-  X,
-  Crown,
-  Loader2,
-  Pencil,
-} from "lucide-react";
+import { ArrowLeft, UserPlus, Trophy, ChevronRight, Crown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  acceptTeamInvite,
+  declineTeamInvite,
   fetchTeamById,
-  inviteMemberToTeam,
   removeMemberFromTeam,
 } from "@/features/admin/features/teams/services/teams.service";
-import {
-  searchVerifiedMembersForInvite,
-  type InviteSearchMember,
-} from "@/features/admin/features/members/services/members.service";
+import { syncTeamInviteNotifications } from "@/features/notifications/services/team-invite-notifications";
+import { markTeamInviteRead } from "@/features/notifications/store";
 import { MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
 import { getSession } from "@/features/auth/store/session";
 import { EditTeamDialog } from "@/features/teams/components/EditTeamDialog";
-import { InviteMemberSearchSkeleton } from "@/features/teams/components/InviteMemberSearchSkeleton";
+import { InviteMemberDialog } from "@/features/teams/components/InviteMemberDialog";
+import { TeamInviteBanner } from "@/features/teams/components/TeamInviteBanner";
+import { useTeamMembersRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
+import { isPendingInvite } from "@/features/teams/utils/membership";
 import { RosterTable } from "@/features/teams/components/RosterTable";
-import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember } from "@/features/teams/types";
 
@@ -48,16 +38,10 @@ function TeamDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [inviteSearch, setInviteSearch] = useState("");
-  const [invitePage, setInvitePage] = useState(1);
-  const [inviteTotal, setInviteTotal] = useState(0);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<InviteSearchMember[]>([]);
-  const [searching, setSearching] = useState(false);
-  const invitePageSize = 8;
   const [actionError, setActionError] = useState<string | null>(null);
-  const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [respondingInvite, setRespondingInvite] = useState(false);
 
   const loadTeam = useCallback(
     async (options?: { showLoader?: boolean }) => {
@@ -84,6 +68,12 @@ function TeamDetailPage() {
     [id],
   );
 
+  const refreshTeam = useCallback(() => {
+    void loadTeam();
+  }, [loadTeam]);
+
+  useTeamMembersRealtime(id, refreshTeam);
+
   useEffect(() => {
     if (!memberId) {
       navigate({ to: "/login" });
@@ -95,44 +85,6 @@ function TeamDetailPage() {
     }
     void loadTeam({ showLoader: true });
   }, [loadTeam, navigate, memberId, memberRole]);
-
-  useEffect(() => {
-    setInvitePage(1);
-  }, [inviteSearch]);
-
-  useEffect(() => {
-    if (!team || !inviteOpen) return;
-
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setSearching(true);
-      const excludeIds = team.members.map((m) => m.userId);
-      searchVerifiedMembersForInvite(inviteSearch, excludeIds, {
-        page: invitePage,
-        pageSize: invitePageSize,
-      })
-        .then((result) => {
-          if (!cancelled) {
-            setSearchResults(result.members);
-            setInviteTotal(result.total);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setSearchResults([]);
-            setInviteTotal(0);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setSearching(false);
-        });
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [inviteSearch, inviteOpen, team, invitePage, invitePageSize]);
 
   if (!session) return null;
 
@@ -187,6 +139,7 @@ function TeamDetailPage() {
   }
 
   const isCaptain = team.captainUserId === session.id;
+  const isInvited = isPendingInvite(team, session.id);
   const isMember = team.members.some((m) => m.userId === session.id && m.status !== "removed");
 
   if (!isMember) {
@@ -213,9 +166,6 @@ function TeamDetailPage() {
   ).length;
   const pendingCount = team.members.filter((m) => m.status === "invited").length;
   const canInvite = team.members.filter((m) => m.status !== "removed").length < MAX_TEAM_SIZE;
-  const inviteTotalPages = Math.max(1, Math.ceil(inviteTotal / invitePageSize));
-  const inviteRangeStart = inviteTotal === 0 ? 0 : (invitePage - 1) * invitePageSize + 1;
-  const inviteRangeEnd = Math.min(invitePage * invitePageSize, inviteTotal);
 
   async function handleRemove(member: TeamMember) {
     setActionError(null);
@@ -227,17 +177,33 @@ function TeamDetailPage() {
     }
   }
 
-  async function handleInvite(memberId: string) {
+  async function handleAcceptInvite() {
     setActionError(null);
-    setInvitingId(memberId);
+    setRespondingInvite(true);
     try {
-      const updated = await inviteMemberToTeam({ teamId: team!.id, memberId });
+      const updated = await acceptTeamInvite(team!.id, memberId!);
       setTeam(updated);
-      setInviteSearch("");
+      markTeamInviteRead(team!.id);
+      if (memberId) await syncTeamInviteNotifications(memberId);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to invite member.");
+      setActionError(err instanceof Error ? err.message : "Failed to accept invite.");
     } finally {
-      setInvitingId(null);
+      setRespondingInvite(false);
+    }
+  }
+
+  async function handleDeclineInvite() {
+    setActionError(null);
+    setRespondingInvite(true);
+    try {
+      await declineTeamInvite(team!.id, memberId!);
+      markTeamInviteRead(team!.id);
+      if (memberId) await syncTeamInviteNotifications(memberId);
+      navigate({ to: "/teams", search: { create: false } });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to decline invite.");
+    } finally {
+      setRespondingInvite(false);
     }
   }
 
@@ -282,7 +248,7 @@ function TeamDetailPage() {
             </div>
           </div>
 
-          {isCaptain && (
+          {isCaptain && !isInvited && (
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -297,7 +263,7 @@ function TeamDetailPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setInviteOpen((v) => !v)}
+                  onClick={() => setInviteOpen(true)}
                   className="rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
@@ -332,101 +298,17 @@ function TeamDetailPage() {
         </div>
       </div>
 
-      {actionError && <p className="mb-4 text-sm text-red-400">{actionError}</p>}
-
-      {inviteOpen && isCaptain && (
-        <TechPanel
-          label="Invite"
-          title="Add a Member"
-          icon={<UserPlus className="h-3.5 w-3.5" />}
-          action={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setInviteOpen(false);
-                setInviteSearch("");
-                setInvitePage(1);
-              }}
-              className="h-8 w-8 rounded-none"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          }
-          className="mb-6"
-        >
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search verified members…"
-              value={inviteSearch}
-              onChange={(e) => setInviteSearch(e.target.value)}
-              className="h-10 border-white/12 bg-white/3 pl-9 rounded-none"
-            />
-          </div>
-
-          {searching ? (
-            <InviteMemberSearchSkeleton />
-          ) : searchResults.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {inviteSearch ? "No members found." : "No verified members available to invite."}
-            </p>
-          ) : (
-            <>
-              <ul className="divide-y divide-white/6">
-                {searchResults.map((m) => {
-                  const alreadyInvited = team.members.some(
-                    (tm) => tm.userId === m.id && tm.status === "invited",
-                  );
-                  return (
-                    <li key={m.id} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-8 w-8 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
-                          {m.avatarInitials}
-                        </div>
-                        <span className="text-sm font-medium">{m.displayName}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={alreadyInvited || invitingId === m.id}
-                        variant={alreadyInvited ? "outline" : "secondary"}
-                        onClick={() => handleInvite(m.id)}
-                        className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
-                      >
-                        {invitingId === m.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : alreadyInvited ? (
-                          "Invited"
-                        ) : (
-                          "Invite"
-                        )}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-              <AdminTablePagination
-                page={invitePage}
-                totalPages={inviteTotalPages}
-                total={inviteTotal}
-                rangeStart={inviteRangeStart}
-                rangeEnd={inviteRangeEnd}
-                onPageChange={setInvitePage}
-                className="border-white/6 px-0"
-              />
-            </>
-          )}
-
-          <p className="mt-4 text-[10px] text-muted-foreground/50">
-            Invites are stored on the roster as pending. (
-            {MAX_TEAM_SIZE - team.members.filter((m) => m.status !== "removed").length} slots
-            remaining)
-          </p>
-        </TechPanel>
+      {isInvited && (
+        <TeamInviteBanner
+          team={team}
+          captainName={team.members.find((m) => m.status === "captain")?.displayName ?? "A captain"}
+          responding={respondingInvite}
+          onAccept={() => void handleAcceptInvite()}
+          onDecline={() => void handleDeclineInvite()}
+        />
       )}
+
+      {actionError && <p className="mb-4 text-sm text-red-400">{actionError}</p>}
 
       <TechPanel
         label="Roster"
@@ -436,7 +318,7 @@ function TeamDetailPage() {
         <RosterTable
           team={team}
           currentUserId={session.id}
-          isEditable={isCaptain}
+          isEditable={isCaptain && !isInvited}
           onRemove={handleRemove}
         />
       </TechPanel>
@@ -469,13 +351,21 @@ function TeamDetailPage() {
         </TechPanel>
       )}
 
-      {isCaptain && (
-        <EditTeamDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          team={team}
-          onUpdated={setTeam}
-        />
+      {isCaptain && !isInvited && (
+        <>
+          <InviteMemberDialog
+            open={inviteOpen}
+            onOpenChange={setInviteOpen}
+            team={team}
+            onInvited={setTeam}
+          />
+          <EditTeamDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            team={team}
+            onUpdated={setTeam}
+          />
+        </>
       )}
     </MemberPageLayout>
   );

@@ -9,7 +9,14 @@ import {
   Calendar,
   ShieldCheck,
 } from "lucide-react";
-import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from "../store";
+import { Link } from "@tanstack/react-router";
+import {
+  getNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+  subscribeToNotifications,
+} from "../store";
 import type { AppNotification, NotificationType } from "../types";
 
 // ── Icon per notification type ────────────────────────────────────────────────
@@ -66,6 +73,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     refresh();
+    return subscribeToNotifications(refresh);
   }, []);
 
   // Close on outside click OR Escape key
@@ -199,9 +207,23 @@ export function NotificationBell() {
                   </div>
                 );
 
+                const teamInviteMatch = n.href?.match(/^\/teams\/([^/]+)$/);
+
                 return (
                   <li key={n.id}>
-                    {n.href ? (
+                    {teamInviteMatch ? (
+                      <Link
+                        to="/teams/$id"
+                        params={{ id: teamInviteMatch[1] }}
+                        onClick={() => {
+                          handleRead(n.id);
+                          setOpen(false);
+                        }}
+                        className="block"
+                      >
+                        {content}
+                      </Link>
+                    ) : n.href ? (
                       <a
                         href={n.href}
                         onClick={() => {
@@ -231,7 +253,7 @@ export function NotificationBell() {
           {notifications.length > 0 && (
             <div className="border-t border-white/8 px-4 py-2.5 text-center">
               <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/40">
-                {notifications.length} total · syncs on login
+                {notifications.length} total · team invites sync automatically
               </p>
             </div>
           )}

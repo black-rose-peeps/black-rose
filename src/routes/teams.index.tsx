@@ -1,13 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Users2, Plus, Trophy, ChevronRight, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchTeamsForUser } from "@/features/admin/features/teams/services/teams.service";
+import {
+  acceptTeamInvite,
+  declineTeamInvite,
+  fetchTeamsForUser,
+} from "@/features/admin/features/teams/services/teams.service";
 import { MemberHeroBanner, MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
 import { getSession } from "@/features/auth/store/session";
+import { syncTeamInviteNotifications } from "@/features/notifications/services/team-invite-notifications";
 import { CreateTeamDialog } from "@/features/teams/components/CreateTeamDialog";
+import { TeamInviteCard } from "@/features/teams/components/TeamInviteCard";
 import { GAME_COLOR, GAME_ACCENT } from "@/features/teams/constants";
+import { useMemberTeamMembershipRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
+import { isActiveMember, isPendingInvite } from "@/features/teams/utils/membership";
 import type { Team } from "@/features/teams/types";
 
 export const Route = createFileRoute("/teams/")({
@@ -98,6 +106,52 @@ function TeamsIndexPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [respondingTeamId, setRespondingTeamId] = useState<string | null>(null);
+
+  const invitedTeams = teams.filter((team) => memberId && isPendingInvite(team, memberId));
+  const activeTeams = teams.filter((team) => memberId && isActiveMember(team, memberId));
+
+  function captainName(team: Team): string {
+    return team.members.find((m) => m.status === "captain")?.displayName ?? "A captain";
+  }
+
+  const reloadTeams = useCallback(async () => {
+    if (!memberId) return;
+    const data = await fetchTeamsForUser(memberId);
+    setTeams(data);
+    await syncTeamInviteNotifications(memberId);
+  }, [memberId]);
+
+  useMemberTeamMembershipRealtime(memberId, () => {
+    void reloadTeams();
+  });
+
+  async function handleAcceptInvite(teamId: string) {
+    if (!memberId) return;
+    setRespondingTeamId(teamId);
+    try {
+      await acceptTeamInvite(teamId, memberId);
+      await reloadTeams();
+      navigate({ to: "/teams/$id", params: { id: teamId } });
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : "Failed to accept invite.");
+    } finally {
+      setRespondingTeamId(null);
+    }
+  }
+
+  async function handleDeclineInvite(teamId: string) {
+    if (!memberId) return;
+    setRespondingTeamId(teamId);
+    try {
+      await declineTeamInvite(teamId, memberId);
+      await reloadTeams();
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : "Failed to decline invite.");
+    } finally {
+      setRespondingTeamId(null);
+    }
+  }
 
   useEffect(() => {
     if (openCreateFromUrl && !loading) {
@@ -121,8 +175,10 @@ function TeamsIndexPage() {
     setFetchError(null);
 
     fetchTeamsForUser(memberId)
-      .then((data) => {
-        if (!cancelled) setTeams(data);
+      .then(async (data) => {
+        if (cancelled) return;
+        setTeams(data);
+        await syncTeamInviteNotifications(memberId);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -156,7 +212,7 @@ function TeamsIndexPage() {
         title="My Teams"
         subtitle={
           teams.length > 0
-            ? `${teams.length} team${teams.length === 1 ? "" : "s"} · Create one per game for different tournaments`
+            ? `${activeTeams.length} active · ${invitedTeams.length} pending invite${invitedTeams.length === 1 ? "" : "s"}`
             : "Create a team to register for tournaments"
         }
         actions={
@@ -177,7 +233,24 @@ function TeamsIndexPage() {
         </TechPanel>
       ) : teams.length > 0 ? (
         <div className="flex flex-col gap-5">
-          {teams.map((team) => (
+          {invitedTeams.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+                Pending Invitations
+              </p>
+              {invitedTeams.map((team) => (
+                <TeamInviteCard
+                  key={team.id}
+                  team={team}
+                  captainName={captainName(team)}
+                  responding={respondingTeamId === team.id}
+                  onAccept={() => void handleAcceptInvite(team.id)}
+                  onDecline={() => void handleDeclineInvite(team.id)}
+                />
+              ))}
+            </div>
+          )}
+          {activeTeams.map((team) => (
             <TeamSummaryCard
               key={team.id}
               team={team}

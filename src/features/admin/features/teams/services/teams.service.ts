@@ -79,6 +79,54 @@ async function assertMemberAvailableForGame(
   }
 }
 
+interface TeamMemberRowPayload {
+  team_id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_initials: string;
+  ign: string;
+  role: string;
+  status: TeamMember["status"];
+}
+
+async function insertOrReactivateTeamMember(
+  payload: TeamMemberRowPayload,
+  username: string,
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from("team_members")
+    .select("status")
+    .eq("team_id", payload.team_id)
+    .eq("user_id", payload.user_id)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status !== "removed") {
+      throw new Error(`${username} is already on this team.`);
+    }
+
+    const { error } = await supabase
+      .from("team_members")
+      .update({
+        username: payload.username,
+        display_name: payload.display_name,
+        avatar_initials: payload.avatar_initials,
+        ign: payload.ign,
+        role: payload.role,
+        status: payload.status,
+      })
+      .eq("team_id", payload.team_id)
+      .eq("user_id", payload.user_id);
+
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const { error } = await supabase.from("team_members").insert(payload);
+  if (error) throw new Error(error.message);
+}
+
 async function fetchTeamWithMembers(teamId: string): Promise<Team> {
   const { data: teamRow, error: teamErr } = await supabase
     .from("teams")
@@ -179,34 +227,24 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   const member = await fetchMemberById(input.memberId);
   if (!member) throw new Error("Member not found.");
 
-  // Check already on this team
-  const { data: onTeam } = await supabase
-    .from("team_members")
-    .select("id")
-    .eq("team_id", input.teamId)
-    .eq("user_id", member.id)
-    .neq("status", "removed")
-    .maybeSingle();
-
-  if (onTeam) throw new Error(`${member.username} is already on this team.`);
-
   const team = await fetchTeamWithMembers(input.teamId);
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
   const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
-  const { error } = await supabase.from("team_members").insert({
-    team_id: input.teamId,
-    user_id: member.id,
-    username: teamMember.username,
-    display_name: teamMember.displayName,
-    avatar_initials: teamMember.avatarInitials,
-    ign: teamMember.ign,
-    role: input.role ?? "TBD",
-    status: "active",
-  });
-
-  if (error) throw new Error(error.message);
+  await insertOrReactivateTeamMember(
+    {
+      team_id: input.teamId,
+      user_id: member.id,
+      username: teamMember.username,
+      display_name: teamMember.displayName,
+      avatar_initials: teamMember.avatarInitials,
+      ign: teamMember.ign,
+      role: input.role ?? "TBD",
+      status: "active",
+    },
+    member.username,
+  );
 
   return fetchTeamWithMembers(input.teamId);
 }
@@ -249,33 +287,24 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
   const member = await fetchMemberById(input.memberId);
   if (!member) throw new Error("Member not found.");
 
-  const { data: onTeam } = await supabase
-    .from("team_members")
-    .select("id")
-    .eq("team_id", input.teamId)
-    .eq("user_id", member.id)
-    .neq("status", "removed")
-    .maybeSingle();
-
-  if (onTeam) throw new Error(`${member.username} is already on this team.`);
-
   const team = await fetchTeamWithMembers(input.teamId);
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
   const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
-  const { error } = await supabase.from("team_members").insert({
-    team_id: input.teamId,
-    user_id: member.id,
-    username: teamMember.username,
-    display_name: teamMember.displayName,
-    avatar_initials: teamMember.avatarInitials,
-    ign: teamMember.ign,
-    role: input.role ?? "TBD",
-    status: "invited",
-  });
-
-  if (error) throw new Error(error.message);
+  await insertOrReactivateTeamMember(
+    {
+      team_id: input.teamId,
+      user_id: member.id,
+      username: teamMember.username,
+      display_name: teamMember.displayName,
+      avatar_initials: teamMember.avatarInitials,
+      ign: teamMember.ign,
+      role: input.role ?? "TBD",
+      status: "invited",
+    },
+    member.username,
+  );
 
   return fetchTeamWithMembers(input.teamId);
 }
@@ -345,6 +374,41 @@ export async function updateTeam(
   }
 
   return fetchTeamWithMembers(teamId);
+}
+
+export async function acceptTeamInvite(teamId: string, userId: string): Promise<Team> {
+  const team = await fetchTeamWithMembers(teamId);
+  const membership = team.members.find((m) => m.userId === userId);
+  if (!membership || membership.status !== "invited") {
+    throw new Error("No pending invite found for this team.");
+  }
+
+  await assertMemberAvailableForGame(userId, team.game, teamId);
+
+  const { error } = await supabase
+    .from("team_members")
+    .update({ status: "active" })
+    .eq("team_id", teamId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
+  return fetchTeamWithMembers(teamId);
+}
+
+export async function declineTeamInvite(teamId: string, userId: string): Promise<void> {
+  const team = await fetchTeamWithMembers(teamId);
+  const membership = team.members.find((m) => m.userId === userId);
+  if (!membership || membership.status !== "invited") {
+    throw new Error("No pending invite found for this team.");
+  }
+
+  const { error } = await supabase
+    .from("team_members")
+    .update({ status: "removed" })
+    .eq("team_id", teamId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
 }
 
 export async function removeMemberFromTeam(teamId: string, userId: string): Promise<Team> {

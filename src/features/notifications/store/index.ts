@@ -61,3 +61,38 @@ export function markAllAsRead(): void {
 export function clearAll(): void {
   save([]);
 }
+
+/** Replace team-invite notifications while preserving read state for still-pending invites. */
+export function mergeTeamInviteNotifications(incoming: AppNotification[]): void {
+  const existing = getAll();
+  const readById = new Map(
+    existing.filter((n) => n.read).map((n) => [n.id, true] as const),
+  );
+  const other = existing.filter((n) => n.type !== "team_invite");
+  const mergedInvites = incoming.map((n) => ({
+    ...n,
+    read: readById.get(n.id) ?? false,
+  }));
+
+  const combined = [...mergedInvites, ...other].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  save(combined);
+}
+
+export function markTeamInviteRead(teamId: string): void {
+  markAsRead(`team-invite-${teamId}`);
+}
+
+const NOTIFICATIONS_UPDATED = "br-notifications-updated";
+
+export function notifyListeners(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED));
+}
+
+export function subscribeToNotifications(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(NOTIFICATIONS_UPDATED, listener);
+  return () => window.removeEventListener(NOTIFICATIONS_UPDATED, listener);
+}
