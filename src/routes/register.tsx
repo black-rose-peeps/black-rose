@@ -53,7 +53,7 @@ function RegisterPage() {
     setError(null);
     if (!isDiscordOAuthConfigured()) {
       setError(
-        "Discord sign-in is not configured. Set VITE_DISCORD_CLIENT_ID and VITE_DISCORD_REDIRECT_URI in your .env file.",
+        "Discord sign-in is not configured. Set VITE_DISCORD_CLIENT_ID in your environment.",
       );
       return;
     }
