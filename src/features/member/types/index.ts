@@ -1,0 +1,62 @@
+export type SocialPlatform =
+  | "twitch"
+  | "youtube"
+  | "tiktok"
+  | "facebook"
+  | "x"
+  | "instagram"
+  | "discord";
+
+export interface SocialLink {
+  platform: SocialPlatform;
+  label: string;
+  url: string | null;
+  isPublic: boolean;
+}
+
+export interface RiotAccount {
+  gameName: string;
+  tagline: string;
+  region: string;
+  isLinked: boolean;
+}
+
+export interface TournamentEntry {
+  tournamentId: string;
+  tournamentName: string;
+  game: string;
+  status: "Pending" | "Approved" | "Rejected";
+  teamName: string;
+  teamTag: string;
+}
+
+export interface UpcomingMatch {
+  matchId: string;
+  tournamentName: string;
+  opponent: string;
+  scheduledAt: string;
+  round: string;
+}
+
+export interface MemberProfile {
+  memberId: string;
+  slug: string;
+  displayName: string;
+  username: string;
+  headline: string;
+  bio: string;
+  avatarInitials: string;
+  /** Data URL or remote URL of the uploaded avatar. null = show initials fallback. */
+  avatarUrl: string | null;
+  mainGame: string;
+  mainRole: string;
+  region: string;
+  isVerified: boolean;
+  isPublic: boolean;
+  socialLinks: SocialLink[];
+  riotAccount: RiotAccount | null;
+  tournamentHistory: string[];
+  activeRegistrations: TournamentEntry[];
+  upcomingMatches: UpcomingMatch[];
+  profileCompletion: number; // 0-100
+}

@@ -16,15 +16,38 @@ dist-ssr
 .nitro
 *.local
 
+# Environment — never commit secrets
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
 
-# Editor directories and files
+# IDE / local tooling (may contain paths, tokens, or session data)
+.kiro/
+.cursor/
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
+
+# Keys and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+service-account*.json
+
+# OS
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

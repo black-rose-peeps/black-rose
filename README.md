@@ -58,41 +58,132 @@ The app will be running at **http://localhost:5173**
 
 ## Project Structure
 
-```
+```text
 src/
-├── assets/          # Images and static files
+├── assets/                        # Images (logo, banners, etc.)
+│
+├── features/                      # ← Main source of truth for all features
+│   ├── landing/                   # Public home page (/)
+│   │   └── components/
+│   │       ├── Header.tsx
+│   │       ├── Hero.tsx
+│   │       ├── FeaturedTournaments.tsx
+│   │       ├── WhyBlackRose.tsx
+│   │       ├── HallOfChampions.tsx
+│   │       ├── CtaBand.tsx
+│   │       ├── Footer.tsx
+│   │       └── SectionHeading.tsx
+│   │
+│   ├── auth/                      # Login and Register pages
+│   │   ├── components/
+│   │   │   └── AuthShell.tsx      # Shared auth page layout shell
+│   │   ├── services/
+│   │   │   └── discord.ts         # Discord OAuth2 placeholder (wire up when backend is ready)
+│   │   ├── store/
+│   │   │   └── session.ts         # Client-side session store (placeholder until real auth)
+│   │   └── types/
+│   │       └── index.ts           # UserRole, AppUser types
+│   │
+│   ├── admin/                     # Admin console (/admin/*)
+│   │   └── components/
+│   │       ├── AdminSidebar.tsx
+│   │       ├── AdminTopbar.tsx
+│   │       └── ui.tsx             # Admin-specific UI primitives
+│   │
+│   ├── member/                    # Member dashboard and profile
+│   │   ├── components/
+│   │   │   └── MemberNav.tsx      # Sticky nav for member pages (mirrors landing Header)
+│   │   ├── types/
+│   │   │   └── index.ts           # MemberProfile, SocialLink, RiotAccount, etc.
+│   │   └── constants/
+│   │       └── index.ts           # Social platform labels and ordering
+│   │
+│   ├── teams/                     # Team creation and management
+│   │   ├── components/
+│   │   │   └── RosterTable.tsx    # Roster table with captain actions
+│   │   ├── types/
+│   │   │   └── index.ts           # Team, TeamMember, TeamMemberStatus types
+│   │   └── constants/
+│   │       └── index.ts           # Game options, role options, GAME_COLOR/ACCENT
+│   │
+│   └── shared/                    # Components reused across 2+ features
+│       └── components/
+│           └── Emblem.tsx
+│
 ├── components/
-│   ├── admin/       # Admin console components
-│   ├── auth/        # Login / register shell
-│   ├── site/        # Public-facing site components
-│   └── ui/          # Reusable UI primitives (shadcn/ui)
-├── hooks/           # Custom React hooks
-├── lib/             # Utilities and shared data
-├── routes/          # File-based routes (TanStack Router)
-│   ├── __root.tsx   # App shell — wraps every page
-│   ├── index.tsx    # Public home page (/)
-│   ├── login.tsx    # Sign in (/login)
-│   ├── register.tsx # Sign up (/register)
-│   ├── admin.tsx    # Admin layout (/admin/*)
-│   └── ...
-└── styles.css       # Global styles + Tailwind theme
+│   └── ui/                        # shadcn/ui base primitives (do not edit manually)
+│
+├── hooks/                         # Custom React hooks
+│
+├── lib/
+│   ├── mock-data.ts               # Placeholder data for admin panel + tournaments
+│   ├── mock-member.ts             # Placeholder member profile data
+│   ├── mock-teams.ts              # Placeholder team + roster data
+│   ├── mock-tournament-details.ts # Rich tournament detail data
+│   └── utils.ts                   # Utility functions (cn, etc.)
+│
+├── routes/                        # File-based routing (TanStack Router)
+│   ├── __root.tsx                 # Root layout — wraps every page
+│   ├── index.tsx                  # Home page (/)
+│   ├── login.tsx                  # Sign in (/login)
+│   ├── register.tsx               # Create account (/register)
+│   ├── unauthorized.tsx           # 403 page (/unauthorized)
+│   ├── admin.tsx                  # Admin layout wrapper
+│   ├── admin.index.tsx            # Admin dashboard (/admin)
+│   └── admin.*.tsx                # Other admin sections
+│
+├── routeTree.gen.ts               # AUTO-GENERATED — never edit by hand
+├── router.tsx                     # Router instance setup
+├── server.ts                      # SSR server entry
+├── start.ts                       # TanStack Start entry
+└── styles.css                     # Global styles + Tailwind theme
 ```
+
+### How features are organized
+
+Each folder inside `src/features/` represents one page group or feature. Inside a feature you can add these subfolders as needed:
+
+```text
+features/
+└── your-feature/
+    ├── components/   ← UI pieces specific to this feature
+    ├── hooks/        ← React hooks used only here
+    ├── types/        ← TypeScript interfaces and types
+    ├── constants/    ← Static values, enums, config
+    ├── services/     ← API calls or data-fetching logic
+    └── utils/        ← Helper functions specific to this feature
+```
+
+Only create the subfolders you actually need. Don't create empty ones.
+
+`features/shared/` is for anything genuinely used by two or more features (like `Emblem`).
+
+Route files in `routes/` stay thin — they import from `features/` and compose the page.
 
 ### Key Pages
 
-| URL                    | Description            |
-| ---------------------- | ---------------------- |
-| `/`                    | Public landing page    |
-| `/login`               | Sign in                |
-| `/register`            | Create account         |
-| `/admin`               | Admin dashboard        |
-| `/admin/tournaments`   | Tournament management  |
-| `/admin/teams`         | Team directory         |
-| `/admin/users`         | User management        |
-| `/admin/participants`  | Registration queue     |
-| `/admin/announcements` | Broadcast center       |
-| `/admin/settings`      | Console settings       |
-| `/unauthorized`        | 403 access denied page |
+| URL                      | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| `/`                      | Public landing page                                 |
+| `/tournaments`           | Tournament directory with game & status filters     |
+| `/tournaments/:id`       | Tournament detail — overview, teams, bracket, rules |
+| `/login`                 | Sign in with Discord                                |
+| `/register`              | Create account with Discord → redirects to waitlist |
+| `/waitlist`              | Pending verification — shown after registering      |
+| `/dashboard`             | Member dashboard (verified members only)            |
+| `/members/:slug`         | Public member profile page                          |
+| `/teams`                 | My team overview — create or view current team      |
+| `/teams/create`          | Create a new team                                   |
+| `/teams/:id`             | Team detail — roster, invite members, tournament    |
+| `/unauthorized`          | 403 access denied page                              |
+| `/admin`                 | Admin dashboard                                     |
+| `/admin/tournaments`     | Tournament management                               |
+| `/admin/tournaments/:id` | Tournament detail (admin view)                      |
+| `/admin/teams`           | Team directory                                      |
+| `/admin/users`           | User management                                     |
+| `/admin/participants`    | Registration queue                                  |
+| `/admin/announcements`   | Broadcast center                                    |
+| `/admin/settings`        | Console settings                                    |
 
 ---
 
@@ -107,11 +198,16 @@ src/
 
 ---
 
-## Notes
+## Notes for Contributors
 
-- The admin panel currently uses **mock data** (`src/lib/mock-data.ts`) — no backend or authentication is wired up yet.
-- Route files are auto-generated into `src/routeTree.gen.ts` by the TanStack Router plugin. Don't edit that file by hand.
-- To add a new page, just create a new `.tsx` file in `src/routes/`. The router picks it up automatically on the next dev server restart.
+- **Don't edit `routeTree.gen.ts`** — it's auto-generated by TanStack Router every time you save a route file. Any manual edits will be overwritten.
+- To add a new page, create a `.tsx` file in `src/routes/`. The router picks it up on the next dev server restart.
+- The `@/` import alias maps to `src/`. For example, `@/features/landing/components/Hero` → `src/features/landing/components/Hero.tsx`.
+- When adding a new shadcn/ui component, run `npx shadcn@latest add <component>` — it drops into `src/components/ui/` automatically. Don't move it.
+- The admin panel uses mock data from `src/lib/mock-data.ts`. No real backend or auth is connected yet.
+- Authentication uses Discord OAuth2. The placeholder service is at `src/features/auth/services/discord.ts`. To wire it up: create a Discord app at https://discord.com/developers/applications, set `VITE_DISCORD_CLIENT_ID` and `VITE_DISCORD_REDIRECT_URI` in a `.env` file, then implement the `exchangeCodeForToken` and `getDiscordUser` functions in a server function.
+- User roles are defined in `src/features/auth/types/index.ts`. New registrations get `not_verified` and land on `/waitlist`. An admin manually sets the role to `verified` to grant full access.
+- The session store at `src/features/auth/store/session.ts` is a `sessionStorage` placeholder. Replace it with real session management (JWT cookie, server-side session, etc.) when the backend is ready.
 
 ---
 
@@ -122,22 +218,27 @@ The project is currently frontend-only and uses mock data for development.
 ### Completed
 
 - ✅ Landing Page
-- ✅ Login & Registration UI
-- ✅ Admin Dashboard UI
+- ✅ Login — Discord OAuth2 UI (placeholder, backend not wired)
+- ✅ Registration — Discord OAuth2 UI → redirects to waitlist
+- ✅ Waitlist page — shown to `not_verified` users after registering
+- ✅ Tournament Directory — frontend with mock data
+- ✅ Tournament Details Page — frontend with mock data (overview, teams, bracket, rules)
+- ✅ Admin Dashboard UI — frontend with mock data
+- ✅ Member Dashboard — `/dashboard` (verified session required)
+- ✅ Member Profile Page — `/members/:slug` (public, session-aware)
+- ✅ Teams — `/teams`, `/teams/create`, `/teams/:id` (create team, invite members, view roster)
 
-### Next Pages to Build (Priority Order)
+### Next Up
 
-1. Tournament Directory
-2. Tournament Details Page
-3. Team Creation & Management
-4. Tournament Registration Flow
-5. Bracket Viewer
-6. User Dashboard
-7. Notifications & Announcements
+1. Discord OAuth2 backend integration (callback route, token exchange, session)
+2. Admin: user verification flow (change role `not_verified` → `verified`)
+3. Tournament Registration Flow from team page
+4. User Profile editing (social links, bio, riot account)
+5. Notifications & Announcements
 
 ### Notes
 
-- No backend has been implemented yet.
-- No database is connected.
-- Authentication is not functional yet.
-- All users, teams, tournaments, and registrations currently use mock data.
+- No backend has been implemented yet.(DONE)
+- No database is connected. (DONE)
+- Authentication is not functional yet. Registration simulates a session in `sessionStorage` and redirects to `/waitlist`.
+- All users, teams, tournaments, and registrations currently use mock data. (DONE)
