@@ -1,4 +1,5 @@
 import { TournamentGrid } from "./TournamentGrid";
+import type { CaptainTournamentRegistrationStatus } from "../services/team-registration.service";
 import type { MockTournament } from "@/lib/mock-data";
 
 /** Labelled section group used on the tournament directory page. */
@@ -6,10 +7,14 @@ export function TournamentGroup({
   label,
   dot,
   tournaments,
+  captainRegistrationByTournament,
+  captainRegistrationLoading,
 }: {
   label: string;
   dot?: string;
   tournaments: MockTournament[];
+  captainRegistrationByTournament?: Map<string, CaptainTournamentRegistrationStatus>;
+  captainRegistrationLoading?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -18,7 +23,11 @@ export function TournamentGroup({
         {label}
         <span className="h-px flex-1 bg-white/6" />
       </div>
-      <TournamentGrid tournaments={tournaments} />
+      <TournamentGrid
+        tournaments={tournaments}
+        captainRegistrationByTournament={captainRegistrationByTournament}
+        captainRegistrationLoading={captainRegistrationLoading}
+      />
     </div>
   );
 }

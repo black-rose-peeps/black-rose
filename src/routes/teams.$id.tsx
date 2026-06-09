@@ -9,7 +9,7 @@ import {
   fetchTeamById,
   removeMemberFromTeam,
 } from "@/features/admin/features/teams/services/teams.service";
-import { syncTeamInviteNotifications } from "@/features/notifications/services/team-invite-notifications";
+import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
 import { markTeamInviteRead } from "@/features/notifications/store";
 import { MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
 import { getSession } from "@/features/auth/store/session";
@@ -18,9 +18,15 @@ import { InviteMemberDialog } from "@/features/teams/components/InviteMemberDial
 import { TeamInviteBanner } from "@/features/teams/components/TeamInviteBanner";
 import { useTeamMembersRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
 import { isPendingInvite } from "@/features/teams/utils/membership";
+import {
+  approvedRegistration,
+  fetchRegistrationsForTeam,
+  pendingRegistrations,
+} from "@/features/tournaments/services/team-registration.service";
 import { RosterTable } from "@/features/teams/components/RosterTable";
 import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember } from "@/features/teams/types";
+import type { MockTeam } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/teams/$id")({
   head: () => ({ meta: [{ title: "Team — Black Rose" }] }),
@@ -42,6 +48,7 @@ function TeamDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [respondingInvite, setRespondingInvite] = useState(false);
+  const [registrations, setRegistrations] = useState<MockTeam[]>([]);
 
   const loadTeam = useCallback(
     async (options?: { showLoader?: boolean }) => {
@@ -56,6 +63,8 @@ function TeamDetailPage() {
           setTeam(null);
         } else {
           setTeam(data);
+          const teamRegs = await fetchRegistrationsForTeam(data.id);
+          setRegistrations(teamRegs);
         }
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : "Failed to load team.");
@@ -166,6 +175,9 @@ function TeamDetailPage() {
   ).length;
   const pendingCount = team.members.filter((m) => m.status === "invited").length;
   const canInvite = team.members.filter((m) => m.status !== "removed").length < MAX_TEAM_SIZE;
+  const pendingRegs = pendingRegistrations(registrations);
+  const approvedReg = approvedRegistration(registrations);
+  const hasBlockingRegistration = Boolean(approvedReg || pendingRegs.length > 0);
 
   async function handleRemove(member: TeamMember) {
     setActionError(null);
@@ -184,7 +196,7 @@ function TeamDetailPage() {
       const updated = await acceptTeamInvite(team!.id, memberId!);
       setTeam(updated);
       markTeamInviteRead(team!.id);
-      if (memberId) await syncTeamInviteNotifications(memberId);
+      if (memberId) await syncTeamMembershipNotifications(memberId);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to accept invite.");
     } finally {
@@ -198,7 +210,7 @@ function TeamDetailPage() {
     try {
       await declineTeamInvite(team!.id, memberId!);
       markTeamInviteRead(team!.id);
-      if (memberId) await syncTeamInviteNotifications(memberId);
+      if (memberId) await syncTeamMembershipNotifications(memberId);
       navigate({ to: "/teams", search: { create: false } });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to decline invite.");
@@ -270,19 +282,22 @@ function TeamDetailPage() {
                   Invite Member
                 </Button>
               )}
-              {team.activeTournamentId ? (
+              {approvedReg || team.activeTournamentId ? (
                 <Button
                   asChild
                   variant="outline"
                   className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
                 >
-                  <Link to="/tournaments/$id" params={{ id: team.activeTournamentId }}>
+                  <Link
+                    to="/tournaments/$id"
+                    params={{ id: approvedReg?.tournamentId ?? team.activeTournamentId! }}
+                  >
                     <Trophy className="h-3.5 w-3.5" />
                     View Tournament
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
                 </Button>
-              ) : (
+              ) : !hasBlockingRegistration ? (
                 <Button
                   asChild
                   className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
@@ -292,7 +307,7 @@ function TeamDetailPage() {
                     Register for Tournament
                   </Link>
                 </Button>
-              )}
+              ) : null}
             </div>
           )}
         </div>
@@ -323,7 +338,39 @@ function TeamDetailPage() {
         />
       </TechPanel>
 
-      {team.activeTournamentId && (
+      {pendingRegs.length > 0 && (
+        <TechPanel
+          label="Tournament"
+          title="Pending Registration"
+          icon={<Trophy className="h-3.5 w-3.5" />}
+          className="mt-6"
+        >
+          <ul className="space-y-3">
+            {pendingRegs.map((registration) => (
+              <li key={registration.id} className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium text-sm">Awaiting admin approval</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Submitted {registration.registrationDate}
+                  </p>
+                </div>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+                >
+                  <Link to="/tournaments/$id" params={{ id: registration.tournamentId }}>
+                    View <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </TechPanel>
+      )}
+
+      {approvedReg && (
         <TechPanel
           label="Tournament"
           title="Active Registration"
@@ -332,10 +379,10 @@ function TeamDetailPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-sm">{team.activeTournamentName}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Registration pending admin approval
+              <p className="font-medium text-sm">
+                {team.activeTournamentName ?? "Registered tournament"}
               </p>
+              <p className="mt-0.5 text-xs text-emerald-400">Approved — your team is registered</p>
             </div>
             <Button
               asChild
@@ -343,7 +390,7 @@ function TeamDetailPage() {
               size="sm"
               className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
             >
-              <Link to="/tournaments/$id" params={{ id: team.activeTournamentId }}>
+              <Link to="/tournaments/$id" params={{ id: approvedReg.tournamentId }}>
                 View <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </Button>

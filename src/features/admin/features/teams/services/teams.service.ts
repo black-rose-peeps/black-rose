@@ -115,6 +115,7 @@ async function insertOrReactivateTeamMember(
         ign: payload.ign,
         role: payload.role,
         status: payload.status,
+        joined_at: new Date().toISOString(),
       })
       .eq("team_id", payload.team_id)
       .eq("user_id", payload.user_id);
@@ -307,6 +308,28 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
   );
 
   return fetchTeamWithMembers(input.teamId);
+}
+
+export interface UserTeamMembershipRow {
+  teamId: string;
+  status: TeamMember["status"];
+  joinedAt: string;
+}
+
+/** All team membership rows for a user, including removed (for notification sync). */
+export async function fetchUserTeamMembershipRows(userId: string): Promise<UserTeamMembershipRow[]> {
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("team_id, status, joined_at")
+    .eq("user_id", userId);
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => ({
+    teamId: row.team_id as string,
+    status: row.status as TeamMember["status"],
+    joinedAt: row.joined_at as string,
+  }));
 }
 
 export async function fetchTeamsForUser(userId: string): Promise<Team[]> {

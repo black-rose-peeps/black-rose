@@ -25,6 +25,7 @@ import { MemberHeroBanner, MemberPageLayout, PanelEmptyState } from "@/features/
 import { getSession } from "@/features/auth/store/session";
 import { SOCIAL_PLATFORM_LABELS } from "@/features/member/constants";
 import { fetchMemberProfileById } from "@/features/member/services/member-profile.service";
+import { fetchMemberTournamentDashboard } from "@/features/member/services/member-dashboard.service";
 import { profileCompletionHint } from "@/features/member/utils/profile-completion";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
 import type { AppUser } from "@/features/auth/types";
@@ -94,9 +95,18 @@ function DashboardPage() {
           return;
         }
 
-        const memberProfile = await fetchMemberProfileById(updated.id);
+        const [memberProfile, tournamentDashboard] = await Promise.all([
+          fetchMemberProfileById(updated.id),
+          fetchMemberTournamentDashboard(updated.id),
+        ]);
         if (!cancelled) {
-          setProfile(memberProfile ?? profileFallbackFromSession(updated));
+          const base = memberProfile ?? profileFallbackFromSession(updated);
+          setProfile({
+            ...base,
+            activeRegistrations: tournamentDashboard.activeRegistrations,
+            upcomingMatches: tournamentDashboard.upcomingMatches,
+            tournamentHistory: tournamentDashboard.tournamentHistory,
+          });
         }
       } catch {
         if (cancelled) return;
@@ -117,6 +127,37 @@ function DashboardPage() {
       cancelled = true;
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (!session?.id || !hasFullMemberAccess(session.role)) return;
+
+    const memberId = session.id;
+
+    async function refreshTournamentData() {
+      try {
+        const tournamentDashboard = await fetchMemberTournamentDashboard(memberId);
+        setProfile((current) =>
+          current
+            ? {
+                ...current,
+                activeRegistrations: tournamentDashboard.activeRegistrations,
+                upcomingMatches: tournamentDashboard.upcomingMatches,
+                tournamentHistory: tournamentDashboard.tournamentHistory,
+              }
+            : current,
+        );
+      } catch {
+        // Keep last loaded dashboard data
+      }
+    }
+
+    function handleFocus() {
+      void refreshTournamentData();
+    }
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [session?.id, session?.role]);
 
   if (!session || isSyncing) return <MemberDashboardSkeleton />;
   if (!hasFullMemberAccess(session.role) || !profile) return <MemberDashboardSkeleton />;
@@ -307,37 +348,55 @@ function DashboardPage() {
                 size="sm"
                 className="h-auto rounded-none p-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
               >
-                <Link
-                  to="/tournaments/$id"
-                  params={{ id: p.activeRegistrations[0].tournamentId }}
-                >
-                  View →
-                </Link>
+                <Link to="/tournaments">Browse →</Link>
               </Button>
             ) : undefined
           }
         >
           {p.activeRegistrations.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium leading-tight">
-                {p.activeRegistrations[0].tournamentName}
-              </p>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className="rounded-none border-white/10 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
-                >
-                  {p.activeRegistrations[0].teamTag}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {p.activeRegistrations[0].teamName}
-                </span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-amber-400">
-                <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-amber-400" />
-                {p.activeRegistrations[0].status}
-              </div>
-            </div>
+            <ul className="flex flex-col gap-4">
+              {p.activeRegistrations.map((entry) => (
+                <li key={`${entry.tournamentId}-${entry.teamTag}`} className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium leading-tight">{entry.tournamentName}</p>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto shrink-0 rounded-none p-0 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    >
+                      <Link to="/tournaments/$id" params={{ id: entry.tournamentId }}>
+                        View →
+                      </Link>
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="rounded-none border-white/10 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
+                    >
+                      {entry.teamTag}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{entry.teamName}</span>
+                  </div>
+                  {entry.status === "Pending" ? (
+                    <div className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-amber-400">
+                      <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-amber-400" />
+                      Pending admin approval
+                    </div>
+                  ) : entry.status === "Approved" ? (
+                    <div className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
+                      <CheckCircle className="h-3 w-3" />
+                      Registered
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-red-400">
+                      Declined
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
           ) : (
             <PanelEmptyState
               icon={<Trophy className="h-6 w-6" />}
@@ -376,7 +435,7 @@ function DashboardPage() {
                       vs {m.opponent} · {m.round}
                     </p>
                   </div>
-                  <span className="shrink-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <span className="shrink-0 text-right font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
                     {m.scheduledAt}
                   </span>
                 </li>

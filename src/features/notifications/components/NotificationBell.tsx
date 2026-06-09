@@ -5,6 +5,7 @@ import {
   CheckCheck,
   Trophy,
   Users2,
+  UserMinus,
   Megaphone,
   Calendar,
   ShieldCheck,
@@ -18,11 +19,13 @@ import {
   subscribeToNotifications,
 } from "../store";
 import type { AppNotification, NotificationType } from "../types";
+import { relativeTime } from "../utils/relative-time";
 
 // ── Icon per notification type ────────────────────────────────────────────────
 
 const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   team_invite: <Users2 className="h-4 w-4" />,
+  team_removed: <UserMinus className="h-4 w-4" />,
   invite_accepted: <Users2 className="h-4 w-4" />,
   invite_declined: <Users2 className="h-4 w-4" />,
   tournament_new: <Trophy className="h-4 w-4" />,
@@ -35,6 +38,7 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
 
 const TYPE_COLOR: Record<NotificationType, string> = {
   team_invite: "text-sky-400",
+  team_removed: "text-red-400",
   invite_accepted: "text-emerald-400",
   invite_declined: "text-red-400",
   tournament_new: "text-amber-400",
@@ -45,24 +49,13 @@ const TYPE_COLOR: Record<NotificationType, string> = {
   announcement: "text-muted-foreground",
 };
 
-// ── Relative time helper ──────────────────────────────────────────────────────
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
+  const [, setTimeTick] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Sync state from store
@@ -74,6 +67,12 @@ export function NotificationBell() {
   useEffect(() => {
     refresh();
     return subscribeToNotifications(refresh);
+  }, []);
+
+  // Re-render relative timestamps as time passes (e.g. "just now" → "5m ago").
+  useEffect(() => {
+    const id = window.setInterval(() => setTimeTick((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(id);
   }, []);
 
   // Close on outside click OR Escape key
@@ -211,7 +210,19 @@ export function NotificationBell() {
 
                 return (
                   <li key={n.id}>
-                    {teamInviteMatch ? (
+                    {n.href === "/teams" ? (
+                      <Link
+                        to="/teams"
+                        search={{ create: false }}
+                        onClick={() => {
+                          handleRead(n.id);
+                          setOpen(false);
+                        }}
+                        className="block"
+                      >
+                        {content}
+                      </Link>
+                    ) : teamInviteMatch ? (
                       <Link
                         to="/teams/$id"
                         params={{ id: teamInviteMatch[1] }}
@@ -253,7 +264,7 @@ export function NotificationBell() {
           {notifications.length > 0 && (
             <div className="border-t border-white/8 px-4 py-2.5 text-center">
               <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/40">
-                {notifications.length} total · team invites sync automatically
+                {notifications.length} total · syncs automatically
               </p>
             </div>
           )}

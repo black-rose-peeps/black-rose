@@ -48,6 +48,8 @@ export interface MockTeam {
   captain: string;
   members: MockPlayer[];
   registrationDate: string;
+  /** When status last changed (approve/reject), when available from the database. */
+  statusUpdatedAt?: string;
   status: "Pending" | "Approved" | "Rejected" | "Previously Competed";
   tournamentId: string;
   history: string[];

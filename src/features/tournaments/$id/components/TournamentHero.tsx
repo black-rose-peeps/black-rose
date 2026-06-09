@@ -19,9 +19,10 @@ const GAME_GLOW: Record<TournamentDetail["game"], string> = {
 
 interface TournamentHeroProps {
   tournament: TournamentDetail;
+  registrationAction?: React.ReactNode;
 }
 
-export function TournamentHero({ tournament: t }: TournamentHeroProps) {
+export function TournamentHero({ tournament: t, registrationAction }: TournamentHeroProps) {
   const status = STATUS_CONFIG[t.status] ?? STATUS_CONFIG["Registration Closed"];
   const isOver = t.status === "Completed" || t.status === "Archived";
 
@@ -74,7 +75,9 @@ export function TournamentHero({ tournament: t }: TournamentHeroProps) {
           {/* Right — CTA */}
           {!isOver && (
             <div className="shrink-0">
-              {t.status === "Registration Open" ? (
+              {t.status === "Registration Open" && registrationAction ? (
+                registrationAction
+              ) : t.status === "Registration Open" ? (
                 <Link
                   to="/register"
                   className="clip-cta inline-flex h-12 items-center gap-3 bg-white px-8 font-tech text-sm uppercase tracking-wider-2 text-black transition hover:bg-white/90"

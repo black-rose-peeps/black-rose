@@ -68,10 +68,12 @@ export function mergeTeamInviteNotifications(incoming: AppNotification[]): void 
   const readById = new Map(
     existing.filter((n) => n.read).map((n) => [n.id, true] as const),
   );
+  const existingById = new Map(existing.map((n) => [n.id, n] as const));
   const other = existing.filter((n) => n.type !== "team_invite");
   const mergedInvites = incoming.map((n) => ({
     ...n,
-    read: readById.get(n.id) ?? false,
+    createdAt: existingById.get(n.id)?.createdAt ?? n.createdAt,
+    read: n.read ? (readById.get(n.id) ?? true) : false,
   }));
 
   const combined = [...mergedInvites, ...other].sort(
@@ -82,6 +84,61 @@ export function mergeTeamInviteNotifications(incoming: AppNotification[]): void 
 
 export function markTeamInviteRead(teamId: string): void {
   markAsRead(`team-invite-${teamId}`);
+}
+
+const TEAM_EVENT_NOTIFICATION_TYPES = new Set<AppNotification["type"]>(["team_removed"]);
+
+/** Replace team event notifications (e.g. removal) while preserving read state. */
+export function mergeTeamEventNotifications(incoming: AppNotification[]): void {
+  const existing = getAll();
+  const readById = new Map(
+    existing.filter((n) => n.read).map((n) => [n.id, true] as const),
+  );
+  const existingById = new Map(existing.map((n) => [n.id, n] as const));
+  const other = existing.filter((n) => !TEAM_EVENT_NOTIFICATION_TYPES.has(n.type));
+  const merged = incoming.map((n) => ({
+    ...n,
+    createdAt: existingById.get(n.id)?.createdAt ?? n.createdAt,
+    read: n.read ? (readById.get(n.id) ?? true) : false,
+  }));
+
+  const combined = [...merged, ...other].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  save(combined);
+}
+
+export function markTeamRemovalRead(teamId: string): void {
+  markAsRead(`team-removed-${teamId}`);
+}
+
+const REGISTRATION_NOTIFICATION_TYPES = new Set<AppNotification["type"]>([
+  "registration_approved",
+  "registration_rejected",
+]);
+
+/** Replace registration outcome notifications while preserving read state. */
+export function mergeRegistrationStatusNotifications(incoming: AppNotification[]): void {
+  const existing = getAll();
+  const readById = new Map(
+    existing.filter((n) => n.read).map((n) => [n.id, true] as const),
+  );
+  const existingById = new Map(existing.map((n) => [n.id, n] as const));
+  const other = existing.filter((n) => !REGISTRATION_NOTIFICATION_TYPES.has(n.type));
+  const merged = incoming.map((n) => ({
+    ...n,
+    createdAt: existingById.get(n.id)?.createdAt ?? n.createdAt,
+    read: n.read ? (readById.get(n.id) ?? true) : false,
+  }));
+
+  const combined = [...merged, ...other].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  save(combined);
+}
+
+export function markRegistrationNotificationRead(registrationId: string, approved: boolean): void {
+  markAsRead(`registration-${approved ? "approved" : "rejected"}-${registrationId}`);
 }
 
 const NOTIFICATIONS_UPDATED = "br-notifications-updated";

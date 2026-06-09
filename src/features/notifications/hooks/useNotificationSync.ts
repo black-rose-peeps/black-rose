@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { syncTeamInviteNotifications } from "../services/team-invite-notifications";
+import { syncTeamMembershipNotifications } from "../services/team-membership-notifications";
+import { syncTournamentRegistrationNotifications } from "../services/tournament-registration-notifications";
 
-/** Keep team-invite notifications in sync via Supabase Realtime. */
+/** Keep member notifications in sync via Supabase Realtime. */
 export function useNotificationSync(memberId: string | undefined) {
   useEffect(() => {
     if (!memberId) return;
@@ -10,21 +11,24 @@ export function useNotificationSync(memberId: string | undefined) {
     const userId = memberId;
     let cancelled = false;
 
-    async function sync() {
+    async function syncAll() {
       try {
-        await syncTeamInviteNotifications(userId);
+        await Promise.all([
+          syncTeamMembershipNotifications(userId),
+          syncTournamentRegistrationNotifications(userId),
+        ]);
       } catch (err) {
         if (!cancelled) {
-          console.error("[notifications] syncTeamInviteNotifications failed:", err);
+          console.error("[notifications] sync failed:", err);
         }
       }
     }
 
-    void sync();
+    void syncAll();
 
     const supabase = getSupabaseClient();
     const channel = supabase
-      .channel(`team-invites:${userId}`)
+      .channel(`member-notifications:${userId}`)
       .on(
         "postgres_changes",
         {
@@ -34,13 +38,31 @@ export function useNotificationSync(memberId: string | undefined) {
           filter: `user_id=eq.${userId}`,
         },
         () => {
-          void sync();
+          void syncAll();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tournament_registrations",
+        },
+        () => {
+          void syncAll();
         },
       )
       .subscribe();
 
+    function handleFocus() {
+      void syncAll();
+    }
+
+    window.addEventListener("focus", handleFocus);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("focus", handleFocus);
       void supabase.removeChannel(channel);
     };
   }, [memberId]);

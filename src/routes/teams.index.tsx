@@ -10,7 +10,8 @@ import {
 } from "@/features/admin/features/teams/services/teams.service";
 import { MemberHeroBanner, MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
 import { getSession } from "@/features/auth/store/session";
-import { syncTeamInviteNotifications } from "@/features/notifications/services/team-invite-notifications";
+import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
+import { markTeamInviteRead } from "@/features/notifications/store";
 import { CreateTeamDialog } from "@/features/teams/components/CreateTeamDialog";
 import { TeamInviteCard } from "@/features/teams/components/TeamInviteCard";
 import { GAME_COLOR, GAME_ACCENT } from "@/features/teams/constants";
@@ -119,7 +120,7 @@ function TeamsIndexPage() {
     if (!memberId) return;
     const data = await fetchTeamsForUser(memberId);
     setTeams(data);
-    await syncTeamInviteNotifications(memberId);
+    await syncTeamMembershipNotifications(memberId);
   }, [memberId]);
 
   useMemberTeamMembershipRealtime(memberId, () => {
@@ -131,6 +132,7 @@ function TeamsIndexPage() {
     setRespondingTeamId(teamId);
     try {
       await acceptTeamInvite(teamId, memberId);
+      markTeamInviteRead(teamId);
       await reloadTeams();
       navigate({ to: "/teams/$id", params: { id: teamId } });
     } catch (err) {
@@ -145,6 +147,7 @@ function TeamsIndexPage() {
     setRespondingTeamId(teamId);
     try {
       await declineTeamInvite(teamId, memberId);
+      markTeamInviteRead(teamId);
       await reloadTeams();
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Failed to decline invite.");
@@ -178,7 +181,7 @@ function TeamsIndexPage() {
       .then(async (data) => {
         if (cancelled) return;
         setTeams(data);
-        await syncTeamInviteNotifications(memberId);
+        await syncTeamMembershipNotifications(memberId);
       })
       .catch((err) => {
         if (!cancelled) {

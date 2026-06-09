@@ -18,7 +18,11 @@ import {
   toPublicTournamentStatus,
 } from "@/features/tournaments/utils";
 import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
+import { TournamentCaptainRegister } from "@/features/tournaments/components/TournamentCaptainRegister";
+import { isSoloTournament } from "@/features/tournaments/types/participation";
 import { fetchTournamentById } from "@/features/tournaments/services";
+import { getSession } from "@/features/auth/store/session";
+import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
   buildPodiumPlacements,
   DEFAULT_PRIZE_TIERS,
@@ -45,7 +49,7 @@ function detailFromSummary(summary: MockTournament, bracketRounds: BracketRound[
     format: summary.format,
     region: summary.region,
     participationType: summary.participationType,
-    wwmMode: summary.wwmMode,
+    wwmMode: summary.wwmMode ?? null,
     description: `${summary.name} is a Black Rose community tournament. Follow the bracket and overview for live updates.`,
     organizer: "Black Rose Operations",
     contact: "ops@blackrose.gg",
@@ -268,6 +272,12 @@ function TournamentDetailPage() {
   });
 
   const isLoadingDetail = tournament.name === "Loading…";
+  const session = getSession();
+  const canRegisterTeam =
+    liveDetail.status === "Registration Open" &&
+    !isSoloTournament(liveDetail) &&
+    session &&
+    hasFullMemberAccess(session.role);
 
   if (isLoadingDetail) {
     return (
@@ -283,7 +293,19 @@ function TournamentDetailPage() {
     <div className="min-h-screen bg-background text-foreground">
       <Header />
 
-      <TournamentHero tournament={liveDetail} />
+      <TournamentHero
+        tournament={liveDetail}
+        registrationAction={
+          canRegisterTeam ? (
+            <TournamentCaptainRegister
+              tournamentId={liveDetail.id}
+              tournamentName={liveDetail.name}
+              tournamentGame={liveDetail.game}
+              memberId={session.id}
+            />
+          ) : undefined
+        }
+      />
 
       <TournamentTabs active={activeTab} onChange={setActiveTab} teamCount={displayTeams.length} />
 
