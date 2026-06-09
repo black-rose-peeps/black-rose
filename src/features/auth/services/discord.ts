@@ -10,8 +10,12 @@
  * API base: https://discord.com/api/v10
  */
 
-import { getDiscordRedirectUri } from "@/lib/app-url";
-import { DISCORD_LINKED_KEY, DISCORD_OAUTH_STATE_KEY } from "../constants";
+import { getDiscordRedirectUri, isAllowedDiscordRedirectUri } from "@/lib/app-url";
+import {
+  DISCORD_LINKED_KEY,
+  DISCORD_OAUTH_REDIRECT_KEY,
+  DISCORD_OAUTH_STATE_KEY,
+} from "../constants";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID ?? "";
 const DISCORD_SCOPES = ["identify", "email", "connections"].join(" ");
@@ -58,7 +62,9 @@ export function clearDiscordLinked(): void {
 /** Redirect the browser to Discord OAuth. Stores CSRF state in sessionStorage. */
 export function startDiscordOAuth(): void {
   const state = crypto.randomUUID();
+  const redirectUri = getDiscordRedirectUri();
   sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
+  sessionStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
   window.location.href = getDiscordOAuthUrl(state);
 }
 
@@ -70,6 +76,15 @@ export function readStoredOAuthState(): string | null {
 export function clearStoredOAuthState(): void {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
+  sessionStorage.removeItem(DISCORD_OAUTH_REDIRECT_KEY);
+}
+
+/** Redirect URI from the OAuth request that sent the user to Discord. */
+export function readStoredOAuthRedirectUri(): string | null {
+  if (typeof window === "undefined") return null;
+  const stored = sessionStorage.getItem(DISCORD_OAUTH_REDIRECT_KEY);
+  if (stored && isAllowedDiscordRedirectUri(stored)) return stored;
+  return null;
 }
 
 export function validateOAuthState(returnedState: string | undefined): boolean {

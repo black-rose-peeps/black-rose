@@ -11,5 +11,8 @@ export const DISCORD_SERVER_INVITE =
 /** OAuth2 CSRF state — stored in sessionStorage between redirect and callback. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";
 
+/** Redirect URI used for the in-flight OAuth request (must match token exchange). */
+export const DISCORD_OAUTH_REDIRECT_KEY = "br_discord_oauth_redirect";
+
 /** Set after first successful Discord OAuth — skips repeat consent screens on login. */
 export const DISCORD_LINKED_KEY = "br_discord_linked";
