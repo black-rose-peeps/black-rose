@@ -10,14 +10,14 @@
  * API base: https://discord.com/api/v10
  */
 
+import { getDiscordRedirectUri } from "@/lib/app-url";
 import { DISCORD_LINKED_KEY, DISCORD_OAUTH_STATE_KEY } from "../constants";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID ?? "";
-const DISCORD_REDIRECT_URI = import.meta.env.VITE_DISCORD_REDIRECT_URI ?? "";
 const DISCORD_SCOPES = ["identify", "email", "connections"].join(" ");
 
 export function isDiscordOAuthConfigured(): boolean {
-  return Boolean(DISCORD_CLIENT_ID && DISCORD_REDIRECT_URI);
+  return Boolean(DISCORD_CLIENT_ID);
 }
 
 /** Build the Discord OAuth2 authorization URL with CSRF state. */
@@ -30,7 +30,7 @@ export function getDiscordOAuthUrl(state: string): string {
 
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
-    redirect_uri: DISCORD_REDIRECT_URI,
+    redirect_uri: getDiscordRedirectUri(),
     response_type: "code",
     scope: DISCORD_SCOPES,
     state,

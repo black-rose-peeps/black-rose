@@ -73,7 +73,7 @@ export function Footer() {
 
         <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-white/6 pt-8 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/60 md:flex-row md:items-center">
           <span>© 2026 Black Rose Esports. All rights reserved.</span>
-          <span>Forge Your Legacy.</span>
+          <span>Fight as One.</span>
         </div>
       </div>
     </footer>

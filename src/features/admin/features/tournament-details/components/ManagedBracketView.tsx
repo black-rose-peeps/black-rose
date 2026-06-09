@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import { winsRequired } from "../utils/managed-bracket";
+import { mainBracketSize } from "../utils/bracket-field";
 
 const CARD_W = 220;
 const CARD_H = 100;
@@ -54,6 +55,7 @@ export function ManagedBracketView({
   const championship = findChampionship(matches);
 
   if (isDoubleElim) {
+    const playInRounds = roundMetas.filter((r) => r.id === "pi-r1");
     const upperRounds = roundMetas.filter((r) => r.side === "upper" || r.side === "grand");
     const lowerRounds = roundMetas.filter((r) => r.side === "lower");
 
@@ -64,6 +66,19 @@ export function ManagedBracketView({
             champion={championship.winner}
             team={teamByName.get(championship.winner)}
             variant={championship.variant}
+          />
+        )}
+        {playInRounds.length > 0 && (
+          <BracketSection
+            title="Opening — Play-in"
+            roundMetas={playInRounds}
+            matches={matches}
+            roundFormats={roundFormats}
+            teamByName={teamByName}
+            readOnly={readOnly}
+            onFormatChange={onFormatChange}
+            onScoreChange={onScoreChange}
+            onPickWinner={onPickWinner}
           />
         )}
         <BracketSection
@@ -89,6 +104,9 @@ export function ManagedBracketView({
           onPickWinner={onPickWinner}
         />
         <p className="text-xs text-muted-foreground">
+          {playInRounds.length > 0
+            ? `Play-in winners join the top seeds in a standard ${mainBracketSize(teams.length)}-team double-elimination bracket. `
+            : ""}
           Winners advance up; losers drop to the lower bracket. Grand Final: upper-bracket winner vs
           lower-bracket winner.
         </p>

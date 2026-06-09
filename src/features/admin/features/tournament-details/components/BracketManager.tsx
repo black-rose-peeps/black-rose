@@ -44,6 +44,7 @@ import {
   updateSwissMatchScores,
   type SwissBracketState,
 } from "../utils/managed-swiss-bracket";
+import { eliminationRoundCount } from "../utils/bracket-field";
 import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/bracket-store";
 import { fetchBracketState } from "../services/bracket.service";
 import type { PersistedBracketPayload } from "../services/bracket.service";
@@ -130,6 +131,7 @@ interface BracketManagerProps {
   tournamentId: string;
   tournamentName: string;
   format: string;
+  teamCap: number;
   teams: TournamentTeam[];
   initialBracket: BracketRound[];
   tournamentStatus: MockTournament["status"];
@@ -179,25 +181,28 @@ export function BracketManager({
   tournamentId,
   tournamentName,
   format,
+  teamCap,
   teams,
   initialBracket,
   tournamentStatus,
   prizeBreakdown = [],
   onTournamentStatusChange,
 }: BracketManagerProps) {
+  const fieldSize = teams.length;
+
   const bracketEngine = useMemo(() => {
     const teamNames = teams.map((t) => t.name);
-    return new BracketEngine(teamNames);
-  }, [teams]);
+    return new BracketEngine(teamNames, Math.max(fieldSize, 2));
+  }, [teams, fieldSize]);
 
   const isSwiss = isSwissFormat(format);
   const isDoubleElim = isDoubleEliminationFormat(format);
-  const bracketSize = isSwiss ? teams.length : bracketEngine.getBracketStructure().totalTeams;
+  const bracketSize = fieldSize;
   const firstRoundMatches = Math.floor(bracketSize / 2);
   const hasSwissByeSlot = isSwiss && bracketSize % 2 === 1;
   const seedingMatchCount = hasSwissByeSlot ? firstRoundMatches + 1 : firstRoundMatches;
   const formatAbbrev = isSwiss ? "SW" : isDoubleElim ? "DE" : "SE";
-  const totalRounds = isSwiss ? 5 : Math.log2(bracketSize);
+  const totalRounds = isSwiss ? 5 : eliminationRoundCount(Math.max(fieldSize, 2));
 
   const [status, setStatus] = useState<BracketStatus>("not_generated");
   const [activeTab, setActiveTab] = useState<"seeding" | "bracket" | "validation">("seeding");
@@ -209,6 +214,21 @@ export function BracketManager({
   const [assignments, setAssignments] = useState<Array<TournamentTeam | null>>(() =>
     Array(bracketSize).fill(null),
   );
+
+  useEffect(() => {
+    const teamIdSet = new Set(teams.map((team) => team.id));
+    setAssignments((prev) => {
+      const next = Array(bracketSize).fill(null) as Array<TournamentTeam | null>;
+      let slot = 0;
+      for (const assigned of prev) {
+        if (!assigned || !teamIdSet.has(assigned.id)) continue;
+        if (slot >= bracketSize) break;
+        next[slot++] = assigned;
+      }
+      return next;
+    });
+  }, [bracketSize, teams]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadedFromDb, setLoadedFromDb] = useState(false);
@@ -381,8 +401,9 @@ export function BracketManager({
   ]);
 
   const validation = bracketEngine.validateBracketIntegrity();
-  const assignedCount = assignments.filter(Boolean).length;
-  const allAssigned = assignedCount === bracketSize;
+  const assignedCount = assignments.slice(0, bracketSize).filter(Boolean).length;
+  const allAssigned =
+    teams.length >= 2 && teams.length % 2 === 0 && assignedCount === teams.length;
   const canPublish =
     status === "draft" && bracketGenerated && allAssigned && (isSwiss || validation.canPublish);
 
@@ -392,7 +413,7 @@ export function BracketManager({
       setBracketDialog({
         kind: "info",
         title: "Seeding incomplete",
-        description: `Assign all ${bracketSize} teams in the seeding panel before generating the bracket.`,
+        description: `Assign all ${teams.length} registered teams in the seeding panel before generating the bracket.`,
       });
       setActiveTab("seeding");
       return;
@@ -413,11 +434,7 @@ export function BracketManager({
 
   function handleAutoSeed() {
     if (seedingDisabled) return;
-    const newAssignments: Array<TournamentTeam | null> = [...teams.slice(0, bracketSize)];
-    while (newAssignments.length < bracketSize) {
-      newAssignments.push(null);
-    }
-    setAssignments(newAssignments);
+    setAssignments(teams.map((team) => team));
     // Invalidate managed bracket so it reflects the new seeding order
     setManagedMatches([]);
     setRoundMetas([]);
@@ -429,11 +446,8 @@ export function BracketManager({
 
   function handleRandomSeed() {
     if (seedingDisabled) return;
-    const shuffled = [...teams].sort(() => Math.random() - 0.5).slice(0, bracketSize);
-    const newAssignments: Array<TournamentTeam | null> = [...shuffled];
-    while (newAssignments.length < bracketSize) {
-      newAssignments.push(null);
-    }
+    const shuffled = [...teams].sort(() => Math.random() - 0.5);
+    const newAssignments: Array<TournamentTeam | null> = shuffled;
     setAssignments(newAssignments);
     // Invalidate managed bracket so it reflects the new seeding order
     setManagedMatches([]);
@@ -815,7 +829,7 @@ export function BracketManager({
 
     if (bracketGenerated) {
       const teamNames = newAssignments.filter(Boolean).map((t) => t!.name);
-      if (teamNames.length === bracketSize) {
+      if (teamNames.length === teams.length) {
         bracketEngine.autoSeed(teamNames);
         const managed = buildManagedState(teamNames, format);
         setManagedMatches(managed.matches);
@@ -844,7 +858,7 @@ export function BracketManager({
               {tournamentName}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
-              {format} · {teams.length} Teams · June 14 – 16, 2026
+              {format} · {teams.length}/{teamCap} approved teams · June 14 – 16, 2026
             </div>
           </div>
 
@@ -858,15 +872,15 @@ export function BracketManager({
             </div>
             <div className="px-5 py-3 border-r border-border min-w-20">
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Teams
+                Field
               </div>
               <div className="font-display text-xl font-bold text-amber-400">{bracketSize}</div>
             </div>
             <div className="px-5 py-3 border-r border-border min-w-20">
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Registered
+                Cap
               </div>
-              <div className="font-display text-xl font-bold">{teams.length}</div>
+              <div className="font-display text-xl font-bold">{teamCap}</div>
             </div>
             <div className="px-5 py-3 border-r border-border min-w-20">
               <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
@@ -1290,7 +1304,10 @@ export function BracketManager({
                 />
                 <ValidationItem label="All matches populated" passed={allAssigned} />
                 <ValidationItem label="Bracket structure valid" passed={bracketGenerated} />
-                <ValidationItem label="Team count correct" passed={assignedCount === bracketSize} />
+                <ValidationItem
+                  label="Team count correct"
+                  passed={assignedCount === teams.length && teams.length >= 2}
+                />
                 <ValidationItem label="Seeding complete" passed={allAssigned && bracketGenerated} />
               </div>
             </div>

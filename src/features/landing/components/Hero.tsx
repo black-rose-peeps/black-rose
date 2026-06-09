@@ -36,8 +36,7 @@ export function Hero() {
         </div>
 
         <h1 className="font-display text-6xl leading-[0.9] tracking-display sm:text-7xl md:text-[7.5rem] animate-rise">
-          FORGE YOUR <br />
-          <span className="text-stroke">LEGACY</span>
+          FIGHT <span className="text-stroke">AS</span> ONE
         </h1>
 
         <p className="mt-8 max-w-2xl text-balance text-base text-muted-foreground md:text-lg animate-rise">

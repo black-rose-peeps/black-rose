@@ -3,6 +3,11 @@
  * Handles bracket generation, team validation, and automatic positioning
  */
 
+import {
+  isEvenBracketFieldSize,
+  singleElimRoundMatchCounts,
+} from "../utils/bracket-field";
+
 export interface BracketMatch {
   matchId: string;
   roundNumber: number;
@@ -54,23 +59,27 @@ export class BracketEngine {
   private structure: BracketStructure;
   private teamPool: string[];
 
-  constructor(teams: string[]) {
+  constructor(teams: string[], fieldSize?: number) {
     this.teamPool = teams;
-    this.structure = this.generateBracketStructure(teams.length);
+    const size = fieldSize ?? teams.length;
+    if (!isEvenBracketFieldSize(size)) {
+      throw new Error(`Bracket field size must be an even integer ≥ 2; received ${size}.`);
+    }
+    this.structure = this.generateBracketStructure(size);
   }
 
   /**
    * Generate bracket structure with proper relationships and positioning
    */
   private generateBracketStructure(teamCount: number): BracketStructure {
-    const size = Math.pow(2, Math.ceil(Math.log2(Math.max(teamCount, 2))));
-    const totalRounds = Math.log2(size);
+    const roundCounts = singleElimRoundMatchCounts(teamCount);
+    const totalRounds = roundCounts.length;
 
     const rounds: BracketRound[] = [];
 
     // Generate rounds from first to final
     for (let roundNum = 1; roundNum <= totalRounds; roundNum++) {
-      const matchesInRound = size / Math.pow(2, roundNum);
+      const matchesInRound = roundCounts[roundNum - 1];
       const roundName = this.getRoundName(roundNum, totalRounds);
 
       const matches: BracketMatch[] = [];
@@ -89,7 +98,13 @@ export class BracketEngine {
         }
 
         // Calculate positioning
-        const position = this.calculatePosition(roundNum, matchNum, totalRounds, size);
+        const position = this.calculatePosition(
+          roundNum,
+          matchNum,
+          totalRounds,
+          teamCount,
+          matchesInRound,
+        );
 
         const match: BracketMatch = {
           matchId,
@@ -117,7 +132,7 @@ export class BracketEngine {
     }
 
     return {
-      totalTeams: size,
+      totalTeams: teamCount,
       totalRounds,
       rounds,
     };
@@ -130,11 +145,10 @@ export class BracketEngine {
     roundNum: number,
     matchNum: number,
     totalRounds: number,
-    bracketSize: number,
+    _bracketSize: number,
+    matchesInRound: number,
   ): { x: number; y: number } {
     // Constants for positioning
-    const CARD_WIDTH = 256;
-    const CARD_HEIGHT = 112;
     const ROUND_SPACING = 320;
     const BASE_VERTICAL_SPACING = 160;
 
@@ -142,7 +156,6 @@ export class BracketEngine {
     const x = (roundNum - 1) * ROUND_SPACING;
 
     // Y position: matches are vertically centered relative to feeder matches
-    const matchesInRound = bracketSize / Math.pow(2, roundNum);
     const verticalSpacing = BASE_VERTICAL_SPACING * Math.pow(2, roundNum - 1);
 
     // Center vertically within available space, add sufficient offset to prevent cutoff

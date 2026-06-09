@@ -16,7 +16,8 @@ export const BRACKET_TEAM_COUNT_SINGLE = 8;
 export const BRACKET_TEAM_COUNT_DOUBLE = 16;
 /** Typical Swiss field size; bracket manager unlocks at {@link BRACKET_MIN_TEAMS_SWISS}. */
 export const BRACKET_TEAM_COUNT_SWISS = 16;
-export const BRACKET_MIN_TEAMS_SWISS = 8;
+export const BRACKET_MIN_TEAMS_SWISS = 4;
+export const BRACKET_MIN_TEAMS_DOUBLE = 4;
 
 export function requiredBracketTeamCount(format: string): number | null {
   if (isSingleEliminationFormat(format)) return BRACKET_TEAM_COUNT_SINGLE;
@@ -26,13 +27,13 @@ export function requiredBracketTeamCount(format: string): number | null {
 }
 
 /**
- * Returns true when the bracket manager can be unlocked for the given team count.
- * SE/DE pad to the next power of 2 inside BracketEngine (byes for empty slots).
- * Swiss uses the exact approved entrant count (minimum 8).
+ * Returns true when the bracket manager can be unlocked for the current approved team count.
+ * Brackets are built from registered teams (even count); the cap does not need to be full.
  */
 export function supportsBracketManager(format: string, teamCount: number): boolean {
-  if (teamCount < 2) return false;
-  if (isSingleEliminationFormat(format) || isDoubleEliminationFormat(format)) return true;
+  if (teamCount < 2 || teamCount % 2 !== 0) return false;
+  if (isSingleEliminationFormat(format)) return true;
+  if (isDoubleEliminationFormat(format)) return teamCount >= BRACKET_MIN_TEAMS_DOUBLE;
   if (isSwissFormat(format)) return teamCount >= BRACKET_MIN_TEAMS_SWISS;
   return false;
 }
@@ -142,6 +143,8 @@ export function validateCreateTournamentForm(
     errors.teamCap = "Registration cap is required.";
   } else if (Number.isNaN(teamCap) || teamCap < 4 || teamCap > 64) {
     errors.teamCap = "Registration cap must be between 4 and 64.";
+  } else if (teamCap % 2 !== 0) {
+    errors.teamCap = "Registration cap must be an even number.";
   }
 
   if (values.game === "Where Winds Meet" && !values.wwmMode) {
@@ -163,11 +166,17 @@ export function formatBracketAvailability(tournament: AdminTournament, teamCount
   ) {
     return `Bracket manager supports single elimination, double elimination, and Swiss only. This event uses ${tournament.format}.`;
   }
-  if (isSwissFormat(tournament.format) && teamCount < BRACKET_MIN_TEAMS_SWISS) {
-    return `Swiss system requires at least ${BRACKET_MIN_TEAMS_SWISS} teams (currently ${teamCount}).`;
-  }
   if (teamCount < 2) {
-    return `At least 2 teams are required to generate a bracket (currently ${teamCount}).`;
+    return `At least 2 approved teams are required to generate a bracket (currently ${teamCount}).`;
+  }
+  if (teamCount % 2 !== 0) {
+    return `An even number of approved teams is required (currently ${teamCount}).`;
+  }
+  if (isDoubleEliminationFormat(tournament.format) && teamCount < BRACKET_MIN_TEAMS_DOUBLE) {
+    return `Double elimination requires at least ${BRACKET_MIN_TEAMS_DOUBLE} approved teams (currently ${teamCount}).`;
+  }
+  if (isSwissFormat(tournament.format) && teamCount < BRACKET_MIN_TEAMS_SWISS) {
+    return `Swiss system requires at least ${BRACKET_MIN_TEAMS_SWISS} approved teams (currently ${teamCount}).`;
   }
   return "";
 }
