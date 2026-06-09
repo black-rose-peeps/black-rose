@@ -1,3 +1,5 @@
+import { getDiscordRedirectUri } from "@/lib/app-url";
+
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_USER_AGENT = "BlackRoseArena (https://blackrose.asia, 1.0.0)";
 const DISCORD_FETCH_TIMEOUT_MS = 5000;
@@ -52,14 +54,6 @@ function getDiscordClientSecret(): string {
     throw new Error("DISCORD_CLIENT_SECRET is not configured.");
   }
   return secret;
-}
-
-function getDiscordRedirectUri(): string {
-  const redirectUri =
-    process.env.VITE_DISCORD_REDIRECT_URI ??
-    process.env.DISCORD_REDIRECT_URI ??
-    "http://localhost:5173/auth/callback";
-  return redirectUri;
 }
 
 async function discordFetch(url: string, init?: RequestInit): Promise<Response> {
