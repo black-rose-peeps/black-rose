@@ -154,10 +154,7 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
       updated_at: new Date().toISOString(),
     };
 
-    const currentAvatar = existing.avatar_url as string | null;
-    if (!currentAvatar?.startsWith("data:")) {
-      updates.avatar_url = avatarUrl;
-    }
+    updates.avatar_url = avatarUrl;
 
     const { data, error } = await supabase
       .from("member_profiles")
@@ -318,7 +315,6 @@ export interface UpdateMemberProfileInput {
   mainGame: string | null;
   mainRole: string;
   region: string;
-  avatarUrl: string | null;
   isPublic: boolean;
   socialLinks: { platform: SocialPlatform; url: string | null; isPublic: boolean }[];
 }
@@ -355,7 +351,6 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
       main_game: input.mainGame?.trim() || null,
       main_role: input.mainRole.trim(),
       region: input.region.trim(),
-      avatar_url: input.avatarUrl,
       is_public: input.isPublic,
       updated_at: new Date().toISOString(),
     })

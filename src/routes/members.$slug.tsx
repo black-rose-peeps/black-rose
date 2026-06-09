@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AvatarUpload } from "@/features/member/components/AvatarUpload";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { ProfileCard } from "@/features/member/components/ProfileCard";
 import { MemberProfileSkeleton } from "@/features/member/components/MemberProfileSkeleton";
 import {
@@ -21,11 +21,8 @@ import {
   PanelEmptyState,
 } from "@/features/member/components/MemberShell";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
-import { getSession, setSession } from "@/features/auth/store/session";
-import {
-  fetchMemberProfileBySlug,
-  updateMemberProfile,
-} from "@/features/member/services/member-profile.service";
+import { getSession } from "@/features/auth/store/session";
+import { fetchMemberProfileBySlug } from "@/features/member/services/member-profile.service";
 import type { MemberProfile } from "@/features/member/types";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
 
@@ -43,8 +40,6 @@ function MemberProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarSaving, setAvatarSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,10 +73,6 @@ function MemberProfilePage() {
       cancelled = true;
     };
   }, [slug, session?.id]);
-
-  useEffect(() => {
-    setAvatarUrl(profile?.avatarUrl ?? null);
-  }, [profile?.avatarUrl]);
 
   if (loading) return <MemberProfileSkeleton />;
 
@@ -132,68 +123,6 @@ function MemberProfilePage() {
 
   const isOwnProfile = session?.id === profile.memberId;
   const p = profile;
-
-  async function handleAvatarChange(dataUrl: string) {
-    if (!session || !isOwnProfile) return;
-    const previousAvatar = avatarUrl;
-    setAvatarUrl(dataUrl);
-    setAvatarSaving(true);
-    try {
-      const updated = await updateMemberProfile({
-        memberId: session.id,
-        displayName: p.displayName,
-        headline: p.headline,
-        bio: p.bio,
-        mainGame: p.mainGame || null,
-        mainRole: p.mainRole,
-        region: p.region,
-        avatarUrl: dataUrl,
-        isPublic: p.isPublic,
-        socialLinks: p.socialLinks.map((s) => ({
-          platform: s.platform,
-          url: s.url,
-          isPublic: s.isPublic,
-        })),
-      });
-      setProfile(updated);
-      setSession({ ...session, avatarUrl: updated.avatarUrl, profileSlug: updated.slug });
-    } catch {
-      setAvatarUrl(previousAvatar);
-    } finally {
-      setAvatarSaving(false);
-    }
-  }
-
-  async function handleAvatarRemove() {
-    if (!session || !isOwnProfile) return;
-    const previousAvatar = avatarUrl;
-    setAvatarUrl(null);
-    setAvatarSaving(true);
-    try {
-      const updated = await updateMemberProfile({
-        memberId: session.id,
-        displayName: p.displayName,
-        headline: p.headline,
-        bio: p.bio,
-        mainGame: p.mainGame || null,
-        mainRole: p.mainRole,
-        region: p.region,
-        avatarUrl: null,
-        isPublic: p.isPublic,
-        socialLinks: p.socialLinks.map((s) => ({
-          platform: s.platform,
-          url: s.url,
-          isPublic: s.isPublic,
-        })),
-      });
-      setProfile(updated);
-      setSession({ ...session, avatarUrl: updated.avatarUrl });
-    } catch {
-      setAvatarUrl(previousAvatar);
-    } finally {
-      setAvatarSaving(false);
-    }
-  }
 
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
     p.socialLinks.find((s) => s.platform === platform),
@@ -262,12 +191,10 @@ function MemberProfilePage() {
         }
       >
         <div className="relative shrink-0">
-          <AvatarUpload
-            avatarUrl={avatarUrl}
+          <MemberAvatar
+            avatarUrl={p.avatarUrl}
             initials={p.avatarInitials}
-            onChange={handleAvatarChange}
-            onRemove={handleAvatarRemove}
-            editable={isOwnProfile && !avatarSaving}
+            className="h-24 w-24 text-3xl"
           />
           {p.isVerified && !isOwnProfile && (
             <div className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center border border-emerald-400/30 bg-[oklch(0.07_0_0)]">
