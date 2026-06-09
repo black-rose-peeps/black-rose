@@ -8,16 +8,16 @@ import type { RuleSection, TournamentGame } from "../types";
 
 export interface TournamentRulesOptions {
   game?: TournamentGame;
-  /** Bracket field size (power of 2), not registration cap. */
+  /** Bracket field size (even team cap). */
   teamCap?: number;
   participationType?: ParticipationType;
   wwmMode?: WwmMode | null;
 }
 
-/** Next power-of-2 field size for bracket rules copy (e.g. 6 approved → 8). */
+/** Bracket field size for rules copy (matches even team cap / approved count). */
 export function bracketFieldSize(approvedTeamCount: number): number | undefined {
   if (approvedTeamCount < 2) return undefined;
-  return Math.pow(2, Math.ceil(Math.log2(approvedTeamCount)));
+  return approvedTeamCount;
 }
 
 function isSoloRules(options: TournamentRulesOptions): boolean {
@@ -85,7 +85,7 @@ function baseEligibility(options: TournamentRulesOptions): RuleSection {
 function singleEliminationBracketRules(teamCap: number | undefined, solo: boolean): RuleSection {
   const label = slotLabel(solo);
   const teamNote = teamCap
-    ? `This event runs a ${teamCap}-${label.slice(0, -1)} single-elimination bracket (power-of-two field).`
+    ? `This event runs a ${teamCap}-${label.slice(0, -1)} single-elimination bracket.`
     : "This event runs a single-elimination bracket.";
 
   return {

@@ -254,6 +254,7 @@ export function EditTournamentModal({
                 type="number"
                 min={4}
                 max={64}
+                step={2}
                 value={values.teamCap}
                 onChange={(e) => updateField("teamCap", e.target.value)}
                 disabled={isSubmitting}

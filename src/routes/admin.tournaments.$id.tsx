@@ -29,9 +29,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import {
+  AdminManagementTable,
+  adminTableCellClip,
+  adminTableTextTruncate,
+} from "@/features/admin/components/AdminManagementTable";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import {
+  TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS,
+  TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS,
+} from "@/features/admin/constants/table-columns";
 import { TournamentMetaStrip } from "@/features/admin/components/TournamentMetaStrip";
 import { Panel, StatusPill } from "@/features/admin/components/ui";
 import { BracketManager } from "@/features/admin/features/tournament-details/components/BracketManager";
@@ -231,7 +241,9 @@ function TournamentDetailPage() {
   const supportsBracketManager =
     !hasUnresolvedRegistrations &&
     (canUseBracketManager(tournament.format, computedTeams.length) ||
-      (isTournamentConcluded(tournament.status) && computedTeams.length >= 2));
+      (isTournamentConcluded(tournament.status) &&
+        computedTeams.length >= 2 &&
+        computedTeams.length % 2 === 0));
   const soloEvent = isSoloTournament(tournament);
   const capLabel = registrationCapLabel(tournament.participationType);
   const wwmLabel = wwmModeLabel(tournament.wwmMode);
@@ -432,7 +444,13 @@ function TournamentDetailPage() {
               )}
 
               <div className="p-6 pt-4">
-                <Table>
+                <AdminManagementTable
+                  columnWidths={
+                    soloEvent
+                      ? TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS
+                      : TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS
+                  }
+                >
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
@@ -471,26 +489,26 @@ function TournamentDetailPage() {
                     {teamsLoading && teams.length === 0 ? (
                       Array.from({ length: 5 }).map((_, i) => (
                         <TableRow key={i} className="hover:bg-transparent">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
+                          <TableCell className={adminTableCellClip}>
+                            <div className="flex min-w-0 items-center gap-3">
                               <Skeleton className="h-9 w-9 shrink-0" />
-                              <div className="space-y-1.5">
-                                <Skeleton className="h-4 w-32" />
-                                <Skeleton className="h-3 w-20" />
+                              <div className="min-w-0 flex-1 space-y-1.5">
+                                <Skeleton className="h-4 w-full max-w-32" />
+                                <Skeleton className="h-3 w-full max-w-20" />
                               </div>
                             </div>
                           </TableCell>
                           {soloEvent ? (
-                            <TableCell>
-                              <Skeleton className="h-4 w-24" />
+                            <TableCell className={adminTableCellClip}>
+                              <Skeleton className="h-4 w-full max-w-24" />
                             </TableCell>
                           ) : (
                             <>
-                              <TableCell>
-                                <Skeleton className="h-4 w-20" />
+                              <TableCell className={adminTableCellClip}>
+                                <Skeleton className="h-4 w-full max-w-20" />
                               </TableCell>
-                              <TableCell>
-                                <Skeleton className="h-4 w-16" />
+                              <TableCell className={adminTableCellClip}>
+                                <Skeleton className="h-4 w-full max-w-16" />
                               </TableCell>
                             </>
                           )}
@@ -525,21 +543,37 @@ function TournamentDetailPage() {
                             key={team.id}
                             className="transition-colors hover:bg-secondary/40"
                           >
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <div className="grid h-9 w-9 place-items-center border border-border bg-secondary text-[10px] font-tech">
+                            <TableCell className={adminTableCellClip}>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech">
                                   {team.tag}
                                 </div>
-                                <div>
-                                  <div className="font-display text-base tracking-wider-2">
+                                <div className="min-w-0">
+                                  <div
+                                    className={cn(
+                                      "font-display text-base tracking-wider-2",
+                                      adminTableTextTruncate,
+                                    )}
+                                    title={team.name}
+                                  >
                                     {team.name}
                                   </div>
                                   {soloEvent ? (
-                                    <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+                                    <div
+                                      className={cn(
+                                        "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
+                                        adminTableTextTruncate,
+                                      )}
+                                    >
                                       Member registration
                                     </div>
                                   ) : (
-                                    <div className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+                                    <div
+                                      className={cn(
+                                        "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
+                                        adminTableTextTruncate,
+                                      )}
+                                    >
                                       {team.members.length}{" "}
                                       {team.members.length === 1 ? "player" : "players"}
                                     </div>
@@ -548,16 +582,24 @@ function TournamentDetailPage() {
                               </div>
                             </TableCell>
                             {soloEvent ? (
-                              <TableCell className="text-muted-foreground">
-                                {soloDiscord
-                                  ? soloDiscord.startsWith("@")
-                                    ? soloDiscord
-                                    : `@${soloDiscord}`
-                                  : "—"}
+                              <TableCell
+                                className={cn("text-muted-foreground", adminTableCellClip)}
+                              >
+                                <span className={adminTableTextTruncate} title={soloDiscord}>
+                                  {soloDiscord
+                                    ? soloDiscord.startsWith("@")
+                                      ? soloDiscord
+                                      : `@${soloDiscord}`
+                                    : "—"}
+                                </span>
                               </TableCell>
                             ) : (
                               <>
-                                <TableCell>{team.captain}</TableCell>
+                                <TableCell className={cn("text-sm", adminTableCellClip)}>
+                                  <span className={adminTableTextTruncate} title={team.captain}>
+                                    {team.captain}
+                                  </span>
+                                </TableCell>
                                 <TableCell className="text-muted-foreground">
                                   {team.members.length} members
                                 </TableCell>
@@ -601,7 +643,7 @@ function TournamentDetailPage() {
                       })
                     )}
                   </TableBody>
-                </Table>
+                </AdminManagementTable>
               </div>
 
               <AdminTablePagination
@@ -631,6 +673,7 @@ function TournamentDetailPage() {
                     tournamentId={tournament.id}
                     tournamentName={tournament.name}
                     format={tournament.format}
+                    teamCap={tournament.teamCap}
                     teams={computedTeams}
                     initialBracket={[]}
                     tournamentStatus={tournament.status}

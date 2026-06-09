@@ -249,6 +249,7 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
                 type="number"
                 min={4}
                 max={64}
+                step={2}
                 value={values.teamCap}
                 onChange={(e) => updateField("teamCap", e.target.value)}
                 disabled={isSubmitting}

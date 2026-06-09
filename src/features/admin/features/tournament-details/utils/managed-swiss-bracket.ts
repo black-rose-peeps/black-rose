@@ -9,6 +9,7 @@ import {
   type PlayoffRound1Pairing,
   winsRequired,
 } from "./managed-bracket";
+import { isEvenBracketFieldSize } from "./bracket-field";
 
 export const SWISS_WINS_TO_ADVANCE = 3;
 export const SWISS_LOSSES_TO_ELIMINATE = 3;
@@ -196,8 +197,8 @@ export function buildSwissRound1(teamNames: string[]): {
   swiss: SwissBracketState;
 } {
   const n = teamNames.length;
-  if (n < 8 || (n & (n - 1)) !== 0) {
-    throw new Error(`Swiss system requires a power-of-2 team count ≥ 8; received ${n}.`);
+  if (n < 4 || !isEvenBracketFieldSize(n)) {
+    throw new Error(`Swiss system requires an even team count ≥ 4; received ${n}.`);
   }
 
   const swiss = initSwissState(teamNames);
