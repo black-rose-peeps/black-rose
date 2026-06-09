@@ -1,29 +1,26 @@
-import { useState, useEffect } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Emblem } from "@/features/shared/components/Emblem";
-import { getSession, clearSession } from "@/features/auth/store/session";
-import { getSavedAvatar } from "@/features/member/store/avatar";
+import { getSession } from "@/features/auth/store/session";
+import { MemberNav } from "@/features/member/components/MemberNav";
 
-const nav = [
-  { label: "Tournaments", href: "/tournaments" },
-  // { label: "Teams", href: "/teams" },
-  { label: "Champions", href: "/" },
-  { label: "Community", href: "/" },
-];
+const GUEST_NAV = [
+  { label: "Tournaments", to: "/tournaments" as const },
+  { label: "Champion", to: "/" as const, hash: "champions" },
+  { label: "Community", to: "/" as const, hash: "community" },
+] as const;
 
-export function Header() {
+function GuestHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const session = getSession();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const hash = useRouterState({ select: (s) => s.location.hash });
 
-  // Load uploaded avatar from localStorage on mount
-  useEffect(() => {
-    setAvatarUrl(getSavedAvatar());
-  }, []);
-
-  function handleSignOut() {
-    clearSession();
-    window.location.href = "/";
+  function isGuestNavActive(item: (typeof GUEST_NAV)[number]): boolean {
+    if (item.to === "/tournaments") {
+      return pathname === "/tournaments" || pathname.startsWith("/tournaments/");
+    }
+    if ("hash" in item && item.hash) {
+      return pathname === "/" && hash === item.hash;
+    }
+    return pathname === item.to;
   }
 
   return (
@@ -35,66 +32,46 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-10 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground md:flex">
-          {nav.map((n) => (
+          {GUEST_NAV.map((item) => (
             <Link
-              key={n.label}
-              to={n.href}
+              key={item.label}
+              to={item.to}
+              {...("hash" in item && item.hash ? { hash: item.hash } : {})}
               className={`transition-colors hover:text-foreground ${
-                pathname === n.href ? "text-foreground" : ""
+                isGuestNavActive(item) ? "text-foreground" : ""
               }`}
             >
-              {n.label}
+              {item.label}
             </Link>
           ))}
         </nav>
 
         <div className="flex items-center gap-3">
-          {session ? (
-            // Logged-in state
-            <>
-              <Link
-                to="/dashboard"
-                className="hidden sm:inline-flex h-9 items-center gap-2 px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {/* Avatar chip — photo if uploaded, otherwise initials */}
-                <div className="h-5 w-5 shrink-0 overflow-hidden border border-white/15 bg-white/5">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center font-display text-[10px] tracking-display">
-                      {session.displayName.slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                {session.displayName}
-              </Link>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="text-xs font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-muted-foreground"
-              >
-                Sign Out
-              </button>
-            </>
-          ) : (
-            // Guest state
-            <>
-              <Link
-                to="/login"
-                className="hidden h-9 items-center px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
-              >
-                Register
-              </Link>
-            </>
-          )}
+          <Link
+            to="/login"
+            className="hidden h-9 items-center px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+          >
+            Sign In
+          </Link>
+          <Link
+            to="/register"
+            className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+          >
+            Register
+          </Link>
         </div>
       </div>
     </header>
   );
+}
+
+/** Public-site header — uses member nav when a session exists. */
+export function Header() {
+  const session = getSession();
+
+  if (session) {
+    return <MemberNav />;
+  }
+
+  return <GuestHeader />;
 }

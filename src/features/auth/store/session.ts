@@ -1,20 +1,13 @@
 /**
- * Client-side session store — frontend placeholder
+ * Client-side session cache for the signed-in member.
  *
- * This simulates a session until a real backend + auth is implemented.
- * Replace this entire module with your actual session management
- * (e.g., a JWT cookie, a TanStack Query cache of /api/me, or a context provider)
- * when the backend is ready.
- *
- * The store uses sessionStorage so it clears when the tab closes,
- * matching the expected behaviour of a short-lived auth token.
+ * Populated after Discord OAuth (`/auth/callback`) and kept in sync via
+ * `syncSessionFromDatabase`. Clears when the tab closes (sessionStorage).
  */
 
 import type { AppUser } from "../types";
 
 const SESSION_KEY = "br_session";
-
-// ── Read / write ─────────────────────────────────────────────────────────────
 
 export function getSession(): AppUser | null {
   if (typeof window === "undefined") return null;
@@ -36,72 +29,16 @@ export function clearSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
 }
 
-// ── Convenience helpers ───────────────────────────────────────────────────────
-
 export function isLoggedIn(): boolean {
   return getSession() !== null;
 }
 
 export function isVerified(): boolean {
   const s = getSession();
-  return s?.role === "verified" || s?.role === "admin";
+  if (!s) return false;
+  return s.role === "verified" || s.role === "admin";
 }
 
 export function isAdmin(): boolean {
   return getSession()?.role === "admin";
-}
-
-// ── Frontend simulation ───────────────────────────────────────────────────────
-// Remove these once real auth is wired up.
-
-/**
- * Simulate a verified Discord login (for frontend dev flow).
- * Creates a verified session so the user lands on /dashboard.
- *
- * TODO: Replace with real Discord OAuth2 callback handling.
- */
-export function simulateDiscordLogin(): AppUser {
-  const user: AppUser = {
-    id: "mock_verified_001",
-    username: "CoyHa",
-    displayName: "CoyHa",
-    avatarUrl: null,
-    email: "CoyHa@blackrose.gg",
-    role: "verified",
-    registeredAt: "2026-02-12T00:00:00.000Z",
-  };
-  setSession(user);
-  return user;
-}
-
-/**
- * Simulate a new Discord registration.
- * Creates a not_verified session so the waitlist page can display user info.
- *
- * TODO: Replace with real Discord OAuth2 callback handling.
- */
-export function simulateDiscordRegister(): AppUser {
-  const user: AppUser = {
-    id: `mock_${Date.now()}`,
-    username: "newplayer",
-    displayName: "New Player",
-    avatarUrl: null,
-    email: null,
-    role: "not_verified",
-    registeredAt: new Date().toISOString(),
-  };
-  setSession(user);
-  return user;
-}
-
-/**
- * Simulate an admin verifying a user.
- * Updates the current session role to "verified".
- *
- * TODO: Replace with a real API call (PATCH /api/users/:id/role).
- */
-export function simulateAdminVerify(): void {
-  const current = getSession();
-  if (!current) return;
-  setSession({ ...current, role: "verified" });
 }

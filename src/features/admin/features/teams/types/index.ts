@@ -7,6 +7,7 @@ export interface CreateTeamInput {
   tag: string;
   game: Team["game"];
   captainMemberId: string;
+  captainRole?: TeamMemberRole;
 }
 
 export interface CreateTeamFormValues {

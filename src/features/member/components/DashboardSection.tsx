@@ -1,23 +1,32 @@
 import type { ReactNode } from "react";
+import { CornerAccents } from "./MemberShell";
+import { TechPanel } from "./MemberShell";
 
 /** Quick-stat tile used in the dashboard stat strip. */
 export function QuickStat({
   icon,
   label,
   value,
+  empty,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
+  empty?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 border border-white/6 bg-[oklch(0.07_0_0)] px-4 py-3">
-      <span className="shrink-0 text-muted-foreground">{icon}</span>
-      <div className="min-w-0">
+    <div className="relative flex items-center gap-3 border border-white/8 bg-[oklch(0.07_0_0)] px-4 py-3.5 card-depth clip-tab">
+      <CornerAccents />
+      <span className="relative shrink-0 text-muted-foreground">{icon}</span>
+      <div className="relative min-w-0">
         <p className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
           {label}
         </p>
-        <p className="mt-0.5 truncate text-sm font-medium">{value}</p>
+        <p
+          className={`mt-0.5 truncate text-sm font-medium ${empty ? "text-muted-foreground/50" : ""}`}
+        >
+          {value || "—"}
+        </p>
       </div>
     </div>
   );
@@ -30,28 +39,24 @@ export function DashboardSection({
   icon,
   action,
   children,
+  className,
 }: {
   label: string;
   title: string;
   icon?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col border border-white/8 bg-[oklch(0.07_0_0)]">
-      <div className="flex items-center justify-between border-b border-white/6 px-5 py-3.5">
-        <div className="flex items-center gap-2">
-          {icon && <span className="text-muted-foreground">{icon}</span>}
-          <div>
-            <p className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-              {label}
-            </p>
-            <h2 className="font-display text-base tracking-display leading-tight">{title}</h2>
-          </div>
-        </div>
-        {action}
-      </div>
-      <div className="flex-1 px-5 py-4">{children}</div>
-    </div>
+    <TechPanel
+      label={label}
+      title={title}
+      icon={icon}
+      action={action}
+      className={className}
+    >
+      {children}
+    </TechPanel>
   );
 }

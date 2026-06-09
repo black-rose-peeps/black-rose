@@ -1,27 +1,30 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { LogOut, User } from "lucide-react";
+import { LayoutDashboard, LogOut, User } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { clearSession, getSession } from "@/features/auth/store/session";
+import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
-import { getSavedAvatar } from "@/features/member/store/avatar";
 
-// Mirrors the landing Header nav exactly — keep these in sync
-const NAV_ITEMS = [
-  { label: "Tournaments", to: "/tournaments" },
+const MEMBER_CONSOLE_NAV = [
+  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Teams", to: "/teams" },
-  { label: "Champions", to: "/" }, // placeholder
-  // { label: "Community", to: "/" }, // placeholder
+] as const;
+
+const PUBLIC_NAV = [
+  { label: "Tournaments", to: "/tournaments" },
+  { label: "Champions", to: "/" },
 ] as const;
 
 export function MemberNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Re-read session on navigation so avatar / profile slug stay in sync after edits.
   const session = getSession();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    setAvatarUrl(getSavedAvatar());
-  }, []);
+  const isVerifiedMember = session ? hasFullMemberAccess(session.role) : false;
+  const profileSlug = session?.profileSlug ?? session?.username ?? "";
+  const avatarUrl = session?.avatarUrl ?? null;
+  const accountHref = isVerifiedMember
+    ? { to: "/members/$slug" as const, params: { slug: profileSlug } }
+    : { to: getPostAuthPath(session?.role ?? "not_verified") };
 
   function handleSignOut() {
     clearSession();
@@ -39,8 +42,30 @@ export function MemberNav() {
 
         {/* Nav links */}
         <nav className="hidden items-center gap-10 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground md:flex">
-          {NAV_ITEMS.map(({ label, to }) => {
-            const active = to !== "/" && (pathname === to || pathname.startsWith(to + "/"));
+          {isVerifiedMember && (
+            <div className="flex items-center gap-6">
+              {MEMBER_CONSOLE_NAV.map((item) => {
+                const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                const Icon = "icon" in item ? item.icon : null;
+                return (
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    search={item.to === "/teams" ? { create: false } : undefined}
+                    className={`inline-flex items-center gap-1.5 transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
+                  >
+                    {Icon ? <Icon className="h-3 w-3" /> : null}
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+          {PUBLIC_NAV.map(({ label, to }) => {
+            const active =
+              to === "/"
+                ? pathname === "/"
+                : pathname === to || pathname.startsWith(to + "/");
             return (
               <Link
                 key={label}
@@ -55,15 +80,13 @@ export function MemberNav() {
 
         {/* User area */}
         <div className="flex items-center gap-3">
-          {session && (
+          {session ? (
             <>
-              <NotificationBell />
+              {isVerifiedMember && <NotificationBell />}
               <Link
-                to="/members/$slug"
-                params={{ slug: session.username }}
+                {...accountHref}
                 className="hidden h-9 items-center gap-2 px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
               >
-                {/* Avatar chip — shows photo if uploaded, else initials */}
                 <div className="h-5 w-5 shrink-0 overflow-hidden border border-white/15 bg-white/5">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -73,19 +96,34 @@ export function MemberNav() {
                     </span>
                   )}
                 </div>
-                {session.displayName}
+                {isVerifiedMember ? session.displayName : "Waitlist"}
                 <User className="h-3.5 w-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="text-xs font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-muted-foreground"
+              >
+                <LogOut className="h-3.5 w-3.5 sm:hidden" />
+                <span className="hidden sm:block">Sign Out</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="hidden h-9 items-center px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+              >
+                Register
               </Link>
             </>
           )}
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="text-xs font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-muted-foreground"
-          >
-            <LogOut className="h-3.5 w-3.5 sm:hidden" />
-            <span className="hidden sm:block">Sign Out</span>
-          </button>
         </div>
       </div>
     </header>

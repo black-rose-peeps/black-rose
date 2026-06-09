@@ -12,8 +12,10 @@
 export type UserRole = "not_verified" | "verified" | "admin";
 
 export interface AppUser {
-  /** Discord snowflake ID */
+  /** Black Rose member row ID (Supabase UUID) */
   id: string;
+  /** Discord user snowflake ID — always a string per Discord API */
+  discordId: string;
   username: string;
   /** Display name from Discord global_name, falls back to username */
   displayName: string;
@@ -22,4 +24,6 @@ export interface AppUser {
   role: UserRole;
   /** ISO timestamp of when the account was created in our system */
   registeredAt: string;
+  /** Public profile slug — used for /members/:slug links */
+  profileSlug?: string;
 }

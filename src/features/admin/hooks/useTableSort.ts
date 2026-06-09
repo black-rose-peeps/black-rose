@@ -11,10 +11,11 @@ export function useTableSort<T>(
   items: T[],
   comparators: Record<string, (a: T, b: T) => number>,
   defaultKey?: string,
+  defaultDirection: SortDirection = "asc",
 ) {
   const [sort, setSort] = useState<SortState>({
     key: defaultKey ?? null,
-    direction: "asc",
+    direction: defaultDirection,
   });
 
   const toggleSort = useCallback((key: string) => {

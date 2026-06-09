@@ -20,7 +20,10 @@ const pillars = [
 
 export function WhyBlackRose() {
   return (
-    <section className="relative border-t border-white/[0.06] bg-[oklch(0.07_0_0)] py-24 md:py-32 overflow-hidden">
+    <section
+      id="community"
+      className="relative border-t border-white/[0.06] bg-[oklch(0.07_0_0)] py-24 md:py-32 overflow-hidden scroll-mt-16"
+    >
       {/* Background texture */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
       {/* Radial spotlight from top-center */}

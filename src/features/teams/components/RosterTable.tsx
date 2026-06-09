@@ -39,7 +39,7 @@ export function RosterTable({
           <tr className="border-b border-white/8 bg-white/2 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
             <th className="px-4 py-3 text-left font-normal">Player</th>
             <th className="px-4 py-3 text-left font-normal">IGN</th>
-            <th className="px-4 py-3 text-left font-normal">Role</th>
+            <th className="px-4 py-3 text-left font-normal">Main Role</th>
             <th className="px-4 py-3 text-right font-normal">
               {isEditable && isCaptain ? "Actions" : "Status"}
             </th>

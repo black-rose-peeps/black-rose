@@ -39,6 +39,7 @@ export interface UpcomingMatch {
 }
 
 export interface MemberProfile {
+  memberId: string;
   slug: string;
   displayName: string;
   username: string;
@@ -51,6 +52,7 @@ export interface MemberProfile {
   mainRole: string;
   region: string;
   isVerified: boolean;
+  isPublic: boolean;
   socialLinks: SocialLink[];
   riotAccount: RiotAccount | null;
   tournamentHistory: string[];

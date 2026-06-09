@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Header } from "@/features/landing/components/Header";
 import { Hero } from "@/features/landing/components/Hero";
 import { FeaturedTournaments } from "@/features/landing/components/FeaturedTournaments";
@@ -28,6 +29,13 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const hash = useRouterState({ select: (s) => s.location.hash });
+
+  useEffect(() => {
+    if (!hash) return;
+    document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+  }, [hash]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
