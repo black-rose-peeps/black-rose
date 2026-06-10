@@ -261,8 +261,7 @@ export function BracketManager({
     [managedMatches],
   );
   const seedingDisabled = seedingLocked || resultsLocked;
-  const seedingShuffleDisabled =
-    seedingDisabled || (bracketGenerated && hasBracketProgress);
+  const seedingShuffleDisabled = seedingDisabled || (bracketGenerated && hasBracketProgress);
   const isTournamentCompleted = tournamentStatus === "Completed";
   const teamNames = useMemo(() => teams.map((team) => team.name), [teams]);
   const currentPlacements = useMemo(
@@ -414,8 +413,9 @@ export function BracketManager({
 
   const validation = bracketEngine.validateBracketIntegrity();
   const assignedCount = assignments.slice(0, bracketSize).filter(Boolean).length;
+  const parityOk = teams.length % 2 === 0 || (isSwiss && hasSwissByeSlot);
   const allAssigned =
-    teams.length >= 2 && teams.length % 2 === 0 && assignedCount === teams.length;
+    teams.length >= 2 && parityOk && assignedCount === teams.length;
   const canPublish =
     status === "draft" && bracketGenerated && allAssigned && (isSwiss || validation.canPublish);
 

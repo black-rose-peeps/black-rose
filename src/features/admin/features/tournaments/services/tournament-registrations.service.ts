@@ -399,6 +399,8 @@ export async function requestCaptainTeamRegistration(
         .update({ status: "Pending" })
         .eq("id", existing.id);
       if (updateErr) throw new Error(updateErr.message);
+      const registrationCount = await countTournamentRegistrations(tournamentId);
+      await syncTournamentTeamCount(tournamentId, registrationCount);
       return fetchRegistrationWithPlayers(existing.id);
     }
     if (existing.status === "Pending") {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,19 +30,23 @@ export function TournamentCaptainRegister({
   const [initialLoading, setInitialLoading] = useState(true);
   const [registrationStatus, setRegistrationStatus] =
     useState<CaptainTournamentRegistrationStatus>("none");
+  const requestIdRef = useRef(0);
 
   const loadStatus = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
       const status = await fetchCaptainRegistrationStatusForTournament(
         memberId,
         tournamentId,
         tournamentGame,
       );
+      if (requestId !== requestIdRef.current) return;
       setRegistrationStatus(status);
     } catch {
+      if (requestId !== requestIdRef.current) return;
       setRegistrationStatus("none");
     } finally {
-      setInitialLoading(false);
+      if (requestId === requestIdRef.current) setInitialLoading(false);
     }
   }, [memberId, tournamentId, tournamentGame]);
 

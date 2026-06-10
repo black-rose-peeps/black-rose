@@ -69,12 +69,22 @@ function TeamDetailPage() {
           setTeam(null);
         } else {
           setTeam(data);
-          const [teamRegs, titles] = await Promise.all([
+          const [regsResult, titlesResult] = await Promise.allSettled([
             fetchRegistrationsForTeam(data.id),
             fetchTeamChampionships(data.id),
           ]);
-          setRegistrations(teamRegs);
-          setChampionships(titles);
+          if (regsResult.status === "fulfilled") {
+            setRegistrations(regsResult.value);
+          } else {
+            console.warn("[teams] Failed to load registrations:", regsResult.reason);
+            setRegistrations([]);
+          }
+          if (titlesResult.status === "fulfilled") {
+            setChampionships(titlesResult.value);
+          } else {
+            console.warn("[teams] Failed to load championships:", titlesResult.reason);
+            setChampionships([]);
+          }
         }
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : "Failed to load team.");
@@ -206,7 +216,11 @@ function TeamDetailPage() {
       const updated = await acceptTeamInvite(team!.id, memberId!);
       setTeam(updated);
       markTeamInviteRead(team!.id);
-      if (memberId) await syncTeamMembershipNotifications(memberId);
+      if (memberId) {
+        void syncTeamMembershipNotifications(memberId).catch((err) => {
+          console.warn("[teams] Failed to sync membership notifications:", err);
+        });
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to accept invite.");
     } finally {
@@ -220,8 +234,12 @@ function TeamDetailPage() {
     try {
       await declineTeamInvite(team!.id, memberId!);
       markTeamInviteRead(team!.id);
-      if (memberId) await syncTeamMembershipNotifications(memberId);
       navigate({ to: "/teams", search: { create: false } });
+      if (memberId) {
+        void syncTeamMembershipNotifications(memberId).catch((err) => {
+          console.warn("[teams] Failed to sync membership notifications:", err);
+        });
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to decline invite.");
     } finally {

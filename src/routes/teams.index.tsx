@@ -146,28 +146,44 @@ function TeamsIndexPage() {
     if (!memberId) return;
     const data = await fetchTeamsForUser(memberId);
     setTeams(data);
-    const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
-    setChampionshipsByTeam(champMap);
-    await syncTeamMembershipNotifications(memberId);
+    try {
+      const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
+      setChampionshipsByTeam(champMap);
+    } catch (err) {
+      console.warn("[teams] Failed to load championships:", err);
+    }
+    try {
+      await syncTeamMembershipNotifications(memberId);
+    } catch (err) {
+      console.warn("[teams] Failed to sync membership notifications:", err);
+    }
   }, [memberId]);
 
-  useMemberTeamMembershipRealtime(memberId, () => {
+  const handleMembershipUpdate = useCallback(() => {
     void reloadTeams();
-  });
+  }, [reloadTeams]);
+
+  useMemberTeamMembershipRealtime(memberId, handleMembershipUpdate);
 
   async function handleAcceptInvite(teamId: string) {
     if (!memberId) return;
     setRespondingTeamId(teamId);
     try {
       await acceptTeamInvite(teamId, memberId);
-      markTeamInviteRead(teamId);
-      await reloadTeams();
-      navigate({ to: "/teams/$id", params: { id: teamId } });
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Failed to accept invite.");
+      return;
     } finally {
       setRespondingTeamId(null);
     }
+
+    markTeamInviteRead(teamId);
+    try {
+      await reloadTeams();
+    } catch (err) {
+      console.warn("[teams] Failed to reload teams after accepting invite:", err);
+    }
+    navigate({ to: "/teams/$id", params: { id: teamId } });
   }
 
   async function handleDeclineInvite(teamId: string) {
@@ -175,12 +191,18 @@ function TeamsIndexPage() {
     setRespondingTeamId(teamId);
     try {
       await declineTeamInvite(teamId, memberId);
-      markTeamInviteRead(teamId);
-      await reloadTeams();
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Failed to decline invite.");
+      return;
     } finally {
       setRespondingTeamId(null);
+    }
+
+    markTeamInviteRead(teamId);
+    try {
+      await reloadTeams();
+    } catch (err) {
+      console.warn("[teams] Failed to reload teams after declining invite:", err);
     }
   }
 
@@ -209,9 +231,17 @@ function TeamsIndexPage() {
       .then(async (data) => {
         if (cancelled) return;
         setTeams(data);
-        const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
-        if (!cancelled) setChampionshipsByTeam(champMap);
-        await syncTeamMembershipNotifications(memberId);
+        try {
+          const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
+          if (!cancelled) setChampionshipsByTeam(champMap);
+        } catch (err) {
+          console.warn("[teams] Failed to load championships:", err);
+        }
+        try {
+          await syncTeamMembershipNotifications(memberId);
+        } catch (err) {
+          console.warn("[teams] Failed to sync membership notifications:", err);
+        }
       })
       .catch((err) => {
         if (!cancelled) {

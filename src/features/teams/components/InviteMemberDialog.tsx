@@ -97,7 +97,10 @@ export function InviteMemberDialog({
     };
   }, [open, search, page, team]);
 
+  const isInviting = invitingId !== null;
+
   async function handleInvite(memberId: string) {
+    if (invitingId !== null) return;
     setError(null);
     setInvitingId(memberId);
     try {
@@ -165,7 +168,9 @@ export function InviteMemberDialog({
                       <Button
                         type="button"
                         size="sm"
-                        disabled={alreadyInvited || invitingId === member.id || slotsLeft <= 0}
+                        disabled={
+                          isInviting || alreadyInvited || slotsLeft <= 0
+                        }
                         variant={alreadyInvited ? "outline" : "secondary"}
                         onClick={() => void handleInvite(member.id)}
                         className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
