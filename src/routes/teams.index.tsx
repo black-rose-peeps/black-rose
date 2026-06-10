@@ -1,13 +1,26 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Users2, Plus, Trophy, ChevronRight, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchTeamsForUser } from "@/features/admin/features/teams/services/teams.service";
+import {
+  acceptTeamInvite,
+  declineTeamInvite,
+  fetchTeamsForUser,
+} from "@/features/admin/features/teams/services/teams.service";
 import { MemberHeroBanner, MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
 import { getSession } from "@/features/auth/store/session";
+import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
+import { markTeamInviteRead } from "@/features/notifications/store";
 import { CreateTeamDialog } from "@/features/teams/components/CreateTeamDialog";
+import { TeamInviteCard } from "@/features/teams/components/TeamInviteCard";
 import { GAME_COLOR, GAME_ACCENT } from "@/features/teams/constants";
+import { useMemberTeamMembershipRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
+import { fetchTeamsChampionshipMap } from "@/features/championships/services/championship.service";
+import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
+import { RoseStarMark } from "@/features/championships/components/RoseStarMark";
+import type { ChampionshipTitle } from "@/features/championships/types";
+import { isActiveMember, isPendingInvite } from "@/features/teams/utils/membership";
 import type { Team } from "@/features/teams/types";
 
 export const Route = createFileRoute("/teams/")({
@@ -18,7 +31,15 @@ export const Route = createFileRoute("/teams/")({
   component: TeamsIndexPage,
 });
 
-function TeamSummaryCard({ team, isCaptain }: { team: Team; isCaptain: boolean }) {
+function TeamSummaryCard({
+  team,
+  isCaptain,
+  championships = [],
+}: {
+  team: Team;
+  isCaptain: boolean;
+  championships?: ChampionshipTitle[];
+}) {
   const activeCount = team.members.filter(
     (m) => m.status !== "removed" && m.status !== "invited",
   ).length;
@@ -29,12 +50,23 @@ function TeamSummaryCard({ team, isCaptain }: { team: Team; isCaptain: boolean }
       <div className={`h-[3px] w-full bg-linear-to-r ${GAME_ACCENT[team.game]}`} />
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-5">
-          <div className="grid h-16 w-16 shrink-0 place-items-center border border-white/15 bg-white/5 font-display text-xl tracking-display">
+          <div className="relative grid h-16 w-16 shrink-0 place-items-center border border-white/15 bg-white/5 font-display text-xl tracking-display">
             {team.tag}
+            {championships.length > 0 && (
+              <span
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center border border-white/15 bg-[oklch(0.07_0_0)] text-white/60"
+                title={championships.map((c) => c.tournamentName).join(" · ")}
+              >
+                <RoseStarMark size={10} />
+              </span>
+            )}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display text-3xl tracking-display">{team.name}</h2>
+              {championships.length > 0 && (
+                <ChampionMarkGroup titles={championships} size="md" showLabel />
+              )}
               {isCaptain && (
                 <Crown className="h-4 w-4 text-white/40" aria-label="You are the captain" />
               )}
@@ -98,6 +130,81 @@ function TeamsIndexPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [respondingTeamId, setRespondingTeamId] = useState<string | null>(null);
+  const [championshipsByTeam, setChampionshipsByTeam] = useState<
+    Map<string, ChampionshipTitle[]>
+  >(new Map());
+
+  const invitedTeams = teams.filter((team) => memberId && isPendingInvite(team, memberId));
+  const activeTeams = teams.filter((team) => memberId && isActiveMember(team, memberId));
+
+  function captainName(team: Team): string {
+    return team.members.find((m) => m.status === "captain")?.displayName ?? "A captain";
+  }
+
+  const reloadTeams = useCallback(async () => {
+    if (!memberId) return;
+    const data = await fetchTeamsForUser(memberId);
+    setTeams(data);
+    try {
+      const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
+      setChampionshipsByTeam(champMap);
+    } catch (err) {
+      console.warn("[teams] Failed to load championships:", err);
+    }
+    try {
+      await syncTeamMembershipNotifications(memberId);
+    } catch (err) {
+      console.warn("[teams] Failed to sync membership notifications:", err);
+    }
+  }, [memberId]);
+
+  const handleMembershipUpdate = useCallback(() => {
+    void reloadTeams();
+  }, [reloadTeams]);
+
+  useMemberTeamMembershipRealtime(memberId, handleMembershipUpdate);
+
+  async function handleAcceptInvite(teamId: string) {
+    if (!memberId) return;
+    setRespondingTeamId(teamId);
+    try {
+      await acceptTeamInvite(teamId, memberId);
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : "Failed to accept invite.");
+      return;
+    } finally {
+      setRespondingTeamId(null);
+    }
+
+    markTeamInviteRead(teamId);
+    try {
+      await reloadTeams();
+    } catch (err) {
+      console.warn("[teams] Failed to reload teams after accepting invite:", err);
+    }
+    navigate({ to: "/teams/$id", params: { id: teamId } });
+  }
+
+  async function handleDeclineInvite(teamId: string) {
+    if (!memberId) return;
+    setRespondingTeamId(teamId);
+    try {
+      await declineTeamInvite(teamId, memberId);
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : "Failed to decline invite.");
+      return;
+    } finally {
+      setRespondingTeamId(null);
+    }
+
+    markTeamInviteRead(teamId);
+    try {
+      await reloadTeams();
+    } catch (err) {
+      console.warn("[teams] Failed to reload teams after declining invite:", err);
+    }
+  }
 
   useEffect(() => {
     if (openCreateFromUrl && !loading) {
@@ -121,8 +228,20 @@ function TeamsIndexPage() {
     setFetchError(null);
 
     fetchTeamsForUser(memberId)
-      .then((data) => {
-        if (!cancelled) setTeams(data);
+      .then(async (data) => {
+        if (cancelled) return;
+        setTeams(data);
+        try {
+          const champMap = await fetchTeamsChampionshipMap(data.map((team) => team.id));
+          if (!cancelled) setChampionshipsByTeam(champMap);
+        } catch (err) {
+          console.warn("[teams] Failed to load championships:", err);
+        }
+        try {
+          await syncTeamMembershipNotifications(memberId);
+        } catch (err) {
+          console.warn("[teams] Failed to sync membership notifications:", err);
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -156,7 +275,7 @@ function TeamsIndexPage() {
         title="My Teams"
         subtitle={
           teams.length > 0
-            ? `${teams.length} team${teams.length === 1 ? "" : "s"} · Create one per game for different tournaments`
+            ? `${activeTeams.length} active · ${invitedTeams.length} pending invite${invitedTeams.length === 1 ? "" : "s"}`
             : "Create a team to register for tournaments"
         }
         actions={
@@ -177,11 +296,29 @@ function TeamsIndexPage() {
         </TechPanel>
       ) : teams.length > 0 ? (
         <div className="flex flex-col gap-5">
-          {teams.map((team) => (
+          {invitedTeams.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+                Pending Invitations
+              </p>
+              {invitedTeams.map((team) => (
+                <TeamInviteCard
+                  key={team.id}
+                  team={team}
+                  captainName={captainName(team)}
+                  responding={respondingTeamId === team.id}
+                  onAccept={() => void handleAcceptInvite(team.id)}
+                  onDecline={() => void handleDeclineInvite(team.id)}
+                />
+              ))}
+            </div>
+          )}
+          {activeTeams.map((team) => (
             <TeamSummaryCard
               key={team.id}
               team={team}
               isCaptain={team.captainUserId === session.id}
+              championships={championshipsByTeam.get(team.id) ?? []}
             />
           ))}
         </div>

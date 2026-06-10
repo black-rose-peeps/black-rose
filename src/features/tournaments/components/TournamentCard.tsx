@@ -1,6 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { Users, Calendar, Trophy, Layers } from "lucide-react";
 import { GAME_LABELS, STATUS_CONFIG } from "../constants";
+import {
+  isRegisteredCaptainStatus,
+  type CaptainTournamentRegistrationStatus,
+} from "../services/team-registration.service";
+import { TournamentCardCtaSkeleton } from "./SelectTeamRegistrationSkeleton";
 import type { Tournament } from "../types";
 
 const GAME_ACCENT: Record<Tournament["game"], string> = {
@@ -39,10 +44,46 @@ const CTA_STYLE: Record<Tournament["status"], string> = {
 
 interface TournamentCardProps {
   tournament: Tournament;
+  captainRegistrationStatus?: CaptainTournamentRegistrationStatus;
+  /** When true, defer the registration CTA until captain status is loaded. */
+  captainRegistrationLoading?: boolean;
 }
 
-export function TournamentCard({ tournament: t }: TournamentCardProps) {
+function resolveCardCta(
+  tournamentStatus: Tournament["status"],
+  captainRegistrationStatus: CaptainTournamentRegistrationStatus = "none",
+): { label: string; style: string } {
+  if (tournamentStatus === "Registration Open") {
+    if (captainRegistrationStatus === "pending") {
+      return {
+        label: "Pending Approval →",
+        style:
+          "border border-amber-400/30 bg-amber-400/10 font-tech text-xs uppercase tracking-wider-2 text-amber-300",
+      };
+    }
+    if (isRegisteredCaptainStatus(captainRegistrationStatus)) {
+      return {
+        label: "Registered →",
+        style:
+          "border border-emerald-400/30 bg-emerald-400/10 font-tech text-xs uppercase tracking-wider-2 text-emerald-300",
+      };
+    }
+  }
+
+  return {
+    label: CTA_LABEL[tournamentStatus],
+    style: CTA_STYLE[tournamentStatus],
+  };
+}
+
+export function TournamentCard({
+  tournament: t,
+  captainRegistrationStatus,
+  captainRegistrationLoading = false,
+}: TournamentCardProps) {
   const status = STATUS_CONFIG[t.status];
+  const cta = resolveCardCta(t.status, captainRegistrationStatus);
+  const showCtaSkeleton = captainRegistrationLoading && t.status === "Registration Open";
   const slotsLeft = t.teamCap - t.teamsRegistered;
   const slotsPct = Math.round((t.teamsRegistered / t.teamCap) * 100);
   const isOver = t.status === "Completed" || t.status === "Archived";
@@ -141,11 +182,15 @@ export function TournamentCard({ tournament: t }: TournamentCardProps) {
 
         {/* CTA footer — visual label only, navigation is handled by the outer Link */}
         <div className="border-t border-white/6 px-5 py-4">
-          <div
-            className={`inline-flex h-10 w-full items-center justify-center transition ${CTA_STYLE[t.status]}`}
-          >
-            {CTA_LABEL[t.status]}
-          </div>
+          {showCtaSkeleton ? (
+            <TournamentCardCtaSkeleton />
+          ) : (
+            <div
+              className={`inline-flex h-10 w-full items-center justify-center transition ${cta.style}`}
+            >
+              {cta.label}
+            </div>
+          )}
         </div>
       </article>
     </Link>

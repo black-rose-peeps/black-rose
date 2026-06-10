@@ -4,6 +4,7 @@ import { Emblem } from "@/features/shared/components/Emblem";
 import { clearSession, getSession } from "@/features/auth/store/session";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
 
 const MEMBER_CONSOLE_NAV = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
@@ -22,6 +23,8 @@ export function MemberNav() {
   const isVerifiedMember = session ? hasFullMemberAccess(session.role) : false;
   const profileSlug = session?.profileSlug ?? session?.username ?? "";
   const avatarUrl = session?.avatarUrl ?? null;
+  useNotificationSync(isVerifiedMember ? session?.id : undefined);
+
   const accountHref = isVerifiedMember
     ? { to: "/members/$slug" as const, params: { slug: profileSlug } }
     : { to: getPostAuthPath(session?.role ?? "not_verified") };

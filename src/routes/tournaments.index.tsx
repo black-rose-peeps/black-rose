@@ -8,7 +8,13 @@ import { TournamentGroup } from "@/features/tournaments/components/TournamentGro
 import { Skeleton } from "@/components/ui/skeleton";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { ALL_GAMES, ALL_STATUSES } from "@/features/tournaments/constants";
-import { useTournamentList, type PublicTournament } from "@/features/tournaments/hooks";
+import {
+  useCaptainTournamentRegistrations,
+  useTournamentList,
+  type PublicTournament,
+} from "@/features/tournaments/hooks";
+import { getSession } from "@/features/auth/store/session";
+import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import type { TournamentGame, TournamentStatus } from "@/features/tournaments/types";
 
 export const Route = createFileRoute("/tournaments/")({
@@ -26,7 +32,12 @@ export const Route = createFileRoute("/tournaments/")({
 });
 
 function TournamentsPage() {
+  const session = getSession();
+  const memberId = session && hasFullMemberAccess(session.role) ? session.id : undefined;
   const { tournaments, isLoading } = useTournamentList();
+  const { registrationByTournament, isLoading: captainRegistrationsLoading } =
+    useCaptainTournamentRegistrations(memberId);
+  const showCaptainRegistrationState = Boolean(memberId);
   const [activeGame, setActiveGame] = useState<typeof ALL_GAMES | TournamentGame>(ALL_GAMES);
   const [activeStatus, setActiveStatus] = useState<typeof ALL_STATUSES | TournamentStatus>(
     ALL_STATUSES,
@@ -152,6 +163,10 @@ function TournamentsPage() {
                     dot="bg-white animate-pulse-soft"
                     label="Live Now"
                     tournaments={filtered.filter((t) => t.status === "Live")}
+                    captainRegistrationByTournament={registrationByTournament}
+                    captainRegistrationLoading={
+                      showCaptainRegistrationState && captainRegistrationsLoading
+                    }
                   />
                 )}
 
@@ -162,12 +177,22 @@ function TournamentsPage() {
                       dot="bg-emerald-400 animate-pulse-soft"
                       label="Registration Open"
                       tournaments={filtered.filter((t) => t.status === "Registration Open")}
+                      captainRegistrationByTournament={registrationByTournament}
+                      captainRegistrationLoading={
+                        showCaptainRegistrationState && captainRegistrationsLoading
+                      }
                     />
                   )}
 
                 {/* Everything else (or when a filter is active — flat list) */}
                 {activeStatus !== ALL_STATUSES ? (
-                  <TournamentGrid tournaments={filtered} />
+                  <TournamentGrid
+                    tournaments={filtered}
+                    captainRegistrationByTournament={registrationByTournament}
+                    captainRegistrationLoading={
+                      showCaptainRegistrationState && captainRegistrationsLoading
+                    }
+                  />
                 ) : filtered.some(
                     (t) => t.status !== "Live" && t.status !== "Registration Open",
                   ) ? (
@@ -176,9 +201,21 @@ function TournamentsPage() {
                     tournaments={filtered.filter(
                       (t) => t.status !== "Live" && t.status !== "Registration Open",
                     )}
+                    captainRegistrationByTournament={registrationByTournament}
+                    captainRegistrationLoading={
+                      showCaptainRegistrationState && captainRegistrationsLoading
+                    }
                   />
                 ) : (
-                  filtered.length === 0 && <TournamentGrid tournaments={[]} />
+                  filtered.length === 0 && (
+                    <TournamentGrid
+                      tournaments={[]}
+                      captainRegistrationByTournament={registrationByTournament}
+                      captainRegistrationLoading={
+                        showCaptainRegistrationState && captainRegistrationsLoading
+                      }
+                    />
+                  )
                 )}
               </>
             )}

@@ -1,12 +1,22 @@
 import { supabase } from "@/lib/supabase";
 import type { MockTeam } from "@/lib/mock-data";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
-import { fetchTeams } from "@/features/admin/features/teams/services/teams.service";
-import { assignTeamActiveTournament } from "@/features/admin/features/teams/services/teams.service";
+import {
+  assignTeamActiveTournament,
+  fetchTeamById,
+  fetchTeams,
+} from "@/features/admin/features/teams/services/teams.service";
+import type { Team } from "@/features/teams/types";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
 import { assertMemberAvailableForTournament } from "@/features/tournaments/utils/member-tournament-eligibility";
 import { isBlockingTournamentStatus } from "@/features/tournaments/utils/team-tournament-eligibility";
 import { fetchTournamentById, fetchTournaments, syncTournamentTeamCount } from "./tournaments.service";
+
+const REGISTRATION_COUNT_STATUSES: MockTeam["status"][] = [
+  "Pending",
+  "Approved",
+  "Previously Competed",
+];
 
 export {
   assertMemberAvailableForTournament,
@@ -92,6 +102,84 @@ async function initialRegistrationStatus(params: {
   return veteran ? "Previously Competed" : "Approved";
 }
 
+async function countTournamentRegistrations(tournamentId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("tournament_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId)
+    .in("status", REGISTRATION_COUNT_STATUSES);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+function captainUsername(team: Team): string {
+  const captain =
+    team.members.find((m) => m.status === "captain") ??
+    team.members.find((m) => m.status === "active") ??
+    team.members[0];
+  return captain?.username ?? "—";
+}
+
+async function insertTeamRegistrationPlayers(
+  registrationId: string,
+  rosterTeam: Team,
+): Promise<void> {
+  const activePlayers = rosterTeam.members.filter(
+    (m) => m.status === "captain" || m.status === "active",
+  );
+
+  if (activePlayers.length === 0) return;
+
+  const { error: playersErr } = await supabase.from("tournament_registration_players").insert(
+    activePlayers.map((m) => ({
+      registration_id: registrationId,
+      ign: m.ign,
+      role: m.role,
+      discord: `${m.username}#0000`,
+    })),
+  );
+
+  if (playersErr) throw new Error(playersErr.message);
+}
+
+async function validateTeamForTournamentRegistration(
+  tournamentId: string,
+  rosterTeam: Team,
+  options?: { requireOpenRegistration?: boolean },
+): Promise<Awaited<ReturnType<typeof fetchTournamentById>> & object> {
+  const tournament = await fetchTournamentById(tournamentId);
+  if (!tournament) throw new Error("Tournament not found.");
+  if (options?.requireOpenRegistration && tournament.status !== "Registration Open") {
+    throw new Error("Registration is not open for this tournament.");
+  }
+  if (isSoloTournament(tournament)) {
+    throw new Error("This tournament uses direct player registration.");
+  }
+
+  const registrationCount = await countTournamentRegistrations(tournamentId);
+  if (registrationCount >= tournament.teamCap) {
+    throw new Error(`Team cap reached (${tournament.teamCap}).`);
+  }
+
+  if (rosterTeam.game !== "Multi" && rosterTeam.game !== tournament.game) {
+    throw new Error(
+      `${rosterTeam.name} is registered for ${rosterTeam.game}, but this tournament is ${tournament.game}.`,
+    );
+  }
+
+  if (rosterTeam.activeTournamentId && rosterTeam.activeTournamentId !== tournamentId) {
+    const activeTournament = await fetchTournamentById(rosterTeam.activeTournamentId);
+    if (activeTournament && isBlockingTournamentStatus(activeTournament.status)) {
+      throw new Error(
+        `${rosterTeam.name} is already active in ${rosterTeam.activeTournamentName ?? activeTournament.name}. Complete that event before registering elsewhere.`,
+      );
+    }
+  }
+
+  return tournament;
+}
+
 async function fetchRegistrationWithPlayers(registrationId: string): Promise<MockTeam> {
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
@@ -117,6 +205,14 @@ function soloRegistrationTag(username: string): string {
   return (clean + "XXX").slice(0, 3);
 }
 
+function pickRegistrationStatusUpdatedAt(reg: Record<string, unknown>): string | undefined {
+  for (const key of ["reviewed_at", "approved_at", "updated_at"] as const) {
+    const value = reg[key];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return undefined;
+}
+
 function rowToMockTeam(reg: Record<string, unknown>, players: Record<string, unknown>[]): MockTeam {
   return {
     id: reg.id as string,
@@ -131,6 +227,7 @@ function rowToMockTeam(reg: Record<string, unknown>, players: Record<string, unk
       discord: p.discord as string,
     })),
     registrationDate: reg.registration_date as string,
+    statusUpdatedAt: pickRegistrationStatusUpdatedAt(reg),
     status: reg.status as MockTeam["status"],
     tournamentId: reg.tournament_id as string,
     history: (reg.history as string[]) ?? [],
@@ -202,10 +299,23 @@ export async function updateRegistrationStatus(
 ): Promise<MockTeam> {
   const existing = await fetchRegistrationWithPlayers(registrationId);
 
-  const { error } = await supabase
+  const reviewedAt = new Date().toISOString();
+  const statusPatch: Record<string, unknown> = { status };
+  if (status === "Approved") statusPatch.approved_at = reviewedAt;
+  statusPatch.reviewed_at = reviewedAt;
+
+  let { error } = await supabase
     .from("tournament_registrations")
-    .update({ status })
+    .update(statusPatch)
     .eq("id", registrationId);
+
+  if (error) {
+    const fallback = await supabase
+      .from("tournament_registrations")
+      .update({ status })
+      .eq("id", registrationId);
+    error = fallback.error;
+  }
 
   if (error) throw new Error(error.message);
 
@@ -220,7 +330,7 @@ export async function updateRegistrationStatus(
     }
   }
 
-  if (status === "Rejected" && existing.status === "Approved" && existing.rosterTeamId) {
+  if (status === "Rejected" && existing.rosterTeamId) {
     const { error: teamErr } = await supabase
       .from("teams")
       .update({ active_tournament_id: null, active_tournament_name: null })
@@ -230,71 +340,75 @@ export async function updateRegistrationStatus(
     if (teamErr) throw new Error(teamErr.message);
   }
 
+  const registrationCount = await countTournamentRegistrations(existing.tournamentId);
+  await syncTournamentTeamCount(existing.tournamentId, registrationCount);
+
   return fetchRegistrationWithPlayers(registrationId);
 }
 
-export async function addTeamToTournament(
-  tournamentId: string,
+export async function fetchTeamTournamentRegistration(
   rosterTeamId: string,
-): Promise<MockTeam> {
-  const tournament = await fetchTournamentById(tournamentId);
-  if (!tournament) throw new Error("Tournament not found.");
-  if (isSoloTournament(tournament)) {
-    throw new Error("This tournament uses direct player registration. Add players instead of teams.");
-  }
-
-  // Check cap
-  const { count, error: countErr } = await supabase
-    .from("tournament_registrations")
-    .select("id", { count: "exact", head: true })
-    .eq("tournament_id", tournamentId);
-
-  if (countErr) throw new Error(countErr.message);
-  if ((count ?? 0) >= tournament.teamCap) {
-    throw new Error(`Team cap reached (${tournament.teamCap}).`);
-  }
-
-  // Check already registered
-  const { data: existing } = await supabase
+  tournamentId: string,
+): Promise<MockTeam | null> {
+  const { data, error } = await supabase
     .from("tournament_registrations")
     .select("id")
     .eq("tournament_id", tournamentId)
     .eq("roster_team_id", rosterTeamId)
     .maybeSingle();
 
-  if (existing) throw new Error("This team is already registered for this tournament.");
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return fetchRegistrationWithPlayers(data.id as string);
+}
 
-  // Get roster team
-  const allTeams = await fetchTeams();
-  const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
-  if (!rosterTeam) throw new Error("Team not found. Create the team under Teams first.");
+export async function fetchRegistrationsForTeam(rosterTeamId: string): Promise<MockTeam[]> {
+  const { data, error } = await supabase
+    .from("tournament_registrations")
+    .select("id")
+    .eq("roster_team_id", rosterTeamId)
+    .order("registration_date", { ascending: false });
 
-  if (rosterTeam.game !== "Multi" && rosterTeam.game !== tournament.game) {
-    throw new Error(
-      `${rosterTeam.name} is registered for ${rosterTeam.game}, but this tournament is ${tournament.game}.`,
-    );
+  if (error) throw new Error(error.message);
+  if (!data?.length) return [];
+
+  return Promise.all(data.map((row) => fetchRegistrationWithPlayers(row.id as string)));
+}
+
+export async function requestCaptainTeamRegistration(
+  tournamentId: string,
+  rosterTeamId: string,
+  captainUserId: string,
+): Promise<MockTeam> {
+  const rosterTeam = await fetchTeamById(rosterTeamId);
+  if (!rosterTeam) throw new Error("Team not found.");
+  if (rosterTeam.captainUserId !== captainUserId) {
+    throw new Error("Only the team captain can register for tournaments.");
   }
 
-  if (rosterTeam.activeTournamentId && rosterTeam.activeTournamentId !== tournamentId) {
-    const activeTournament = await fetchTournamentById(rosterTeam.activeTournamentId);
-    if (activeTournament && isBlockingTournamentStatus(activeTournament.status)) {
-      throw new Error(
-        `${rosterTeam.name} is already active in ${rosterTeam.activeTournamentName ?? activeTournament.name}. Complete that event before registering elsewhere.`,
-      );
-    }
-  }
-
-  const captain =
-    rosterTeam.members.find((m) => m.status === "captain") ??
-    rosterTeam.members.find((m) => m.status === "active") ??
-    rosterTeam.members[0];
-
-  const registrationStatus = await initialRegistrationStatus({
-    rosterTeamId,
-    tournamentId,
+  const tournament = await validateTeamForTournamentRegistration(tournamentId, rosterTeam, {
+    requireOpenRegistration: true,
   });
 
-  // Insert registration
+  const existing = await fetchTeamTournamentRegistration(rosterTeamId, tournamentId);
+  if (existing) {
+    if (existing.status === "Rejected") {
+      await resyncRegistrationRoster(existing.id);
+      const { error: updateErr } = await supabase
+        .from("tournament_registrations")
+        .update({ status: "Pending" })
+        .eq("id", existing.id);
+      if (updateErr) throw new Error(updateErr.message);
+      const registrationCount = await countTournamentRegistrations(tournamentId);
+      await syncTournamentTeamCount(tournamentId, registrationCount);
+      return fetchRegistrationWithPlayers(existing.id);
+    }
+    if (existing.status === "Pending") {
+      throw new Error("Your registration is already pending admin approval.");
+    }
+    throw new Error("This team is already registered for this tournament.");
+  }
+
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
     .insert({
@@ -302,7 +416,49 @@ export async function addTeamToTournament(
       roster_team_id: rosterTeamId,
       name: rosterTeam.name,
       tag: rosterTeam.tag,
-      captain: captain?.username ?? "—",
+      captain: captainUsername(rosterTeam),
+      status: "Pending",
+      history: [],
+    })
+    .select()
+    .single();
+
+  if (regErr) throw new Error(regErr.message);
+
+  await insertTeamRegistrationPlayers(reg.id as string, rosterTeam);
+
+  const registrationCount = await countTournamentRegistrations(tournamentId);
+  await syncTournamentTeamCount(tournamentId, registrationCount);
+
+  return fetchRegistrationWithPlayers(reg.id as string);
+}
+
+export async function addTeamToTournament(
+  tournamentId: string,
+  rosterTeamId: string,
+): Promise<MockTeam> {
+  const allTeams = await fetchTeams();
+  const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
+  if (!rosterTeam) throw new Error("Team not found. Create the team under Teams first.");
+
+  const tournament = await validateTeamForTournamentRegistration(tournamentId, rosterTeam);
+
+  const existing = await fetchTeamTournamentRegistration(rosterTeamId, tournamentId);
+  if (existing) throw new Error("This team is already registered for this tournament.");
+
+  const registrationStatus = await initialRegistrationStatus({
+    rosterTeamId,
+    tournamentId,
+  });
+
+  const { data: reg, error: regErr } = await supabase
+    .from("tournament_registrations")
+    .insert({
+      tournament_id: tournamentId,
+      roster_team_id: rosterTeamId,
+      name: rosterTeam.name,
+      tag: rosterTeam.tag,
+      captain: captainUsername(rosterTeam),
       status: registrationStatus,
       history: [],
     })
@@ -311,25 +467,10 @@ export async function addTeamToTournament(
 
   if (regErr) throw new Error(regErr.message);
 
-  // Insert players
-  const activePlayers = rosterTeam.members.filter(
-    (m) => m.status === "captain" || m.status === "active",
-  );
+  await insertTeamRegistrationPlayers(reg.id as string, rosterTeam);
 
-  if (activePlayers.length > 0) {
-    const { error: playersErr } = await supabase.from("tournament_registration_players").insert(
-      activePlayers.map((m) => ({
-        registration_id: reg.id,
-        ign: m.ign,
-        role: m.role,
-        discord: `${m.username}#0000`,
-      })),
-    );
-
-    if (playersErr) throw new Error(playersErr.message);
-  }
-
-  await syncTournamentTeamCount(tournamentId, (count ?? 0) + 1);
+  const registrationCount = await countTournamentRegistrations(tournamentId);
+  await syncTournamentTeamCount(tournamentId, registrationCount);
   if (registrationStatus === "Approved") {
     await assignTeamActiveTournament(rosterTeamId, tournamentId, tournament.name);
   }
@@ -352,13 +493,8 @@ export async function addMemberToTournament(
     throw new Error("This tournament uses team registration. Add teams instead of individual players.");
   }
 
-  const { count, error: countErr } = await supabase
-    .from("tournament_registrations")
-    .select("id", { count: "exact", head: true })
-    .eq("tournament_id", tournamentId);
-
-  if (countErr) throw new Error(countErr.message);
-  if ((count ?? 0) >= tournament.teamCap) {
+  const registrationCount = await countTournamentRegistrations(tournamentId);
+  if (registrationCount >= tournament.teamCap) {
     throw new Error(`Registration cap reached (${tournament.teamCap}).`);
   }
 
@@ -406,7 +542,8 @@ export async function addMemberToTournament(
 
   if (playersErr) throw new Error(playersErr.message);
 
-  await syncTournamentTeamCount(tournamentId, (count ?? 0) + 1);
+  const updatedCount = await countTournamentRegistrations(tournamentId);
+  await syncTournamentTeamCount(tournamentId, updatedCount);
   return fetchRegistrationWithPlayers(reg.id as string);
 }
 
@@ -563,19 +700,15 @@ export async function removeTeamFromTournament(registrationId: string): Promise<
 
   if (deleteErr) throw new Error(deleteErr.message);
 
-  const { count, error: countErr } = await supabase
-    .from("tournament_registrations")
-    .select("id", { count: "exact", head: true })
-    .eq("tournament_id", tournamentId);
-
-  if (countErr) throw new Error(countErr.message);
-  await syncTournamentTeamCount(tournamentId, count ?? 0);
+  const registrationCount = await countTournamentRegistrations(tournamentId);
+  await syncTournamentTeamCount(tournamentId, registrationCount);
 
   if (rosterTeamId) {
     const { error: teamErr } = await supabase
       .from("teams")
       .update({ active_tournament_id: null, active_tournament_name: null })
-      .eq("id", rosterTeamId);
+      .eq("id", rosterTeamId)
+      .eq("active_tournament_id", tournamentId);
 
     if (teamErr) throw new Error(teamErr.message);
   }

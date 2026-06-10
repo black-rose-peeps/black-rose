@@ -31,12 +31,21 @@ export interface TournamentBracketState {
 function parseBracketData(raw: unknown): PersistedBracketPayload | null {
   if (!raw || typeof raw !== "object") return null;
   const data = raw as Record<string, unknown>;
-  if (!Array.isArray(data.rounds)) return null;
+  const rounds = Array.isArray(data.rounds) ? (data.rounds as BracketRound[]) : [];
+  const admin = data.admin as PersistedBracketPayload["admin"];
+  const placements = data.placements as TournamentPlacement[] | undefined;
+  const hasChampionData =
+    placements?.some((p) => p.rank === 1 && p.team?.trim()) ||
+    admin?.managedMatches?.some((m) => m.winner) ||
+    rounds.some((round) => round.matches?.some((m) => m.winner));
+  if (!hasChampionData && rounds.length === 0 && !admin?.managedMatches?.length) {
+    return null;
+  }
   return {
-    rounds: data.rounds as BracketRound[],
+    rounds,
     prizeBreakdown: data.prizeBreakdown as PrizeTier[] | undefined,
-    placements: data.placements as TournamentPlacement[] | undefined,
-    admin: data.admin as PersistedBracketPayload["admin"],
+    placements,
+    admin,
   };
 }
 

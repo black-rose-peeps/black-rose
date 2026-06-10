@@ -1,6 +1,7 @@
 import { Trophy } from "lucide-react";
 import { TournamentCard } from "./TournamentCard";
 import { getPublicTournaments } from "../utils";
+import type { CaptainTournamentRegistrationStatus } from "../services/team-registration.service";
 import type { MockTournament } from "@/lib/mock-data";
 
 // Accept the wider MockTournament shape (which may include "Draft").
@@ -8,9 +9,15 @@ import type { MockTournament } from "@/lib/mock-data";
 // STATUS_CONFIG / CTA_LABEL / CTA_STYLE never receive an unhandled "Draft" value.
 interface TournamentGridProps {
   tournaments: MockTournament[];
+  captainRegistrationByTournament?: Map<string, CaptainTournamentRegistrationStatus>;
+  captainRegistrationLoading?: boolean;
 }
 
-export function TournamentGrid({ tournaments }: TournamentGridProps) {
+export function TournamentGrid({
+  tournaments,
+  captainRegistrationByTournament,
+  captainRegistrationLoading = false,
+}: TournamentGridProps) {
   // Narrow to public statuses — removes Draft and gives us Tournament["status"]
   const publicTournaments = getPublicTournaments(tournaments);
 
@@ -29,7 +36,12 @@ export function TournamentGrid({ tournaments }: TournamentGridProps) {
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {publicTournaments.map((t) => (
-        <TournamentCard key={t.id} tournament={t} />
+        <TournamentCard
+          key={t.id}
+          tournament={t}
+          captainRegistrationStatus={captainRegistrationByTournament?.get(t.id)}
+          captainRegistrationLoading={captainRegistrationLoading}
+        />
       ))}
     </div>
   );

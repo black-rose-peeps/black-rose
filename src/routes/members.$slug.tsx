@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AvatarUpload } from "@/features/member/components/AvatarUpload";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { ProfileCard } from "@/features/member/components/ProfileCard";
 import { MemberProfileSkeleton } from "@/features/member/components/MemberProfileSkeleton";
 import {
@@ -21,11 +21,12 @@ import {
   PanelEmptyState,
 } from "@/features/member/components/MemberShell";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
-import { getSession, setSession } from "@/features/auth/store/session";
-import {
-  fetchMemberProfileBySlug,
-  updateMemberProfile,
-} from "@/features/member/services/member-profile.service";
+import { getSession } from "@/features/auth/store/session";
+import { fetchMemberProfileBySlug } from "@/features/member/services/member-profile.service";
+import { fetchMemberChampionships } from "@/features/championships/services/championship.service";
+import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
+import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
+import type { ChampionshipTitle } from "@/features/championships/types";
 import type { MemberProfile } from "@/features/member/types";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
 
@@ -43,8 +44,7 @@ function MemberProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +61,12 @@ function MemberProfilePage() {
           setProfile(null);
         } else {
           setProfile(data);
+          try {
+            const titles = await fetchMemberChampionships(data.memberId);
+            if (!cancelled) setChampionships(titles);
+          } catch {
+            if (!cancelled) setChampionships([]);
+          }
         }
       } catch (err) {
         if (cancelled) return;
@@ -78,10 +84,6 @@ function MemberProfilePage() {
       cancelled = true;
     };
   }, [slug, session?.id]);
-
-  useEffect(() => {
-    setAvatarUrl(profile?.avatarUrl ?? null);
-  }, [profile?.avatarUrl]);
 
   if (loading) return <MemberProfileSkeleton />;
 
@@ -133,68 +135,6 @@ function MemberProfilePage() {
   const isOwnProfile = session?.id === profile.memberId;
   const p = profile;
 
-  async function handleAvatarChange(dataUrl: string) {
-    if (!session || !isOwnProfile) return;
-    const previousAvatar = avatarUrl;
-    setAvatarUrl(dataUrl);
-    setAvatarSaving(true);
-    try {
-      const updated = await updateMemberProfile({
-        memberId: session.id,
-        displayName: p.displayName,
-        headline: p.headline,
-        bio: p.bio,
-        mainGame: p.mainGame || null,
-        mainRole: p.mainRole,
-        region: p.region,
-        avatarUrl: dataUrl,
-        isPublic: p.isPublic,
-        socialLinks: p.socialLinks.map((s) => ({
-          platform: s.platform,
-          url: s.url,
-          isPublic: s.isPublic,
-        })),
-      });
-      setProfile(updated);
-      setSession({ ...session, avatarUrl: updated.avatarUrl, profileSlug: updated.slug });
-    } catch {
-      setAvatarUrl(previousAvatar);
-    } finally {
-      setAvatarSaving(false);
-    }
-  }
-
-  async function handleAvatarRemove() {
-    if (!session || !isOwnProfile) return;
-    const previousAvatar = avatarUrl;
-    setAvatarUrl(null);
-    setAvatarSaving(true);
-    try {
-      const updated = await updateMemberProfile({
-        memberId: session.id,
-        displayName: p.displayName,
-        headline: p.headline,
-        bio: p.bio,
-        mainGame: p.mainGame || null,
-        mainRole: p.mainRole,
-        region: p.region,
-        avatarUrl: null,
-        isPublic: p.isPublic,
-        socialLinks: p.socialLinks.map((s) => ({
-          platform: s.platform,
-          url: s.url,
-          isPublic: s.isPublic,
-        })),
-      });
-      setProfile(updated);
-      setSession({ ...session, avatarUrl: updated.avatarUrl });
-    } catch {
-      setAvatarUrl(previousAvatar);
-    } finally {
-      setAvatarSaving(false);
-    }
-  }
-
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
     p.socialLinks.find((s) => s.platform === platform),
   ).filter((s): s is NonNullable<typeof s> => !!s && isSocialLinkPublic(s));
@@ -230,44 +170,48 @@ function MemberProfilePage() {
         title={p.displayName}
         subtitle={p.headline}
         meta={
-          <div className="flex flex-wrap items-center gap-3">
-            {p.isVerified && (
-              <Badge
-                variant="outline"
-                className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
-              >
-                <CheckCircle className="mr-1 h-3 w-3" />
-                Verified
-              </Badge>
-            )}
-            {p.mainGame && (
-              <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
-                <Gamepad2 className="h-3 w-3" />
-                {p.mainGame}
-              </span>
-            )}
-            {p.region && (
-              <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
-                <MapPin className="h-3 w-3" />
-                {p.region}
-              </span>
-            )}
-            {p.riotAccount?.isLinked && (
-              <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
-                <CheckCircle className="h-3 w-3" />
-                Riot Linked
-              </span>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              {p.isVerified && (
+                <Badge
+                  variant="outline"
+                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
+                >
+                  <CheckCircle className="mr-1 h-3 w-3" />
+                  Verified
+                </Badge>
+              )}
+              {p.mainGame && (
+                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <Gamepad2 className="h-3 w-3" />
+                  {p.mainGame}
+                </span>
+              )}
+              {p.region && (
+                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  {p.region}
+                </span>
+              )}
+              {p.riotAccount?.isLinked && (
+                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
+                  <CheckCircle className="h-3 w-3" />
+                  Riot Linked
+                </span>
+              )}
+            </div>
+            {championships.length > 0 && (
+              <ChampionMarkGroup titles={championships} size="md" showLabel />
             )}
           </div>
         }
       >
         <div className="relative shrink-0">
-          <AvatarUpload
-            avatarUrl={avatarUrl}
+          <MemberAvatar
+            avatarUrl={p.avatarUrl}
             initials={p.avatarInitials}
-            onChange={handleAvatarChange}
-            onRemove={handleAvatarRemove}
-            editable={isOwnProfile && !avatarSaving}
+            name={p.displayName}
+            className="h-24 w-24 text-3xl"
           />
           {p.isVerified && !isOwnProfile && (
             <div className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center border border-emerald-400/30 bg-[oklch(0.07_0_0)]">
@@ -325,6 +269,8 @@ function MemberProfilePage() {
               </ProfileCard>
             )
           )}
+
+          {championships.length > 0 && <ChampionshipTitlesCard titles={championships} />}
 
           {p.tournamentHistory.length > 0 && (
             <ProfileCard label="Tournament History">
