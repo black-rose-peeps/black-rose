@@ -20,7 +20,7 @@ function GuestHeader() {
     if ("hash" in item && item.hash) {
       return pathname === "/" && hash === item.hash;
     }
-    return pathname === item.to;
+    return false;
   }
 
   return (
@@ -49,15 +49,9 @@ function GuestHeader() {
         <div className="flex items-center gap-3">
           <Link
             to="/login"
-            className="hidden h-9 items-center px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-          >
-            Sign In
-          </Link>
-          <Link
-            to="/register"
             className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
           >
-            Register
+            Join Us
           </Link>
         </div>
       </div>

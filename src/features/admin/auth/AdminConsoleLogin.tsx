@@ -109,7 +109,7 @@ export function AdminConsoleLogin({ onBack }: AdminConsoleLoginProps) {
         onClick={onBack}
         className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
-        ← Back to member sign in
+        ← Back to member access
       </button>
     </div>
   );

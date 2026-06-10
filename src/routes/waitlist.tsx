@@ -44,7 +44,7 @@ function WaitlistPage() {
     async function loadWaitlist() {
       const session = getSession();
       if (!session) {
-        navigate({ to: "/register" });
+        navigate({ to: "/login" });
         return;
       }
 

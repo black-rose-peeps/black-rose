@@ -112,20 +112,12 @@ export function MemberNav() {
               </button>
             </>
           ) : (
-            <>
-              <Link
-                to="/login"
-                className="hidden h-9 items-center px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
-              >
-                Register
-              </Link>
-            </>
+            <Link
+              to="/login"
+              className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+            >
+              Join
+            </Link>
           )}
         </div>
       </div>
