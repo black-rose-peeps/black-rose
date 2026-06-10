@@ -4,6 +4,12 @@ import { fetchActiveMemberTeams } from "@/features/tournaments/services/team-reg
 import { syncTeamMembershipNotifications } from "../services/team-membership-notifications";
 import { syncTournamentRegistrationNotifications } from "../services/tournament-registration-notifications";
 
+function teamIdsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const setB = new Set(b);
+  return a.every((id) => setB.has(id));
+}
+
 /** Keep member notifications in sync via Supabase Realtime. */
 export function useNotificationSync(memberId: string | undefined) {
   useEffect(() => {
@@ -12,6 +18,9 @@ export function useNotificationSync(memberId: string | undefined) {
     const userId = memberId;
     let cancelled = false;
     let syncTail = Promise.resolve();
+    const supabase = getSupabaseClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let subscribedTeamIds: string[] = [];
 
     function syncAll() {
       syncTail = syncTail.then(async () => {
@@ -30,12 +39,30 @@ export function useNotificationSync(memberId: string | undefined) {
       return syncTail;
     }
 
-    void syncAll();
+    async function teardownChannel() {
+      if (!channel) return;
+      await supabase.removeChannel(channel);
+      channel = null;
+    }
 
-    const supabase = getSupabaseClient();
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    async function refreshSubscriptionIfTeamsChanged() {
+      if (cancelled) return;
+      try {
+        const teams = await fetchActiveMemberTeams(userId);
+        const teamIds = teams.map((team) => team.id);
+        if (!teamIdsEqual(subscribedTeamIds, teamIds)) {
+          await subscribe();
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn("[notifications] Failed to refresh registration filter:", err);
+        }
+      }
+    }
 
     async function subscribe() {
+      await teardownChannel();
+
       let teamIds: string[] = [];
       try {
         const teams = await fetchActiveMemberTeams(userId);
@@ -47,6 +74,8 @@ export function useNotificationSync(memberId: string | undefined) {
       }
 
       if (cancelled) return;
+
+      subscribedTeamIds = teamIds;
 
       let nextChannel = supabase
         .channel(`member-notifications:${userId}`)
@@ -60,6 +89,7 @@ export function useNotificationSync(memberId: string | undefined) {
           },
           () => {
             void syncAll();
+            void refreshSubscriptionIfTeamsChanged();
           },
         );
 
@@ -81,6 +111,7 @@ export function useNotificationSync(memberId: string | undefined) {
       channel = nextChannel.subscribe();
     }
 
+    void syncAll();
     void subscribe();
 
     function handleFocus() {
@@ -92,7 +123,7 @@ export function useNotificationSync(memberId: string | undefined) {
     return () => {
       cancelled = true;
       window.removeEventListener("focus", handleFocus);
-      if (channel) void supabase.removeChannel(channel);
+      void teardownChannel();
     };
   }, [memberId]);
 }

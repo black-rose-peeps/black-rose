@@ -407,11 +407,6 @@ export async function updateTeam(
 
 export async function acceptTeamInvite(teamId: string, userId: string): Promise<Team> {
   const team = await fetchTeamWithMembers(teamId);
-  const membership = team.members.find((m) => m.userId === userId);
-  if (!membership || membership.status !== "invited") {
-    throw new Error("No pending invite found for this team.");
-  }
-
   await assertMemberAvailableForGame(userId, team.game, teamId);
 
   const { data: updated, error } = await supabase
@@ -428,12 +423,6 @@ export async function acceptTeamInvite(teamId: string, userId: string): Promise<
 }
 
 export async function declineTeamInvite(teamId: string, userId: string): Promise<void> {
-  const team = await fetchTeamWithMembers(teamId);
-  const membership = team.members.find((m) => m.userId === userId);
-  if (!membership || membership.status !== "invited") {
-    throw new Error("No pending invite found for this team.");
-  }
-
   const { data: updated, error } = await supabase
     .from("team_members")
     .update({ status: "removed" })
