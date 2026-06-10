@@ -11,3 +11,17 @@ export {
 } from "@/features/admin/features/tournaments/services/tournaments.service";
 
 export { fetchTournamentRegistrations } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
+
+export {
+  fetchCaptainTeams,
+  fetchCaptainRegistrationStatusForTournament,
+  fetchCaptainTournamentRegistrationMap,
+  fetchOpenTeamTournaments,
+  fetchRegistrationsForTeam,
+  fetchTeamTournamentRegistration,
+  requestCaptainTeamRegistration,
+  isRegisteredCaptainStatus,
+  pendingRegistrations,
+  approvedRegistration,
+  type CaptainTournamentRegistrationStatus,
+} from "./team-registration.service";

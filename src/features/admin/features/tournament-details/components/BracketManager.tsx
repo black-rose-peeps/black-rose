@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BracketEngine } from "../types/bracket-engine";
 import type { BracketStatus } from "../../../types";
@@ -12,8 +11,10 @@ import {
 import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { BracketActionDialog } from "./BracketActionDialog";
+import { BracketManagerHeader } from "./BracketManagerHeader";
 import { ManagedBracketView } from "./ManagedBracketView";
 import { PlayoffPairingDialog } from "./PlayoffPairingDialog";
+import { SeedingPanel } from "./SeedingPanel";
 import { SwissBracketView } from "./SwissBracketView";
 import type {
   BestOfFormat,
@@ -130,6 +131,9 @@ function buildManagedState(teamNames: string[], format: string) {
 interface BracketManagerProps {
   tournamentId: string;
   tournamentName: string;
+  game: string;
+  region: string;
+  startDate: string;
   format: string;
   teamCap: number;
   teams: TournamentTeam[];
@@ -180,6 +184,9 @@ function deriveBracketState(
 export function BracketManager({
   tournamentId,
   tournamentName,
+  game,
+  region,
+  startDate,
   format,
   teamCap,
   teams,
@@ -201,7 +208,6 @@ export function BracketManager({
   const firstRoundMatches = Math.floor(bracketSize / 2);
   const hasSwissByeSlot = isSwiss && bracketSize % 2 === 1;
   const seedingMatchCount = hasSwissByeSlot ? firstRoundMatches + 1 : firstRoundMatches;
-  const formatAbbrev = isSwiss ? "SW" : isDoubleElim ? "DE" : "SE";
   const totalRounds = isSwiss ? 5 : eliminationRoundCount(Math.max(fieldSize, 2));
 
   const [status, setStatus] = useState<BracketStatus>("not_generated");
@@ -250,7 +256,13 @@ export function BracketManager({
   const seedingLocked = bracketLocked;
   const isPublished = status === "published";
   const resultsLocked = isTournamentConcluded(tournamentStatus);
+  const hasBracketProgress = useMemo(
+    () => managedMatches.some((match) => match.confirmed || match.winner !== null),
+    [managedMatches],
+  );
   const seedingDisabled = seedingLocked || resultsLocked;
+  const seedingShuffleDisabled =
+    seedingDisabled || (bracketGenerated && hasBracketProgress);
   const isTournamentCompleted = tournamentStatus === "Completed";
   const teamNames = useMemo(() => teams.map((team) => team.name), [teams]);
   const currentPlacements = useMemo(
@@ -432,30 +444,34 @@ export function BracketManager({
     setActiveTab("bracket");
   }
 
+  function syncBracketToSeeding(nextAssignments: Array<TournamentTeam | null>) {
+    setAssignments(nextAssignments);
+
+    if (!bracketGenerated) return;
+
+    const assignedTeams = nextAssignments.filter(Boolean) as TournamentTeam[];
+    if (assignedTeams.length !== teams.length) return;
+
+    const names = assignedTeams.map((team) => team.name);
+    bracketEngine.autoSeed(names);
+    const managed = buildManagedState(names, format);
+    setManagedMatches(managed.matches);
+    setRoundMetas(managed.roundMetas);
+    setRoundFormats(managed.roundFormats);
+    setSwissState(managed.swiss ?? null);
+    setBracketGenerated(true);
+    setStatus("draft");
+  }
+
   function handleAutoSeed() {
-    if (seedingDisabled) return;
-    setAssignments(teams.map((team) => team));
-    // Invalidate managed bracket so it reflects the new seeding order
-    setManagedMatches([]);
-    setRoundMetas([]);
-    setRoundFormats({});
-    setSwissState(null);
-    setBracketGenerated(false);
-    setStatus("not_generated");
+    if (seedingShuffleDisabled) return;
+    syncBracketToSeeding(teams.map((team) => team));
   }
 
   function handleRandomSeed() {
-    if (seedingDisabled) return;
+    if (seedingShuffleDisabled) return;
     const shuffled = [...teams].sort(() => Math.random() - 0.5);
-    const newAssignments: Array<TournamentTeam | null> = shuffled;
-    setAssignments(newAssignments);
-    // Invalidate managed bracket so it reflects the new seeding order
-    setManagedMatches([]);
-    setRoundMetas([]);
-    setRoundFormats({});
-    setSwissState(null);
-    setBracketGenerated(false);
-    setStatus("not_generated");
+    syncBracketToSeeding(shuffled);
   }
   function requestReset() {
     if (resultsLocked) {
@@ -809,7 +825,7 @@ export function BracketManager({
   );
 
   function onTeamSelect(slotIdx: number, teamId: string | null) {
-    if (seedingDisabled) return;
+    if (seedingShuffleDisabled) return;
 
     const team = teamId ? teams.find((t) => t.id === teamId) || null : null;
 
@@ -825,19 +841,7 @@ export function BracketManager({
     }
 
     newAssignments[slotIdx] = team;
-    setAssignments(newAssignments);
-
-    if (bracketGenerated) {
-      const teamNames = newAssignments.filter(Boolean).map((t) => t!.name);
-      if (teamNames.length === teams.length) {
-        bracketEngine.autoSeed(teamNames);
-        const managed = buildManagedState(teamNames, format);
-        setManagedMatches(managed.matches);
-        setRoundMetas(managed.roundMetas);
-        setRoundFormats(managed.roundFormats);
-        setSwissState(managed.swiss ?? null);
-      }
-    }
+    syncBracketToSeeding(newAssignments);
   }
 
   return (
@@ -847,162 +851,41 @@ export function BracketManager({
           {saveError}
         </div>
       )}
-      {/* Tournament Header Section */}
-      <div className="border-b border-border px-8 py-7">
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div>
-            <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-              Season 6 — Open Division
-            </div>
-            <div className="font-display text-3xl font-bold uppercase tracking-wider">
-              {tournamentName}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">
-              {format} · {teams.length}/{teamCap} approved teams · June 14 – 16, 2026
-            </div>
-          </div>
-
-          {/* Tournament Stats */}
-          <div className="flex border border-border">
-            <div className="px-5 py-3 border-r border-border min-w-20">
-              <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Format
-              </div>
-              <div className="font-display text-xl font-bold">{formatAbbrev}</div>
-            </div>
-            <div className="px-5 py-3 border-r border-border min-w-20">
-              <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Field
-              </div>
-              <div className="font-display text-xl font-bold text-amber-400">{bracketSize}</div>
-            </div>
-            <div className="px-5 py-3 border-r border-border min-w-20">
-              <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Cap
-              </div>
-              <div className="font-display text-xl font-bold">{teamCap}</div>
-            </div>
-            <div className="px-5 py-3 border-r border-border min-w-20">
-              <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Assigned
-              </div>
-              <div className="font-display text-xl font-bold">{assignedCount}</div>
-            </div>
-            <div className="px-5 py-3 min-w-20">
-              <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                Rounds
-              </div>
-              <div className="font-display text-xl font-bold">{totalRounds}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Bar */}
-        <div className="flex gap-2 mt-5 flex-wrap items-center">
-          {!bracketGenerated ? (
-            <button
-              onClick={handleGenerate}
-              disabled={!allAssigned || resultsLocked}
-              className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              ⬡ Generate Bracket
-            </button>
-          ) : null}
-
-          <button
-            onClick={handleRandomSeed}
-            disabled={seedingDisabled}
-            className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-amber-400 hover:bg-amber-950/20 disabled:opacity-30"
-          >
-            ⟳ Random Seed
-          </button>
-
-          <div className="w-px h-5 bg-border mx-1"></div>
-
-          <button
-            onClick={handleAutoSeed}
-            disabled={seedingDisabled}
-            className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-muted-foreground hover:bg-muted/10 disabled:opacity-30"
-          >
-            ↓ Auto Seed
-          </button>
-
-          <button
-            onClick={toggleLock}
-            disabled={isPublished || resultsLocked}
-            className={`btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border ${
-              seedingLocked
-                ? "bg-amber-950/20 text-amber-400"
-                : "bg-transparent text-muted-foreground hover:bg-muted/10"
-            } disabled:opacity-30`}
-          >
-            {seedingLocked ? "● Seeding Locked" : "○ Lock Seeding"}
-          </button>
-
-          <div className="w-px h-5 bg-border mx-1"></div>
-
-          <button
-            type="button"
-            onClick={requestReset}
-            disabled={resultsLocked || isSaving}
-            title={resultsLocked ? "Reset is disabled for completed tournaments" : undefined}
-            className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-transparent text-red-400 hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            ✕ Reset
-          </button>
-
-          <button
-            onClick={requestPublish}
-            disabled={!canPublish || isPublished || isSaving}
-            className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {isSaving ? "Saving…" : "↑ Publish"}
-          </button>
-
-          {isPublished && tournamentStatus === "Live" ? (
-            <button
-              type="button"
-              onClick={requestMarkComplete}
-              disabled={isSaving}
-              className="btn font-display text-xs uppercase tracking-wider px-4 py-2 border border-emerald-400/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-950/40 disabled:opacity-30"
-            >
-              ✓ Mark Complete
-            </button>
-          ) : null}
-
-          {resultsLocked ? (
-            <Badge
-              variant="outline"
-              className="font-tech text-[10px] uppercase tracking-wider text-violet-300 border-violet-400/40"
-            >
-              Results locked
-            </Badge>
-          ) : null}
-
-          <div className="ml-auto flex items-center gap-2">
-            {isPublished && !resultsLocked && (
-              <Badge variant="outline" className="font-tech text-[10px] uppercase tracking-wider">
-                Match management active
-              </Badge>
-            )}
-            <span
-              className={`inline-block px-3 py-1 text-xs font-display uppercase tracking-wider border ${
-                status === "published"
-                  ? "border-white bg-white/10 text-white"
-                  : status === "draft"
-                    ? "border-amber-400 text-amber-400"
-                    : "border-muted-foreground text-muted-foreground"
-              }`}
-            >
-              {status === "published"
-                ? "Published"
-                : status === "draft"
-                  ? "Draft"
-                  : "Not Generated"}
-            </span>
-          </div>
-        </div>
-      </div>
+      <BracketManagerHeader
+        tournamentName={tournamentName}
+        game={game}
+        region={region}
+        format={format}
+        startDate={startDate}
+        teamCount={teams.length}
+        teamCap={teamCap}
+        assignedCount={assignedCount}
+        stats={[
+          { label: "Format", value: format },
+          { label: "Field", value: bracketSize, accent: true },
+          { label: "Seeded", value: `${assignedCount}/${teams.length}` },
+          { label: "Cap", value: teamCap },
+          { label: "Rounds", value: totalRounds },
+        ]}
+        bracketStatus={status}
+        bracketGenerated={bracketGenerated}
+        canGenerate={allAssigned}
+        canPublish={canPublish}
+        isPublished={isPublished}
+        isSaving={isSaving}
+        resultsLocked={resultsLocked}
+        seedingLocked={seedingLocked}
+        seedingShuffleDisabled={seedingShuffleDisabled}
+        hasBracketProgress={hasBracketProgress}
+        showMarkComplete={isPublished && tournamentStatus === "Live"}
+        onGenerate={handleGenerate}
+        onRandomSeed={handleRandomSeed}
+        onAutoSeed={handleAutoSeed}
+        onToggleLock={toggleLock}
+        onReset={requestReset}
+        onPublish={requestPublish}
+        onMarkComplete={requestMarkComplete}
+      />
 
       {/* Section Tabs */}
       <div className="flex border-b border-border px-8">
@@ -1041,99 +924,15 @@ export function BracketManager({
       <div className="flex-1">
         {/* Team Seeding Tab */}
         {activeTab === "seeding" && (
-          <div className="p-8 border-b border-border">
-            <div className="flex items-center gap-3 mb-4 text-muted-foreground font-display text-sm uppercase tracking-wider">
-              <span>Match Assignments — Round 1</span>
-              <div className="flex-1 h-px bg-border"></div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {Array.from({ length: seedingMatchCount }, (_, i) => {
-                const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
-                const teamAIdx = isByeSlot ? bracketSize - 1 : i * 2;
-                const teamBIdx = i * 2 + 1;
-                const teamA = assignments[teamAIdx];
-                const teamB = isByeSlot ? null : assignments[teamBIdx];
-                const isComplete = isByeSlot ? !!teamA : teamA && teamB;
-
-                return (
-                  <div
-                    key={i}
-                    className={`bg-card border transition-colors p-4 ${
-                      isComplete
-                        ? "border-amber-400/50"
-                        : "border-border hover:border-border-bright"
-                    }`}
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="font-display text-xs uppercase tracking-wider text-muted-foreground">
-                        Match {i + 1}
-                      </span>
-                      <span className="text-xs font-display border border-border px-2 py-1 text-muted-foreground">
-                        {isByeSlot
-                          ? `Seed ${teamAIdx + 1} — BYE`
-                          : `Seed ${teamAIdx + 1} – ${teamBIdx + 1}`}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {/* Team A Select */}
-                      <select
-                        value={teamA?.id || ""}
-                        onChange={(e) => onTeamSelect(teamAIdx, e.target.value || null)}
-                        disabled={seedingDisabled}
-                        className="w-full bg-input border border-border text-white font-display text-sm p-2 hover:border-border-bright focus:border-gray-500 disabled:opacity-50"
-                      >
-                        <option value="">— Team A</option>
-                        {teams.map((team) => {
-                          const isUsed = assignments.some(
-                            (t, idx) => idx !== teamAIdx && t?.id === team.id,
-                          );
-                          return (
-                            <option key={team.id} value={team.id} disabled={isUsed}>
-                              {team.name}
-                            </option>
-                          );
-                        })}
-                      </select>
-
-                      {isByeSlot ? (
-                        <div className="text-center py-2 font-display text-xs font-bold tracking-wider text-amber-400/80">
-                          BYE
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-center py-1 font-display text-xs font-bold tracking-wider text-muted-foreground">
-                            VS
-                          </div>
-
-                          {/* Team B Select */}
-                          <select
-                            value={teamB?.id || ""}
-                            onChange={(e) => onTeamSelect(teamBIdx, e.target.value || null)}
-                            disabled={seedingDisabled}
-                            className="w-full bg-input border border-border text-white font-display text-sm p-2 hover:border-border-bright focus:border-gray-500 disabled:opacity-50"
-                          >
-                            <option value="">— Team B</option>
-                            {teams.map((team) => {
-                              const isUsed = assignments.some(
-                                (t, idx) => idx !== teamBIdx && t?.id === team.id,
-                              );
-                              return (
-                                <option key={team.id} value={team.id} disabled={isUsed}>
-                                  {team.name}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <SeedingPanel
+            teams={teams}
+            assignments={assignments}
+            bracketSize={bracketSize}
+            seedingMatchCount={seedingMatchCount}
+            hasSwissByeSlot={hasSwissByeSlot}
+            disabled={seedingShuffleDisabled}
+            onTeamSelect={onTeamSelect}
+          />
         )}
         {/* Bracket Preview Tab */}
         {activeTab === "bracket" && (

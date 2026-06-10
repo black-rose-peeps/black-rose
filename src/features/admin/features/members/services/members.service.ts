@@ -112,6 +112,43 @@ export interface InviteSearchResult {
 
 const INVITE_SEARCH_PAGE_SIZE = 8;
 
+export interface InviteSearchOptions {
+  page?: number;
+  pageSize?: number;
+  /** When set, members already on an active team for this game are excluded. */
+  game?: string;
+  /** Current team id — excluded from the active-game busy check (same roster allowed). */
+  excludeTeamId?: string;
+}
+
+async function fetchMemberIdsOnActiveGame(
+  game: string,
+  excludeTeamId?: string,
+): Promise<string[]> {
+  const { data: teamRows, error: teamErr } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("game", game);
+
+  if (teamErr) throw new Error(teamErr.message);
+
+  const teamIds = (teamRows ?? [])
+    .map((row) => row.id as string)
+    .filter((teamId) => teamId !== excludeTeamId);
+
+  if (teamIds.length === 0) return [];
+
+  const { data: memberRows, error: memberErr } = await supabase
+    .from("team_members")
+    .select("user_id")
+    .in("team_id", teamIds)
+    .in("status", ["captain", "active"]);
+
+  if (memberErr) throw new Error(memberErr.message);
+
+  return [...new Set((memberRows ?? []).map((row) => row.user_id as string))];
+}
+
 function rowToInviteSearchMember(row: Record<string, unknown>): InviteSearchMember {
   const username = row.username as string;
   return {
@@ -126,7 +163,7 @@ function rowToInviteSearchMember(row: Record<string, unknown>): InviteSearchMemb
 export async function searchVerifiedMembersForInvite(
   query: string,
   excludeIds: string[] = [],
-  options?: { page?: number; pageSize?: number },
+  options?: InviteSearchOptions,
 ): Promise<InviteSearchResult> {
   const page = Math.max(1, options?.page ?? 1);
   const pageSize = Math.max(1, options?.pageSize ?? INVITE_SEARCH_PAGE_SIZE);
@@ -145,11 +182,15 @@ export async function searchVerifiedMembersForInvite(
     builder = builder.or(`username.ilike."%${token}%",discord_username.ilike."%${token}%"`);
   }
 
-  if (excludeIds.length > 0) {
-    const validIds = excludeIds.filter(isUuid);
-    if (validIds.length > 0) {
-      builder = builder.not("id", "in", `(${validIds.map((id) => `"${id}"`).join(",")})`);
-    }
+  const rosterExclude = excludeIds.filter(isUuid);
+  const gameBusy =
+    options?.game != null
+      ? await fetchMemberIdsOnActiveGame(options.game, options.excludeTeamId)
+      : [];
+  const allExclude = [...new Set([...rosterExclude, ...gameBusy.filter(isUuid)])];
+
+  if (allExclude.length > 0) {
+    builder = builder.not("id", "in", `(${allExclude.map((id) => `"${id}"`).join(",")})`);
   }
 
   const { data, error, count } = await builder.range(from, to);

@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { AvatarUpload } from "@/features/member/components/AvatarUpload";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import {
   MemberHeroBanner,
   MemberPageLayout,
@@ -110,7 +110,6 @@ function ProfileEditPage() {
   const [mainGame, setMainGame] = useState("");
   const [mainRole, setMainRole] = useState("");
   const [region, setRegion] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [socials, setSocials] = useState<SocialFormState>(() => socialsFromProfile(EMPTY_PROFILE));
 
@@ -127,17 +126,18 @@ function ProfileEditPage() {
       navigate({ to: "/login" });
       return;
     }
-    if (!session || !hasFullMemberAccess(session.role)) {
+
+    const currentSession = getSession();
+    if (!currentSession || !hasFullMemberAccess(currentSession.role)) {
       navigate({ to: "/waitlist" });
       return;
     }
 
-    const id = memberId;
     let cancelled = false;
 
     async function load() {
       try {
-        const data = await fetchMemberProfileById(id);
+        const data = await fetchMemberProfileById(memberId);
         if (cancelled) return;
         if (!data) {
           setError("Profile not found. Try signing in again.");
@@ -153,7 +153,6 @@ function ProfileEditPage() {
         setMainGame(normalizedGame);
         setMainRole(data.mainRole);
         setRegion(data.region);
-        setAvatarUrl(data.avatarUrl);
         setIsPublic(data.isPublic);
         setSocials(socialsFromProfile(data));
       } catch (err) {
@@ -170,7 +169,7 @@ function ProfileEditPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, memberId, session]);
+  }, [navigate, memberId]);
 
   if (!session || !hasFullMemberAccess(session.role)) return null;
   if (loading) return <MemberDashboardSkeleton />;
@@ -192,7 +191,6 @@ function ProfileEditPage() {
         mainGame: mainGame || null,
         mainRole,
         region,
-        avatarUrl,
         isPublic,
         socialLinks: SOCIAL_PLATFORM_ORDER.map((platform) => ({
           platform,
@@ -315,16 +313,13 @@ function ProfileEditPage() {
           <TabsContent value="identity" className="mt-0">
             <TechPanel label="Photo" title="Avatar">
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <AvatarUpload
-                  avatarUrl={avatarUrl}
+                <MemberAvatar
+                  avatarUrl={profile?.avatarUrl ?? null}
                   initials={displayName.slice(0, 2).toUpperCase() || "BR"}
-                  onChange={setAvatarUrl}
-                  onRemove={() => setAvatarUrl(null)}
-                  editable
+                  className="h-24 w-24 shrink-0 text-3xl"
                 />
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Upload a custom photo or keep your Discord avatar. Shown on your dashboard and
-                  public profile.
+                  Your avatar comes from Discord and updates when you sign in again.
                 </p>
               </div>
             </TechPanel>

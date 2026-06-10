@@ -1,36 +1,37 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  UserPlus,
-  Trophy,
-  ChevronRight,
-  Search,
-  X,
-  Crown,
-  Loader2,
-  Pencil,
-} from "lucide-react";
+import { ArrowLeft, UserPlus, Trophy, ChevronRight, Crown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  acceptTeamInvite,
+  declineTeamInvite,
   fetchTeamById,
-  inviteMemberToTeam,
   removeMemberFromTeam,
 } from "@/features/admin/features/teams/services/teams.service";
-import {
-  searchVerifiedMembersForInvite,
-  type InviteSearchMember,
-} from "@/features/admin/features/members/services/members.service";
+import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
+import { markTeamInviteRead } from "@/features/notifications/store";
 import { MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
 import { getSession } from "@/features/auth/store/session";
 import { EditTeamDialog } from "@/features/teams/components/EditTeamDialog";
-import { InviteMemberSearchSkeleton } from "@/features/teams/components/InviteMemberSearchSkeleton";
+import { InviteMemberDialog } from "@/features/teams/components/InviteMemberDialog";
+import { TeamInviteBanner } from "@/features/teams/components/TeamInviteBanner";
+import { useTeamMembersRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
+import { isPendingInvite } from "@/features/teams/utils/membership";
+import {
+  approvedRegistration,
+  fetchRegistrationsForTeam,
+  pendingRegistrations,
+} from "@/features/tournaments/services/team-registration.service";
+import { fetchTeamChampionships } from "@/features/championships/services/championship.service";
+import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
+import { RoseStarMark } from "@/features/championships/components/RoseStarMark";
+import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
+import type { ChampionshipTitle } from "@/features/championships/types";
 import { RosterTable } from "@/features/teams/components/RosterTable";
-import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember } from "@/features/teams/types";
+import type { MockTeam } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/teams/$id")({
   head: () => ({ meta: [{ title: "Team — Black Rose" }] }),
@@ -48,16 +49,12 @@ function TeamDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [inviteSearch, setInviteSearch] = useState("");
-  const [invitePage, setInvitePage] = useState(1);
-  const [inviteTotal, setInviteTotal] = useState(0);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<InviteSearchMember[]>([]);
-  const [searching, setSearching] = useState(false);
-  const invitePageSize = 8;
   const [actionError, setActionError] = useState<string | null>(null);
-  const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [respondingInvite, setRespondingInvite] = useState(false);
+  const [registrations, setRegistrations] = useState<MockTeam[]>([]);
+  const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
 
   const loadTeam = useCallback(
     async (options?: { showLoader?: boolean }) => {
@@ -72,6 +69,12 @@ function TeamDetailPage() {
           setTeam(null);
         } else {
           setTeam(data);
+          const [teamRegs, titles] = await Promise.all([
+            fetchRegistrationsForTeam(data.id),
+            fetchTeamChampionships(data.id),
+          ]);
+          setRegistrations(teamRegs);
+          setChampionships(titles);
         }
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : "Failed to load team.");
@@ -84,6 +87,12 @@ function TeamDetailPage() {
     [id],
   );
 
+  const refreshTeam = useCallback(() => {
+    void loadTeam();
+  }, [loadTeam]);
+
+  useTeamMembersRealtime(id, refreshTeam);
+
   useEffect(() => {
     if (!memberId) {
       navigate({ to: "/login" });
@@ -95,44 +104,6 @@ function TeamDetailPage() {
     }
     void loadTeam({ showLoader: true });
   }, [loadTeam, navigate, memberId, memberRole]);
-
-  useEffect(() => {
-    setInvitePage(1);
-  }, [inviteSearch]);
-
-  useEffect(() => {
-    if (!team || !inviteOpen) return;
-
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setSearching(true);
-      const excludeIds = team.members.map((m) => m.userId);
-      searchVerifiedMembersForInvite(inviteSearch, excludeIds, {
-        page: invitePage,
-        pageSize: invitePageSize,
-      })
-        .then((result) => {
-          if (!cancelled) {
-            setSearchResults(result.members);
-            setInviteTotal(result.total);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setSearchResults([]);
-            setInviteTotal(0);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setSearching(false);
-        });
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [inviteSearch, inviteOpen, team, invitePage, invitePageSize]);
 
   if (!session) return null;
 
@@ -187,6 +158,7 @@ function TeamDetailPage() {
   }
 
   const isCaptain = team.captainUserId === session.id;
+  const isInvited = isPendingInvite(team, session.id);
   const isMember = team.members.some((m) => m.userId === session.id && m.status !== "removed");
 
   if (!isMember) {
@@ -213,9 +185,9 @@ function TeamDetailPage() {
   ).length;
   const pendingCount = team.members.filter((m) => m.status === "invited").length;
   const canInvite = team.members.filter((m) => m.status !== "removed").length < MAX_TEAM_SIZE;
-  const inviteTotalPages = Math.max(1, Math.ceil(inviteTotal / invitePageSize));
-  const inviteRangeStart = inviteTotal === 0 ? 0 : (invitePage - 1) * invitePageSize + 1;
-  const inviteRangeEnd = Math.min(invitePage * invitePageSize, inviteTotal);
+  const pendingRegs = pendingRegistrations(registrations);
+  const approvedReg = approvedRegistration(registrations);
+  const hasBlockingRegistration = Boolean(approvedReg || pendingRegs.length > 0);
 
   async function handleRemove(member: TeamMember) {
     setActionError(null);
@@ -227,17 +199,33 @@ function TeamDetailPage() {
     }
   }
 
-  async function handleInvite(memberId: string) {
+  async function handleAcceptInvite() {
     setActionError(null);
-    setInvitingId(memberId);
+    setRespondingInvite(true);
     try {
-      const updated = await inviteMemberToTeam({ teamId: team!.id, memberId });
+      const updated = await acceptTeamInvite(team!.id, memberId!);
       setTeam(updated);
-      setInviteSearch("");
+      markTeamInviteRead(team!.id);
+      if (memberId) await syncTeamMembershipNotifications(memberId);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to invite member.");
+      setActionError(err instanceof Error ? err.message : "Failed to accept invite.");
     } finally {
-      setInvitingId(null);
+      setRespondingInvite(false);
+    }
+  }
+
+  async function handleDeclineInvite() {
+    setActionError(null);
+    setRespondingInvite(true);
+    try {
+      await declineTeamInvite(team!.id, memberId!);
+      markTeamInviteRead(team!.id);
+      if (memberId) await syncTeamMembershipNotifications(memberId);
+      navigate({ to: "/teams", search: { create: false } });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to decline invite.");
+    } finally {
+      setRespondingInvite(false);
     }
   }
 
@@ -259,12 +247,23 @@ function TeamDetailPage() {
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
         <div className="relative flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-5">
-            <div className="grid h-20 w-20 shrink-0 place-items-center border-2 border-white/15 bg-white/5 font-display text-2xl tracking-display">
+            <div className="relative grid h-20 w-20 shrink-0 place-items-center border-2 border-white/15 bg-white/5 font-display text-2xl tracking-display">
               {team.tag}
+              {championships.length > 0 && (
+                <span
+                  className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center border border-white/15 bg-[oklch(0.07_0_0)] text-white/60"
+                  title={championships.map((c) => c.tournamentName).join(" · ")}
+                >
+                  <RoseStarMark size={11} />
+                </span>
+              )}
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h1 className="font-display text-3xl tracking-display sm:text-4xl">{team.name}</h1>
+                {championships.length > 0 && (
+                  <ChampionMarkGroup titles={championships} size="md" showLabel />
+                )}
                 {isCaptain && <Crown className="h-4 w-4 text-white/40" aria-label="Captain" />}
               </div>
               <span
@@ -282,7 +281,7 @@ function TeamDetailPage() {
             </div>
           </div>
 
-          {isCaptain && (
+          {isCaptain && !isInvited && (
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -297,26 +296,29 @@ function TeamDetailPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setInviteOpen((v) => !v)}
+                  onClick={() => setInviteOpen(true)}
                   className="rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
                   Invite Member
                 </Button>
               )}
-              {team.activeTournamentId ? (
+              {approvedReg || team.activeTournamentId ? (
                 <Button
                   asChild
                   variant="outline"
                   className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
                 >
-                  <Link to="/tournaments/$id" params={{ id: team.activeTournamentId }}>
+                  <Link
+                    to="/tournaments/$id"
+                    params={{ id: approvedReg?.tournamentId ?? team.activeTournamentId! }}
+                  >
                     <Trophy className="h-3.5 w-3.5" />
                     View Tournament
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
                 </Button>
-              ) : (
+              ) : !hasBlockingRegistration ? (
                 <Button
                   asChild
                   className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
@@ -326,106 +328,28 @@ function TeamDetailPage() {
                     Register for Tournament
                   </Link>
                 </Button>
-              )}
+              ) : null}
             </div>
           )}
         </div>
       </div>
 
+      {isInvited && (
+        <TeamInviteBanner
+          team={team}
+          captainName={team.members.find((m) => m.status === "captain")?.displayName ?? "A captain"}
+          responding={respondingInvite}
+          onAccept={() => void handleAcceptInvite()}
+          onDecline={() => void handleDeclineInvite()}
+        />
+      )}
+
       {actionError && <p className="mb-4 text-sm text-red-400">{actionError}</p>}
 
-      {inviteOpen && isCaptain && (
-        <TechPanel
-          label="Invite"
-          title="Add a Member"
-          icon={<UserPlus className="h-3.5 w-3.5" />}
-          action={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setInviteOpen(false);
-                setInviteSearch("");
-                setInvitePage(1);
-              }}
-              className="h-8 w-8 rounded-none"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          }
-          className="mb-6"
-        >
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search verified members…"
-              value={inviteSearch}
-              onChange={(e) => setInviteSearch(e.target.value)}
-              className="h-10 border-white/12 bg-white/3 pl-9 rounded-none"
-            />
-          </div>
-
-          {searching ? (
-            <InviteMemberSearchSkeleton />
-          ) : searchResults.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {inviteSearch ? "No members found." : "No verified members available to invite."}
-            </p>
-          ) : (
-            <>
-              <ul className="divide-y divide-white/6">
-                {searchResults.map((m) => {
-                  const alreadyInvited = team.members.some(
-                    (tm) => tm.userId === m.id && tm.status === "invited",
-                  );
-                  return (
-                    <li key={m.id} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-8 w-8 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
-                          {m.avatarInitials}
-                        </div>
-                        <span className="text-sm font-medium">{m.displayName}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={alreadyInvited || invitingId === m.id}
-                        variant={alreadyInvited ? "outline" : "secondary"}
-                        onClick={() => handleInvite(m.id)}
-                        className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
-                      >
-                        {invitingId === m.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : alreadyInvited ? (
-                          "Invited"
-                        ) : (
-                          "Invite"
-                        )}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-              <AdminTablePagination
-                page={invitePage}
-                totalPages={inviteTotalPages}
-                total={inviteTotal}
-                rangeStart={inviteRangeStart}
-                rangeEnd={inviteRangeEnd}
-                onPageChange={setInvitePage}
-                className="border-white/6 px-0"
-              />
-            </>
-          )}
-
-          <p className="mt-4 text-[10px] text-muted-foreground/50">
-            Invites are stored on the roster as pending. (
-            {MAX_TEAM_SIZE - team.members.filter((m) => m.status !== "removed").length} slots
-            remaining)
-          </p>
-        </TechPanel>
+      {championships.length > 0 && (
+        <div className="mb-6">
+          <ChampionshipTitlesCard titles={championships} label="Championship Legacy" />
+        </div>
       )}
 
       <TechPanel
@@ -436,12 +360,44 @@ function TeamDetailPage() {
         <RosterTable
           team={team}
           currentUserId={session.id}
-          isEditable={isCaptain}
+          isEditable={isCaptain && !isInvited}
           onRemove={handleRemove}
         />
       </TechPanel>
 
-      {team.activeTournamentId && (
+      {pendingRegs.length > 0 && (
+        <TechPanel
+          label="Tournament"
+          title="Pending Registration"
+          icon={<Trophy className="h-3.5 w-3.5" />}
+          className="mt-6"
+        >
+          <ul className="space-y-3">
+            {pendingRegs.map((registration) => (
+              <li key={registration.id} className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium text-sm">Awaiting admin approval</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Submitted {registration.registrationDate}
+                  </p>
+                </div>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+                >
+                  <Link to="/tournaments/$id" params={{ id: registration.tournamentId }}>
+                    View <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </TechPanel>
+      )}
+
+      {approvedReg && (
         <TechPanel
           label="Tournament"
           title="Active Registration"
@@ -450,10 +406,10 @@ function TeamDetailPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-sm">{team.activeTournamentName}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Registration pending admin approval
+              <p className="font-medium text-sm">
+                {team.activeTournamentName ?? "Registered tournament"}
               </p>
+              <p className="mt-0.5 text-xs text-emerald-400">Approved — your team is registered</p>
             </div>
             <Button
               asChild
@@ -461,7 +417,7 @@ function TeamDetailPage() {
               size="sm"
               className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
             >
-              <Link to="/tournaments/$id" params={{ id: team.activeTournamentId }}>
+              <Link to="/tournaments/$id" params={{ id: approvedReg.tournamentId }}>
                 View <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
@@ -469,13 +425,21 @@ function TeamDetailPage() {
         </TechPanel>
       )}
 
-      {isCaptain && (
-        <EditTeamDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          team={team}
-          onUpdated={setTeam}
-        />
+      {isCaptain && !isInvited && (
+        <>
+          <InviteMemberDialog
+            open={inviteOpen}
+            onOpenChange={setInviteOpen}
+            team={team}
+            onInvited={setTeam}
+          />
+          <EditTeamDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            team={team}
+            onUpdated={setTeam}
+          />
+        </>
       )}
     </MemberPageLayout>
   );

@@ -672,6 +672,9 @@ function TournamentDetailPage() {
                   <BracketManager
                     tournamentId={tournament.id}
                     tournamentName={tournament.name}
+                    game={tournament.game}
+                    region={tournament.region}
+                    startDate={tournament.startDate}
                     format={tournament.format}
                     teamCap={tournament.teamCap}
                     teams={computedTeams}
