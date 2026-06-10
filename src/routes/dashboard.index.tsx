@@ -148,10 +148,7 @@ function DashboardPage() {
 
     async function refreshTournamentData() {
       try {
-        const [tournamentDashboard, titles] = await Promise.all([
-          fetchMemberTournamentDashboard(memberId),
-          fetchMemberChampionships(memberId),
-        ]);
+        const tournamentDashboard = await fetchMemberTournamentDashboard(memberId);
         setProfile((current) =>
           current
             ? {
@@ -162,9 +159,15 @@ function DashboardPage() {
               }
             : current,
         );
+      } catch {
+        // Keep last loaded tournament dashboard data
+      }
+
+      try {
+        const titles = await fetchMemberChampionships(memberId);
         setChampionships(titles);
       } catch {
-        // Keep last loaded dashboard data
+        // Keep last loaded championships
       }
     }
 
