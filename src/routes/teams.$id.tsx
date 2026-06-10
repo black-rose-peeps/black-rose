@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, UserPlus, Trophy, ChevronRight, Crown, Pencil } from "lucide-react";
+import { ArrowLeft, Trophy, ChevronRight, Crown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -28,7 +28,7 @@ import { ChampionMarkGroup } from "@/features/championships/components/ChampionM
 import { RoseStarMark } from "@/features/championships/components/RoseStarMark";
 import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
 import type { ChampionshipTitle } from "@/features/championships/types";
-import { RosterTable } from "@/features/teams/components/RosterTable";
+import { TeamRosterPanel } from "@/features/teams/components/TeamRosterPanel";
 import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember } from "@/features/teams/types";
 import type { MockTeam } from "@/lib/mock-data";
@@ -310,17 +310,6 @@ function TeamDetailPage() {
                 <Pencil className="h-3.5 w-3.5" />
                 Edit Team
               </Button>
-              {canInvite && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setInviteOpen(true)}
-                  className="rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Invite Member
-                </Button>
-              )}
               {approvedReg || team.activeTournamentId ? (
                 <Button
                   asChild
@@ -370,18 +359,14 @@ function TeamDetailPage() {
         </div>
       )}
 
-      <TechPanel
-        label="Roster"
-        title={`Members · ${team.members.filter((m) => m.status !== "removed").length} / ${MAX_TEAM_SIZE}`}
-        noPadding
-      >
-        <RosterTable
-          team={team}
-          currentUserId={session.id}
-          isEditable={isCaptain && !isInvited}
-          onRemove={handleRemove}
-        />
-      </TechPanel>
+      <TeamRosterPanel
+        team={team}
+        currentUserId={session.id}
+        isEditable={isCaptain && !isInvited}
+        canInvite={canInvite}
+        onInvite={() => setInviteOpen(true)}
+        onRemove={handleRemove}
+      />
 
       {pendingRegs.length > 0 && (
         <TechPanel

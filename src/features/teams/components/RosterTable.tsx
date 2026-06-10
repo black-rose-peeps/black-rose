@@ -3,36 +3,48 @@ import type { Team, TeamMember } from "../types";
 
 interface RosterTableProps {
   team: Team;
+  members?: TeamMember[];
   currentUserId: string;
   isEditable?: boolean;
   onRemove?: (member: TeamMember) => void;
+  emptyMessage?: string;
+  showStatusColumn?: boolean;
 }
 
 const STATUS_BADGE: Record<TeamMember["status"], { label: string; className: string }> = {
   captain: { label: "Captain", className: "text-white border-white/30 bg-white/5" },
   active: { label: "Active", className: "text-emerald-400 border-emerald-400/25 bg-emerald-400/5" },
-  invited: { label: "Invited", className: "text-amber-400 border-amber-400/25 bg-amber-400/5" },
+  invited: { label: "Pending", className: "text-amber-400 border-amber-400/25 bg-amber-400/5" },
   removed: { label: "Removed", className: "text-muted-foreground border-white/8 bg-white/2" },
 };
 
 export function RosterTable({
   team,
+  members,
   currentUserId,
   isEditable = false,
   onRemove,
+  emptyMessage = "No members in this section.",
+  showStatusColumn = true,
 }: RosterTableProps) {
   const isCaptain = team.captainUserId === currentUserId;
-  const visible = team.members.filter((m) => m.status !== "removed");
+  const visible =
+    members ?? team.members.filter((m) => m.status !== "removed");
+
+  if (!visible.length) {
+    return (
+      <p className="px-5 py-8 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+    );
+  }
 
   return (
     <div className="overflow-hidden">
       <table className="w-full table-fixed text-sm">
-        {/* Fixed column widths — ensures equal gaps regardless of content length */}
         <colgroup>
-          <col className="w-[44%]" /> {/* Player */}
-          <col className="w-[22%]" /> {/* IGN */}
-          <col className="w-[18%]" /> {/* Role */}
-          <col className="w-[16%]" /> {/* Status / Actions */}
+          <col className={showStatusColumn ? "w-[44%]" : "w-[50%]"} />
+          <col className={showStatusColumn ? "w-[22%]" : "w-[25%]"} />
+          <col className={showStatusColumn ? "w-[18%]" : "w-[25%]"} />
+          {showStatusColumn && <col className="w-[16%]" />}
         </colgroup>
 
         <thead>
@@ -40,9 +52,11 @@ export function RosterTable({
             <th className="px-4 py-3 text-left font-normal">Player</th>
             <th className="px-4 py-3 text-left font-normal">IGN</th>
             <th className="px-4 py-3 text-left font-normal">Main Role</th>
-            <th className="px-4 py-3 text-right font-normal">
-              {isEditable && isCaptain ? "Actions" : "Status"}
-            </th>
+            {showStatusColumn && (
+              <th className="px-4 py-3 text-right font-normal">
+                {isEditable && isCaptain ? "Actions" : "Status"}
+              </th>
+            )}
           </tr>
         </thead>
 
@@ -56,7 +70,6 @@ export function RosterTable({
                 key={m.userId}
                 className={`transition hover:bg-white/2 ${isMe ? "bg-white/1.5" : ""}`}
               >
-                {/* Player col */}
                 <td className="px-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-8 w-8 shrink-0 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
@@ -78,36 +91,35 @@ export function RosterTable({
                   </div>
                 </td>
 
-                {/* IGN col */}
                 <td className="px-4 py-3">
-                  <span className="truncate text-muted-foreground">{m.ign}</span>
+                  <span className="truncate text-muted-foreground">{m.ign || "—"}</span>
                 </td>
 
-                {/* Role col */}
                 <td className="px-4 py-3">
-                  <span className="truncate text-muted-foreground">{m.role}</span>
+                  <span className="truncate text-muted-foreground">{m.role || "—"}</span>
                 </td>
 
-                {/* Status / Actions col */}
-                <td className="px-4 py-3 text-right">
-                  {isEditable && isCaptain && onRemove && m.status !== "captain" ? (
-                    <button
-                      type="button"
-                      onClick={() => onRemove?.(m)}
-                      className="inline-flex items-center gap-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-red-400"
-                    >
-                      <UserMinus className="h-3 w-3" />
-                      {m.status === "invited" ? "Cancel" : "Remove"}
-                    </button>
-                  ) : (
-                    <span
-                      className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-tech uppercase tracking-wider-2 ${badge.className}`}
-                    >
-                      {m.status === "invited" && <Mail className="h-2.5 w-2.5" />}
-                      {badge.label}
-                    </span>
-                  )}
-                </td>
+                {showStatusColumn && (
+                  <td className="px-4 py-3 text-right">
+                    {isEditable && isCaptain && onRemove && m.status !== "captain" ? (
+                      <button
+                        type="button"
+                        onClick={() => onRemove(m)}
+                        className="inline-flex cursor-pointer items-center gap-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-red-400"
+                      >
+                        <UserMinus className="h-3 w-3" />
+                        {m.status === "invited" ? "Cancel" : "Remove"}
+                      </button>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-tech uppercase tracking-wider-2 ${badge.className}`}
+                      >
+                        {m.status === "invited" && <Mail className="h-2.5 w-2.5" />}
+                        {badge.label}
+                      </span>
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}

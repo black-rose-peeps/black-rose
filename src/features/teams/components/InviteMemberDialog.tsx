@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Loader2, Search, UserPlus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Search, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
   type InviteSearchMember,
 } from "@/features/admin/features/members/services/members.service";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import { cn } from "@/lib/utils";
 import { MAX_TEAM_SIZE } from "../constants";
 import { InviteMemberSearchSkeleton } from "./InviteMemberSearchSkeleton";
 import type { Team } from "../types";
@@ -34,12 +35,16 @@ export function InviteMemberDialog({
   team,
   onInvited,
 }: InviteMemberDialogProps) {
+  const teamRef = useRef(team);
+  teamRef.current = team;
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [results, setResults] = useState<InviteSearchMember[]>([]);
   const [searching, setSearching] = useState(false);
   const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [recentlyInvitedIds, setRecentlyInvitedIds] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
 
   const rosterCount = team.members.filter((m) => m.status !== "removed").length;
@@ -47,12 +52,16 @@ export function InviteMemberDialog({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(page * PAGE_SIZE, total);
+  const showInitialSkeleton = searching && results.length === 0;
 
   useEffect(() => {
     if (!open) {
       setSearch("");
       setPage(1);
       setError(null);
+      setRecentlyInvitedIds(new Set());
+      setResults([]);
+      setTotal(0);
     }
   }, [open]);
 
@@ -66,13 +75,16 @@ export function InviteMemberDialog({
     let cancelled = false;
     const timer = setTimeout(() => {
       setSearching(true);
-      const excludeIds = team.members.filter((m) => m.status !== "removed").map((m) => m.userId);
+      const currentTeam = teamRef.current;
+      const excludeIds = currentTeam.members
+        .filter((m) => m.status !== "removed")
+        .map((m) => m.userId);
 
       searchVerifiedMembersForInvite(search, excludeIds, {
         page,
         pageSize: PAGE_SIZE,
-        game: team.game,
-        excludeTeamId: team.id,
+        game: currentTeam.game,
+        excludeTeamId: currentTeam.id,
       })
         .then((result) => {
           if (!cancelled) {
@@ -95,16 +107,20 @@ export function InviteMemberDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, search, page, team]);
+  }, [open, search, page, team.id, team.game]);
 
-  const isInviting = invitingId !== null;
+  function isMemberInvited(memberId: string): boolean {
+    if (recentlyInvitedIds.has(memberId)) return true;
+    return team.members.some((m) => m.userId === memberId && m.status === "invited");
+  }
 
   async function handleInvite(memberId: string) {
-    if (invitingId !== null) return;
+    if (invitingId !== null || isMemberInvited(memberId) || slotsLeft <= 0) return;
     setError(null);
     setInvitingId(memberId);
     try {
       const updated = await inviteMemberToTeam({ teamId: team.id, memberId });
+      setRecentlyInvitedIds((prev) => new Set(prev).add(memberId));
       onInvited(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to invite member.");
@@ -115,16 +131,29 @@ export function InviteMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 gap-0 custom-scrollbar">
+      <DialogContent className="max-w-lg gap-0 rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 custom-scrollbar">
         <DialogHeader className="border-b border-white/8 px-6 py-5">
-          <DialogTitle className="flex items-center gap-2 font-display text-2xl tracking-display">
-            <UserPlus className="h-5 w-5 text-muted-foreground" />
-            Invite Member
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            Search verified members available for {team.game}. Members already on an active{" "}
-            {team.game} roster are hidden.
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogTitle className="flex items-center gap-2 font-display text-2xl tracking-display">
+                <UserPlus className="h-5 w-5 text-muted-foreground" />
+                Invite Member
+              </DialogTitle>
+              <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
+                Search verified {team.game} players. Invites stay pending until accepted.
+              </DialogDescription>
+            </div>
+            <span
+              className={cn(
+                "shrink-0 border px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2",
+                slotsLeft > 0
+                  ? "border-white/12 bg-white/5 text-muted-foreground"
+                  : "border-red-400/25 bg-red-400/5 text-red-400",
+              )}
+            >
+              {slotsLeft} slot{slotsLeft === 1 ? "" : "s"} left
+            </span>
+          </div>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 px-6 py-5">
@@ -132,53 +161,70 @@ export function InviteMemberDialog({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search verified members…"
+              placeholder="Search by username…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-10 border-white/12 bg-white/3 pl-9 rounded-none"
+              className="h-10 rounded-none border-white/12 bg-white/3 pl-9"
               autoFocus
             />
           </div>
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 
-          {searching ? (
+          {showInitialSkeleton ? (
             <InviteMemberSearchSkeleton />
           ) : results.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {search
-                ? "No eligible members found."
-                : "No verified members available to invite for this game."}
-            </p>
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                {search
+                  ? "No eligible members match your search."
+                  : "No verified members available to invite for this game."}
+              </p>
+            </div>
           ) : (
             <>
-              <ul className="max-h-64 divide-y divide-white/6 overflow-y-auto">
+              <ul
+                className={cn(
+                  "max-h-72 divide-y divide-white/6 overflow-y-auto transition-opacity",
+                  searching && "pointer-events-none opacity-50",
+                )}
+              >
                 {results.map((member) => {
-                  const alreadyInvited = team.members.some(
-                    (m) => m.userId === member.id && m.status === "invited",
-                  );
+                  const invited = isMemberInvited(member.id);
+                  const sending = invitingId === member.id;
+
                   return (
-                    <li key={member.id} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-8 w-8 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
+                    <li key={member.id} className="flex items-center justify-between gap-3 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
                           {member.avatarInitials}
                         </div>
-                        <span className="text-sm font-medium">{member.displayName}</span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{member.displayName}</p>
+                          <p className="truncate text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                            @{member.username}
+                          </p>
+                        </div>
                       </div>
                       <Button
                         type="button"
                         size="sm"
-                        disabled={
-                          isInviting || alreadyInvited || slotsLeft <= 0
-                        }
-                        variant={alreadyInvited ? "outline" : "secondary"}
+                        disabled={invitingId !== null || invited || slotsLeft <= 0}
+                        variant={invited ? "outline" : "secondary"}
                         onClick={() => void handleInvite(member.id)}
-                        className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+                        className={cn(
+                          "min-w-[5.5rem] shrink-0 cursor-pointer rounded-none font-tech text-[10px] uppercase tracking-wider-2",
+                          invited &&
+                            "border-emerald-400/25 bg-emerald-400/5 text-emerald-400 hover:bg-emerald-400/5",
+                        )}
                       >
-                        {invitingId === member.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : alreadyInvited ? (
-                          "Invited"
+                        {invited ? (
+                          <>
+                            <Check className="h-3 w-3" />
+                            Invited
+                          </>
+                        ) : sending ? (
+                          "Sending…"
                         ) : (
                           "Invite"
                         )}
@@ -198,11 +244,6 @@ export function InviteMemberDialog({
               />
             </>
           )}
-
-          <p className="text-[10px] text-muted-foreground/50">
-            {slotsLeft} roster slot{slotsLeft === 1 ? "" : "s"} remaining · invites appear as
-            pending until accepted
-          </p>
         </div>
       </DialogContent>
     </Dialog>
