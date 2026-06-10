@@ -106,7 +106,10 @@ export async function fetchMemberTournamentDashboard(
       continue;
     }
 
-    if (registration.status === "Pending" || registration.status === "Approved") {
+    if (
+      isActiveTournamentStatus(tournament.status) &&
+      (registration.status === "Pending" || registration.status === "Approved")
+    ) {
       activeRegistrations.push(toTournamentEntry(registration, tournament));
     }
 

@@ -35,11 +35,7 @@ export function ChampionMarkGroup({
     <span
       className={`inline-flex items-center gap-1.5 ${className}`}
       title={label}
-      aria-label={
-        markCount === 1
-          ? `Champion — ${label}`
-          : `${markCount} championships — ${label}`
-      }
+      aria-label={markCount === 1 ? `Champion — ${label}` : `${markCount} championships — ${label}`}
     >
       {showLabel && (
         <span className="font-tech text-[8px] uppercase tracking-wider-2 text-white/45">

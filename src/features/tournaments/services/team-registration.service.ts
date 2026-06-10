@@ -106,9 +106,12 @@ export async function fetchCaptainRegistrationStatusForTournament(
     (team) => team.game === "Multi" || team.game === tournamentGame,
   );
 
+  const registrations = await Promise.all(
+    compatible.map((team) => fetchTeamTournamentRegistration(team.id, tournamentId)),
+  );
+
   let status: CaptainTournamentRegistrationStatus = "none";
-  for (const team of compatible) {
-    const registration = await fetchTeamTournamentRegistration(team.id, tournamentId);
+  for (const registration of registrations) {
     if (!registration || registration.status === "Rejected") continue;
     status = mergeCaptainRegistrationStatus(
       status,

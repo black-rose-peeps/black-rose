@@ -94,12 +94,18 @@ async function insertOrReactivateTeamMember(
   payload: TeamMemberRowPayload,
   username: string,
 ): Promise<void> {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingErr } = await supabase
     .from("team_members")
     .select("status")
     .eq("team_id", payload.team_id)
     .eq("user_id", payload.user_id)
     .maybeSingle();
+
+  if (existingErr) {
+    throw new Error(
+      `Failed to look up team member (team_id=${payload.team_id}, user_id=${payload.user_id}): ${existingErr.message}`,
+    );
+  }
 
   if (existing) {
     if (existing.status !== "removed") {
@@ -408,13 +414,16 @@ export async function acceptTeamInvite(teamId: string, userId: string): Promise<
 
   await assertMemberAvailableForGame(userId, team.game, teamId);
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("team_members")
     .update({ status: "active" })
     .eq("team_id", teamId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("status", "invited")
+    .select("user_id");
 
   if (error) throw new Error(error.message);
+  if (!updated?.length) throw new Error("No pending invite found for this team.");
   return fetchTeamWithMembers(teamId);
 }
 
@@ -425,13 +434,16 @@ export async function declineTeamInvite(teamId: string, userId: string): Promise
     throw new Error("No pending invite found for this team.");
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("team_members")
     .update({ status: "removed" })
     .eq("team_id", teamId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("status", "invited")
+    .select("user_id");
 
   if (error) throw new Error(error.message);
+  if (!updated?.length) throw new Error("No pending invite found for this team.");
 }
 
 export async function removeMemberFromTeam(teamId: string, userId: string): Promise<Team> {

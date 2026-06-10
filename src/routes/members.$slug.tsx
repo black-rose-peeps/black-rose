@@ -61,8 +61,12 @@ function MemberProfilePage() {
           setProfile(null);
         } else {
           setProfile(data);
-          const titles = await fetchMemberChampionships(data.memberId);
-          if (!cancelled) setChampionships(titles);
+          try {
+            const titles = await fetchMemberChampionships(data.memberId);
+            if (!cancelled) setChampionships(titles);
+          } catch {
+            if (!cancelled) setChampionships([]);
+          }
         }
       } catch (err) {
         if (cancelled) return;
@@ -206,6 +210,7 @@ function MemberProfilePage() {
           <MemberAvatar
             avatarUrl={p.avatarUrl}
             initials={p.avatarInitials}
+            name={p.displayName}
             className="h-24 w-24 text-3xl"
           />
           {p.isVerified && !isOwnProfile && (
@@ -265,9 +270,7 @@ function MemberProfilePage() {
             )
           )}
 
-          {championships.length > 0 && (
-            <ChampionshipTitlesCard titles={championships} />
-          )}
+          {championships.length > 0 && <ChampionshipTitlesCard titles={championships} />}
 
           {p.tournamentHistory.length > 0 && (
             <ProfileCard label="Tournament History">

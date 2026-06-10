@@ -33,8 +33,7 @@ export const Route = createFileRoute("/tournaments/")({
 
 function TournamentsPage() {
   const session = getSession();
-  const memberId =
-    session && hasFullMemberAccess(session.role) ? session.id : undefined;
+  const memberId = session && hasFullMemberAccess(session.role) ? session.id : undefined;
   const { tournaments, isLoading } = useTournamentList();
   const { registrationByTournament, isLoading: captainRegistrationsLoading } =
     useCaptainTournamentRegistrations(memberId);

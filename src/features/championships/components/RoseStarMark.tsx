@@ -1,11 +1,10 @@
-/** Subtle Black Rose championship rosette — one mark per title won. */
-export function RoseStarMark({
-  className = "",
-  size = 14,
-}: {
+interface RoseStarMarkProps {
   className?: string;
   size?: number;
-}) {
+}
+
+/** Subtle Black Rose championship rosette — one mark per title won. */
+export function RoseStarMark({ className = "", size = 14 }: RoseStarMarkProps) {
   return (
     <svg
       width={size}

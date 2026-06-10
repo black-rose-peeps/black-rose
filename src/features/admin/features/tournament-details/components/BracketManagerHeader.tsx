@@ -141,10 +141,7 @@ export function BracketManagerHeader({
 
           <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-3 lg:grid-cols-5">
             {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-card px-4 py-3"
-              >
+              <div key={stat.label} className="bg-card px-4 py-3">
                 <p className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                   {stat.label}
                 </p>

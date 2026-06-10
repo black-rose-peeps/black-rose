@@ -51,11 +51,13 @@ export function getUnreadCount(): number {
 export function markAsRead(id: string): void {
   const updated = getAll().map((n) => (n.id === id ? { ...n, read: true } : n));
   save(updated);
+  notifyListeners();
 }
 
 export function markAllAsRead(): void {
   const updated = getAll().map((n) => ({ ...n, read: true }));
   save(updated);
+  notifyListeners();
 }
 
 export function clearAll(): void {

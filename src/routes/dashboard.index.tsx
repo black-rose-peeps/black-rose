@@ -100,10 +100,9 @@ function DashboardPage() {
           return;
         }
 
-        const [memberProfile, tournamentDashboard, titles] = await Promise.all([
+        const [memberProfile, tournamentDashboard] = await Promise.all([
           fetchMemberProfileById(updated.id),
           fetchMemberTournamentDashboard(updated.id),
-          fetchMemberChampionships(updated.id),
         ]);
         if (!cancelled) {
           const base = memberProfile ?? profileFallbackFromSession(updated);
@@ -113,7 +112,14 @@ function DashboardPage() {
             upcomingMatches: tournamentDashboard.upcomingMatches,
             tournamentHistory: tournamentDashboard.tournamentHistory,
           });
-          setChampionships(titles);
+        }
+        if (!cancelled) {
+          try {
+            const titles = await fetchMemberChampionships(updated.id);
+            if (!cancelled) setChampionships(titles);
+          } catch {
+            if (!cancelled) setChampionships([]);
+          }
         }
       } catch {
         if (cancelled) return;
