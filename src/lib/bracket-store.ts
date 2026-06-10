@@ -80,20 +80,32 @@ function _snapshotLocal(tournamentId: string): StoredBracket | undefined {
 /**
  * Publish or update a bracket. Writes to Supabase (Realtime broadcast) and
  * updates the local store for immediate same-tab feedback.
+ *
+ * Pass `tournamentName` on live updates so the champion row in
+ * `tournament_champions` is kept in sync whenever a final result is recorded.
  */
 export async function publishBracket(
   tournamentId: string,
   payload: PersistedBracketPayload,
-  options?: { isInitialPublish?: boolean },
+  tournamentNameOrOptions?: string | { isInitialPublish?: boolean },
 ): Promise<void> {
+  // Normalise overloaded third argument
+  const tournamentName =
+    typeof tournamentNameOrOptions === "string" ? tournamentNameOrOptions : undefined;
+  const isInitialPublish =
+    typeof tournamentNameOrOptions === "object"
+      ? (tournamentNameOrOptions.isInitialPublish ?? false)
+      : false;
+
   const previous = _snapshotLocal(tournamentId);
   _setLocal(tournamentId, payload);
 
   try {
-    if (options?.isInitialPublish) {
+    if (isInitialPublish) {
       await savePublishedBracket(tournamentId, payload);
     } else {
-      await updatePublishedBracket(tournamentId, payload);
+      // Pass tournamentName so syncTournamentChampion fires when a champion exists
+      await updatePublishedBracket(tournamentId, payload, tournamentName);
     }
   } catch (err) {
     if (previous) {

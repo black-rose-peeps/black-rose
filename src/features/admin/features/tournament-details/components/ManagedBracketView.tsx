@@ -280,9 +280,7 @@ function BracketSection({
                         <span
                           className={cn(
                             "text-[9px] font-tech uppercase tracking-wider",
-                            championCrowned
-                              ? "text-amber-300/80"
-                              : "text-muted-foreground/70",
+                            championCrowned ? "text-amber-300/80" : "text-muted-foreground/70",
                           )}
                         >
                           {championCrowned ? "Champion" : matchDecided ? "Final" : matchFormat}
@@ -410,19 +408,9 @@ function ManagedTeamRow({
                 : "border-muted-foreground/40 hover:bg-muted/30",
           controlsDisabled && "opacity-40",
         )}
-        title={
-          name
-            ? isWinner
-              ? `Clear winner (${name})`
-              : `Set ${name} as winner`
-            : undefined
-        }
+        title={name ? (isWinner ? `Clear winner (${name})` : `Set ${name} as winner`) : undefined}
         aria-label={
-          name
-            ? isWinner
-              ? `Clear winner (${name})`
-              : `Set ${name} as winner`
-            : undefined
+          name ? (isWinner ? `Clear winner (${name})` : `Set ${name} as winner`) : undefined
         }
       />
       <span
