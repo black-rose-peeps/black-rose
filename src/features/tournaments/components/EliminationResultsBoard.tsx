@@ -1,8 +1,5 @@
 import { Medal, Trophy } from "./TournamentResultsBoard";
-import {
-  placementsToResultsEntries,
-  TournamentResultsBoard,
-} from "./TournamentResultsBoard";
+import { placementsToResultsEntries, TournamentResultsBoard } from "./TournamentResultsBoard";
 import type { TournamentPlacement } from "../utils/tournament-placements";
 
 interface EliminationResultsBoardProps {

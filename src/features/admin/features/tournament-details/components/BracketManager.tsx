@@ -414,8 +414,7 @@ export function BracketManager({
   const validation = bracketEngine.validateBracketIntegrity();
   const assignedCount = assignments.slice(0, bracketSize).filter(Boolean).length;
   const parityOk = teams.length % 2 === 0 || (isSwiss && hasSwissByeSlot);
-  const allAssigned =
-    teams.length >= 2 && parityOk && assignedCount === teams.length;
+  const allAssigned = teams.length >= 2 && parityOk && assignedCount === teams.length;
   const canPublish =
     status === "draft" && bracketGenerated && allAssigned && (isSwiss || validation.canPublish);
 
@@ -638,7 +637,7 @@ export function BracketManager({
           teamNames,
         },
       );
-      void publishBracket(tournamentId, payload).catch((err) => {
+      void publishBracket(tournamentId, payload, tournamentName).catch((err) => {
         console.error("[BracketManager] Live bracket sync failed:", err);
         setSaveError(err instanceof Error ? err.message : "Failed to sync bracket.");
       });

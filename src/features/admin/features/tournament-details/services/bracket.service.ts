@@ -6,7 +6,6 @@ import type { SwissBracketState } from "../utils/managed-swiss-bracket";
 
 export type BracketStateStatus = "not_generated" | "draft" | "published";
 
-/** Full snapshot persisted to Supabase — public rounds + admin editing state. */
 export interface PersistedBracketPayload {
   rounds: BracketRound[];
   prizeBreakdown?: PrizeTier[];
@@ -59,7 +58,6 @@ function rowToState(row: Record<string, unknown>): TournamentBracketState {
   };
 }
 
-/** Load bracket state for a tournament (any status). */
 export async function fetchBracketState(
   tournamentId: string,
 ): Promise<TournamentBracketState | null> {
@@ -72,15 +70,11 @@ export async function fetchBracketState(
   return rowToState(data as Record<string, unknown>);
 }
 
-/** Published rounds only — for public display. Returns null when not published. */
-export async function fetchPublishedBracket(
-  tournamentId: string,
-): Promise<BracketRound[] | null> {
+export async function fetchPublishedBracket(tournamentId: string): Promise<BracketRound[] | null> {
   const payload = await fetchPublishedBracketPayload(tournamentId);
   return payload?.rounds ?? null;
 }
 
-/** Full published snapshot — rounds, placements, and prize metadata. */
 export async function fetchPublishedBracketPayload(
   tournamentId: string,
 ): Promise<PersistedBracketPayload | null> {
@@ -91,7 +85,6 @@ export async function fetchPublishedBracketPayload(
   return state.payload;
 }
 
-/** Upsert published bracket snapshot and lock seeding. */
 export async function savePublishedBracket(
   tournamentId: string,
   payload: PersistedBracketPayload,
@@ -107,10 +100,77 @@ export async function savePublishedBracket(
   return rowToState(data as Record<string, unknown>);
 }
 
-/** Update an already-published bracket (scores, winners) without changing status. */
+// ── Champion detection ─────────────────────────────────────────────────────
+
+function detectChampionFromPayload(payload: PersistedBracketPayload): string | null {
+  const matches = payload.admin?.managedMatches ?? [];
+
+  // 1. Grand final (double elimination)
+  const grand = matches.find((m) => m.bracketSide === "grand" && m.confirmed && m.winner);
+  if (grand?.winner) return grand.winner;
+
+  // 2. Single-elim or Swiss playoff final
+  const final = matches.find(
+    (m) =>
+      (m.roundLabel === "Final" || m.roundLabel === "Playoffs — Final") && m.confirmed && m.winner,
+  );
+  if (final?.winner) return final.winner;
+
+  // 3. Placements array (rank 1 — covers all formats)
+  const champion = payload.placements?.find((p) => p.rank === 1 && p.team?.trim());
+  if (champion?.team) return champion.team;
+
+  return null;
+}
+
+/**
+ * Upsert a row in tournament_champions when the bracket has a champion.
+ * Uses upsert on tournament_id — safe to call on every save, no duplicates.
+ */
+async function syncTournamentChampion(
+  tournamentId: string,
+  tournamentName: string,
+  payload: PersistedBracketPayload,
+): Promise<void> {
+  const championName = detectChampionFromPayload(payload);
+  if (!championName) return;
+
+  // Resolve team_tag from the teams table
+  const { data: teamRow } = await supabase
+    .from("teams")
+    .select("tag")
+    .eq("name", championName)
+    .maybeSingle();
+
+  const teamTag: string = teamRow?.tag ?? championName.slice(0, 3).toUpperCase();
+
+  // MVP comes from placements if your bracket writes it
+  // const mvp = payload.placements?.find((p) => p.rank === 1)?.mvp ?? null;
+  const mvp = null;
+
+  await supabase.from("tournament_champions").upsert(
+    {
+      tournament_id: tournamentId,
+      tournament_name: tournamentName,
+      team_name: championName,
+      team_tag: teamTag,
+      mvp: mvp ?? null,
+      completed_at: new Date().toISOString().split("T")[0],
+    },
+    { onConflict: "tournament_id" },
+  );
+}
+
+// ── Bracket persistence ────────────────────────────────────────────────────
+
+/**
+ * Update an already-published bracket (scores, winners) without changing status.
+ * Pass tournamentName to auto-sync the champion row whenever a final is decided.
+ */
 export async function updatePublishedBracket(
   tournamentId: string,
   payload: PersistedBracketPayload,
+  tournamentName?: string,
 ): Promise<TournamentBracketState> {
   const { data, error } = await supabase.rpc("update_tournament_bracket_data", {
     p_tournament_id: tournamentId,
@@ -118,10 +178,17 @@ export async function updatePublishedBracket(
   });
 
   if (error) throw new Error(error.message);
+
+  if (tournamentName) {
+    // Fire-and-forget — champion sync should never block the bracket save
+    syncTournamentChampion(tournamentId, tournamentName, payload).catch((err) => {
+      console.error("[bracket.service] syncTournamentChampion failed:", err);
+    });
+  }
+
   return rowToState(data as Record<string, unknown>);
 }
 
-/** Clear published bracket — admin reset. */
 export async function resetBracketState(tournamentId: string): Promise<void> {
   const { error } = await supabase.rpc("reset_tournament_bracket_state", {
     p_tournament_id: tournamentId,
