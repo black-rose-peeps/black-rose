@@ -1,0 +1,152 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { Header } from "@/features/landing/components/Header";
+import { Footer } from "@/features/landing/components/Footer";
+import { ChampionArchiveStatsStrip } from "@/features/championships/components/ChampionArchiveStat";
+import { HallOfChampionsGrid } from "@/features/championships/components/HallOfChampionsGrid";
+import { useHallOfChampions } from "@/features/championships/hooks/useHallOfChampions";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Emblem } from "@/features/shared/components/Emblem";
+
+export const Route = createFileRoute("/champions/")({
+  head: () => ({
+    meta: [
+      { title: "Hall of Champions — Black Rose" },
+      {
+        name: "description",
+        content:
+          "Browse every team crowned in Black Rose competition. Open a champion file for victory portraits, legacy stories, and roster links.",
+      },
+    ],
+  }),
+  component: ChampionsPage,
+});
+
+function ChampionsPageSkeleton() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={index}
+          className="clip-angle-lg flex flex-col border border-white/8 bg-[oklch(0.055_0_0)]"
+        >
+          <Skeleton className="aspect-3/4 rounded-none bg-white/5" />
+          <div className="flex flex-col gap-3 p-5">
+            <Skeleton className="h-7 w-3/4 rounded-none bg-white/5" />
+            <Skeleton className="h-3 w-full rounded-none bg-white/5" />
+            <Skeleton className="h-3 w-1/3 rounded-none bg-white/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChampionsPage() {
+  const { champions, isLoading, error } = useHallOfChampions();
+
+  const stats = useMemo(() => {
+    const grandFinalWins = champions.filter((c) => c.crownVariant === "grand").length;
+    const gamesCrowned = new Set(champions.map((c) => c.game)).size;
+    return {
+      total: champions.length,
+      grandFinalWins,
+      gamesCrowned,
+    };
+  }, [champions]);
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Header />
+
+      {/* ── Page hero ─────────────────────────────────────── */}
+      <section className="relative overflow-hidden border-b border-white/6 pt-32 pb-20">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-60" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_70%_60%_at_50%_0%,rgba(255,255,255,0.06),transparent)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/15 to-transparent" />
+        <Emblem
+          spin
+          className="pointer-events-none absolute -right-20 top-0 h-128 w-lg opacity-[0.04]"
+        />
+
+        <div className="relative mx-auto max-w-7xl px-6">
+          <div className="mb-4 inline-flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+            <span className="h-px w-10 bg-border" />
+            Legacy Archive
+          </div>
+
+          <h1 className="font-display text-5xl tracking-display sm:text-6xl md:text-7xl">
+            Hall of Champions
+          </h1>
+
+          <p className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">
+            Every crown earned in Black Rose competition is filed here. Open a champion record to
+            view their victory portrait, legacy narrative, and championship roster.
+          </p>
+
+          {isLoading ? (
+            <div className="mt-10 inline-grid grid-cols-3 divide-x divide-white/8 border border-white/8 bg-white/2.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="px-6 py-5">
+                  <Skeleton className="mb-2 h-9 w-10" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ChampionArchiveStatsStrip
+              stats={[
+                {
+                  label: "Champions Crowned",
+                  value: stats.total,
+                  description:
+                    "Total first-place teams in the archive — one entry per concluded tournament.",
+                },
+                {
+                  label: "Grand Final Wins",
+                  value: stats.grandFinalWins,
+                  description:
+                    "Champions who won through a Grand Final match, common in double-elimination brackets. Other wins came from standard finals.",
+                },
+                {
+                  label: "Games Crowned",
+                  value: stats.gamesCrowned,
+                  description:
+                    "How many different games (e.g. Valorant, LoL) have at least one crowned team on file.",
+                },
+              ]}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* ── Archive ───────────────────────────────────────── */}
+      <main className="relative bg-[oklch(0.05_0_0)]">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-30" />
+
+        <div className="relative mx-auto max-w-7xl px-6 py-14">
+          {isLoading ? (
+            <ChampionsPageSkeleton />
+          ) : error ? (
+            <div className="border border-white/8 bg-card/40 px-6 py-12 text-center">
+              <p className="font-display text-xl tracking-display text-white">Archive unavailable</p>
+              <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+            </div>
+          ) : champions.length === 0 ? (
+            <div className="border border-white/8 bg-card/40 px-6 py-16 text-center">
+              <p className="font-display text-2xl tracking-display">No champions crowned yet</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The archive opens when a tournament concludes and a champion is decided.
+              </p>
+            </div>
+          ) : (
+            <HallOfChampionsGrid champions={champions} />
+          )}
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}

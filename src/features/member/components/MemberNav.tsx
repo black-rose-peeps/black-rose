@@ -13,7 +13,8 @@ const MEMBER_CONSOLE_NAV = [
 
 const PUBLIC_NAV = [
   { label: "Tournaments", to: "/tournaments" },
-  { label: "Champions", to: "/" },
+  { label: "Champions", to: "/champions" },
+  { label: "Community", to: "/community" },
 ] as const;
 
 export function MemberNav() {
@@ -65,10 +66,7 @@ export function MemberNav() {
             </div>
           )}
           {PUBLIC_NAV.map(({ label, to }) => {
-            const active =
-              to === "/"
-                ? pathname === "/"
-                : pathname === to || pathname.startsWith(to + "/");
+            const active = pathname === to || pathname.startsWith(`${to}/`);
             return (
               <Link
                 key={label}
@@ -116,7 +114,7 @@ export function MemberNav() {
               to="/login"
               className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
             >
-              Join
+              Join Us
             </Link>
           )}
         </div>

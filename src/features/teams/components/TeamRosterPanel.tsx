@@ -7,11 +7,13 @@ import { RosterTable } from "./RosterTable";
 
 interface TeamRosterPanelProps {
   team: Team;
-  currentUserId: string;
+  currentUserId?: string;
   isEditable?: boolean;
   canInvite?: boolean;
   onInvite?: () => void;
   onRemove?: (member: TeamMember) => void;
+  /** Public pages show active roster only — no pending invites or management chrome. */
+  variant?: "manage" | "public";
 }
 
 function sortActiveMembers(members: TeamMember[]): TeamMember[] {
@@ -24,12 +26,14 @@ function sortActiveMembers(members: TeamMember[]): TeamMember[] {
 
 export function TeamRosterPanel({
   team,
-  currentUserId,
+  currentUserId = "",
   isEditable = false,
   canInvite = false,
   onInvite,
   onRemove,
+  variant = "manage",
 }: TeamRosterPanelProps) {
+  const isPublic = variant === "public";
   const activeMembers = sortActiveMembers(
     team.members.filter((m) => m.status === "captain" || m.status === "active"),
   );
@@ -44,10 +48,10 @@ export function TeamRosterPanel({
     <div className="flex flex-col gap-5">
       <TechPanel
         label="Roster"
-        title="Team Management"
+        title={isPublic ? "Championship Roster" : "Team Management"}
         icon={<Users2 className="h-3.5 w-3.5" />}
         action={
-          isEditable && canInvite && onInvite ? (
+          !isPublic && isEditable && canInvite && onInvite ? (
             <Button
               type="button"
               size="sm"
@@ -116,48 +120,50 @@ export function TeamRosterPanel({
           />
         </div>
 
-        <div>
-          <div className="flex items-center gap-2 border-b border-amber-400/10 bg-amber-400/3 px-5 py-3">
-            <Clock className="h-3.5 w-3.5 text-amber-400/70" />
-            <div>
-              <p className="font-display text-sm tracking-display text-foreground">
-                Pending Invites
-              </p>
-              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                Awaiting member response
-              </p>
+        {!isPublic && (
+          <div>
+            <div className="flex items-center gap-2 border-b border-amber-400/10 bg-amber-400/3 px-5 py-3">
+              <Clock className="h-3.5 w-3.5 text-amber-400/70" />
+              <div>
+                <p className="font-display text-sm tracking-display text-foreground">
+                  Pending Invites
+                </p>
+                <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                  Awaiting member response
+                </p>
+              </div>
+              <span className="ml-auto font-tech text-[10px] uppercase tracking-wider-2 text-amber-400/80">
+                {pendingMembers.length}
+              </span>
             </div>
-            <span className="ml-auto font-tech text-[10px] uppercase tracking-wider-2 text-amber-400/80">
-              {pendingMembers.length}
-            </span>
+            {pendingMembers.length > 0 ? (
+              <RosterTable
+                team={team}
+                members={pendingMembers}
+                currentUserId={currentUserId}
+                isEditable={isEditable}
+                onRemove={onRemove}
+                emptyMessage="No pending invites."
+              />
+            ) : (
+              <div className="px-5 py-8 text-center">
+                <p className="text-sm text-muted-foreground">No pending invites.</p>
+                {isEditable && canInvite && onInvite && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onInvite}
+                    className="mt-3 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Invite a member
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
-          {pendingMembers.length > 0 ? (
-            <RosterTable
-              team={team}
-              members={pendingMembers}
-              currentUserId={currentUserId}
-              isEditable={isEditable}
-              onRemove={onRemove}
-              emptyMessage="No pending invites."
-            />
-          ) : (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm text-muted-foreground">No pending invites.</p>
-              {isEditable && canInvite && onInvite && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onInvite}
-                  className="mt-3 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-foreground"
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Invite a member
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </TechPanel>
     </div>
   );

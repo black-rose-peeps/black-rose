@@ -5,20 +5,22 @@ import { MemberNav } from "@/features/member/components/MemberNav";
 
 const GUEST_NAV = [
   { label: "Tournaments", to: "/tournaments" as const },
-  { label: "Champion", to: "/" as const, hash: "champions" },
-  { label: "Community", to: "/" as const, hash: "community" },
+  { label: "Champions", to: "/champions" as const },
+  { label: "Community", to: "/community" as const },
 ] as const;
 
 function GuestHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const hash = useRouterState({ select: (s) => s.location.hash });
 
   function isGuestNavActive(item: (typeof GUEST_NAV)[number]): boolean {
     if (item.to === "/tournaments") {
       return pathname === "/tournaments" || pathname.startsWith("/tournaments/");
     }
-    if ("hash" in item && item.hash) {
-      return pathname === "/" && hash === item.hash;
+    if (item.to === "/champions") {
+      return pathname === "/champions" || pathname.startsWith("/champions/");
+    }
+    if (item.to === "/community") {
+      return pathname === "/community" || pathname.startsWith("/community/");
     }
     return false;
   }
@@ -36,7 +38,6 @@ function GuestHeader() {
             <Link
               key={item.label}
               to={item.to}
-              {...("hash" in item && item.hash ? { hash: item.hash } : {})}
               className={`transition-colors hover:text-foreground ${
                 isGuestNavActive(item) ? "text-foreground" : ""
               }`}

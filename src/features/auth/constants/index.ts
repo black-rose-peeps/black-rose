@@ -6,7 +6,7 @@
  * Example: "https://discord.gg/AbCdEfGh"
  */
 export const DISCORD_SERVER_INVITE =
-  import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.gg/BvFfZYe64m";
+  import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.com/invite/Epe4aDdt8N";
 
 /** OAuth2 CSRF state — stored in sessionStorage between redirect and callback. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";
