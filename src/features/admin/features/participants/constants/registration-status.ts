@@ -10,6 +10,29 @@ export function isReviewQueueStatus(status: RegistrationStatus): boolean {
   return REVIEW_QUEUE_STATUSES.includes(status);
 }
 
+/** Rows that can be bulk-approved from the participants queue. */
+export function canBulkApproveParticipant(
+  registrationStatus: RegistrationStatus,
+  tournamentStatus: TournamentStatus | string | null,
+): boolean {
+  return (
+    registrationActionsEnabled(tournamentStatus) && isReviewQueueStatus(registrationStatus)
+  );
+}
+
+/** Registrations that occupy a tournament slot / teams_registered / registration cap. */
+export function isSlotCountedRegistrationStatus(status: RegistrationStatus): boolean {
+  return status === "Approved";
+}
+
+export function countSlotFilledRegistrations(
+  registrations: ReadonlyArray<{ status: RegistrationStatus }>,
+): number {
+  return registrations.filter((registration) =>
+    isSlotCountedRegistrationStatus(registration.status),
+  ).length;
+}
+
 /** Entrants that count toward bracket seeding (including after event completion). */
 export function isBracketParticipantStatus(status: RegistrationStatus): boolean {
   return status === "Approved" || status === "Previously Competed";

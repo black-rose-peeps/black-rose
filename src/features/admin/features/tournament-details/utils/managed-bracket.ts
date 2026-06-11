@@ -111,7 +111,10 @@ function linkWinnerAdvancementPath(
 
 const PLAY_IN_ROUND_ID = "pi-r1";
 
-function buildPlayInRound(playInTeams: string[], playInMatches: number): {
+function buildPlayInRound(
+  playInTeams: string[],
+  playInMatches: number,
+): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
 } {
@@ -151,6 +154,23 @@ function buildPlayInRound(playInTeams: string[], playInMatches: number): {
   };
 }
 
+function playInLoserDropTarget(
+  playInIndex: number,
+  playInLoserMatchId: string,
+): { matchId: string; slot: "teamA" | "teamB" } {
+  if (playInLoserMatchId.startsWith("lb-r1-")) {
+    return {
+      matchId: playInLoserMatchId,
+      slot: playInIndex % 2 === 0 ? "teamA" : "teamB",
+    };
+  }
+  const poolIdx = Math.floor(playInIndex / 2);
+  return {
+    matchId: `lb-pi-m${poolIdx}`,
+    slot: playInIndex % 2 === 0 ? "teamA" : "teamB",
+  };
+}
+
 function wirePlayInToMainBracket(
   playInMatches: ManagedMatch[],
   mainMatches: ManagedMatch[],
@@ -158,6 +178,7 @@ function wirePlayInToMainBracket(
   playInMatchCount: number,
   mainFirstRoundId: string,
   mirrorLoserDrop = false,
+  playInLoserMatchId: string | null = null,
 ): void {
   for (let i = 0; i < playInMatchCount; i++) {
     const slotIndex = directTeamCount + i;
@@ -173,16 +194,64 @@ function wirePlayInToMainBracket(
 
     link(playInMatches, playInId, mainMatchId, mainSlot);
 
-    if (mirrorLoserDrop && mainMatch?.loserNext) {
-      link(
-        playInMatches,
-        playInId,
-        mainMatch.loserNext.matchId,
-        mainMatch.loserNext.slot,
-        true,
-      );
+    if (mirrorLoserDrop && playInLoserMatchId) {
+      const { matchId, slot } = playInLoserDropTarget(i, playInLoserMatchId);
+      link(playInMatches, playInId, matchId, slot, true);
     }
   }
+}
+
+/** Dedicated lower-bracket pool for play-in losers (separate from upper drop-ins). */
+function addPlayInLowerPool(
+  matches: ManagedMatch[],
+  roundMetas: BracketRoundMeta[],
+  playInMatches: number,
+): string {
+  const poolMatchCount = Math.ceil(playInMatches / 2);
+  const matchIds: string[] = [];
+
+  for (let i = 0; i < poolMatchCount; i++) {
+    const id = `lb-pi-m${i}`;
+    matchIds.push(id);
+    matches.push({
+      id,
+      roundId: "lb-pi",
+      roundLabel: "Lower — Play-in",
+      label: poolMatchCount > 1 ? `Play-in LB ${i + 1}` : "Lower — Play-in",
+      bracketSide: "lower",
+      teamA: null,
+      teamB: null,
+      scoreA: 0,
+      scoreB: 0,
+      winner: null,
+      confirmed: false,
+      winnerNext: null,
+      loserNext: null,
+    });
+  }
+
+  const lbR1Idx = roundMetas.findIndex((m) => m.id === "lb-r1");
+  roundMetas.splice(lbR1Idx >= 0 ? lbR1Idx : roundMetas.length, 0, {
+    id: "lb-pi",
+    label: "Lower — Play-in",
+    side: "lower",
+    matchIds,
+  });
+
+  const lbR2Meta = roundMetas.find((m) => m.id === "lb-r2");
+  for (let i = 0; i < matchIds.length; i++) {
+    const piId = matchIds[i];
+    if (lbR2Meta?.matchIds[i]) {
+      link(matches, piId, lbR2Meta.matchIds[i], "teamB");
+    } else {
+      const lbFMeta = roundMetas.find((m) => m.id === "lb-f");
+      if (lbFMeta) {
+        link(matches, piId, lbFMeta.matchIds[0], i === 0 ? "teamA" : "teamB");
+      }
+    }
+  }
+
+  return matchIds[0];
 }
 
 /** Single elimination for any even team count ≥ 2. */
@@ -335,10 +404,7 @@ export function buildPlayoffBracket(
     throw new Error("Playoffs require at least 2 qualified teams.");
   }
 
-  const size = Math.max(
-    round1Pairings.length * 2,
-    playoffBracketSize(assignedCount),
-  );
+  const size = Math.max(round1Pairings.length * 2, playoffBracketSize(assignedCount));
   const totalRounds = Math.log2(size);
   const matches: ManagedMatch[] = [];
   const roundMetas: BracketRoundMeta[] = [];
@@ -498,10 +564,19 @@ function buildDoubleElimWithPlayIn(teamNames: string[]): {
     ...Array.from({ length: playInMatches }, (_, i) => `__PI_${i}__`),
   ];
 
+  const hasPlayIn = playInMatches > 0;
   const mainBuilt =
     mainSize === 4
-      ? buildFourTeamDoubleElim(mainPlaceholders)
+      ? buildFourTeamDoubleElim(mainPlaceholders, { hasPlayInLosersPool: hasPlayIn })
       : buildDoubleElimPowerOfTwo(mainPlaceholders);
+
+  let playInLoserMatchId: string | null = null;
+  if (hasPlayIn) {
+    playInLoserMatchId =
+      mainSize === 4
+        ? "lb-r1-m0"
+        : addPlayInLowerPool(mainBuilt.matches, mainBuilt.roundMetas, playInMatches);
+  }
 
   wirePlayInToMainBracket(
     playInBuilt.matches,
@@ -509,7 +584,8 @@ function buildDoubleElimWithPlayIn(teamNames: string[]): {
     directTeams.length,
     playInMatches,
     "ub-r1",
-    true,
+    hasPlayIn,
+    playInLoserMatchId,
   );
 
   return {
@@ -524,7 +600,9 @@ function buildDoubleElimPowerOfTwo(teamNames: string[]): {
 } {
   const n = teamNames.length;
   if (!isPowerOfTwo(n) || n < 8) {
-    throw new Error(`buildDoubleElimPowerOfTwo requires a power-of-2 team count ≥ 8; received ${n}.`);
+    throw new Error(
+      `buildDoubleElimPowerOfTwo requires a power-of-2 team count ≥ 8; received ${n}.`,
+    );
   }
 
   const matches: ManagedMatch[] = [];
@@ -699,10 +777,14 @@ function buildDoubleElimPowerOfTwo(teamNames: string[]): {
 }
 
 /** Minimal 4-team double elimination (upper R1 → upper F; lower R1 → lower F → GF). */
-function buildFourTeamDoubleElim(teamNames: string[]): {
+function buildFourTeamDoubleElim(
+  teamNames: string[],
+  options?: { hasPlayInLosersPool?: boolean },
+): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
 } {
+  const hasPlayInLosersPool = options?.hasPlayInLosersPool ?? false;
   const matches: ManagedMatch[] = [];
   const roundMetas: BracketRoundMeta[] = [];
 
@@ -740,17 +822,32 @@ function buildFourTeamDoubleElim(teamNames: string[]): {
 
   addRound("ub-r1", "Upper — Semifinals", "upper", 2);
   addRound("ub-f", "Upper — Final", "upper", 1, () => "Upper Final");
-  addRound("lb-r1", "Lower — Round 1", "lower", 1);
-  addRound("lb-f", "Lower — Final", "lower", 1, () => "Lower Final");
+  addRound("lb-r1", "Lower — Round 1", "lower", hasPlayInLosersPool ? 2 : 1);
+  if (hasPlayInLosersPool) {
+    addRound("lb-r2", "Lower — Final", "lower", 1, () => "Lower Final");
+  }
+  addRound("lb-f", hasPlayInLosersPool ? "Lower — Reset" : "Lower — Final", "lower", 1, () =>
+    hasPlayInLosersPool ? "Lower Reset" : "Lower Final",
+  );
   addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
 
   link(matches, "ub-r1-m0", "ub-f-m0", "teamA");
   link(matches, "ub-r1-m1", "ub-f-m0", "teamB");
-  link(matches, "ub-r1-m0", "lb-r1-m0", "teamA", true);
-  link(matches, "ub-r1-m1", "lb-r1-m0", "teamB", true);
+  if (hasPlayInLosersPool) {
+    // lb-r1-m0: play-in losers (wired by wirePlayInToMainBracket)
+    // lb-r1-m1: upper semifinal losers
+    link(matches, "ub-r1-m0", "lb-r1-m1", "teamA", true);
+    link(matches, "ub-r1-m1", "lb-r1-m1", "teamB", true);
+    link(matches, "lb-r1-m0", "lb-r2-m0", "teamA");
+    link(matches, "lb-r1-m1", "lb-r2-m0", "teamB");
+    link(matches, "lb-r2-m0", "lb-f-m0", "teamA");
+  } else {
+    link(matches, "ub-r1-m0", "lb-r1-m0", "teamA", true);
+    link(matches, "ub-r1-m1", "lb-r1-m0", "teamB", true);
+    link(matches, "lb-r1-m0", "lb-f-m0", "teamA");
+  }
   link(matches, "ub-f-m0", "gf-m0", "teamA");
   link(matches, "ub-f-m0", "lb-f-m0", "teamB", true);
-  link(matches, "lb-r1-m0", "lb-f-m0", "teamA");
   link(matches, "lb-f-m0", "gf-m0", "teamB");
 
   matches.find((m) => m.id === "ub-r1-m0")!.teamA = teamNames[0] ?? null;
@@ -773,13 +870,24 @@ function placeTeam(
   });
 }
 
-function isFirstRoundMatch(m: ManagedMatch): boolean {
-  return (
-    m.roundId === PLAY_IN_ROUND_ID ||
-    m.roundId === "se-r0" ||
-    m.roundId === "ub-r1" ||
-    m.roundId === "po-r0"
-  );
+function buildFedSlots(matches: ManagedMatch[]): Set<string> {
+  const fed = new Set<string>();
+  for (const m of matches) {
+    if (m.winnerNext) fed.add(`${m.winnerNext.matchId}:${m.winnerNext.slot}`);
+    if (m.loserNext) fed.add(`${m.loserNext.matchId}:${m.loserNext.slot}`);
+  }
+  return fed;
+}
+
+function resetTeamsForRecompute(match: ManagedMatch, fedSlots: Set<string>): ManagedMatch {
+  const slotTeam = (slot: "teamA" | "teamB") =>
+    fedSlots.has(`${match.id}:${slot}`) ? null : match[slot];
+
+  return {
+    ...match,
+    teamA: slotTeam("teamA"),
+    teamB: slotTeam("teamB"),
+  };
 }
 
 /** Deterministic feeder order for any bracket graph produced by build*Matches. */
@@ -806,7 +914,9 @@ function roundProcessRank(roundId: string): number {
   if (ubMatch) return 100 + (parseInt(ubMatch[1], 10) - 1) * 100;
 
   const lbSpecial: Record<string, number> = {
+    "lb-pi": 150,
     "lb-r1": 200,
+    "lb-r2": 400,
     "lb-sf": 600,
     "lb-f": 800,
   };
@@ -819,9 +929,7 @@ function roundProcessRank(roundId: string): number {
 }
 
 function processingOrder(matches: ManagedMatch[]): ManagedMatch[] {
-  return [...matches].sort(
-    (a, b) => roundProcessRank(a.roundId) - roundProcessRank(b.roundId),
-  );
+  return [...matches].sort((a, b) => roundProcessRank(a.roundId) - roundProcessRank(b.roundId));
 }
 
 function isEliminationMatch(match: ManagedMatch): boolean {
@@ -833,10 +941,8 @@ export function recomputeAdvancements(matches: ManagedMatch[]): ManagedMatch[] {
   const elimMatches = matches.filter(isEliminationMatch);
   const swissMatches = matches.filter((match) => match.bracketSide === "swiss");
 
-  let nextElim = elimMatches.map((match) => {
-    if (isFirstRoundMatch(match)) return { ...match };
-    return { ...match, teamA: null, teamB: null };
-  });
+  const fedSlots = buildFedSlots(elimMatches);
+  let nextElim = elimMatches.map((match) => resetTeamsForRecompute(match, fedSlots));
 
   for (const match of processingOrder(nextElim)) {
     if (match.confirmed && match.winner) {

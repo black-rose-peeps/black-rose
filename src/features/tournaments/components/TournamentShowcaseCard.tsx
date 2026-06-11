@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { GAME_LABELS, STATUS_CONFIG } from "../constants";
 import {
+  isPendingCaptainRegistrationStatus,
   isRegisteredCaptainStatus,
   type CaptainTournamentRegistrationStatus,
 } from "../services/team-registration.service";
@@ -27,7 +28,7 @@ function resolveCardCta(
   captainRegistrationStatus: CaptainTournamentRegistrationStatus = "none",
 ): { label: string; interactive: boolean; className: string } {
   if (tournamentStatus === "Registration Open") {
-    if (captainRegistrationStatus === "pending") {
+    if (isPendingCaptainRegistrationStatus(captainRegistrationStatus)) {
       return {
         label: "Pending Approval",
         interactive: true,

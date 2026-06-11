@@ -14,11 +14,9 @@ export interface SocialLink {
   isPublic: boolean;
 }
 
-export interface RiotAccount {
+export interface ValorantIdentity {
   gameName: string;
   tagline: string;
-  region: string;
-  isLinked: boolean;
 }
 
 export interface TournamentEntry {
@@ -43,6 +41,7 @@ export interface MemberProfile {
   slug: string;
   displayName: string;
   username: string;
+  discordUsername: string;
   headline: string;
   bio: string;
   avatarInitials: string;
@@ -54,7 +53,8 @@ export interface MemberProfile {
   isVerified: boolean;
   isPublic: boolean;
   socialLinks: SocialLink[];
-  riotAccount: RiotAccount | null;
+  valorantGameName: string;
+  valorantTagline: string;
   tournamentHistory: string[];
   activeRegistrations: TournamentEntry[];
   upcomingMatches: UpcomingMatch[];

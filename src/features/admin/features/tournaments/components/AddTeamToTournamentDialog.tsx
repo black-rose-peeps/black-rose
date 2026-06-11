@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchTeams } from "@/features/admin/features/teams/services/teams.service";
 import type { Team } from "@/features/teams/types";
 import { canTeamRegisterForTournament } from "@/features/tournaments/utils/team-tournament-eligibility";
+import { countSlotFilledRegistrations } from "@/features/admin/features/participants/constants/registration-status";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import { fetchTournaments } from "../services/tournaments.service";
 import { useAddTeamToTournament } from "../hooks/useAddTeamToTournament";
@@ -74,7 +75,8 @@ export function AddTeamToTournamentDialog({
     searchQuery,
   ]);
 
-  const slotsRemaining = Math.max(0, tournament.teamCap - registeredTeams.length);
+  const approvedCount = countSlotFilledRegistrations(registeredTeams);
+  const slotsRemaining = Math.max(0, tournament.teamCap - approvedCount);
   const atCap = slotsRemaining === 0;
   const selectedCount = selectedTeamIds.size;
   const teamById = useMemo(
@@ -169,7 +171,7 @@ export function AddTeamToTournamentDialog({
           <DialogDescription>
             Select one or more rosters from Teams to register in {tournament.name}. Teams may only
             be active in one live or upcoming event at a time — they become eligible again once
-            their current tournament is completed. {registeredTeams.length}/{tournament.teamCap}{" "}
+            their current tournament is completed. {approvedCount}/{tournament.teamCap}{" "}
             slots used
             {!atCap && ` · ${slotsRemaining} slot${slotsRemaining === 1 ? "" : "s"} left`}.
           </DialogDescription>

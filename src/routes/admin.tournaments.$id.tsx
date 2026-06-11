@@ -53,7 +53,10 @@ import { EditTournamentModal } from "@/features/admin/features/tournaments/compo
 import { PrizeDistributionPanel } from "@/features/admin/features/tournaments/components/PrizeDistributionPanel";
 import { useTournamentRegistrations } from "@/features/admin/features/tournaments/hooks";
 import { useDeleteTournament } from "@/features/admin/features/tournaments/hooks/useDeleteTournament";
-import { removeTeamFromTournament } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
+import {
+  removeTeamFromTournament,
+  updateRegistrationStatus,
+} from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import {
   fetchTournamentById,
   updateTournamentStatus,
@@ -64,7 +67,9 @@ import {
 } from "@/features/admin/features/tournaments/utils";
 import {
   isBracketSeedingStatus,
+  countSlotFilledRegistrations,
   REGISTRATION_STATUS_SORT_ORDER,
+  registrationActionsEnabled,
   tournamentHasUnresolvedRegistrations,
 } from "@/features/admin/features/participants/constants/registration-status";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
@@ -155,8 +160,8 @@ function TournamentDetailPage() {
     registrations: teams,
     isLoading: teamsLoading,
     error: teamsError,
-    prependRegistrations,
     removeRegistration,
+    updateRegistration,
     refetch: refetchRegistrations,
   } = useTournamentRegistrations(tournamentId);
 
@@ -190,6 +195,7 @@ function TournamentDetailPage() {
   const [removingRegistration, setRemovingRegistration] = useState<MockTeam | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [reviewingRegistrationId, setReviewingRegistrationId] = useState<string | null>(null);
   const {
     submit: deleteTournamentSubmit,
     isDeleting,
@@ -223,6 +229,7 @@ function TournamentDetailPage() {
 
   // ── Loaded ─────────────────────────────────────────────────────────────
 
+  const approvedCount = countSlotFilledRegistrations(teams);
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
 
   const bracketTeams = teams.filter((t) => isBracketSeedingStatus(t.status, tournament.status));
@@ -344,7 +351,7 @@ function TournamentDetailPage() {
             },
             {
               label: capLabel,
-              value: `${teams.length}/${tournament.teamCap}`,
+              value: `${approvedCount}/${tournament.teamCap}`,
               icon: <Users className="h-3.5 w-3.5" />,
             },
             {
@@ -419,9 +426,9 @@ function TournamentDetailPage() {
                     type="button"
                     size="sm"
                     className="gap-2 font-tech uppercase tracking-wider"
-                    disabled={teams.length >= tournament.teamCap}
+                    disabled={approvedCount >= tournament.teamCap}
                     title={
-                      teams.length >= tournament.teamCap
+                      approvedCount >= tournament.teamCap
                         ? `${capLabel} reached`
                         : soloEvent
                           ? "Register members directly"
@@ -703,7 +710,43 @@ function TournamentDetailPage() {
         </Tabs>
       </div>
 
-      {openTeam && <TeamModal team={openTeam} onClose={() => setOpenTeam(null)} />}
+      {openTeam && tournament && (
+        <TeamModal
+          team={openTeam}
+          tournamentName={tournament.name}
+          tournamentStatus={tournament.status}
+          isUpdating={reviewingRegistrationId === openTeam.id}
+          onClose={() => setOpenTeam(null)}
+          onApprove={
+            registrationActionsEnabled(tournament.status)
+              ? async () => {
+                  setReviewingRegistrationId(openTeam.id);
+                  try {
+                    const updated = await updateRegistrationStatus(openTeam.id, "Approved");
+                    updateRegistration(updated);
+                    setOpenTeam(updated);
+                  } finally {
+                    setReviewingRegistrationId(null);
+                  }
+                }
+              : undefined
+          }
+          onReject={
+            registrationActionsEnabled(tournament.status)
+              ? async () => {
+                  setReviewingRegistrationId(openTeam.id);
+                  try {
+                    const updated = await updateRegistrationStatus(openTeam.id, "Rejected");
+                    updateRegistration(updated);
+                    setOpenTeam(updated);
+                  } finally {
+                    setReviewingRegistrationId(null);
+                  }
+                }
+              : undefined
+          }
+        />
+      )}
 
       {soloEvent ? (
         <AddMembersToTournamentDialog
@@ -711,13 +754,11 @@ function TournamentDetailPage() {
           tournament={tournament}
           registeredEntries={teams}
           onClose={() => setIsAddPlayersOpen(false)}
-          onAdded={(registrations) => {
-            prependRegistrations(registrations);
+          onAdded={async () => {
             teamsPagination.setPage(1);
-            patchTournament({
-              ...tournament,
-              teamsRegistered: tournament.teamsRegistered + registrations.length,
-            });
+            await refetchRegistrations();
+            const fresh = await fetchTournamentById(tournamentId);
+            if (fresh) patchTournament(fresh);
           }}
         />
       ) : (
@@ -726,13 +767,11 @@ function TournamentDetailPage() {
           tournament={tournament}
           registeredTeams={teams}
           onClose={() => setIsAddTeamOpen(false)}
-          onAdded={(registrations) => {
-            prependRegistrations(registrations);
+          onAdded={async () => {
             teamsPagination.setPage(1);
-            patchTournament({
-              ...tournament,
-              teamsRegistered: tournament.teamsRegistered + registrations.length,
-            });
+            await refetchRegistrations();
+            const fresh = await fetchTournamentById(tournamentId);
+            if (fresh) patchTournament(fresh);
           }}
         />
       )}
@@ -803,10 +842,9 @@ function TournamentDetailPage() {
           try {
             await removeTeamFromTournament(removingRegistration.id);
             removeRegistration(removingRegistration.id);
-            patchTournament({
-              ...tournament,
-              teamsRegistered: Math.max(0, tournament.teamsRegistered - 1),
-            });
+            await refetchRegistrations();
+            const fresh = await fetchTournamentById(tournamentId);
+            if (fresh) patchTournament(fresh);
             setRemovingRegistration(null);
           } catch (err) {
             setRemoveError(err instanceof Error ? err.message : "Failed to remove team.");

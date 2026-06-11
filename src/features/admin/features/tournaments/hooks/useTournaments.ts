@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { withResolvedTournamentStatus } from "@/features/tournaments/utils/tournament-status";
 import { fetchTournaments } from "../services/tournaments.service";
 import type { AdminTournament } from "../types";
 
@@ -7,21 +8,34 @@ export function useTournaments() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const refetch = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const data = await fetchTournaments();
-      setTournaments(data);
+      setTournaments(data.map((tournament) => withResolvedTournamentStatus(tournament)));
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tournaments.");
+      if (!options?.silent) {
+        setError(err instanceof Error ? err.message : "Failed to load tournaments.");
+      }
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     refetch();
+  }, [refetch]);
+
+  useEffect(() => {
+    function handleFocus() {
+      void refetch({ silent: true });
+    }
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [refetch]);
 
   const prependTournament = useCallback((tournament: AdminTournament) => {

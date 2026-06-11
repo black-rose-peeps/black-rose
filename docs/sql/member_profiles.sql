@@ -10,6 +10,8 @@ create table if not exists public.member_profiles (
   main_game text,
   main_role text not null default '',
   region text not null default '',
+  valorant_game_name text,
+  valorant_tagline text,
   avatar_url text,
   banner_url text,
   is_public boolean not null default true,

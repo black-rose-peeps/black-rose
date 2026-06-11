@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  formatValorantRiotId,
+  isValorantGame,
+} from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { escapePostgrestFilterValue, isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
@@ -99,6 +103,7 @@ export async function updateMember(
 export interface InviteSearchMember {
   id: string;
   username: string;
+  discordUsername: string;
   displayName: string;
   avatarInitials: string;
 }
@@ -149,13 +154,48 @@ async function fetchMemberIdsOnActiveGame(
   return [...new Set((memberRows ?? []).map((row) => row.user_id as string))];
 }
 
-function rowToInviteSearchMember(row: Record<string, unknown>): InviteSearchMember {
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function rowToInviteSearchMember(
+  row: Record<string, unknown>,
+  game?: string,
+): InviteSearchMember {
   const username = row.username as string;
+  const discordUsername = row.discord_username as string;
+  const profiles = row.member_profiles as
+    | {
+        display_name?: string;
+        valorant_game_name?: string | null;
+        valorant_tagline?: string | null;
+      }
+    | Array<{
+        display_name?: string;
+        valorant_game_name?: string | null;
+        valorant_tagline?: string | null;
+      }>
+    | null
+    | undefined;
+  const profile = Array.isArray(profiles) ? profiles[0] : profiles;
+  const baseDisplayName = profile?.display_name?.trim() || username;
+  const valorantId =
+    profile &&
+    formatValorantRiotId(
+      profile.valorant_game_name?.trim() ?? "",
+      profile.valorant_tagline?.trim() ?? "",
+    );
+  const displayName =
+    game && isValorantGame(game) && valorantId ? valorantId : baseDisplayName;
+
   return {
     id: row.id as string,
     username,
-    displayName: username,
-    avatarInitials: username.slice(0, 2).toUpperCase(),
+    discordUsername,
+    displayName,
+    avatarInitials: initialsFromName(displayName),
   };
 }
 
@@ -172,7 +212,10 @@ export async function searchVerifiedMembersForInvite(
 
   let builder = supabase
     .from("members")
-    .select("id, username, discord_username", { count: "exact" })
+    .select(
+      "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline)",
+      { count: "exact" },
+    )
     .eq("status", "Verified")
     .order("username", { ascending: true });
 
@@ -197,7 +240,9 @@ export async function searchVerifiedMembersForInvite(
   if (error) throw new Error(error.message);
 
   return {
-    members: (data ?? []).map((row) => rowToInviteSearchMember(row as Record<string, unknown>)),
+    members: (data ?? []).map((row) =>
+      rowToInviteSearchMember(row as Record<string, unknown>, options?.game),
+    ),
     total: count ?? 0,
     page,
     pageSize,

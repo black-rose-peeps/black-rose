@@ -22,6 +22,8 @@ import {
 } from "@/features/member/components/MemberShell";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
 import { getSession } from "@/features/auth/store/session";
+import { hasFullMemberAccess } from "@/features/auth/utils/routes";
+import { ProfileCommentsPanel } from "@/features/member/components/ProfileCommentsPanel";
 import { fetchMemberProfileBySlug } from "@/features/member/services/member-profile.service";
 import { fetchMemberChampionships } from "@/features/championships/services/championship.service";
 import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
@@ -133,6 +135,7 @@ function MemberProfilePage() {
   }
 
   const isOwnProfile = session?.id === profile.memberId;
+  const viewerIsVerified = session ? hasFullMemberAccess(session.role) : false;
   const p = profile;
 
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
@@ -193,10 +196,10 @@ function MemberProfilePage() {
                   {p.region}
                 </span>
               )}
-              {p.riotAccount?.isLinked && (
+              {p.valorantGameName && p.valorantTagline && (
                 <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
                   <CheckCircle className="h-3 w-3" />
-                  Riot Linked
+                  {p.valorantGameName}#{p.valorantTagline}
                 </span>
               )}
             </div>
@@ -272,6 +275,13 @@ function MemberProfilePage() {
 
           {championships.length > 0 && <ChampionshipTitlesCard titles={championships} />}
 
+          <ProfileCommentsPanel
+            profileMemberId={p.memberId}
+            isOwnProfile={isOwnProfile}
+            viewerMemberId={session?.id}
+            viewerIsVerified={viewerIsVerified}
+          />
+
           {p.tournamentHistory.length > 0 && (
             <ProfileCard label="Tournament History">
               <ul className="flex flex-col gap-2">
@@ -316,14 +326,14 @@ function MemberProfilePage() {
               <div className="h-px bg-white/6" />
               <div>
                 <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                  Riot Account
+                  Valorant ID
                 </dt>
                 <dd
-                  className={`mt-0.5 text-sm ${p.riotAccount?.isLinked ? "text-emerald-400" : "text-muted-foreground"}`}
+                  className={`mt-0.5 text-sm ${p.valorantGameName && p.valorantTagline ? "text-emerald-400" : "text-muted-foreground"}`}
                 >
-                  {p.riotAccount?.isLinked
-                    ? `${p.riotAccount.gameName}#${p.riotAccount.tagline}`
-                    : "Not Linked"}
+                  {p.valorantGameName && p.valorantTagline
+                    ? `${p.valorantGameName}#${p.valorantTagline}`
+                    : "Not set"}
                 </dd>
               </div>
             </dl>

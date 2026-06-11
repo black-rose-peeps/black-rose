@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { syncTournamentRegistrationNotifications } from "@/features/notifications/services/tournament-registration-notifications";
 import {
   fetchCaptainRegistrationStatusForTournament,
+  isPendingCaptainRegistrationStatus,
   isRegisteredCaptainStatus,
   type CaptainTournamentRegistrationStatus,
 } from "@/features/tournaments/services/team-registration.service";
@@ -67,7 +68,7 @@ export function TournamentCaptainRegister({
     <>
       {initialLoading ? (
         <RegisterNowButtonSkeleton />
-      ) : registrationStatus === "pending" ? (
+      ) : isPendingCaptainRegistrationStatus(registrationStatus) ? (
         <div className="inline-flex h-12 items-center gap-3 border border-amber-400/30 bg-amber-400/10 px-8 font-tech text-sm uppercase tracking-wider-2 text-amber-300">
           Registration pending admin approval
         </div>

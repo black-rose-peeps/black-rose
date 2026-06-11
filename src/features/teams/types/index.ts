@@ -26,6 +26,7 @@ export type TeamMemberRole =
 export interface TeamMember {
   userId: string;
   username: string;
+  discordUsername: string;
   displayName: string;
   avatarInitials: string;
   ign: string;

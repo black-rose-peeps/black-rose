@@ -2,22 +2,131 @@ import { supabase } from "@/lib/supabase";
 import { MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
+import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
 import { adminMemberToTeamMember } from "../utils";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function rowToTeamMember(row: Record<string, unknown>): TeamMember {
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+interface MemberProfileSnapshot {
+  displayName: string;
+  valorantGameName: string;
+  valorantTagline: string;
+}
+
+async function fetchMemberProfileSnapshots(
+  memberIds: string[],
+): Promise<Map<string, MemberProfileSnapshot>> {
+  const unique = [...new Set(memberIds.filter(Boolean))];
+  if (!unique.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("member_profiles")
+    .select("member_id, display_name, valorant_game_name, valorant_tagline")
+    .in("member_id", unique);
+
+  if (error) {
+    console.error("[teams] profile snapshot lookup failed:", error.message);
+    return new Map();
+  }
+
+  return new Map(
+    (data ?? []).map((row) => [
+      row.member_id as string,
+      {
+        displayName: (row.display_name as string).trim(),
+        valorantGameName: (row.valorant_game_name as string | null)?.trim() ?? "",
+        valorantTagline: (row.valorant_tagline as string | null)?.trim() ?? "",
+      },
+    ]),
+  );
+}
+
+async function fetchDiscordUsernames(memberIds: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(memberIds.filter(Boolean))];
+  if (!unique.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("members")
+    .select("id, discord_username")
+    .in("id", unique);
+
+  if (error) {
+    console.error("[teams] discord username lookup failed:", error.message);
+    return new Map();
+  }
+
+  return new Map((data ?? []).map((row) => [row.id as string, row.discord_username as string]));
+}
+
+function rowToTeamMember(
+  row: Record<string, unknown>,
+  snapshots: Map<string, MemberProfileSnapshot>,
+  discordUsernames: Map<string, string>,
+  teamGame: Team["game"],
+): TeamMember {
+  const userId = row.user_id as string;
+  const username = row.username as string;
+  const snapshot = snapshots.get(userId);
+  const snapshotDisplay = (row.display_name as string)?.trim();
+  const baseDisplayName = snapshot?.displayName || snapshotDisplay || username;
+  const valorantId = snapshot
+    ? formatValorantRiotId(snapshot.valorantGameName, snapshot.valorantTagline)
+    : null;
+  const useValorantId = isValorantGame(teamGame) && !!valorantId;
+  const displayName = useValorantId ? valorantId! : baseDisplayName;
+  const ign = useValorantId ? valorantId! : ((row.ign as string) || username);
+
   return {
-    userId: row.user_id as string,
-    username: row.username as string,
-    displayName: row.display_name as string,
-    avatarInitials: row.avatar_initials as string,
-    ign: row.ign as string,
+    userId,
+    username,
+    discordUsername: discordUsernames.get(userId) || username,
+    displayName,
+    avatarInitials: (row.avatar_initials as string) || initialsFromName(baseDisplayName),
+    ign,
     role: row.role as TeamMember["role"],
     status: row.status as TeamMember["status"],
     joinedAt: row.joined_at as string,
   };
+}
+
+async function mapTeamMemberRows(
+  rows: Record<string, unknown>[],
+  teamGame: Team["game"],
+): Promise<TeamMember[]> {
+  const userIds = rows.map((row) => row.user_id as string);
+  const [snapshots, discordUsernames] = await Promise.all([
+    fetchMemberProfileSnapshots(userIds),
+    fetchDiscordUsernames(userIds),
+  ]);
+
+  return rows.map((row) => rowToTeamMember(row, snapshots, discordUsernames, teamGame));
+}
+
+async function resolveMemberTeamIdentity(
+  memberId: string,
+  fallback: string,
+  game: Team["game"],
+): Promise<{ displayName: string; ign: string }> {
+  const snapshots = await fetchMemberProfileSnapshots([memberId]);
+  const snapshot = snapshots.get(memberId);
+  const baseDisplayName = snapshot?.displayName || fallback;
+  const valorantId =
+    snapshot && isValorantGame(game)
+      ? formatValorantRiotId(snapshot.valorantGameName, snapshot.valorantTagline)
+      : null;
+
+  if (isValorantGame(game) && valorantId) {
+    return { displayName: valorantId, ign: valorantId };
+  }
+
+  return { displayName: baseDisplayName, ign: fallback };
 }
 
 function rowToTeam(row: Record<string, unknown>, members: TeamMember[]): Team {
@@ -151,7 +260,10 @@ async function fetchTeamWithMembers(teamId: string): Promise<Team> {
 
   if (membersErr) throw new Error(membersErr.message);
 
-  return rowToTeam(teamRow, (memberRows ?? []).map(rowToTeamMember));
+  return rowToTeam(
+    teamRow,
+    await mapTeamMemberRows(memberRows ?? [], teamRow.game as Team["game"]),
+  );
 }
 
 // ── Service functions ─────────────────────────────────────────────────────────
@@ -175,11 +287,17 @@ export async function fetchTeams(): Promise<Team[]> {
 
   if (membersErr) throw new Error(membersErr.message);
 
+  const rows = memberRows ?? [];
   const membersByTeam = new Map<string, TeamMember[]>();
-  for (const row of memberRows ?? []) {
-    const tid = row.team_id as string;
-    if (!membersByTeam.has(tid)) membersByTeam.set(tid, []);
-    membersByTeam.get(tid)!.push(rowToTeamMember(row));
+
+  for (const teamRow of teamRows) {
+    const teamId = teamRow.id as string;
+    const teamMemberRows = rows.filter((row) => row.team_id === teamId);
+    const enrichedMembers = await mapTeamMemberRows(
+      teamMemberRows,
+      teamRow.game as Team["game"],
+    );
+    membersByTeam.set(teamId, enrichedMembers);
   }
 
   return teamRows.map((row) => rowToTeam(row, membersByTeam.get(row.id as string) ?? []));
@@ -210,7 +328,17 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 
   // Insert captain as first team member
   const captainRole = input.captainRole ?? "IGL";
-  const captainMember = adminMemberToTeamMember(captain, captainRole);
+  const captainIdentity = await resolveMemberTeamIdentity(
+    captain.id,
+    captain.username,
+    input.game,
+  );
+  const captainMember = adminMemberToTeamMember(
+    captain,
+    captainRole,
+    captainIdentity.displayName,
+    captainIdentity.ign,
+  );
   const { error: memberErr } = await supabase.from("team_members").insert({
     team_id: teamRow.id,
     user_id: captain.id,
@@ -238,7 +366,17 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
-  const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
+  const memberIdentity = await resolveMemberTeamIdentity(
+    member.id,
+    member.username,
+    team.game,
+  );
+  const teamMember = adminMemberToTeamMember(
+    member,
+    input.role ?? "TBD",
+    memberIdentity.displayName,
+    memberIdentity.ign,
+  );
   await insertOrReactivateTeamMember(
     {
       team_id: input.teamId,
@@ -298,7 +436,17 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
-  const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
+  const memberIdentity = await resolveMemberTeamIdentity(
+    member.id,
+    member.username,
+    team.game,
+  );
+  const teamMember = adminMemberToTeamMember(
+    member,
+    input.role ?? "TBD",
+    memberIdentity.displayName,
+    memberIdentity.ign,
+  );
   await insertOrReactivateTeamMember(
     {
       team_id: input.teamId,

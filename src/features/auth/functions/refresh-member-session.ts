@@ -8,6 +8,10 @@ export interface RefreshMemberSessionInput {
 export interface RefreshMemberSessionResult {
   memberId: string;
   username: string;
+  discordUsername: string;
+  displayName: string;
+  profileSlug: string | null;
+  avatarUrl: string | null;
   discordId: string | null;
   status: MemberVerificationStatus;
   registeredAt: string;
@@ -27,9 +31,18 @@ export const refreshMemberSession = createServerFn({ method: "POST" })
       throw new Error("Member account not found. Please sign in with Discord again.");
     }
 
+    const { fetchMemberProfileByMemberId } = await import(
+      "@/features/member/server/profile.server"
+    );
+    const profile = await fetchMemberProfileByMemberId(member.id);
+
     return {
       memberId: member.id,
       username: member.username,
+      discordUsername: member.discordUsername,
+      displayName: profile?.displayName ?? member.username,
+      profileSlug: profile?.slug ?? null,
+      avatarUrl: profile?.avatarUrl ?? null,
       discordId: member.discordId ?? null,
       status: member.status,
       registeredAt: member.createdAt,
