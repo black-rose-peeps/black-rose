@@ -107,6 +107,18 @@ async function countTournamentRegistrations(tournamentId: string): Promise<numbe
   return count ?? 0;
 }
 
+/** Align tournaments.teams_registered with approved registration rows. */
+export async function reconcileTournamentTeamCount(
+  tournamentId: string,
+  cachedCount: number,
+): Promise<number> {
+  const actualCount = await countTournamentRegistrations(tournamentId);
+  if (actualCount !== cachedCount) {
+    await syncTournamentTeamCount(tournamentId, actualCount);
+  }
+  return actualCount;
+}
+
 function captainUsername(team: Team): string {
   const captain =
     team.members.find((m) => m.status === "captain") ??
@@ -287,11 +299,29 @@ export async function fetchAllRegistrations(): Promise<MockTeam[]> {
   return regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
 }
 
+async function assertApprovalWithinCap(
+  tournamentId: string,
+  teamCap: number,
+): Promise<void> {
+  const approvedCount = await countTournamentRegistrations(tournamentId);
+  if (approvedCount >= teamCap) {
+    throw new Error(`Registration cap reached (${teamCap}).`);
+  }
+}
+
 export async function updateRegistrationStatus(
   registrationId: string,
   status: MockTeam["status"],
 ): Promise<MockTeam> {
   const existing = await fetchRegistrationWithPlayers(registrationId);
+  const isNewApproval = status === "Approved" && existing.status !== "Approved";
+
+  let tournament: Awaited<ReturnType<typeof fetchTournamentById>> | null = null;
+  if (isNewApproval) {
+    tournament = await fetchTournamentById(existing.tournamentId);
+    if (!tournament) throw new Error("Tournament not found.");
+    await assertApprovalWithinCap(existing.tournamentId, tournament.teamCap);
+  }
 
   const reviewedAt = new Date().toISOString();
   const statusPatch: Record<string, unknown> = { status };
@@ -313,22 +343,12 @@ export async function updateRegistrationStatus(
 
   if (error) throw new Error(error.message);
 
-  if (status === "Approved" && existing.status !== "Approved") {
-    const tournament = await fetchTournamentById(existing.tournamentId);
-    if (!tournament) throw new Error("Tournament not found.");
-
-    const approvedCount = await countTournamentRegistrations(existing.tournamentId);
-    if (approvedCount >= tournament.teamCap) {
-      throw new Error(`Registration cap reached (${tournament.teamCap}).`);
-    }
-
-    if (existing.rosterTeamId) {
-      await assignTeamActiveTournament(
-        existing.rosterTeamId,
-        existing.tournamentId,
-        tournament.name,
-      );
-    }
+  if (isNewApproval && tournament && existing.rosterTeamId) {
+    await assignTeamActiveTournament(
+      existing.rosterTeamId,
+      existing.tournamentId,
+      tournament.name,
+    );
   }
 
   if (status === "Rejected" && existing.rosterTeamId) {

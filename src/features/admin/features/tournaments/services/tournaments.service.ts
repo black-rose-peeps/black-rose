@@ -1,4 +1,7 @@
-import { concludeTournamentRegistrations } from "./tournament-registrations.service";
+import {
+  concludeTournamentRegistrations,
+  reconcileTournamentTeamCount,
+} from "./tournament-registrations.service";
 import { supabase } from "@/lib/supabase";
 import type { MockTournament } from "@/lib/mock-data";
 import type { PrizeTier } from "@/features/tournaments/types";
@@ -65,7 +68,18 @@ export async function fetchTournaments(): Promise<MockTournament[]> {
     .order("start_date", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rowToTournament);
+  const tournaments = (data ?? []).map(rowToTournament);
+  return Promise.all(
+    tournaments.map(async (tournament) => {
+      const teamsRegistered = await reconcileTournamentTeamCount(
+        tournament.id,
+        tournament.teamsRegistered,
+      );
+      return teamsRegistered === tournament.teamsRegistered
+        ? tournament
+        : { ...tournament, teamsRegistered };
+    }),
+  );
 }
 
 export async function fetchTournamentById(id: string): Promise<MockTournament | null> {
@@ -75,7 +89,16 @@ export async function fetchTournamentById(id: string): Promise<MockTournament | 
     if (error.code === "PGRST116") return null;
     throw new Error(error.message);
   }
-  return data ? rowToTournament(data) : null;
+  if (!data) return null;
+
+  const tournament = rowToTournament(data);
+  const teamsRegistered = await reconcileTournamentTeamCount(
+    tournament.id,
+    tournament.teamsRegistered,
+  );
+  return teamsRegistered === tournament.teamsRegistered
+    ? tournament
+    : { ...tournament, teamsRegistered };
 }
 
 export async function getTournamentByIdSync(id: string): Promise<MockTournament | null> {

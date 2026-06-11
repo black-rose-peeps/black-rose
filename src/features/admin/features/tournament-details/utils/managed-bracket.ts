@@ -111,7 +111,10 @@ function linkWinnerAdvancementPath(
 
 const PLAY_IN_ROUND_ID = "pi-r1";
 
-function buildPlayInRound(playInTeams: string[], playInMatches: number): {
+function buildPlayInRound(
+  playInTeams: string[],
+  playInMatches: number,
+): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
 } {
@@ -401,10 +404,7 @@ export function buildPlayoffBracket(
     throw new Error("Playoffs require at least 2 qualified teams.");
   }
 
-  const size = Math.max(
-    round1Pairings.length * 2,
-    playoffBracketSize(assignedCount),
-  );
+  const size = Math.max(round1Pairings.length * 2, playoffBracketSize(assignedCount));
   const totalRounds = Math.log2(size);
   const matches: ManagedMatch[] = [];
   const roundMetas: BracketRoundMeta[] = [];
@@ -600,7 +600,9 @@ function buildDoubleElimPowerOfTwo(teamNames: string[]): {
 } {
   const n = teamNames.length;
   if (!isPowerOfTwo(n) || n < 8) {
-    throw new Error(`buildDoubleElimPowerOfTwo requires a power-of-2 team count ≥ 8; received ${n}.`);
+    throw new Error(
+      `buildDoubleElimPowerOfTwo requires a power-of-2 team count ≥ 8; received ${n}.`,
+    );
   }
 
   const matches: ManagedMatch[] = [];
@@ -824,12 +826,8 @@ function buildFourTeamDoubleElim(
   if (hasPlayInLosersPool) {
     addRound("lb-r2", "Lower — Final", "lower", 1, () => "Lower Final");
   }
-  addRound(
-    "lb-f",
-    hasPlayInLosersPool ? "Lower — Reset" : "Lower — Final",
-    "lower",
-    1,
-    () => (hasPlayInLosersPool ? "Lower Reset" : "Lower Final"),
+  addRound("lb-f", hasPlayInLosersPool ? "Lower — Reset" : "Lower — Final", "lower", 1, () =>
+    hasPlayInLosersPool ? "Lower Reset" : "Lower Final",
   );
   addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
 
@@ -931,9 +929,7 @@ function roundProcessRank(roundId: string): number {
 }
 
 function processingOrder(matches: ManagedMatch[]): ManagedMatch[] {
-  return [...matches].sort(
-    (a, b) => roundProcessRank(a.roundId) - roundProcessRank(b.roundId),
-  );
+  return [...matches].sort((a, b) => roundProcessRank(a.roundId) - roundProcessRank(b.roundId));
 }
 
 function isEliminationMatch(match: ManagedMatch): boolean {
