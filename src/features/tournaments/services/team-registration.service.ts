@@ -7,6 +7,7 @@ import { fetchTournaments } from "@/features/admin/features/tournaments/services
 import { fetchTeamsForUser } from "@/features/admin/features/teams/services/teams.service";
 import { isActiveMember } from "@/features/teams/utils/membership";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
+import { isRegistrationOpen } from "@/features/tournaments/utils/tournament-status";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import type { Team } from "@/features/teams/types";
 
@@ -30,7 +31,7 @@ export async function fetchActiveMemberTeams(memberId: string): Promise<Team[]> 
 export async function fetchOpenTeamTournaments(game?: Team["game"]): Promise<MockTournament[]> {
   const tournaments = await fetchTournaments();
   return tournaments.filter((tournament) => {
-    if (tournament.status !== "Registration Open") return false;
+    if (!isRegistrationOpen(tournament)) return false;
     if (isSoloTournament(tournament)) return false;
     if (!game || game === "Multi") return true;
     return tournament.game === game;

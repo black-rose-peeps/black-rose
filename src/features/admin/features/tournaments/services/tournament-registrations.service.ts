@@ -8,6 +8,7 @@ import {
 } from "@/features/admin/features/teams/services/teams.service";
 import type { Team } from "@/features/teams/types";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
+import { isRegistrationOpen } from "@/features/tournaments/utils/tournament-status";
 import { assertMemberAvailableForTournament } from "@/features/tournaments/utils/member-tournament-eligibility";
 import { isBlockingTournamentStatus } from "@/features/tournaments/utils/team-tournament-eligibility";
 import { fetchTournamentById, fetchTournaments, syncTournamentTeamCount } from "./tournaments.service";
@@ -156,8 +157,11 @@ async function validateTeamForTournamentRegistration(
 ): Promise<Awaited<ReturnType<typeof fetchTournamentById>> & object> {
   const tournament = await fetchTournamentById(tournamentId);
   if (!tournament) throw new Error("Tournament not found.");
-  if (options?.requireOpenRegistration && tournament.status !== "Registration Open") {
-    throw new Error("Registration is not open for this tournament.");
+  if (options?.requireOpenRegistration && !isRegistrationOpen(tournament)) {
+    if (tournament.status !== "Registration Open") {
+      throw new Error("Registration is not open for this tournament.");
+    }
+    throw new Error("Registration deadline has passed.");
   }
   if (isSoloTournament(tournament)) {
     throw new Error("This tournament uses direct player registration.");

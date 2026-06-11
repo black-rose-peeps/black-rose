@@ -4,6 +4,12 @@ import {
 } from "./tournament-registrations.service";
 import { supabase } from "@/lib/supabase";
 import type { MockTournament } from "@/lib/mock-data";
+import {
+  blocksRegistrationReopen,
+  isRegistrationDeadlineExtended,
+  isRegistrationDeadlinePassed,
+  withResolvedTournamentStatus,
+} from "@/features/tournaments/utils/tournament-status";
 import type { PrizeTier } from "@/features/tournaments/types";
 import type { ParticipationType, WwmMode } from "@/features/tournaments/types/participation";
 import { resolveParticipationType } from "@/features/tournaments/types/participation";
@@ -61,6 +67,66 @@ function participationColumnsMissing(message: string): boolean {
   return message.includes("participation_type") || message.includes("wwm_mode");
 }
 
+async function reopenRegistrationIfDeadlineExtended(
+  previous: MockTournament | null,
+  tournament: MockTournament,
+): Promise<MockTournament> {
+  if (
+    !previous ||
+    tournament.status !== "Registration Closed" ||
+    blocksRegistrationReopen(tournament.status) ||
+    isRegistrationDeadlinePassed(tournament.registrationDeadline) ||
+    !isRegistrationDeadlineExtended(previous.registrationDeadline, tournament.registrationDeadline)
+  ) {
+    return tournament;
+  }
+
+  const { data, error } = await supabase
+    .from("tournaments")
+    .update({ status: "Registration Open" })
+    .eq("id", tournament.id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return rowToTournament(data);
+}
+
+async function closeRegistrationIfDeadlinePassed(
+  tournament: MockTournament,
+): Promise<MockTournament> {
+  if (
+    tournament.status !== "Registration Open" ||
+    !isRegistrationDeadlinePassed(tournament.registrationDeadline)
+  ) {
+    return tournament;
+  }
+
+  const { data, error } = await supabase
+    .from("tournaments")
+    .update({ status: "Registration Closed" })
+    .eq("id", tournament.id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return rowToTournament(data);
+}
+
+async function hydrateTournament(tournament: MockTournament): Promise<MockTournament> {
+  const teamsRegistered = await reconcileTournamentTeamCount(
+    tournament.id,
+    tournament.teamsRegistered,
+  );
+  const withCount =
+    teamsRegistered === tournament.teamsRegistered
+      ? tournament
+      : { ...tournament, teamsRegistered };
+
+  const closed = await closeRegistrationIfDeadlinePassed(withCount);
+  return withResolvedTournamentStatus(closed);
+}
+
 export async function fetchTournaments(): Promise<MockTournament[]> {
   const { data, error } = await supabase
     .from("tournaments")
@@ -69,17 +135,7 @@ export async function fetchTournaments(): Promise<MockTournament[]> {
 
   if (error) throw new Error(error.message);
   const tournaments = (data ?? []).map(rowToTournament);
-  return Promise.all(
-    tournaments.map(async (tournament) => {
-      const teamsRegistered = await reconcileTournamentTeamCount(
-        tournament.id,
-        tournament.teamsRegistered,
-      );
-      return teamsRegistered === tournament.teamsRegistered
-        ? tournament
-        : { ...tournament, teamsRegistered };
-    }),
-  );
+  return Promise.all(tournaments.map((tournament) => hydrateTournament(tournament)));
 }
 
 export async function fetchTournamentById(id: string): Promise<MockTournament | null> {
@@ -91,14 +147,7 @@ export async function fetchTournamentById(id: string): Promise<MockTournament | 
   }
   if (!data) return null;
 
-  const tournament = rowToTournament(data);
-  const teamsRegistered = await reconcileTournamentTeamCount(
-    tournament.id,
-    tournament.teamsRegistered,
-  );
-  return teamsRegistered === tournament.teamsRegistered
-    ? tournament
-    : { ...tournament, teamsRegistered };
+  return hydrateTournament(rowToTournament(data));
 }
 
 export async function getTournamentByIdSync(id: string): Promise<MockTournament | null> {
@@ -202,6 +251,8 @@ export async function updateTournament(
   id: string,
   input: CreateTournamentInput,
 ): Promise<MockTournament> {
+  const previous = await fetchTournamentById(id);
+
   const { data, error } = await supabase
     .from("tournaments")
     .update({
@@ -230,13 +281,14 @@ export async function updateTournament(
     throw new Error(error.message);
   }
 
-  const updated = rowToTournament(data);
+  let updated = rowToTournament(data);
   if (updated.status === "Completed" || updated.status === "Archived") {
     await concludeTournamentRegistrations(id);
     await releaseTeamsFromTournament(id);
   }
 
-  return updated;
+  updated = await reopenRegistrationIfDeadlineExtended(previous, updated);
+  return hydrateTournament(updated);
 }
 
 /** Unregister all teams from a tournament. Does not delete rows in `teams`. */
