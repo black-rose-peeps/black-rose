@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import type { TournamentTeam } from "../../types";
 
 // ── Page size ──────────────────────────────────────────────────────────────
@@ -376,7 +377,17 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
               {team.players.map((p, i) => (
                 <TableRow key={`${p.ign}-${i}`}>
                   <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
-                  <TableCell className="font-medium">{p.ign}</TableCell>
+                  <TableCell>
+                    {p.discord ? (
+                      <MemberNameStack
+                        displayName={p.ign}
+                        discordUsername={p.discord}
+                        size="sm"
+                      />
+                    ) : (
+                      <span className="font-medium">{p.ign}</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="font-tech text-[10px] uppercase">
                       {p.role}

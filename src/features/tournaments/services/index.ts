@@ -20,6 +20,7 @@ export {
   fetchRegistrationsForTeam,
   fetchTeamTournamentRegistration,
   requestCaptainTeamRegistration,
+  isPendingCaptainRegistrationStatus,
   isRegisteredCaptainStatus,
   pendingRegistrations,
   approvedRegistration,

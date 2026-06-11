@@ -4,6 +4,7 @@ import tftHeader from "@/assets/tft-tournament-header.jpg";
 import wwmHeader from "@/assets/wwm-tournament-header.jpg";
 import type { TournamentGame, TournamentStatus } from "../types";
 import type { MockTournament } from "@/lib/mock-data";
+import { resolveTournamentStatus } from "./tournament-status";
 
 export const GAME_ABBREVIATIONS: Record<TournamentGame, string> = {
   Valorant: "VAL",
@@ -65,7 +66,11 @@ export const GAME_COVER_GRADIENT: Record<TournamentGame, string> = {
 export function formatShortDate(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function formatSlotLabel(registered: number, cap: number): string {
@@ -85,6 +90,7 @@ export function pickSpotlightTournaments<T extends MockTournament>(
   };
 
   return [...tournaments]
+    .map((t) => ({ ...t, status: resolveTournamentStatus(t) }))
     .filter((t) => t.status !== "Completed" && t.status !== "Archived" && t.status !== "Draft")
     .sort((a, b) => {
       const byStatus = priority(a.status) - priority(b.status);

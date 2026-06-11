@@ -29,7 +29,9 @@ export function playInMatchCount(teamCount: number): number {
 /** Match counts per single-elimination round for a power-of-2 field. */
 export function powerOfTwoElimRoundMatchCounts(teamCount: number): number[] {
   if (!isPowerOfTwo(teamCount)) {
-    throw new Error(`powerOfTwoElimRoundMatchCounts requires a power-of-2 size; received ${teamCount}.`);
+    throw new Error(
+      `powerOfTwoElimRoundMatchCounts requires a power-of-2 size; received ${teamCount}.`,
+    );
   }
   const rounds: number[] = [];
   let size = teamCount;

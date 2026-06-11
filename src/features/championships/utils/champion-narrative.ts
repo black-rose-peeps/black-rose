@@ -3,7 +3,11 @@ import type { HallOfChampionRecord } from "../types";
 export function formatChampionDate(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function formatChampionLongDate(value: string): string {
@@ -13,6 +17,7 @@ export function formatChampionLongDate(value: string): string {
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 

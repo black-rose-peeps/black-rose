@@ -87,7 +87,12 @@ export function useTournamentRegistrations(tournamentId: string) {
 
   const prependRegistrations = useCallback((items: MockTeam[]) => {
     if (!items.length) return;
-    setRegistrations((prev) => [...items, ...prev]);
+    setRegistrations((prev) => {
+      const seen = new Set(prev.map((row) => row.id));
+      const fresh = items.filter((row) => !seen.has(row.id));
+      if (!fresh.length) return prev;
+      return [...fresh, ...prev];
+    });
   }, []);
 
   const updateRegistration = useCallback((registration: MockTeam) => {

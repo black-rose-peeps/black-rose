@@ -1,6 +1,7 @@
 import type { TournamentStatus } from "../types";
 import type { MockTournament, MockTeam } from "@/lib/mock-data";
 import type { TournamentTeam } from "../types";
+import { resolveTournamentStatus } from "./tournament-status";
 
 /** Statuses visible on the public tournament directory (excludes Draft and Archived). */
 export const PUBLIC_STATUSES = new Set<string>([
@@ -27,7 +28,12 @@ export function toPublicTournamentStatus(status: string): TournamentStatus {
 export function getPublicTournaments(
   tournaments: MockTournament[],
 ): (MockTournament & { status: TournamentStatus })[] {
-  return tournaments.filter((t) => PUBLIC_STATUSES.has(t.status)) as (MockTournament & {
+  return tournaments
+    .map((tournament) => ({
+      ...tournament,
+      status: resolveTournamentStatus(tournament),
+    }))
+    .filter((t) => PUBLIC_STATUSES.has(t.status)) as (MockTournament & {
     status: TournamentStatus;
   })[];
 }
@@ -43,7 +49,11 @@ export function mockTeamToTournamentTeam(team: MockTeam, index: number): Tournam
     tag: team.tag,
     captain: team.captain,
     seed: index + 1,
-    players: team.members.map((m) => ({ ign: m.ign, role: m.role })),
+    players: team.members.map((m) => ({
+      ign: m.ign,
+      role: m.role,
+      discord: m.discord,
+    })),
   };
 }
 
@@ -66,3 +76,16 @@ export {
   getGameAbbrev,
   pickSpotlightTournaments,
 } from "./tournament-display";
+
+export {
+  blocksRegistrationReopen,
+  calendarTodayDateOnly,
+  isRegistrationDeadlineExtended,
+  isRegistrationDeadlinePassed,
+  isRegistrationOpen,
+  isTournamentConcluded,
+  resolveTournamentStatus,
+  tournamentDateOnly,
+  utcTodayDateOnly,
+  withResolvedTournamentStatus,
+} from "./tournament-status";

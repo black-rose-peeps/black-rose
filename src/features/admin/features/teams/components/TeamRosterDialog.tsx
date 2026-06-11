@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { isValorantGame } from "@/features/member/utils/valorant-identity";
 import { useRemoveTeamMember } from "../hooks/useRemoveTeamMember";
 import type { Team } from "../types";
 
@@ -55,6 +57,7 @@ export function TeamRosterDialog({ open, team, onClose, onUpdated }: TeamRosterD
   if (!team) return null;
 
   const roster = team.members.filter((m) => m.status === "captain" || m.status === "active");
+  const showIgnSubline = !isValorantGame(team.game);
 
   return (
     <Dialog
@@ -99,8 +102,14 @@ export function TeamRosterDialog({ open, team, onClose, onUpdated }: TeamRosterD
               roster.map((member) => (
                 <TableRow key={member.userId}>
                   <TableCell>
-                    <div className="font-medium">{member.username}</div>
-                    <div className="text-xs text-muted-foreground">{member.ign}</div>
+                    <MemberNameStack
+                      displayName={member.displayName}
+                      discordUsername={member.discordUsername}
+                      size="sm"
+                    />
+                    {showIgnSubline && (
+                      <div className="mt-1 text-xs text-muted-foreground">{member.ign}</div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

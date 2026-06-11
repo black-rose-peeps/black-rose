@@ -148,6 +148,15 @@ async function syncTournamentChampion(
   // const mvp = payload.placements?.find((p) => p.rank === 1)?.mvp ?? null;
   const mvp = null;
 
+  const { data: existing } = await supabase
+    .from("tournament_champions")
+    .select("completed_at")
+    .eq("tournament_id", tournamentId)
+    .maybeSingle();
+
+  const completedAt =
+    existing?.completed_at ?? new Date().toISOString().split("T")[0];
+
   await supabase.from("tournament_champions").upsert(
     {
       tournament_id: tournamentId,
@@ -155,7 +164,7 @@ async function syncTournamentChampion(
       team_name: championName,
       team_tag: teamTag,
       mvp: mvp ?? null,
-      completed_at: new Date().toISOString().split("T")[0],
+      completed_at: completedAt,
     },
     { onConflict: "tournament_id" },
   );

@@ -65,10 +65,7 @@ export function applyGameToParticipationForm(
 }
 
 export function formValuesToCreateInput(values: CreateTournamentFormValues): CreateTournamentInput {
-  const wwmMode =
-    values.game === "Where Winds Meet"
-      ? (values.wwmMode || "group_strategy")
-      : null;
+  const wwmMode = values.game === "Where Winds Meet" ? values.wwmMode || "group_strategy" : null;
 
   return {
     name: values.name.trim(),

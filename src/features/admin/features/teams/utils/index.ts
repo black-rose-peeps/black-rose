@@ -103,14 +103,25 @@ export function hasFormErrors<T extends object>(errors: Partial<Record<keyof T, 
   return Object.keys(errors).length > 0;
 }
 
-export function adminMemberToTeamMember(member: AdminMember, role: TeamMember["role"]): TeamMember {
-  const initials = member.username.slice(0, 2).toUpperCase();
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+export function adminMemberToTeamMember(
+  member: AdminMember,
+  role: TeamMember["role"],
+  displayName = member.username,
+  ign = member.username,
+): TeamMember {
   return {
     userId: member.id,
     username: member.username,
-    displayName: member.username,
-    avatarInitials: initials,
-    ign: member.username,
+    discordUsername: member.discordUsername,
+    displayName,
+    avatarInitials: initialsFromName(displayName),
+    ign,
     role,
     status: "active",
     joinedAt: new Date().toISOString(),

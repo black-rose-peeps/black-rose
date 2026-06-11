@@ -3,10 +3,7 @@
  * Handles bracket generation, team validation, and automatic positioning
  */
 
-import {
-  isEvenBracketFieldSize,
-  singleElimRoundMatchCounts,
-} from "../utils/bracket-field";
+import { isEvenBracketFieldSize, singleElimRoundMatchCounts } from "../utils/bracket-field";
 
 export interface BracketMatch {
   matchId: string;

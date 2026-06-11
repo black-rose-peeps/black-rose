@@ -11,6 +11,10 @@ export async function syncSessionFromDatabase(): Promise<AppUser | null> {
   const result = await refreshMemberSession({ data: { memberId: session.id } });
   const updated = applyVerificationToSession(session, {
     username: result.username,
+    discordUsername: result.discordUsername,
+    displayName: result.displayName,
+    profileSlug: result.profileSlug,
+    avatarUrl: result.avatarUrl,
     discordId: result.discordId,
     status: result.status,
     registeredAt: result.registeredAt,

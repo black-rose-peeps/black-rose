@@ -15,6 +15,8 @@ import {
   buildTeamTagMap,
   mockTeamToTournamentTeam,
   resolveTournamentRules,
+  isRegistrationOpen,
+  resolveTournamentStatus,
   toPublicTournamentStatus,
 } from "@/features/tournaments/utils";
 import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
@@ -35,7 +37,7 @@ import type { BracketRound, TournamentDetail } from "@/features/tournaments/type
 import type { MockTournament } from "@/lib/mock-data";
 
 function detailFromSummary(summary: MockTournament, bracketRounds: BracketRound[] = []): TournamentDetail {
-  const status = toPublicTournamentStatus(summary.status);
+  const status = toPublicTournamentStatus(resolveTournamentStatus(summary));
   return {
     id: summary.id,
     name: summary.name,
@@ -274,7 +276,7 @@ function TournamentDetailPage() {
   const isLoadingDetail = tournament.name === "Loading…";
   const session = getSession();
   const canRegisterTeam =
-    liveDetail.status === "Registration Open" &&
+    isRegistrationOpen(liveDetail) &&
     !isSoloTournament(liveDetail) &&
     session &&
     hasFullMemberAccess(session.role);
