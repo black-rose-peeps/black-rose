@@ -65,7 +65,11 @@ export const GAME_COVER_GRADIENT: Record<TournamentGame, string> = {
 export function formatShortDate(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function formatSlotLabel(registered: number, cap: number): string {
