@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "join.blackrose.asia"
+        }
+      ],
+      "destination": "https://discord.gg/blackrosehq",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.blackrose.asia"
+        }
+      ],
+      "destination": "/admin/:path*"
+    }
+  ]
+}
