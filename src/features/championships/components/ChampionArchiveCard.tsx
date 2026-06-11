@@ -16,7 +16,8 @@ interface ChampionArchiveCardProps {
 }
 
 export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchiveCardProps) {
-  const accent = GAME_EDITORIAL_ACCENT[resolveGame(champion.game)];
+  const game = resolveGame(champion.game);
+  const accent = GAME_EDITORIAL_ACCENT[game];
 
   return (
     <button
@@ -38,7 +39,7 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
         <div
           className={`absolute right-4 top-4 border px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-md ${accent.tag}`}
         >
-          {getGameAbbrev(resolveGame(champion.game))}
+          {getGameAbbrev(game)}
         </div>
       </div>
 
