@@ -1,26 +1,13 @@
 import { Crown } from "lucide-react";
 import {
   GAME_EDITORIAL_ACCENT,
+  getGameAbbrev,
 } from "@/features/tournaments/utils/tournament-display";
-import type { TournamentGame } from "@/features/tournaments/types";
 import type { HallOfChampionRecord } from "../types";
 import { formatChampionDate } from "../utils/champion-narrative";
+import { resolveGame } from "../utils/game-mapping";
 import { ChampionPortrait } from "./ChampionPortrait";
 import { RoseStarMark } from "./RoseStarMark";
-
-function resolveGame(game: string): TournamentGame {
-  if (game === "League of Legends") return "League of Legends";
-  if (game === "Teamfight Tactics") return "Teamfight Tactics";
-  if (game === "Where Winds Meet") return "Where Winds Meet";
-  return "Valorant";
-}
-
-function gameAbbrev(game: string): string {
-  if (game === "League of Legends") return "LoL";
-  if (game === "Where Winds Meet") return "WWM";
-  if (game === "Teamfight Tactics") return "TFT";
-  return "VAL";
-}
 
 interface ChampionArchiveCardProps {
   champion: HallOfChampionRecord;
@@ -51,7 +38,7 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
         <div
           className={`absolute right-4 top-4 border px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-md ${accent.tag}`}
         >
-          {gameAbbrev(champion.game)}
+          {getGameAbbrev(resolveGame(champion.game))}
         </div>
       </div>
 

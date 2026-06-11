@@ -41,7 +41,9 @@ export function TeamRosterPanel({
     .filter((m) => m.status === "invited")
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
-  const rosterCount = team.members.filter((m) => m.status !== "removed").length;
+  const rosterCount = isPublic
+    ? activeMembers.length
+    : team.members.filter((m) => m.status !== "removed").length;
   const fillPercent = Math.min(100, Math.round((rosterCount / MAX_TEAM_SIZE) * 100));
 
   return (
@@ -86,7 +88,7 @@ export function TeamRosterPanel({
               <span className="border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 text-emerald-400">
                 {activeMembers.length} active
               </span>
-              {pendingMembers.length > 0 && (
+              {!isPublic && pendingMembers.length > 0 && (
                 <span className="border border-amber-400/20 bg-amber-400/5 px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
                   {pendingMembers.length} pending
                 </span>

@@ -3,16 +3,9 @@ import {
   GAME_EDITORIAL_ACCENT,
   GAME_TOURNAMENT_HEADER,
 } from "@/features/tournaments/utils/tournament-display";
-import type { TournamentGame } from "@/features/tournaments/types";
 import type { HallOfChampionRecord } from "../types";
 import { crownVariantLabel } from "../utils/champion-narrative";
-
-function resolveGame(game: string): TournamentGame {
-  if (game === "League of Legends") return "League of Legends";
-  if (game === "Teamfight Tactics") return "Teamfight Tactics";
-  if (game === "Where Winds Meet") return "Where Winds Meet";
-  return "Valorant";
-}
+import { resolveGame } from "../utils/game-mapping";
 
 interface ChampionPortraitProps {
   champion: HallOfChampionRecord;

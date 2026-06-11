@@ -1,32 +1,12 @@
 "use client";
 
 import { Link } from "@tanstack/react-router";
+import { ChampionCardsSkeleton } from "@/features/championships/components/ChampionCardsSkeleton";
 import { HallOfChampionsGrid } from "@/features/championships/components/HallOfChampionsGrid";
 import { useHallOfChampions } from "@/features/championships/hooks/useHallOfChampions";
-import { Skeleton } from "@/components/ui/skeleton";
 import { SectionHeading } from "./SectionHeading";
 
 const SNEAK_PEEK_LIMIT = 3;
-
-function HallOfChampionsSkeleton() {
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: SNEAK_PEEK_LIMIT }).map((_, index) => (
-        <div
-          key={index}
-          className="clip-angle-lg flex flex-col border border-white/8 bg-[oklch(0.055_0_0)]"
-        >
-          <Skeleton className="aspect-3/4 rounded-none bg-white/5" />
-          <div className="flex flex-col gap-3 p-5">
-            <Skeleton className="h-7 w-3/4 rounded-none bg-white/5" />
-            <Skeleton className="h-3 w-full rounded-none bg-white/5" />
-            <Skeleton className="h-3 w-1/3 rounded-none bg-white/5" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function HallOfChampions() {
   const { champions, isLoading, error } = useHallOfChampions();
@@ -64,7 +44,7 @@ export function HallOfChampions() {
         </div>
 
         {isLoading ? (
-          <HallOfChampionsSkeleton />
+          <ChampionCardsSkeleton count={SNEAK_PEEK_LIMIT} />
         ) : error ? (
           <div className="border border-white/8 bg-card/40 px-6 py-12 text-center">
             <p className="font-display text-xl tracking-display text-white">Archive unavailable</p>

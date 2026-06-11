@@ -10,22 +10,15 @@ import {
 import {
   GAME_EDITORIAL_ACCENT,
 } from "@/features/tournaments/utils/tournament-display";
-import type { TournamentGame } from "@/features/tournaments/types";
 import type { HallOfChampionRecord } from "../types";
 import {
   buildChampionNarrative,
   crownVariantLabel,
   formatChampionLongDate,
 } from "../utils/champion-narrative";
+import { resolveGame } from "../utils/game-mapping";
 import { ChampionPortrait } from "./ChampionPortrait";
 import { RoseStarMark } from "./RoseStarMark";
-
-function resolveGame(game: string): TournamentGame {
-  if (game === "League of Legends") return "League of Legends";
-  if (game === "Teamfight Tactics") return "Teamfight Tactics";
-  if (game === "Where Winds Meet") return "Where Winds Meet";
-  return "Valorant";
-}
 
 interface ChampionStoryDialogProps {
   champion: HallOfChampionRecord | null;

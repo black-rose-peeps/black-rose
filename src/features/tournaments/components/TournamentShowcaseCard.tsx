@@ -9,6 +9,7 @@ import {
   formatSlotLabel,
   GAME_EDITORIAL_ACCENT,
   GAME_TOURNAMENT_HEADER,
+  getGameAbbrev,
 } from "../utils/tournament-display";
 import { TournamentCardCtaSkeleton } from "./SelectTeamRegistrationSkeleton";
 import type { Tournament } from "../types";
@@ -149,7 +150,7 @@ export function TournamentShowcaseCard({
         <div
           className={`absolute right-4 top-4 border px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-md ${accent.tag}`}
         >
-          {t.game === "League of Legends" ? "LoL" : t.game === "Where Winds Meet" ? "WWM" : t.game === "Teamfight Tactics" ? "TFT" : "VAL"}
+          {getGameAbbrev(t.game)}
         </div>
 
         {/* Vertical editorial index */}

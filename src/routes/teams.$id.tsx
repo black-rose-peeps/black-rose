@@ -67,8 +67,12 @@ function TeamDetailPage() {
           setTeam(null);
         } else {
           setTeam(data);
+          const isViewerMember = Boolean(
+            memberId &&
+              data.members.some((m) => m.userId === memberId && m.status !== "removed"),
+          );
           const [regsResult, titlesResult] = await Promise.allSettled([
-            fetchRegistrationsForTeam(data.id),
+            isViewerMember ? fetchRegistrationsForTeam(data.id) : Promise.resolve([]),
             fetchTeamChampionships(data.id),
           ]);
           if (regsResult.status === "fulfilled") {
@@ -92,7 +96,7 @@ function TeamDetailPage() {
         if (showLoader) setLoading(false);
       }
     },
-    [id],
+    [id, memberId],
   );
 
   const refreshTeam = useCallback(() => {
@@ -266,7 +270,7 @@ function TeamDetailPage() {
               </span>
               <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <span>{activeCount} active</span>
-                {pendingCount > 0 && (
+                {!isPublicView && pendingCount > 0 && (
                   <span className="text-amber-400">{pendingCount} pending invite</span>
                 )}
                 <span>Created {new Date(team.createdAt).toLocaleDateString()}</span>

@@ -5,6 +5,17 @@ import wwmHeader from "@/assets/wwm-tournament-header.jpg";
 import type { TournamentGame, TournamentStatus } from "../types";
 import type { MockTournament } from "@/lib/mock-data";
 
+export const GAME_ABBREVIATIONS: Record<TournamentGame, string> = {
+  Valorant: "VAL",
+  "League of Legends": "LoL",
+  "Teamfight Tactics": "TFT",
+  "Where Winds Meet": "WWM",
+};
+
+export function getGameAbbrev(game: TournamentGame): string {
+  return GAME_ABBREVIATIONS[game];
+}
+
 export const GAME_TOURNAMENT_HEADER: Record<TournamentGame, string> = {
   Valorant: valorantHeader,
   "League of Legends": lolHeader,

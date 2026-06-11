@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { ChampionArchiveStatsStrip } from "@/features/championships/components/ChampionArchiveStat";
+import { ChampionCardsSkeleton } from "@/features/championships/components/ChampionCardsSkeleton";
 import { HallOfChampionsGrid } from "@/features/championships/components/HallOfChampionsGrid";
 import { useHallOfChampions } from "@/features/championships/hooks/useHallOfChampions";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,26 +22,6 @@ export const Route = createFileRoute("/champions/")({
   }),
   component: ChampionsPage,
 });
-
-function ChampionsPageSkeleton() {
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div
-          key={index}
-          className="clip-angle-lg flex flex-col border border-white/8 bg-[oklch(0.055_0_0)]"
-        >
-          <Skeleton className="aspect-3/4 rounded-none bg-white/5" />
-          <div className="flex flex-col gap-3 p-5">
-            <Skeleton className="h-7 w-3/4 rounded-none bg-white/5" />
-            <Skeleton className="h-3 w-full rounded-none bg-white/5" />
-            <Skeleton className="h-3 w-1/3 rounded-none bg-white/5" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function ChampionsPage() {
   const { champions, isLoading, error } = useHallOfChampions();
@@ -127,7 +108,7 @@ function ChampionsPage() {
 
         <div className="relative mx-auto max-w-7xl px-6 py-14">
           {isLoading ? (
-            <ChampionsPageSkeleton />
+            <ChampionCardsSkeleton count={6} />
           ) : error ? (
             <div className="border border-white/8 bg-card/40 px-6 py-12 text-center">
               <p className="font-display text-xl tracking-display text-white">Archive unavailable</p>
