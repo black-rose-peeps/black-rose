@@ -43,7 +43,11 @@ export function teamHasOpenRegistration(
 ): boolean {
   const registration = registrations.find((r) => r.tournamentId === tournamentId);
   if (!registration) return false;
-  return registration.status === "Pending" || registration.status === "Approved";
+  return (
+    registration.status === "Pending" ||
+    registration.status === "Approved" ||
+    registration.status === "Previously Competed"
+  );
 }
 
 export function pendingRegistrations(registrations: MockTeam[]): MockTeam[] {
@@ -93,7 +97,13 @@ function mergeCaptainRegistrationStatus(
 }
 
 export function isRegisteredCaptainStatus(status: CaptainTournamentRegistrationStatus): boolean {
-  return status === "approved" || status === "previously_competed";
+  return status === "approved";
+}
+
+export function isPendingCaptainRegistrationStatus(
+  status: CaptainTournamentRegistrationStatus,
+): boolean {
+  return status === "pending" || status === "previously_competed";
 }
 
 export async function fetchCaptainRegistrationStatusForTournament(

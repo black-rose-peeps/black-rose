@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchMembers } from "@/features/admin/features/members/services/members.service";
 import type { AdminMember } from "@/features/admin/features/members/types";
 import { matchesAdminSearch } from "@/features/admin/utils/search";
+import { countSlotFilledRegistrations } from "@/features/admin/features/participants/constants/registration-status";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import { useAddMemberToTournament } from "../hooks/useAddMemberToTournament";
 import { fetchUnavailableMemberIdsForTournament } from "../services/tournament-registrations.service";
@@ -67,7 +68,8 @@ export function AddMembersToTournamentDialog({
     });
   }, [members, registeredMemberIds, unavailableMemberIds, searchQuery]);
 
-  const slotsRemaining = Math.max(0, tournament.teamCap - registeredEntries.length);
+  const approvedCount = countSlotFilledRegistrations(registeredEntries);
+  const slotsRemaining = Math.max(0, tournament.teamCap - approvedCount);
   const atCap = slotsRemaining === 0;
   const selectedCount = selectedMemberIds.size;
   const memberById = useMemo(
@@ -162,7 +164,7 @@ export function AddMembersToTournamentDialog({
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Add Players</DialogTitle>
           <DialogDescription>
-            Register individual members in {tournament.name}. {registeredEntries.length}/
+            Register individual members in {tournament.name}. {approvedCount}/
             {tournament.teamCap} slots used
             {!atCap && ` · ${slotsRemaining} slot${slotsRemaining === 1 ? "" : "s"} left`}.
           </DialogDescription>

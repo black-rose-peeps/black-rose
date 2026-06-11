@@ -67,6 +67,7 @@ import {
 } from "@/features/admin/features/tournaments/utils";
 import {
   isBracketSeedingStatus,
+  countSlotFilledRegistrations,
   REGISTRATION_STATUS_SORT_ORDER,
   registrationActionsEnabled,
   tournamentHasUnresolvedRegistrations,
@@ -228,6 +229,7 @@ function TournamentDetailPage() {
 
   // ── Loaded ─────────────────────────────────────────────────────────────
 
+  const approvedCount = countSlotFilledRegistrations(teams);
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
 
   const bracketTeams = teams.filter((t) => isBracketSeedingStatus(t.status, tournament.status));
@@ -349,7 +351,7 @@ function TournamentDetailPage() {
             },
             {
               label: capLabel,
-              value: `${teams.length}/${tournament.teamCap}`,
+              value: `${approvedCount}/${tournament.teamCap}`,
               icon: <Users className="h-3.5 w-3.5" />,
             },
             {
@@ -424,9 +426,9 @@ function TournamentDetailPage() {
                     type="button"
                     size="sm"
                     className="gap-2 font-tech uppercase tracking-wider"
-                    disabled={teams.length >= tournament.teamCap}
+                    disabled={approvedCount >= tournament.teamCap}
                     title={
-                      teams.length >= tournament.teamCap
+                      approvedCount >= tournament.teamCap
                         ? `${capLabel} reached`
                         : soloEvent
                           ? "Register members directly"

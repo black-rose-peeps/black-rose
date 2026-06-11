@@ -20,6 +20,19 @@ export function canBulkApproveParticipant(
   );
 }
 
+/** Registrations that occupy a tournament slot / teams_registered / registration cap. */
+export function isSlotCountedRegistrationStatus(status: RegistrationStatus): boolean {
+  return status === "Approved";
+}
+
+export function countSlotFilledRegistrations(
+  registrations: ReadonlyArray<{ status: RegistrationStatus }>,
+): number {
+  return registrations.filter((registration) =>
+    isSlotCountedRegistrationStatus(registration.status),
+  ).length;
+}
+
 /** Entrants that count toward bracket seeding (including after event completion). */
 export function isBracketParticipantStatus(status: RegistrationStatus): boolean {
   return status === "Approved" || status === "Previously Competed";

@@ -12,12 +12,6 @@ import { assertMemberAvailableForTournament } from "@/features/tournaments/utils
 import { isBlockingTournamentStatus } from "@/features/tournaments/utils/team-tournament-eligibility";
 import { fetchTournamentById, fetchTournaments, syncTournamentTeamCount } from "./tournaments.service";
 
-const REGISTRATION_COUNT_STATUSES: MockTeam["status"][] = [
-  "Pending",
-  "Approved",
-  "Previously Competed",
-];
-
 export {
   assertMemberAvailableForTournament,
   fetchUnavailableMemberIdsForTournament,
@@ -99,7 +93,7 @@ async function initialRegistrationStatus(params: {
     memberUserId: params.memberUserId,
     excludeTournamentId: params.tournamentId,
   });
-  return veteran ? "Previously Competed" : "Approved";
+  return veteran ? "Previously Competed" : "Pending";
 }
 
 async function countTournamentRegistrations(tournamentId: string): Promise<number> {
@@ -107,7 +101,7 @@ async function countTournamentRegistrations(tournamentId: string): Promise<numbe
     .from("tournament_registrations")
     .select("id", { count: "exact", head: true })
     .eq("tournament_id", tournamentId)
-    .in("status", REGISTRATION_COUNT_STATUSES);
+    .eq("status", "Approved");
 
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -321,7 +315,14 @@ export async function updateRegistrationStatus(
 
   if (status === "Approved" && existing.status !== "Approved") {
     const tournament = await fetchTournamentById(existing.tournamentId);
-    if (existing.rosterTeamId && tournament) {
+    if (!tournament) throw new Error("Tournament not found.");
+
+    const approvedCount = await countTournamentRegistrations(existing.tournamentId);
+    if (approvedCount >= tournament.teamCap) {
+      throw new Error(`Registration cap reached (${tournament.teamCap}).`);
+    }
+
+    if (existing.rosterTeamId) {
       await assignTeamActiveTournament(
         existing.rosterTeamId,
         existing.tournamentId,
