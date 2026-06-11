@@ -113,6 +113,7 @@ export function adminMemberToTeamMember(
   member: AdminMember,
   role: TeamMember["role"],
   displayName = member.username,
+  ign = member.username,
 ): TeamMember {
   return {
     userId: member.id,
@@ -120,7 +121,7 @@ export function adminMemberToTeamMember(
     discordUsername: member.discordUsername,
     displayName,
     avatarInitials: initialsFromName(displayName),
-    ign: member.username,
+    ign,
     role,
     status: "active",
     joinedAt: new Date().toISOString(),

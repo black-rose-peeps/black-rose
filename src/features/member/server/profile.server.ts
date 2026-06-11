@@ -12,6 +12,10 @@ import {
 } from "../utils/build-member-profile";
 import { sanitizeSocialLinksForViewer } from "../utils/social-links";
 import { sanitizeHttpUrl } from "../utils/validate-social-url";
+import {
+  normalizeValorantTagline,
+  validateValorantIdentityInput,
+} from "../utils/valorant-identity";
 import type { MemberProfile } from "../types";
 
 const DISCORD_CONNECTION_PLATFORMS: Record<string, SocialPlatform> = {
@@ -315,6 +319,8 @@ export interface UpdateMemberProfileInput {
   mainGame: string | null;
   mainRole: string;
   region: string;
+  valorantGameName: string;
+  valorantTagline: string;
   isPublic: boolean;
   socialLinks: { platform: SocialPlatform; url: string | null; isPublic: boolean }[];
 }
@@ -342,6 +348,15 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
   if (profileError) throw new Error(profileError.message);
   if (!profile) throw new Error("Profile not found. Sign in again to create your profile.");
 
+  const valorantError = validateValorantIdentityInput(
+    input.valorantGameName,
+    input.valorantTagline,
+  );
+  if (valorantError) throw new Error(valorantError);
+
+  const valorantGameName = input.valorantGameName.trim();
+  const valorantTagline = normalizeValorantTagline(input.valorantTagline);
+
   const { error: updateError } = await supabase
     .from("member_profiles")
     .update({
@@ -351,6 +366,8 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
       main_game: input.mainGame?.trim() || null,
       main_role: input.mainRole.trim(),
       region: input.region.trim(),
+      valorant_game_name: valorantGameName || null,
+      valorant_tagline: valorantTagline || null,
       is_public: input.isPublic,
       updated_at: new Date().toISOString(),
     })

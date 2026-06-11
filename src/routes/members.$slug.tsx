@@ -196,10 +196,10 @@ function MemberProfilePage() {
                   {p.region}
                 </span>
               )}
-              {p.riotAccount?.isLinked && (
+              {p.valorantGameName && p.valorantTagline && (
                 <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
                   <CheckCircle className="h-3 w-3" />
-                  Riot Linked
+                  {p.valorantGameName}#{p.valorantTagline}
                 </span>
               )}
             </div>
@@ -326,14 +326,14 @@ function MemberProfilePage() {
               <div className="h-px bg-white/6" />
               <div>
                 <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                  Riot Account
+                  Valorant ID
                 </dt>
                 <dd
-                  className={`mt-0.5 text-sm ${p.riotAccount?.isLinked ? "text-emerald-400" : "text-muted-foreground"}`}
+                  className={`mt-0.5 text-sm ${p.valorantGameName && p.valorantTagline ? "text-emerald-400" : "text-muted-foreground"}`}
                 >
-                  {p.riotAccount?.isLinked
-                    ? `${p.riotAccount.gameName}#${p.riotAccount.tagline}`
-                    : "Not Linked"}
+                  {p.valorantGameName && p.valorantTagline
+                    ? `${p.valorantGameName}#${p.valorantTagline}`
+                    : "Not set"}
                 </dd>
               </div>
             </dl>

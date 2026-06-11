@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  formatValorantRiotId,
+  isValorantGame,
+} from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { escapePostgrestFilterValue, isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
@@ -156,16 +160,35 @@ function initialsFromName(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-function rowToInviteSearchMember(row: Record<string, unknown>): InviteSearchMember {
+function rowToInviteSearchMember(
+  row: Record<string, unknown>,
+  game?: string,
+): InviteSearchMember {
   const username = row.username as string;
   const discordUsername = row.discord_username as string;
   const profiles = row.member_profiles as
-    | { display_name?: string }
-    | Array<{ display_name?: string }>
+    | {
+        display_name?: string;
+        valorant_game_name?: string | null;
+        valorant_tagline?: string | null;
+      }
+    | Array<{
+        display_name?: string;
+        valorant_game_name?: string | null;
+        valorant_tagline?: string | null;
+      }>
     | null
     | undefined;
   const profile = Array.isArray(profiles) ? profiles[0] : profiles;
-  const displayName = profile?.display_name?.trim() || username;
+  const baseDisplayName = profile?.display_name?.trim() || username;
+  const valorantId =
+    profile &&
+    formatValorantRiotId(
+      profile.valorant_game_name?.trim() ?? "",
+      profile.valorant_tagline?.trim() ?? "",
+    );
+  const displayName =
+    game && isValorantGame(game) && valorantId ? valorantId : baseDisplayName;
 
   return {
     id: row.id as string,
@@ -189,7 +212,10 @@ export async function searchVerifiedMembersForInvite(
 
   let builder = supabase
     .from("members")
-    .select("id, username, discord_username, member_profiles(display_name)", { count: "exact" })
+    .select(
+      "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline)",
+      { count: "exact" },
+    )
     .eq("status", "Verified")
     .order("username", { ascending: true });
 
@@ -214,7 +240,9 @@ export async function searchVerifiedMembersForInvite(
   if (error) throw new Error(error.message);
 
   return {
-    members: (data ?? []).map((row) => rowToInviteSearchMember(row as Record<string, unknown>)),
+    members: (data ?? []).map((row) =>
+      rowToInviteSearchMember(row as Record<string, unknown>, options?.game),
+    ),
     total: count ?? 0,
     page,
     pageSize,

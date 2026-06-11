@@ -67,6 +67,7 @@ export interface BracketRound {
 export interface TournamentPlayer {
   ign: string;
   role: string;
+  discord?: string;
 }
 
 export interface TournamentTeam {

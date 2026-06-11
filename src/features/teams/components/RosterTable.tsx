@@ -1,5 +1,6 @@
 import { Crown, UserMinus, Mail } from "lucide-react";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
+import { isValorantGame } from "@/features/member/utils/valorant-identity";
 import type { Team, TeamMember } from "../types";
 
 interface RosterTableProps {
@@ -29,6 +30,7 @@ export function RosterTable({
   showStatusColumn = true,
 }: RosterTableProps) {
   const isCaptain = team.captainUserId === currentUserId;
+  const showIgnColumn = !isValorantGame(team.game);
   const visible =
     members ?? team.members.filter((m) => m.status !== "removed");
 
@@ -42,16 +44,38 @@ export function RosterTable({
     <div className="overflow-hidden">
       <table className="w-full table-fixed text-sm">
         <colgroup>
-          <col className={showStatusColumn ? "w-[44%]" : "w-[50%]"} />
-          <col className={showStatusColumn ? "w-[22%]" : "w-[25%]"} />
-          <col className={showStatusColumn ? "w-[18%]" : "w-[25%]"} />
+          <col
+            className={
+              showIgnColumn
+                ? showStatusColumn
+                  ? "w-[44%]"
+                  : "w-[50%]"
+                : showStatusColumn
+                  ? "w-[56%]"
+                  : "w-[60%]"
+            }
+          />
+          {showIgnColumn && (
+            <col className={showStatusColumn ? "w-[22%]" : "w-[25%]"} />
+          )}
+          <col
+            className={
+              showIgnColumn
+                ? showStatusColumn
+                  ? "w-[18%]"
+                  : "w-[25%]"
+                : showStatusColumn
+                  ? "w-[28%]"
+                  : "w-[40%]"
+            }
+          />
           {showStatusColumn && <col className="w-[16%]" />}
         </colgroup>
 
         <thead>
           <tr className="border-b border-white/8 bg-white/2 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
             <th className="px-4 py-3 text-left font-normal">Player</th>
-            <th className="px-4 py-3 text-left font-normal">IGN</th>
+            {showIgnColumn && <th className="px-4 py-3 text-left font-normal">IGN</th>}
             <th className="px-4 py-3 text-left font-normal">Main Role</th>
             {showStatusColumn && (
               <th className="px-4 py-3 text-right font-normal">
@@ -92,9 +116,11 @@ export function RosterTable({
                   </div>
                 </td>
 
-                <td className="px-4 py-3">
-                  <span className="truncate text-muted-foreground">{m.ign || "—"}</span>
-                </td>
+                {showIgnColumn && (
+                  <td className="px-4 py-3">
+                    <span className="truncate text-muted-foreground">{m.ign || "—"}</span>
+                  </td>
+                )}
 
                 <td className="px-4 py-3">
                   <span className="truncate text-muted-foreground">{m.role || "—"}</span>

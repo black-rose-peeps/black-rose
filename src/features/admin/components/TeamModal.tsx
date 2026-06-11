@@ -28,7 +28,8 @@ import {
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
 import { registrationActionsEnabled } from "@/features/admin/features/participants/constants/registration-status";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
-import type { TeamMember } from "@/features/teams/types";
+import { isValorantGame } from "@/features/member/utils/valorant-identity";
+import type { Team, TeamMember } from "@/features/teams/types";
 import type { MockTeam, TournamentStatus } from "@/lib/mock-data";
 
 interface TeamModalProps {
@@ -57,6 +58,7 @@ export function TeamModal({
   isUpdating = false,
 }: TeamModalProps) {
   const [liveMembers, setLiveMembers] = useState<TeamMember[] | null>(null);
+  const [rosterGame, setRosterGame] = useState<Team["game"] | null>(null);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [tournamentHistory, setTournamentHistory] = useState<RegistrationHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -84,6 +86,7 @@ export function TeamModal({
   useEffect(() => {
     if (!team.rosterTeamId) {
       setLiveMembers(null);
+      setRosterGame(null);
       return;
     }
 
@@ -93,12 +96,16 @@ export function TeamModal({
     fetchTeamById(team.rosterTeamId)
       .then((rosterTeam) => {
         if (cancelled || !rosterTeam) return;
+        setRosterGame(rosterTeam.game);
         setLiveMembers(
           rosterTeam.members.filter((m) => m.status === "captain" || m.status === "active"),
         );
       })
       .catch(() => {
-        if (!cancelled) setLiveMembers(null);
+        if (!cancelled) {
+          setLiveMembers(null);
+          setRosterGame(null);
+        }
       })
       .finally(() => {
         if (!cancelled) setRosterLoading(false);
@@ -116,6 +123,7 @@ export function TeamModal({
 
   const rosterSource = liveMembers ? "live" : "snapshot";
   const rosterCount = liveMembers?.length ?? team.members.length;
+  const showIgnColumn = !rosterGame || !isValorantGame(rosterGame);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -247,9 +255,11 @@ export function TeamModal({
                   <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                     Player
                   </TableHead>
-                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                    IGN
-                  </TableHead>
+                  {showIgnColumn && (
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      IGN
+                    </TableHead>
+                  )}
                   <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
                     Role
                   </TableHead>
@@ -268,7 +278,9 @@ export function TeamModal({
                         size="sm"
                       />
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{member.ign || "—"}</TableCell>
+                    {showIgnColumn && (
+                      <TableCell className="text-muted-foreground">{member.ign || "—"}</TableCell>
+                    )}
                     <TableCell className="text-muted-foreground">{member.role || "—"}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="font-tech text-[10px] uppercase">

@@ -49,7 +49,11 @@ export function mockTeamToTournamentTeam(team: MockTeam, index: number): Tournam
     tag: team.tag,
     captain: team.captain,
     seed: index + 1,
-    players: team.members.map((m) => ({ ign: m.ign, role: m.role })),
+    players: team.members.map((m) => ({
+      ign: m.ign,
+      role: m.role,
+      discord: m.discord,
+    })),
   };
 }
 

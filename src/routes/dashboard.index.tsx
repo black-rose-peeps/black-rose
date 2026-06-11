@@ -12,9 +12,9 @@ import {
   Users2,
   Calendar,
   Pencil,
-  Link2,
   Shield,
 } from "lucide-react";
+import { formatValorantRiotId } from "@/features/member/utils/valorant-identity";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -53,7 +53,8 @@ function profileFallbackFromSession(session: AppUser): MemberProfile {
     isVerified: true,
     isPublic: true,
     socialLinks: [],
-    riotAccount: null,
+    valorantGameName: "",
+    valorantTagline: "",
     tournamentHistory: [],
     activeRegistrations: [],
     upcomingMatches: [],
@@ -327,44 +328,49 @@ function DashboardPage() {
           </p>
         </DashboardSection>
 
-        <DashboardSection label="Accounts" title="Riot Account">
-          <div className="mb-4 flex items-center gap-3">
-            {p.riotAccount?.isLinked ? (
+        <DashboardSection label="Accounts" title="Valorant ID">
+          {(() => {
+            const valorantId = formatValorantRiotId(p.valorantGameName, p.valorantTagline);
+            return (
               <>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-emerald-400/20 bg-emerald-400/5">
-                  <CheckCircle className="h-5 w-5 text-emerald-400" />
+                <div className="mb-4 flex items-center gap-3">
+                  {valorantId ? (
+                    <>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-emerald-400/20 bg-emerald-400/5">
+                        <CheckCircle className="h-5 w-5 text-emerald-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{valorantId}</p>
+                        <p className="text-xs text-muted-foreground">Shown in Valorant rosters</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/5">
+                        <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Not set</p>
+                        <p className="text-xs text-muted-foreground/60">
+                          Add your IGN and tagline in profile settings
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div>
-                  <p className="text-sm font-medium">
-                    {p.riotAccount.gameName}#{p.riotAccount.tagline}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{p.riotAccount.region}</p>
-                </div>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="rounded-none border-white/10 font-tech text-[10px] uppercase tracking-wider-2"
+                >
+                  <Link to="/dashboard/profile" search={{ tab: "player" }}>
+                    <Pencil className="h-3.5 w-3.5" />
+                    {valorantId ? "Edit Valorant ID" : "Set Valorant ID"}
+                  </Link>
+                </Button>
               </>
-            ) : (
-              <>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-amber-400/20 bg-amber-400/5">
-                  <AlertCircle className="h-5 w-5 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Not linked</p>
-                  <p className="text-xs text-muted-foreground/60">
-                    Required for Valorant tournaments
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-          <Button
-            type="button"
-            disabled
-            variant="outline"
-            title="Coming soon — Riot RSO integration"
-            className="rounded-none border-white/10 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground/40"
-          >
-            <Link2 className="h-3.5 w-3.5" />
-            {p.riotAccount?.isLinked ? "Manage" : "Link Riot Account"}
-          </Button>
+            );
+          })()}
         </DashboardSection>
 
         <DashboardSection

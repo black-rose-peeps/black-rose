@@ -39,6 +39,11 @@ import { profileCompletionHint } from "@/features/member/utils/profile-completio
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
+import {
+  formatValorantRiotId,
+  hasValorantIdentity,
+  validateValorantIdentityInput,
+} from "@/features/member/utils/valorant-identity";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "identity" | "player" | "socials" | "privacy";
@@ -75,7 +80,8 @@ const EMPTY_PROFILE: MemberProfile = {
   isVerified: false,
   isPublic: true,
   socialLinks: [],
-  riotAccount: null,
+  valorantGameName: "",
+  valorantTagline: "",
   tournamentHistory: [],
   activeRegistrations: [],
   upcomingMatches: [],
@@ -111,6 +117,8 @@ function ProfileEditPage() {
   const [mainGame, setMainGame] = useState("");
   const [mainRole, setMainRole] = useState("");
   const [region, setRegion] = useState("");
+  const [valorantGameName, setValorantGameName] = useState("");
+  const [valorantTagline, setValorantTagline] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [socials, setSocials] = useState<SocialFormState>(() => socialsFromProfile(EMPTY_PROFILE));
 
@@ -155,6 +163,8 @@ function ProfileEditPage() {
         setMainGame(normalizedGame);
         setMainRole(data.mainRole);
         setRegion(data.region);
+        setValorantGameName(data.valorantGameName);
+        setValorantTagline(data.valorantTagline);
         setIsPublic(data.isPublic);
         setSocials(socialsFromProfile(data));
       } catch (err) {
@@ -184,6 +194,12 @@ function ProfileEditPage() {
     setSaved(false);
     setError(null);
 
+    const valorantError = validateValorantIdentityInput(valorantGameName, valorantTagline);
+    if (valorantError) {
+      setError(valorantError);
+      return;
+    }
+
     try {
       const updated = await updateMemberProfile({
         memberId: session.id,
@@ -193,6 +209,8 @@ function ProfileEditPage() {
         mainGame: mainGame || null,
         mainRole,
         region,
+        valorantGameName,
+        valorantTagline,
         isPublic,
         socialLinks: SOCIAL_PLATFORM_ORDER.map((platform) => ({
           platform,
@@ -219,6 +237,7 @@ function ProfileEditPage() {
   }
 
   const completion = profile?.profileCompletion ?? 0;
+  const valorantRiotId = formatValorantRiotId(valorantGameName, valorantTagline);
 
   if (error && !profile) {
     return (
@@ -428,6 +447,49 @@ function ProfileEditPage() {
                   />
                 </div>
               </div>
+            </TechPanel>
+
+            <TechPanel label="Valorant" title="In-Game Identity" className="mt-5">
+              <p className="mb-5 text-xs leading-relaxed text-muted-foreground">
+                Your Valorant IGN and tagline are shown in Valorant team rosters, invites, and
+                tournament brackets. Your community display name stays the same everywhere else.
+              </p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                    Valorant IGN
+                  </Label>
+                  <Input
+                    value={valorantGameName}
+                    onChange={(e) => setValorantGameName(e.target.value)}
+                    placeholder="PlayerName"
+                    className={techFieldClass}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                    Tagline
+                  </Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-tech text-sm text-muted-foreground">
+                      #
+                    </span>
+                    <Input
+                      value={valorantTagline}
+                      onChange={(e) => setValorantTagline(e.target.value.replace(/^#/, ""))}
+                      placeholder="000"
+                      className={cn(techFieldClass, "pl-7")}
+                    />
+                  </div>
+                </div>
+              </div>
+              {hasValorantIdentity(valorantGameName, valorantTagline) && valorantRiotId && (
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Preview:{" "}
+                  <span className="font-medium text-foreground">{valorantRiotId}</span>
+                </p>
+              )}
             </TechPanel>
           </TabsContent>
 

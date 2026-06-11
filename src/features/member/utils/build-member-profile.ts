@@ -13,6 +13,8 @@ export interface MemberProfileRow {
   main_game: string | null;
   main_role: string;
   region: string;
+  valorant_game_name: string | null;
+  valorant_tagline: string | null;
   avatar_url: string | null;
   banner_url: string | null;
   is_public: boolean;
@@ -94,7 +96,8 @@ export function buildMemberProfile(
     isVerified: member.status === "Verified",
     isPublic: profileRow.is_public,
     socialLinks,
-    riotAccount: null,
+    valorantGameName: profileRow.valorant_game_name?.trim() ?? "",
+    valorantTagline: profileRow.valorant_tagline?.trim() ?? "",
     tournamentHistory: [],
     activeRegistrations: [],
     upcomingMatches: [],

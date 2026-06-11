@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { isValorantGame } from "@/features/member/utils/valorant-identity";
 import { useRemoveTeamMember } from "../hooks/useRemoveTeamMember";
 import type { Team } from "../types";
 
@@ -56,6 +57,7 @@ export function TeamRosterDialog({ open, team, onClose, onUpdated }: TeamRosterD
   if (!team) return null;
 
   const roster = team.members.filter((m) => m.status === "captain" || m.status === "active");
+  const showIgnSubline = !isValorantGame(team.game);
 
   return (
     <Dialog
@@ -105,7 +107,9 @@ export function TeamRosterDialog({ open, team, onClose, onUpdated }: TeamRosterD
                       discordUsername={member.discordUsername}
                       size="sm"
                     />
-                    <div className="mt-1 text-xs text-muted-foreground">{member.ign}</div>
+                    {showIgnSubline && (
+                      <div className="mt-1 text-xs text-muted-foreground">{member.ign}</div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

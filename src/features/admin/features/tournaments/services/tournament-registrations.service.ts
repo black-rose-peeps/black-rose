@@ -11,6 +11,10 @@ import { isSoloTournament } from "@/features/tournaments/types/participation";
 import { isRegistrationOpen } from "@/features/tournaments/utils/tournament-status";
 import { assertMemberAvailableForTournament } from "@/features/tournaments/utils/member-tournament-eligibility";
 import { isBlockingTournamentStatus } from "@/features/tournaments/utils/team-tournament-eligibility";
+import {
+  formatValorantRiotId,
+  isValorantGame,
+} from "@/features/member/utils/valorant-identity";
 import { fetchTournamentById, fetchTournaments, syncTournamentTeamCount } from "./tournaments.service";
 
 export {
@@ -120,12 +124,100 @@ export async function reconcileTournamentTeamCount(
   return actualCount;
 }
 
-function captainUsername(team: Team): string {
+function teamCaptainDisplayName(team: Team): string {
   const captain =
     team.members.find((m) => m.status === "captain") ??
     team.members.find((m) => m.status === "active") ??
     team.members[0];
-  return captain?.username ?? "—";
+  return captain?.displayName || captain?.username || "—";
+}
+
+async function fetchValorantIdsForMembers(memberIds: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(memberIds.filter(Boolean))];
+  if (!unique.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("member_profiles")
+    .select("member_id, valorant_game_name, valorant_tagline")
+    .in("member_id", unique);
+
+  if (error) {
+    console.error("[registrations] valorant id lookup failed:", error.message);
+    return new Map();
+  }
+
+  const result = new Map<string, string>();
+  for (const row of data ?? []) {
+    const memberId = row.member_id as string;
+    const valorantId = formatValorantRiotId(
+      (row.valorant_game_name as string | null) ?? "",
+      (row.valorant_tagline as string | null) ?? "",
+    );
+    if (valorantId) result.set(memberId, valorantId);
+  }
+  return result;
+}
+
+function mockTeamFromLiveRoster(reg: MockTeam, liveTeam: Team): MockTeam {
+  const activePlayers = liveTeam.members.filter(
+    (m) => m.status === "captain" || m.status === "active",
+  );
+
+  return {
+    ...reg,
+    name: liveTeam.name,
+    tag: liveTeam.tag,
+    captain: teamCaptainDisplayName(liveTeam),
+    members:
+      activePlayers.length > 0
+        ? activePlayers.map((m) => ({
+            ign: m.ign,
+            role: m.role,
+            discord: m.discordUsername || m.username,
+          }))
+        : reg.members,
+  };
+}
+
+async function enrichRegistrationsWithLiveData(
+  regs: MockTeam[],
+  tournamentGameById: Map<string, string>,
+): Promise<MockTeam[]> {
+  const rosterIds = [
+    ...new Set(regs.map((r) => r.rosterTeamId).filter((id): id is string => !!id)),
+  ];
+  const liveById = new Map<string, Team>();
+
+  if (rosterIds.length > 0) {
+    const allTeams = await fetchTeams();
+    for (const team of allTeams) {
+      if (rosterIds.includes(team.id)) liveById.set(team.id, team);
+    }
+  }
+
+  const soloMemberIds = regs
+    .filter((r) => !r.rosterTeamId && r.memberUserId)
+    .map((r) => r.memberUserId as string);
+  const valorantIds = await fetchValorantIdsForMembers(soloMemberIds);
+
+  return regs.map((reg) => {
+    if (reg.rosterTeamId) {
+      const live = liveById.get(reg.rosterTeamId);
+      return live ? mockTeamFromLiveRoster(reg, live) : reg;
+    }
+
+    const game = tournamentGameById.get(reg.tournamentId);
+    if (!game || !isValorantGame(game) || !reg.memberUserId) return reg;
+
+    const valorantId = valorantIds.get(reg.memberUserId);
+    if (!valorantId) return reg;
+
+    return {
+      ...reg,
+      captain: valorantId,
+      members: reg.members.map((m) => ({ ...m, ign: valorantId })),
+    };
+  });
 }
 
 async function insertTeamRegistrationPlayers(
@@ -272,7 +364,12 @@ export async function fetchTournamentRegistrations(tournamentId: string): Promis
     playersByReg.get(rid)!.push(p);
   }
 
-  return regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
+  const teams = regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
+  const tournament = await fetchTournamentById(tournamentId);
+  const gameById = new Map<string, string>(
+    tournament ? [[tournamentId, tournament.game]] : [],
+  );
+  return enrichRegistrationsWithLiveData(teams, gameById);
 }
 
 export async function fetchAllRegistrations(): Promise<MockTeam[]> {
@@ -300,7 +397,10 @@ export async function fetchAllRegistrations(): Promise<MockTeam[]> {
     playersByReg.get(rid)!.push(p);
   }
 
-  return regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
+  const teams = regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
+  const tournaments = await fetchTournaments();
+  const gameById = new Map(tournaments.map((t) => [t.id, t.game]));
+  return enrichRegistrationsWithLiveData(teams, gameById);
 }
 
 async function assertApprovalWithinCap(
@@ -445,7 +545,12 @@ export async function fetchRegistrationsForTeam(rosterTeamId: string): Promise<M
   if (error) throw new Error(error.message);
   if (!data?.length) return [];
 
-  return Promise.all(data.map((row) => fetchRegistrationWithPlayers(row.id as string)));
+  const teams = await Promise.all(
+    data.map((row) => fetchRegistrationWithPlayers(row.id as string)),
+  );
+  const tournaments = await fetchTournaments();
+  const gameById = new Map(tournaments.map((t) => [t.id, t.game]));
+  return enrichRegistrationsWithLiveData(teams, gameById);
 }
 
 export async function requestCaptainTeamRegistration(
@@ -489,7 +594,7 @@ export async function requestCaptainTeamRegistration(
       roster_team_id: rosterTeamId,
       name: rosterTeam.name,
       tag: rosterTeam.tag,
-      captain: captainUsername(rosterTeam),
+      captain: teamCaptainDisplayName(rosterTeam),
       status: "Pending",
       history: [],
     })
@@ -531,7 +636,7 @@ export async function addTeamToTournament(
       roster_team_id: rosterTeamId,
       name: rosterTeam.name,
       tag: rosterTeam.tag,
-      captain: captainUsername(rosterTeam),
+      captain: teamCaptainDisplayName(rosterTeam),
       status: registrationStatus,
       history: [],
     })
@@ -582,6 +687,12 @@ export async function addMemberToTournament(
     tournamentId,
   });
 
+  let soloIgn = member.username;
+  if (isValorantGame(tournament.game)) {
+    const valorantIds = await fetchValorantIdsForMembers([member.id]);
+    soloIgn = valorantIds.get(member.id) ?? member.username;
+  }
+
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
     .insert({
@@ -590,7 +701,7 @@ export async function addMemberToTournament(
       member_user_id: memberUserId,
       name: member.username,
       tag,
-      captain: member.username,
+      captain: soloIgn,
       status: registrationStatus,
       history: [],
     })
@@ -608,7 +719,7 @@ export async function addMemberToTournament(
 
   const { error: playersErr } = await supabase.from("tournament_registration_players").insert({
     registration_id: reg.id,
-    ign: member.username,
+    ign: soloIgn,
     role: "Player",
     discord: member.discordUsername,
   });
@@ -697,7 +808,7 @@ async function resyncRegistrationRoster(registrationId: string): Promise<MockTea
     .update({
       name: rosterTeam.name,
       tag: rosterTeam.tag,
-      captain: captain?.username ?? "—",
+      captain: captain?.displayName || captain?.username || "—",
     })
     .eq("id", registrationId);
 
