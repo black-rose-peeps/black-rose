@@ -1,4 +1,6 @@
 import type { AdminMember } from "@/features/admin/features/members/types";
+import type { RiotAccountRow } from "@/features/riot/server/riot-accounts.server";
+import { riotAccountForViewer } from "@/features/riot/server/riot-accounts.server";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "../constants";
 import type { MemberProfile, SocialLink, SocialPlatform } from "../types";
 import { calculateProfileCompletion } from "./profile-completion";
@@ -48,6 +50,8 @@ export function buildMemberProfile(
   member: AdminMember,
   profileRow: MemberProfileRow,
   socialRows: MemberSocialLinkRow[],
+  riotRow: RiotAccountRow | null = null,
+  viewerIsOwner = true,
 ): MemberProfile {
   const socialByPlatform = new Map(socialRows.map((row) => [row.platform, row]));
 
@@ -94,7 +98,7 @@ export function buildMemberProfile(
     isVerified: member.status === "Verified",
     isPublic: profileRow.is_public,
     socialLinks,
-    riotAccount: null,
+    riotAccount: riotAccountForViewer(riotRow, viewerIsOwner),
     tournamentHistory: [],
     activeRegistrations: [],
     upcomingMatches: [],

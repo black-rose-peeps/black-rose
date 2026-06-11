@@ -6,6 +6,8 @@ What you need in **Supabase (PostgreSQL)** to back the admin console flow. The a
 
 **Tournaments & bracket Supabase setup (step-by-step):** [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md)
 
+**Riot account linking (RSO, local WIP setup):** [RIOT_ACCOUNT_LINKING.md](./RIOT_ACCOUNT_LINKING.md)
+
 ---
 
 ## Admin Console Login

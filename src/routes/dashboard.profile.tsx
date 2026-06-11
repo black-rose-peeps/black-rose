@@ -39,6 +39,7 @@ import { profileCompletionHint } from "@/features/member/utils/profile-completio
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
+import { RiotAccountPanel } from "@/features/riot/components/RiotAccountPanel";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "identity" | "player" | "socials" | "privacy";
@@ -47,9 +48,11 @@ export const Route = createFileRoute("/dashboard/profile")({
   validateSearch: (search: Record<string, unknown>) => {
     const tab = search.tab as string | undefined;
     const valid: ProfileTab[] = ["identity", "player", "socials", "privacy"];
-    return {
+    const result: { tab: ProfileTab; riot?: "linked" } = {
       tab: valid.includes(tab as ProfileTab) ? (tab as ProfileTab) : "identity",
     };
+    if (search.riot === "linked") result.riot = "linked";
+    return result;
   },
   head: () => ({
     meta: [{ title: "Edit Profile — Black Rose" }],
@@ -96,7 +99,7 @@ function socialsFromProfile(profile: MemberProfile): SocialFormState {
 
 function ProfileEditPage() {
   const navigate = useNavigate();
-  const { tab } = Route.useSearch();
+  const { tab, riot: riotLinkedNotice } = Route.useSearch();
   const session = getSession();
   const memberId = session?.id;
   const [profile, setProfile] = useState<MemberProfile | null>(null);
@@ -104,6 +107,7 @@ function ProfileEditPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [riotNotice, setRiotNotice] = useState(riotLinkedNotice === "linked");
 
   const [displayName, setDisplayName] = useState("");
   const [headline, setHeadline] = useState("");
@@ -371,6 +375,28 @@ function ProfileEditPage() {
           </TabsContent>
 
           <TabsContent value="player" className="mt-0">
+            {riotNotice && (
+              <div className="mb-5 flex items-center gap-2 border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-xs text-emerald-300">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                Riot account linked successfully.
+              </div>
+            )}
+
+            <TechPanel label="Accounts" title="Riot Account" className="mb-5">
+              {memberId ? (
+                <RiotAccountPanel
+                  memberId={memberId}
+                  region={region}
+                  riotAccount={profile?.riotAccount ?? null}
+                  collapsibleOptIn
+                  onRiotAccountChange={(riotAccount) => {
+                    setRiotNotice(false);
+                    setProfile((prev) => (prev ? { ...prev, riotAccount } : prev));
+                  }}
+                />
+              ) : null}
+            </TechPanel>
+
             <TechPanel label="Competitive" title="Player Info">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">

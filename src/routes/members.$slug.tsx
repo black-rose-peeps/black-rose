@@ -333,7 +333,9 @@ function MemberProfilePage() {
                 >
                   {p.riotAccount?.isLinked
                     ? `${p.riotAccount.gameName}#${p.riotAccount.tagline}`
-                    : "Not Linked"}
+                    : isOwnProfile
+                      ? "Not linked"
+                      : "—"}
                 </dd>
               </div>
             </dl>

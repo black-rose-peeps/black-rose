@@ -38,6 +38,7 @@ import { Route as AdminParticipantsRouteImport } from './routes/admin.participan
 import { Route as AdminAnnouncementsRouteImport } from './routes/admin.announcements'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin.users.index'
 import { Route as AdminTournamentsIndexRouteImport } from './routes/admin.tournaments.index'
+import { Route as AuthRiotCallbackRouteImport } from './routes/auth.riot.callback'
 import { Route as AdminUsersMemberIdRouteImport } from './routes/admin.users.$memberId'
 import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
 
@@ -186,6 +187,11 @@ const AdminTournamentsIndexRoute = AdminTournamentsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminTournamentsRoute,
 } as any)
+const AuthRiotCallbackRoute = AuthRiotCallbackRouteImport.update({
+  id: '/auth/riot/callback',
+  path: '/auth/riot/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersMemberIdRoute = AdminUsersMemberIdRouteImport.update({
   id: '/$memberId',
   path: '/$memberId',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
   '/admin/users/$memberId': typeof AdminUsersMemberIdRoute
+  '/auth/riot/callback': typeof AuthRiotCallbackRoute
   '/admin/tournaments/': typeof AdminTournamentsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
 }
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/tournaments': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
   '/admin/users/$memberId': typeof AdminUsersMemberIdRoute
+  '/auth/riot/callback': typeof AuthRiotCallbackRoute
   '/admin/tournaments': typeof AdminTournamentsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
   '/admin/users/$memberId': typeof AdminUsersMemberIdRoute
+  '/auth/riot/callback': typeof AuthRiotCallbackRoute
   '/admin/tournaments/': typeof AdminTournamentsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
 }
@@ -323,6 +332,7 @@ export interface FileRouteTypes {
     | '/tournaments/'
     | '/admin/tournaments/$id'
     | '/admin/users/$memberId'
+    | '/auth/riot/callback'
     | '/admin/tournaments/'
     | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/tournaments'
     | '/admin/tournaments/$id'
     | '/admin/users/$memberId'
+    | '/auth/riot/callback'
     | '/admin/tournaments'
     | '/admin/users'
   id:
@@ -383,6 +394,7 @@ export interface FileRouteTypes {
     | '/tournaments/'
     | '/admin/tournaments/$id'
     | '/admin/users/$memberId'
+    | '/auth/riot/callback'
     | '/admin/tournaments/'
     | '/admin/users/'
   fileRoutesById: FileRoutesById
@@ -401,6 +413,7 @@ export interface RootRouteChildren {
   MembersSlugRoute: typeof MembersSlugRoute
   ChampionsIndexRoute: typeof ChampionsIndexRoute
   CommunityIndexRoute: typeof CommunityIndexRoute
+  AuthRiotCallbackRoute: typeof AuthRiotCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -608,6 +621,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTournamentsIndexRouteImport
       parentRoute: typeof AdminTournamentsRoute
     }
+    '/auth/riot/callback': {
+      id: '/auth/riot/callback'
+      path: '/auth/riot/callback'
+      fullPath: '/auth/riot/callback'
+      preLoaderRoute: typeof AuthRiotCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users/$memberId': {
       id: '/admin/users/$memberId'
       path: '/$memberId'
@@ -730,6 +750,7 @@ const rootRouteChildren: RootRouteChildren = {
   MembersSlugRoute: MembersSlugRoute,
   ChampionsIndexRoute: ChampionsIndexRoute,
   CommunityIndexRoute: CommunityIndexRoute,
+  AuthRiotCallbackRoute: AuthRiotCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

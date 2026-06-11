@@ -6,13 +6,11 @@ import {
   Trophy,
   ExternalLink,
   CheckCircle,
-  AlertCircle,
   ChevronRight,
   Gamepad2,
   Users2,
   Calendar,
   Pencil,
-  Link2,
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,6 +30,7 @@ import type { ChampionshipTitle } from "@/features/championships/types";
 import { fetchMemberTournamentDashboard } from "@/features/member/services/member-dashboard.service";
 import { profileCompletionHint } from "@/features/member/utils/profile-completion";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
+import { RiotAccountPanel } from "@/features/riot/components/RiotAccountPanel";
 import type { AppUser } from "@/features/auth/types";
 import type { MemberProfile } from "@/features/member/types";
 
@@ -328,43 +327,17 @@ function DashboardPage() {
         </DashboardSection>
 
         <DashboardSection label="Accounts" title="Riot Account">
-          <div className="mb-4 flex items-center gap-3">
-            {p.riotAccount?.isLinked ? (
-              <>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-emerald-400/20 bg-emerald-400/5">
-                  <CheckCircle className="h-5 w-5 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">
-                    {p.riotAccount.gameName}#{p.riotAccount.tagline}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{p.riotAccount.region}</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-amber-400/20 bg-amber-400/5">
-                  <AlertCircle className="h-5 w-5 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Not linked</p>
-                  <p className="text-xs text-muted-foreground/60">
-                    Required for Valorant tournaments
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-          <Button
-            type="button"
-            disabled
-            variant="outline"
-            title="Coming soon — Riot RSO integration"
-            className="rounded-none border-white/10 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground/40"
-          >
-            <Link2 className="h-3.5 w-3.5" />
-            {p.riotAccount?.isLinked ? "Manage" : "Link Riot Account"}
-          </Button>
+          {session?.id ? (
+            <RiotAccountPanel
+              memberId={session.id}
+              region={p.region}
+              riotAccount={p.riotAccount}
+              compact
+              onRiotAccountChange={(riotAccount) =>
+                setProfile((prev) => (prev ? { ...prev, riotAccount } : prev))
+              }
+            />
+          ) : null}
         </DashboardSection>
 
         <DashboardSection

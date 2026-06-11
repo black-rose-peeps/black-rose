@@ -19,6 +19,8 @@ export interface RiotAccount {
   tagline: string;
   region: string;
   isLinked: boolean;
+  /** Owner-only: whether the Riot ID is shown on the public member profile. */
+  isPublic?: boolean;
 }
 
 export interface TournamentEntry {

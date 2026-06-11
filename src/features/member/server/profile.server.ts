@@ -10,6 +10,7 @@ import {
   type MemberProfileRow,
   type MemberSocialLinkRow,
 } from "../utils/build-member-profile";
+import { loadRiotAccountRow } from "@/features/riot/server/riot-accounts.server";
 import { sanitizeSocialLinksForViewer } from "../utils/social-links";
 import { sanitizeHttpUrl } from "../utils/validate-social-url";
 import type { MemberProfile } from "../types";
@@ -279,7 +280,8 @@ export async function fetchMemberProfileByMemberId(memberId: string): Promise<Me
 
   if (!bundle) return null;
 
-  return buildMemberProfile(member, bundle.profile, bundle.socials);
+  const riotRow = await loadRiotAccountRow(member.id);
+  return buildMemberProfile(member, bundle.profile, bundle.socials, riotRow, true);
 }
 
 export async function fetchPublicMemberProfileBySlug(slug: string): Promise<MemberProfile | null> {
@@ -300,7 +302,8 @@ export async function fetchMemberProfileBySlug(
   const isOwner = viewerMemberId === member.id;
   if (!bundle.profile.is_public && !isOwner) return null;
 
-  const profile = buildMemberProfile(member, bundle.profile, bundle.socials);
+  const riotRow = await loadRiotAccountRow(member.id);
+  const profile = buildMemberProfile(member, bundle.profile, bundle.socials, riotRow, isOwner);
   return {
     ...profile,
     socialLinks: sanitizeSocialLinksForViewer(profile.socialLinks, isOwner),

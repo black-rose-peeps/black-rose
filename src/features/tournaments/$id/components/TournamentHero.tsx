@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Users, Layers, MapPin } from "lucide-react";
+import { ValorantNonAffiliationDisclaimer } from "@/features/riot/components/ValorantNonAffiliationDisclaimer";
 import { GAME_LABELS, STATUS_CONFIG } from "../../constants";
 import type { TournamentDetail } from "../../types";
 
@@ -70,6 +71,10 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground md:text-base">
               {t.description}
             </p>
+
+            {t.game === "Valorant" && (
+              <ValorantNonAffiliationDisclaimer className="mt-5 max-w-2xl" />
+            )}
           </div>
 
           {/* Right — CTA */}
