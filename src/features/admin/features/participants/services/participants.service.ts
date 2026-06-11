@@ -4,6 +4,7 @@
 
 import {
   fetchAllRegistrations,
+  fetchRegistrationTournamentHistory,
   updateRegistrationStatus,
 } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import {
@@ -11,7 +12,9 @@ import {
   fetchTournaments,
 } from "@/features/admin/features/tournaments/services/tournaments.service";
 import type { MockTeam } from "@/lib/mock-data";
-import type { ParticipantRow } from "../types";
+import type { ParticipantRow, RegistrationHistoryEntry } from "../types";
+
+export type { RegistrationHistoryEntry };
 
 export async function fetchParticipants(): Promise<ParticipantRow[]> {
   const [registrations, tournaments] = await Promise.all([
@@ -29,6 +32,38 @@ export async function fetchParticipants(): Promise<ParticipantRow[]> {
       tournamentStatus: tournament?.status ?? null,
     };
   });
+}
+
+export async function fetchParticipantTournamentHistory(
+  registration: Pick<MockTeam, "id" | "rosterTeamId" | "memberUserId">,
+): Promise<RegistrationHistoryEntry[]> {
+  return fetchRegistrationTournamentHistory(
+    registration.id,
+    registration.rosterTeamId,
+    registration.memberUserId,
+  );
+}
+
+export async function setParticipantStatuses(
+  registrationIds: string[],
+  status: MockTeam["status"],
+): Promise<{ updated: ParticipantRow[]; failed: string[] }> {
+  const uniqueIds = [...new Set(registrationIds)];
+  const updated: ParticipantRow[] = [];
+  const failed: string[] = [];
+
+  await Promise.all(
+    uniqueIds.map(async (registrationId) => {
+      try {
+        const row = await setParticipantStatus(registrationId, status);
+        updated.push(row);
+      } catch {
+        failed.push(registrationId);
+      }
+    }),
+  );
+
+  return { updated, failed };
 }
 
 export async function setParticipantStatus(

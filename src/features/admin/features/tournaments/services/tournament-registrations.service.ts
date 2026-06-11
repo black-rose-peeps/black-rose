@@ -136,7 +136,7 @@ async function insertTeamRegistrationPlayers(
       registration_id: registrationId,
       ign: m.ign,
       role: m.role,
-      discord: `${m.username}#0000`,
+      discord: m.discordUsername || m.username,
     })),
   );
 
@@ -360,6 +360,54 @@ export async function fetchTeamTournamentRegistration(
   if (error) throw new Error(error.message);
   if (!data) return null;
   return fetchRegistrationWithPlayers(data.id as string);
+}
+
+export interface RegistrationHistoryEntry {
+  registrationId: string;
+  tournamentId: string;
+  tournamentName: string;
+  tournamentStatus: import("@/lib/mock-data").TournamentStatus | null;
+  registrationDate: string;
+  status: MockTeam["status"];
+}
+
+/** Prior tournament registrations for the same roster team or solo member. */
+export async function fetchRegistrationTournamentHistory(
+  registrationId: string,
+  rosterTeamId?: string | null,
+  memberUserId?: string | null,
+): Promise<RegistrationHistoryEntry[]> {
+  if (!rosterTeamId && !memberUserId) return [];
+
+  let query = supabase
+    .from("tournament_registrations")
+    .select("id, tournament_id, registration_date, status")
+    .neq("id", registrationId)
+    .order("registration_date", { ascending: false });
+
+  query = rosterTeamId
+    ? query.eq("roster_team_id", rosterTeamId)
+    : query.eq("member_user_id", memberUserId!);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  if (!data?.length) return [];
+
+  const tournaments = await fetchTournaments();
+  const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
+
+  return data.map((row) => {
+    const tournamentId = row.tournament_id as string;
+    const tournament = tournamentById.get(tournamentId);
+    return {
+      registrationId: row.id as string,
+      tournamentId,
+      tournamentName: tournament?.name ?? "Unknown tournament",
+      tournamentStatus: tournament?.status ?? null,
+      registrationDate: row.registration_date as string,
+      status: row.status as MockTeam["status"],
+    };
+  });
 }
 
 export async function fetchRegistrationsForTeam(rosterTeamId: string): Promise<MockTeam[]> {
@@ -647,7 +695,7 @@ async function resyncRegistrationRoster(registrationId: string): Promise<MockTea
         registration_id: registrationId,
         ign: m.ign,
         role: m.role,
-        discord: `${m.username}#0000`,
+        discord: m.discordUsername || m.username,
       })),
     );
 
