@@ -64,6 +64,7 @@ const EMPTY_PROFILE: MemberProfile = {
   slug: "",
   displayName: "",
   username: "",
+  discordUsername: "",
   headline: "",
   bio: "",
   avatarInitials: "",
@@ -133,11 +134,12 @@ function ProfileEditPage() {
       return;
     }
 
+    const currentMemberId = memberId;
     let cancelled = false;
 
     async function load() {
       try {
-        const data = await fetchMemberProfileById(memberId);
+        const data = await fetchMemberProfileById(currentMemberId);
         if (cancelled) return;
         if (!data) {
           setError("Profile not found. Try signing in again.");
