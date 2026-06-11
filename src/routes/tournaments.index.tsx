@@ -131,25 +131,19 @@ function TournamentsPage() {
 
             {/* Loading skeleton grid */}
             {isLoading && (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 4 }).map((_, i) => (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex flex-col gap-4 border border-white/8 bg-[oklch(0.08_0_0)] p-5"
+                    className="clip-angle-lg flex flex-col border border-white/[0.08] bg-card"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex flex-col gap-2">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-6 w-48" />
-                      </div>
-                      <Skeleton className="h-6 w-24 shrink-0 rounded-sm" />
+                    <Skeleton className="h-52 rounded-none bg-white/5" />
+                    <div className="flex flex-col gap-4 p-6">
+                      <Skeleton className="h-3 w-24 rounded-none bg-white/5" />
+                      <Skeleton className="h-8 w-3/4 rounded-none bg-white/5" />
+                      <Skeleton className="h-16 w-full rounded-none bg-white/5" />
+                      <Skeleton className="h-11 w-full rounded-none bg-white/5" />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Array.from({ length: 4 }).map((_, j) => (
-                        <Skeleton key={j} className="h-14 rounded-sm" />
-                      ))}
-                    </div>
-                    <Skeleton className="h-8 w-full" />
                   </div>
                 ))}
               </div>

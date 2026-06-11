@@ -54,8 +54,15 @@ export {
   type TournamentRulesOptions,
 } from "./tournament-rules";
 
+export { buildTeamTagMap, teamDisplayAbbr, withTeamTags } from "./team-tags";
+
 export {
-  buildTeamTagMap,
-  teamDisplayAbbr,
-  withTeamTags,
-} from "./team-tags";
+  formatShortDate,
+  formatSlotLabel,
+  GAME_ABBREVIATIONS,
+  GAME_COVER_GRADIENT,
+  GAME_EDITORIAL_ACCENT,
+  GAME_TOURNAMENT_HEADER,
+  getGameAbbrev,
+  pickSpotlightTournaments,
+} from "./tournament-display";

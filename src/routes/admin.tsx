@@ -1,10 +1,18 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
+import { AdminAuthGate } from "@/features/admin/auth/AdminAuthGate";
 import { ensureAdminConsoleSession } from "@/features/admin/auth/admin-session";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
+    // Admin session is client-only (localStorage). Never render the console shell during SSR.
+    if (typeof window === "undefined") {
+      throw redirect({
+        to: "/login",
+        search: { console: "1" },
+      });
+    }
+
     const valid = await ensureAdminConsoleSession();
     if (!valid) {
       throw redirect({
@@ -24,14 +32,16 @@ export const Route = createFileRoute("/admin")({
 
 function AdminLayout() {
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
-      <AdminSidebar />
-      <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="pointer-events-none fixed inset-0 left-64 grid-bg opacity-20" />
+    <AdminAuthGate>
+      <div className="flex min-h-screen w-full bg-background text-foreground">
+        <AdminSidebar />
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <Outlet />
+          <div className="pointer-events-none fixed inset-0 left-64 grid-bg opacity-20" />
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            <Outlet />
+          </div>
         </div>
       </div>
-    </div>
+    </AdminAuthGate>
   );
 }

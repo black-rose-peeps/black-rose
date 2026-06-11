@@ -40,10 +40,10 @@ export function CtaBand() {
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            to="/register"
+            to="/login"
             className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
           >
-            Create Account
+            Join Black Rose
             <span aria-hidden>→</span>
           </Link>
           <Link

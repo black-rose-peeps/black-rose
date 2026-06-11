@@ -6,33 +6,15 @@ import appCss from "../styles.css?url";
 import favicon from "@/assets/black-rose-emblem-black.png";
 import { NotFoundPage } from "@/features/shared/components/NotFoundPage";
 import { ErrorPage } from "@/features/shared/components/ErrorPage";
+import { defaultOgMeta } from "@/lib/site-meta";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Black Rose Arena" },
-      {
-        name: "description",
-        content:
-          "Black Rose is a premium esports tournament platform for creating, managing, and competing in organized events.",
-      },
-      { name: "author", content: "Black Rose Arena" },
-      { property: "og:title", content: "Black Rose Arena" },
-      {
-        property: "og:description",
-        content:
-          "Black Rose is a premium esports tournament platform for creating, managing, and competing in organized events.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Black Rose Arena" },
-      {
-        name: "twitter:description",
-        content:
-          "Black Rose is a premium esports tournament platform for creating, managing, and competing in organized events.",
-      },
+      { name: "author", content: "Black Rose Esports" },
+      ...defaultOgMeta({ title: "Black Rose — FIGHT AS ONE" }),
     ],
     links: [
       {
