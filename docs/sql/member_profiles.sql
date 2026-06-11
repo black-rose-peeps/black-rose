@@ -19,6 +19,11 @@ create table if not exists public.member_profiles (
   updated_at timestamptz not null default now()
 );
 
+-- Safe to re-run on existing deployments (CREATE TABLE IF NOT EXISTS skips new columns).
+alter table public.member_profiles
+  add column if not exists valorant_game_name text,
+  add column if not exists valorant_tagline text;
+
 create index if not exists member_profiles_slug_idx on public.member_profiles (slug);
 create index if not exists member_profiles_member_id_idx on public.member_profiles (member_id);
 

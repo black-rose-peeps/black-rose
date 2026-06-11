@@ -755,10 +755,15 @@ function TournamentDetailPage() {
           registeredEntries={teams}
           onClose={() => setIsAddPlayersOpen(false)}
           onAdded={async () => {
-            teamsPagination.setPage(1);
-            await refetchRegistrations();
-            const fresh = await fetchTournamentById(tournamentId);
-            if (fresh) patchTournament(fresh);
+            try {
+              await refetchRegistrations();
+              const fresh = await fetchTournamentById(tournamentId);
+              if (fresh) patchTournament(fresh);
+            } catch (err) {
+              console.error("[admin tournament] failed to refresh after adding players:", err);
+            } finally {
+              teamsPagination.setPage(1);
+            }
           }}
         />
       ) : (
@@ -768,10 +773,15 @@ function TournamentDetailPage() {
           registeredTeams={teams}
           onClose={() => setIsAddTeamOpen(false)}
           onAdded={async () => {
-            teamsPagination.setPage(1);
-            await refetchRegistrations();
-            const fresh = await fetchTournamentById(tournamentId);
-            if (fresh) patchTournament(fresh);
+            try {
+              await refetchRegistrations();
+              const fresh = await fetchTournamentById(tournamentId);
+              if (fresh) patchTournament(fresh);
+            } catch (err) {
+              console.error("[admin tournament] failed to refresh after adding team:", err);
+            } finally {
+              teamsPagination.setPage(1);
+            }
           }}
         />
       )}

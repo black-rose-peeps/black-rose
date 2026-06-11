@@ -82,6 +82,19 @@ export function ParticipantsManagement() {
     setSelectedIds(new Set());
   }, [pagination.page]);
 
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const approvableIds = new Set(
+        participants
+          .filter((p) => canBulkApproveParticipant(p.status, p.tournamentStatus))
+          .map((p) => p.id),
+      );
+      const next = new Set([...prev].filter((id) => approvableIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [participants]);
+
   const approvableOnPage = pagination.paginatedItems.filter((team) =>
     canBulkApproveParticipant(team.status, team.tournamentStatus),
   );

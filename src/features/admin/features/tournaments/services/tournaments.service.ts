@@ -5,7 +5,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import type { MockTournament } from "@/lib/mock-data";
 import {
-  blocksRegistrationReopen,
   isRegistrationDeadlineExtended,
   isRegistrationDeadlinePassed,
   withResolvedTournamentStatus,
@@ -74,7 +73,6 @@ async function reopenRegistrationIfDeadlineExtended(
   if (
     !previous ||
     tournament.status !== "Registration Closed" ||
-    blocksRegistrationReopen(tournament.status) ||
     isRegistrationDeadlinePassed(tournament.registrationDeadline) ||
     !isRegistrationDeadlineExtended(previous.registrationDeadline, tournament.registrationDeadline)
   ) {

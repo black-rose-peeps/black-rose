@@ -196,6 +196,7 @@ function ProfileEditPage() {
 
     const valorantError = validateValorantIdentityInput(valorantGameName, valorantTagline);
     if (valorantError) {
+      setSaving(false);
       setError(valorantError);
       return;
     }

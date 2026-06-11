@@ -34,9 +34,11 @@ export function useParticipants() {
   const updateStatus = useCallback(
     async (registrationId: string, status: MockTeam["status"]): Promise<ParticipantRow> => {
       setUpdatingId(registrationId);
+      setError(null);
       try {
         const updated = await setParticipantStatus(registrationId, status);
         setParticipants((prev) => prev.map((p) => (p.id === registrationId ? updated : p)));
+        setError(null);
         return updated;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update status.");
@@ -56,6 +58,7 @@ export function useParticipants() {
       if (!registrationIds.length) return { updated: [], failed: [] };
 
       setIsBulkUpdating(true);
+      setError(null);
       try {
         const result = await setParticipantStatuses(registrationIds, status);
         if (result.updated.length) {
@@ -64,6 +67,8 @@ export function useParticipants() {
         }
         if (result.failed.length) {
           setError(`Failed to update ${result.failed.length} registration(s).`);
+        } else {
+          setError(null);
         }
         return result;
       } catch (err) {
