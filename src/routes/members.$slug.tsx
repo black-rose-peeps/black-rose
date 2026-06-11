@@ -22,6 +22,8 @@ import {
 } from "@/features/member/components/MemberShell";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
 import { getSession } from "@/features/auth/store/session";
+import { hasFullMemberAccess } from "@/features/auth/utils/routes";
+import { ProfileCommentsPanel } from "@/features/member/components/ProfileCommentsPanel";
 import { fetchMemberProfileBySlug } from "@/features/member/services/member-profile.service";
 import { fetchMemberChampionships } from "@/features/championships/services/championship.service";
 import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
@@ -133,6 +135,7 @@ function MemberProfilePage() {
   }
 
   const isOwnProfile = session?.id === profile.memberId;
+  const viewerIsVerified = session ? hasFullMemberAccess(session.role) : false;
   const p = profile;
 
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
@@ -271,6 +274,13 @@ function MemberProfilePage() {
           )}
 
           {championships.length > 0 && <ChampionshipTitlesCard titles={championships} />}
+
+          <ProfileCommentsPanel
+            profileMemberId={p.memberId}
+            isOwnProfile={isOwnProfile}
+            viewerMemberId={session?.id}
+            viewerIsVerified={viewerIsVerified}
+          />
 
           {p.tournamentHistory.length > 0 && (
             <ProfileCard label="Tournament History">
