@@ -21,6 +21,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TournamentsIndexRouteImport } from './routes/tournaments.index'
 import { Route as TeamsIndexRouteImport } from './routes/teams.index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as CommunityIndexRouteImport } from './routes/community.index'
+import { Route as ChampionsIndexRouteImport } from './routes/champions.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
 import { Route as TeamsCreateRouteImport } from './routes/teams.create'
@@ -98,6 +100,16 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const CommunityIndexRoute = CommunityIndexRouteImport.update({
+  id: '/community/',
+  path: '/community/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChampionsIndexRoute = ChampionsIndexRouteImport.update({
+  id: '/champions/',
+  path: '/champions/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
@@ -208,6 +220,8 @@ export interface FileRoutesByFullPath {
   '/teams/create': typeof TeamsCreateRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/champions/': typeof ChampionsIndexRoute
+  '/community/': typeof CommunityIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/tournaments/': typeof TournamentsIndexRoute
@@ -233,6 +247,8 @@ export interface FileRoutesByTo {
   '/teams/create': typeof TeamsCreateRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/admin': typeof AdminIndexRoute
+  '/champions': typeof ChampionsIndexRoute
+  '/community': typeof CommunityIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/teams': typeof TeamsIndexRoute
   '/tournaments': typeof TournamentsIndexRoute
@@ -265,6 +281,8 @@ export interface FileRoutesById {
   '/teams/create': typeof TeamsCreateRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/champions/': typeof ChampionsIndexRoute
+  '/community/': typeof CommunityIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/tournaments/': typeof TournamentsIndexRoute
@@ -298,6 +316,8 @@ export interface FileRouteTypes {
     | '/teams/create'
     | '/tournaments/$id'
     | '/admin/'
+    | '/champions/'
+    | '/community/'
     | '/dashboard/'
     | '/teams/'
     | '/tournaments/'
@@ -323,6 +343,8 @@ export interface FileRouteTypes {
     | '/teams/create'
     | '/tournaments/$id'
     | '/admin'
+    | '/champions'
+    | '/community'
     | '/dashboard'
     | '/teams'
     | '/tournaments'
@@ -354,6 +376,8 @@ export interface FileRouteTypes {
     | '/teams/create'
     | '/tournaments/$id'
     | '/admin/'
+    | '/champions/'
+    | '/community/'
     | '/dashboard/'
     | '/teams/'
     | '/tournaments/'
@@ -375,6 +399,8 @@ export interface RootRouteChildren {
   WaitlistRoute: typeof WaitlistRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   MembersSlugRoute: typeof MembersSlugRoute
+  ChampionsIndexRoute: typeof ChampionsIndexRoute
+  CommunityIndexRoute: typeof CommunityIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -462,6 +488,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/community/': {
+      id: '/community/'
+      path: '/community'
+      fullPath: '/community/'
+      preLoaderRoute: typeof CommunityIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/champions/': {
+      id: '/champions/'
+      path: '/champions'
+      fullPath: '/champions/'
+      preLoaderRoute: typeof ChampionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/': {
       id: '/admin/'
@@ -688,6 +728,8 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistRoute: WaitlistRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   MembersSlugRoute: MembersSlugRoute,
+  ChampionsIndexRoute: ChampionsIndexRoute,
+  CommunityIndexRoute: CommunityIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

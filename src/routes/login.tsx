@@ -18,10 +18,10 @@ export const Route = createFileRoute("/login")({
   }),
   head: () => ({
     meta: [
-      { title: "Sign In — Black Rose" },
+      { title: "Join — Black Rose" },
       {
         name: "description",
-        content: "Sign in to your Black Rose account via Discord.",
+        content: "Continue with Discord to join Black Rose — new accounts are created automatically.",
       },
     ],
   }),
@@ -31,11 +31,11 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const { console: consoleParam } = Route.useSearch();
-  const [showAdminConsole, setShowAdminConsole] = useState(consoleParam === "1");
+  const isAdminConsole = consoleParam === "1";
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (showAdminConsole) return;
+    if (isAdminConsole) return;
 
     let cancelled = false;
 
@@ -58,9 +58,9 @@ function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, showAdminConsole]);
+  }, [navigate, isAdminConsole]);
 
-  function handleLogin() {
+  function handleDiscordAuth() {
     setError(null);
     if (!isDiscordOAuthConfigured()) {
       setError(
@@ -71,16 +71,15 @@ function LoginPage() {
     startDiscordOAuth();
   }
 
-  if (showAdminConsole) {
+  if (isAdminConsole) {
     return (
       <AuthShell
         headline="Operations"
-        subheadline="Tournament administrators sign in with credentials created in the Members panel."
+        subheadline="Tournament administrators sign in with credentials created in the admin panel."
       >
         <AdminConsoleLogin
           onBack={() => {
-            setShowAdminConsole(false);
-            navigate({ to: "/login", search: {} });
+            navigate({ to: "/login", search: {}, replace: true });
           }}
         />
       </AuthShell>
@@ -89,25 +88,37 @@ function LoginPage() {
 
   return (
     <AuthShell
-      headline="Welcome Back"
-      subheadline="Sign in with your Discord account to manage your team, register for tournaments, and track your competitive journey."
+      headline="FIGHT AS ONE"
+      subheadline="One Discord sign-in for new and returning members — build teams, register for tournaments, and track your competitive journey."
     >
       <div className="mb-10">
         <div className="mb-3 flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
           <span className="h-px w-10 bg-border" />
-          Access Console
+          Member Access
         </div>
-        <h2 className="font-display text-4xl tracking-display">Sign In</h2>
+        <h2 className="font-display text-4xl tracking-display">Join Black Rose</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Black Rose uses Discord for authentication. One click, no passwords. If you don&apos;t
-          have an account yet, signing in will create one automatically.
+          Black Rose uses Discord for authentication. First-time sign-in creates your account
+          automatically — no separate registration step.
         </p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <DiscordButton onClick={handleLogin} label="Continue with Discord" />
-        {error && <p className="text-center text-xs text-destructive">{error}</p>}
+      <ul className="mb-8 flex flex-col gap-2.5">
+        {[
+          "Join or create competitive teams",
+          "Register for community tournaments",
+          "Get bracket updates and announcements",
+        ].map((item) => (
+          <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="h-1.5 w-1.5 shrink-0 bg-white/40" />
+            {item}
+          </li>
+        ))}
+      </ul>
 
+      <div className="flex flex-col gap-4">
+        <DiscordButton onClick={handleDiscordAuth} label="Continue with Discord" />
+        {error && <p className="text-center text-xs text-destructive">{error}</p>}
         <p className="text-center text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
           You will be redirected to Discord to authorize access.
         </p>
@@ -115,27 +126,11 @@ function LoginPage() {
 
       <div className="my-8 h-px bg-border" />
 
-      <div className="flex flex-col gap-3 text-center text-xs text-muted-foreground">
-        <p>
-          New to Black Rose?{" "}
-          <Link to="/register" className="text-foreground underline-offset-4 hover:underline">
-            Create an account
-          </Link>
-        </p>
-        <p>
-          Admin?{" "}
-          <button
-            type="button"
-            onClick={() => {
-              setShowAdminConsole(true);
-              navigate({ to: "/login", search: { console: "1" } });
-            }}
-            className="text-foreground underline-offset-4 hover:underline"
-          >
-            Enter Console
-          </button>
-        </p>
-      </div>
+      <p className="text-center text-xs text-muted-foreground">
+        <Link to="/" className="text-foreground underline-offset-4 hover:underline">
+          Back to home
+        </Link>
+      </p>
     </AuthShell>
   );
 }

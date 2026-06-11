@@ -108,13 +108,7 @@ function AuthCallbackPage() {
               to="/login"
               className="clip-cta inline-flex h-10 items-center justify-center bg-foreground px-4 font-tech text-[10px] uppercase tracking-wider-2 text-background"
             >
-              Back to sign in
-            </Link>
-            <Link
-              to="/register"
-              className="inline-flex h-10 items-center justify-center border border-white/12 px-4 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground"
-            >
-              Create account
+              Try again with Discord
             </Link>
           </div>
         </div>

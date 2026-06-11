@@ -43,8 +43,6 @@ function TeamDetailPage() {
   const { id } = Route.useParams();
   const session = getSession();
   const memberId = session?.id;
-  const memberRole = session?.role;
-
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -69,8 +67,12 @@ function TeamDetailPage() {
           setTeam(null);
         } else {
           setTeam(data);
+          const isViewerMember = Boolean(
+            memberId &&
+              data.members.some((m) => m.userId === memberId && m.status !== "removed"),
+          );
           const [regsResult, titlesResult] = await Promise.allSettled([
-            fetchRegistrationsForTeam(data.id),
+            isViewerMember ? fetchRegistrationsForTeam(data.id) : Promise.resolve([]),
             fetchTeamChampionships(data.id),
           ]);
           if (regsResult.status === "fulfilled") {
@@ -94,7 +96,7 @@ function TeamDetailPage() {
         if (showLoader) setLoading(false);
       }
     },
-    [id],
+    [id, memberId],
   );
 
   const refreshTeam = useCallback(() => {
@@ -104,18 +106,8 @@ function TeamDetailPage() {
   useTeamMembersRealtime(id, refreshTeam);
 
   useEffect(() => {
-    if (!memberId) {
-      navigate({ to: "/login" });
-      return;
-    }
-    if (memberRole === "not_verified") {
-      navigate({ to: "/waitlist" });
-      return;
-    }
     void loadTeam({ showLoader: true });
-  }, [loadTeam, navigate, memberId, memberRole]);
-
-  if (!session) return null;
+  }, [loadTeam]);
 
   if (loading) {
     return (
@@ -167,28 +159,13 @@ function TeamDetailPage() {
     );
   }
 
-  const isCaptain = team.captainUserId === session.id;
-  const isInvited = isPendingInvite(team, session.id);
-  const isMember = team.members.some((m) => m.userId === session.id && m.status !== "removed");
-
-  if (!isMember) {
-    return (
-      <MemberPageLayout maxWidth="max-w-5xl">
-        <div className="flex flex-col items-center gap-4 py-24 text-center">
-          <p className="text-muted-foreground">You are not a member of this team.</p>
-          <Button
-            asChild
-            variant="outline"
-            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
-          >
-            <Link to="/teams" search={{ create: false }}>
-              Back to Teams
-            </Link>
-          </Button>
-        </div>
-      </MemberPageLayout>
-    );
-  }
+  const viewerId = memberId ?? "";
+  const isCaptain = Boolean(memberId && team.captainUserId === memberId);
+  const isInvited = Boolean(memberId && isPendingInvite(team, memberId));
+  const isMember = Boolean(
+    memberId && team.members.some((m) => m.userId === memberId && m.status !== "removed"),
+  );
+  const isPublicView = !isMember;
 
   const activeCount = team.members.filter(
     (m) => m.status === "captain" || m.status === "active",
@@ -210,10 +187,11 @@ function TeamDetailPage() {
   }
 
   async function handleAcceptInvite() {
+    if (!memberId) return;
     setActionError(null);
     setRespondingInvite(true);
     try {
-      const updated = await acceptTeamInvite(team!.id, memberId!);
+      const updated = await acceptTeamInvite(team!.id, memberId);
       setTeam(updated);
       markTeamInviteRead(team!.id);
       if (memberId) {
@@ -229,10 +207,11 @@ function TeamDetailPage() {
   }
 
   async function handleDeclineInvite() {
+    if (!memberId) return;
     setActionError(null);
     setRespondingInvite(true);
     try {
-      await declineTeamInvite(team!.id, memberId!);
+      await declineTeamInvite(team!.id, memberId);
       markTeamInviteRead(team!.id);
       navigate({ to: "/teams", search: { create: false } });
       if (memberId) {
@@ -254,9 +233,9 @@ function TeamDetailPage() {
         variant="ghost"
         className="mb-6 -ml-2 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
       >
-        <Link to="/teams" search={{ create: false }}>
+        <Link to={isPublicView ? "/champions" : "/teams"} search={isPublicView ? undefined : { create: false }}>
           <ArrowLeft className="h-3.5 w-3.5" />
-          My Teams
+          {isPublicView ? "Hall of Champions" : "My Teams"}
         </Link>
       </Button>
 
@@ -291,7 +270,7 @@ function TeamDetailPage() {
               </span>
               <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <span>{activeCount} active</span>
-                {pendingCount > 0 && (
+                {!isPublicView && pendingCount > 0 && (
                   <span className="text-amber-400">{pendingCount} pending invite</span>
                 )}
                 <span>Created {new Date(team.createdAt).toLocaleDateString()}</span>
@@ -299,7 +278,7 @@ function TeamDetailPage() {
             </div>
           </div>
 
-          {isCaptain && !isInvited && (
+          {!isPublicView && isCaptain && !isInvited && (
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -341,7 +320,7 @@ function TeamDetailPage() {
         </div>
       </div>
 
-      {isInvited && (
+      {!isPublicView && isInvited && memberId && (
         <TeamInviteBanner
           team={team}
           captainName={team.members.find((m) => m.status === "captain")?.displayName ?? "A captain"}
@@ -361,14 +340,15 @@ function TeamDetailPage() {
 
       <TeamRosterPanel
         team={team}
-        currentUserId={session.id}
-        isEditable={isCaptain && !isInvited}
+        currentUserId={viewerId}
+        variant={isPublicView ? "public" : "manage"}
+        isEditable={!isPublicView && isCaptain && !isInvited}
         canInvite={canInvite}
         onInvite={() => setInviteOpen(true)}
         onRemove={handleRemove}
       />
 
-      {pendingRegs.length > 0 && (
+      {!isPublicView && pendingRegs.length > 0 && (
         <TechPanel
           label="Tournament"
           title="Pending Registration"
@@ -400,7 +380,7 @@ function TeamDetailPage() {
         </TechPanel>
       )}
 
-      {approvedReg && (
+      {!isPublicView && approvedReg && (
         <TechPanel
           label="Tournament"
           title="Active Registration"
@@ -428,7 +408,7 @@ function TeamDetailPage() {
         </TechPanel>
       )}
 
-      {isCaptain && !isInvited && (
+      {!isPublicView && isCaptain && !isInvited && (
         <>
           <InviteMemberDialog
             open={inviteOpen}

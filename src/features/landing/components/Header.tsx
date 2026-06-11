@@ -5,22 +5,24 @@ import { MemberNav } from "@/features/member/components/MemberNav";
 
 const GUEST_NAV = [
   { label: "Tournaments", to: "/tournaments" as const },
-  { label: "Champion", to: "/" as const, hash: "champions" },
-  { label: "Community", to: "/" as const, hash: "community" },
+  { label: "Champions", to: "/champions" as const },
+  { label: "Community", to: "/community" as const },
 ] as const;
 
 function GuestHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const hash = useRouterState({ select: (s) => s.location.hash });
 
   function isGuestNavActive(item: (typeof GUEST_NAV)[number]): boolean {
     if (item.to === "/tournaments") {
       return pathname === "/tournaments" || pathname.startsWith("/tournaments/");
     }
-    if ("hash" in item && item.hash) {
-      return pathname === "/" && hash === item.hash;
+    if (item.to === "/champions") {
+      return pathname === "/champions" || pathname.startsWith("/champions/");
     }
-    return pathname === item.to;
+    if (item.to === "/community") {
+      return pathname === "/community" || pathname.startsWith("/community/");
+    }
+    return false;
   }
 
   return (
@@ -36,7 +38,6 @@ function GuestHeader() {
             <Link
               key={item.label}
               to={item.to}
-              {...("hash" in item && item.hash ? { hash: item.hash } : {})}
               className={`transition-colors hover:text-foreground ${
                 isGuestNavActive(item) ? "text-foreground" : ""
               }`}
@@ -49,15 +50,9 @@ function GuestHeader() {
         <div className="flex items-center gap-3">
           <Link
             to="/login"
-            className="hidden h-9 items-center px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-          >
-            Sign In
-          </Link>
-          <Link
-            to="/register"
             className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
           >
-            Register
+            Join Us
           </Link>
         </div>
       </div>

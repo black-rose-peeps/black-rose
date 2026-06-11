@@ -79,10 +79,10 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
                 registrationAction
               ) : t.status === "Registration Open" ? (
                 <Link
-                  to="/register"
+                  to="/login"
                   className="clip-cta inline-flex h-12 items-center gap-3 bg-white px-8 font-tech text-sm uppercase tracking-wider-2 text-black transition hover:bg-white/90"
                 >
-                  Register Now <span aria-hidden>→</span>
+                  Join to Register <span aria-hidden>→</span>
                 </Link>
               ) : (
                 <div className="inline-flex h-12 items-center gap-3 border border-white/15 bg-white/5 px-8 font-tech text-sm uppercase tracking-wider-2 text-muted-foreground">

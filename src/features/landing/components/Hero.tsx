@@ -4,7 +4,10 @@ import { Emblem } from "@/features/shared/components/Emblem";
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden pt-32 pb-28 md:pt-44 md:pb-40">
+    <section
+      id="landing-hero"
+      className="relative isolate overflow-hidden pt-32 pb-28 md:pt-44 md:pb-40"
+    >
       {/* Background layers */}
       <div className="absolute inset-0 -z-20 grid-bg opacity-50" />
       <div
@@ -46,10 +49,10 @@ export function Hero() {
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row animate-rise">
           <Link
-            to="/register"
+            to="/login"
             className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition"
           >
-            Register Now
+            Get Started
             <span aria-hidden>→</span>
           </Link>
           <Link
