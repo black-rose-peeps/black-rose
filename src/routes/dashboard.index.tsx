@@ -42,6 +42,7 @@ function profileFallbackFromSession(session: AppUser): MemberProfile {
     slug: session.profileSlug ?? session.username,
     displayName: session.displayName,
     username: session.username,
+    discordUsername: session.discordUsername ?? session.username,
     headline: "Black Rose Member",
     bio: "",
     avatarInitials: initials,

@@ -204,6 +204,7 @@ function ProfileEditPage() {
       setSession({
         ...session,
         displayName: updated.displayName,
+        discordUsername: updated.discordUsername,
         avatarUrl: updated.avatarUrl,
         profileSlug: updated.slug,
       });

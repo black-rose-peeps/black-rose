@@ -15,6 +15,7 @@ import {
   type InviteSearchMember,
 } from "@/features/admin/features/members/services/members.service";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import { cn } from "@/lib/utils";
 import { MAX_TEAM_SIZE } from "../constants";
 import { InviteMemberSearchSkeleton } from "./InviteMemberSearchSkeleton";
@@ -161,7 +162,7 @@ export function InviteMemberDialog({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search by username…"
+              placeholder="Search by discord username…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 rounded-none border-white/12 bg-white/3 pl-9"
@@ -199,12 +200,12 @@ export function InviteMemberDialog({
                         <div className="grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
                           {member.avatarInitials}
                         </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{member.displayName}</p>
-                          <p className="truncate text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                            @{member.username}
-                          </p>
-                        </div>
+                        <MemberNameStack
+                          displayName={member.displayName}
+                          discordUsername={member.discordUsername}
+                          size="sm"
+                          className="min-w-0"
+                        />
                       </div>
                       <Button
                         type="button"

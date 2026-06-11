@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,8 +100,12 @@ export function TeamRosterDialog({ open, team, onClose, onUpdated }: TeamRosterD
               roster.map((member) => (
                 <TableRow key={member.userId}>
                   <TableCell>
-                    <div className="font-medium">{member.username}</div>
-                    <div className="text-xs text-muted-foreground">{member.ign}</div>
+                    <MemberNameStack
+                      displayName={member.displayName}
+                      discordUsername={member.discordUsername}
+                      size="sm"
+                    />
+                    <div className="mt-1 text-xs text-muted-foreground">{member.ign}</div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

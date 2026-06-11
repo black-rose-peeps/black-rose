@@ -17,7 +17,9 @@ export interface AppUser {
   /** Discord user snowflake ID — always a string per Discord API */
   discordId: string;
   username: string;
-  /** Display name from Discord global_name, falls back to username */
+  /** Discord handle from the members table */
+  discordUsername: string;
+  /** Profile / Discord display name shown in the UI */
   displayName: string;
   avatarUrl: string | null;
   email: string | null;

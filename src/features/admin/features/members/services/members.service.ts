@@ -99,6 +99,7 @@ export async function updateMember(
 export interface InviteSearchMember {
   id: string;
   username: string;
+  discordUsername: string;
   displayName: string;
   avatarInitials: string;
 }
@@ -149,13 +150,29 @@ async function fetchMemberIdsOnActiveGame(
   return [...new Set((memberRows ?? []).map((row) => row.user_id as string))];
 }
 
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 function rowToInviteSearchMember(row: Record<string, unknown>): InviteSearchMember {
   const username = row.username as string;
+  const discordUsername = row.discord_username as string;
+  const profiles = row.member_profiles as
+    | { display_name?: string }
+    | Array<{ display_name?: string }>
+    | null
+    | undefined;
+  const profile = Array.isArray(profiles) ? profiles[0] : profiles;
+  const displayName = profile?.display_name?.trim() || username;
+
   return {
     id: row.id as string,
     username,
-    displayName: username,
-    avatarInitials: username.slice(0, 2).toUpperCase(),
+    discordUsername,
+    displayName,
+    avatarInitials: initialsFromName(displayName),
   };
 }
 
@@ -172,7 +189,7 @@ export async function searchVerifiedMembersForInvite(
 
   let builder = supabase
     .from("members")
-    .select("id, username, discord_username", { count: "exact" })
+    .select("id, username, discord_username, member_profiles(display_name)", { count: "exact" })
     .eq("status", "Verified")
     .order("username", { ascending: true });
 

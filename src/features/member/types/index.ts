@@ -43,6 +43,7 @@ export interface MemberProfile {
   slug: string;
   displayName: string;
   username: string;
+  discordUsername: string;
   headline: string;
   bio: string;
   avatarInitials: string;

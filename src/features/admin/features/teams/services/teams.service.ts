@@ -7,17 +7,87 @@ import { fetchMemberById } from "@/features/admin/features/members/services/memb
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function rowToTeamMember(row: Record<string, unknown>): TeamMember {
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+async function fetchMemberDisplayNames(memberIds: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(memberIds.filter(Boolean))];
+  if (!unique.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("member_profiles")
+    .select("member_id, display_name")
+    .in("member_id", unique);
+
+  if (error) {
+    console.error("[teams] profile display name lookup failed:", error.message);
+    return new Map();
+  }
+
+  return new Map(
+    (data ?? []).map((row) => [
+      row.member_id as string,
+      (row.display_name as string).trim(),
+    ]),
+  );
+}
+
+async function fetchDiscordUsernames(memberIds: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(memberIds.filter(Boolean))];
+  if (!unique.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("members")
+    .select("id, discord_username")
+    .in("id", unique);
+
+  if (error) {
+    console.error("[teams] discord username lookup failed:", error.message);
+    return new Map();
+  }
+
+  return new Map((data ?? []).map((row) => [row.id as string, row.discord_username as string]));
+}
+
+function rowToTeamMember(
+  row: Record<string, unknown>,
+  displayNames: Map<string, string>,
+  discordUsernames: Map<string, string>,
+): TeamMember {
+  const userId = row.user_id as string;
+  const username = row.username as string;
+  const snapshotDisplay = (row.display_name as string)?.trim();
+  const displayName = displayNames.get(userId) || snapshotDisplay || username;
+
   return {
-    userId: row.user_id as string,
-    username: row.username as string,
-    displayName: row.display_name as string,
-    avatarInitials: row.avatar_initials as string,
+    userId,
+    username,
+    discordUsername: discordUsernames.get(userId) || username,
+    displayName,
+    avatarInitials: (row.avatar_initials as string) || initialsFromName(displayName),
     ign: row.ign as string,
     role: row.role as TeamMember["role"],
     status: row.status as TeamMember["status"],
     joinedAt: row.joined_at as string,
   };
+}
+
+async function mapTeamMemberRows(rows: Record<string, unknown>[]): Promise<TeamMember[]> {
+  const userIds = rows.map((row) => row.user_id as string);
+  const [displayNames, discordUsernames] = await Promise.all([
+    fetchMemberDisplayNames(userIds),
+    fetchDiscordUsernames(userIds),
+  ]);
+
+  return rows.map((row) => rowToTeamMember(row, displayNames, discordUsernames));
+}
+
+async function resolveMemberDisplayName(memberId: string, fallback: string): Promise<string> {
+  const displayNames = await fetchMemberDisplayNames([memberId]);
+  return displayNames.get(memberId) || fallback;
 }
 
 function rowToTeam(row: Record<string, unknown>, members: TeamMember[]): Team {
@@ -151,7 +221,7 @@ async function fetchTeamWithMembers(teamId: string): Promise<Team> {
 
   if (membersErr) throw new Error(membersErr.message);
 
-  return rowToTeam(teamRow, (memberRows ?? []).map(rowToTeamMember));
+  return rowToTeam(teamRow, await mapTeamMemberRows(memberRows ?? []));
 }
 
 // ── Service functions ─────────────────────────────────────────────────────────
@@ -175,12 +245,15 @@ export async function fetchTeams(): Promise<Team[]> {
 
   if (membersErr) throw new Error(membersErr.message);
 
+  const rows = memberRows ?? [];
+  const enrichedMembers = await mapTeamMemberRows(rows);
   const membersByTeam = new Map<string, TeamMember[]>();
-  for (const row of memberRows ?? []) {
+  rows.forEach((row, index) => {
     const tid = row.team_id as string;
+    const member = enrichedMembers[index];
     if (!membersByTeam.has(tid)) membersByTeam.set(tid, []);
-    membersByTeam.get(tid)!.push(rowToTeamMember(row));
-  }
+    membersByTeam.get(tid)!.push(member);
+  });
 
   return teamRows.map((row) => rowToTeam(row, membersByTeam.get(row.id as string) ?? []));
 }
@@ -210,7 +283,8 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 
   // Insert captain as first team member
   const captainRole = input.captainRole ?? "IGL";
-  const captainMember = adminMemberToTeamMember(captain, captainRole);
+  const captainDisplayName = await resolveMemberDisplayName(captain.id, captain.username);
+  const captainMember = adminMemberToTeamMember(captain, captainRole, captainDisplayName);
   const { error: memberErr } = await supabase.from("team_members").insert({
     team_id: teamRow.id,
     user_id: captain.id,
@@ -238,7 +312,8 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
-  const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
+  const displayName = await resolveMemberDisplayName(member.id, member.username);
+  const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD", displayName);
   await insertOrReactivateTeamMember(
     {
       team_id: input.teamId,
@@ -298,7 +373,8 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
-  const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD");
+  const displayName = await resolveMemberDisplayName(member.id, member.username);
+  const teamMember = adminMemberToTeamMember(member, input.role ?? "TBD", displayName);
   await insertOrReactivateTeamMember(
     {
       team_id: input.teamId,

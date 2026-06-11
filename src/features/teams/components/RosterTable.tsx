@@ -1,4 +1,5 @@
 import { Crown, UserMinus, Mail } from "lucide-react";
+import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import type { Team, TeamMember } from "../types";
 
 interface RosterTableProps {
@@ -76,17 +77,17 @@ export function RosterTable({
                       {m.avatarInitials}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="truncate font-medium">{m.displayName}</span>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <MemberNameStack
+                          displayName={m.displayName}
+                          discordUsername={m.discordUsername}
+                          showYou={isMe}
+                          className="min-w-0 flex-1"
+                        />
                         {m.status === "captain" && (
                           <Crown className="h-3 w-3 shrink-0 text-white/50" aria-label="Captain" />
                         )}
                       </div>
-                      {isMe && (
-                        <span className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground/50">
-                          you
-                        </span>
-                      )}
                     </div>
                   </div>
                 </td>

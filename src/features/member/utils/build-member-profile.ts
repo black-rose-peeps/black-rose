@@ -83,6 +83,7 @@ export function buildMemberProfile(
     slug: profileRow.slug,
     displayName,
     username: member.username,
+    discordUsername: member.discordUsername,
     headline: profileRow.headline.trim() || "Black Rose Member",
     bio: profileRow.bio,
     avatarInitials: initialsFromName(displayName),

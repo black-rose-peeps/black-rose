@@ -60,6 +60,7 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
       id: member.id,
       discordId: discordUser.id,
       username: member.username,
+      discordUsername: member.discordUsername,
       displayName,
       avatarUrl,
       email: discordUser.email,
