@@ -35,7 +35,7 @@ export function validateValorantIdentityInput(
   if (!name && !tag) return null;
   if (!name || !tag) return "Enter both your Valorant IGN and tagline.";
 
-  if (name.length > 16) return "IGN must be 16 characters or fewer.";
+  if (name.length < 3 || name.length > 16) return "IGN must be 3–16 characters.";
   if (name.includes("#")) return "IGN should not include # — use the tagline field.";
   if (!/^[a-zA-Z0-9 ]+$/.test(name)) {
     return "IGN can only contain letters, numbers, and spaces.";

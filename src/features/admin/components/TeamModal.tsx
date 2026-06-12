@@ -87,6 +87,7 @@ export function TeamModal({
     if (!team.rosterTeamId) {
       setLiveMembers(null);
       setRosterGame(null);
+      setRosterLoading(false);
       return;
     }
 
@@ -121,8 +122,9 @@ export function TeamModal({
     registrationActionsEnabled(tournamentStatus) &&
     (team.status === "Pending" || team.status === "Previously Competed" || team.status === "Rejected");
 
-  const rosterSource = liveMembers ? "live" : "snapshot";
-  const rosterCount = liveMembers?.length ?? team.members.length;
+  const isLive = Boolean(liveMembers && liveMembers.length > 0);
+  const rosterSource = isLive ? "live" : "snapshot";
+  const rosterCount = isLive ? liveMembers!.length : team.members.length;
   const showIgnColumn = !rosterGame || !isValorantGame(rosterGame);
 
   return (
@@ -236,7 +238,7 @@ export function TeamModal({
               <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/70">
                 {rosterLoading
                   ? "Loading live roster…"
-                  : rosterSource === "live"
+                  : isLive
                     ? "Live team roster"
                     : "Registration snapshot"}
               </span>
@@ -248,7 +250,7 @@ export function TeamModal({
               <Loader2 className="h-4 w-4 animate-spin" />
               Fetching current roster…
             </div>
-          ) : liveMembers && liveMembers.length > 0 ? (
+          ) : isLive ? (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">

@@ -38,6 +38,7 @@ export async function fetchOpenTeamTournaments(game?: Team["game"]): Promise<Moc
   });
 }
 
+/** UI/eligibility: any active or veteran registration row. Only "Approved" occupies a slot. */
 export function teamHasOpenRegistration(
   registrations: MockTeam[],
   tournamentId: string,

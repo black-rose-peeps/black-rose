@@ -165,7 +165,8 @@ function rowToInviteSearchMember(
   game?: string,
 ): InviteSearchMember {
   const username = row.username as string;
-  const discordUsername = row.discord_username as string;
+  const discordUsername =
+    (row.discord_username as string | null | undefined)?.trim() || username;
   const profiles = row.member_profiles as
     | {
         display_name?: string;

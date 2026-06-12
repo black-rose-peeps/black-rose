@@ -87,7 +87,8 @@ async function loadAuthorMap(memberIds: string[]): Promise<Map<string, ProfileCo
           memberId,
           slug: (profile?.slug as string) ?? username,
           displayName,
-          discordUsername: row.discord_username as string,
+          discordUsername:
+            (row.discord_username as string | null | undefined)?.trim() || username,
           avatarUrl: (profile?.avatar_url as string | null) ?? null,
           avatarInitials: initialsFromName(displayName),
         } satisfies ProfileCommentAuthor,

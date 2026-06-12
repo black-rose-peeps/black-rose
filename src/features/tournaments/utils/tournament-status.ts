@@ -5,9 +5,25 @@ export function isTournamentConcluded(status: string): boolean {
   return status === "Completed" || status === "Archived";
 }
 
-/** Normalize date-only tournament fields (YYYY-MM-DD). */
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Normalize date-only tournament fields (YYYY-MM-DD). Returns "" when invalid. */
 export function tournamentDateOnly(value: string): string {
-  return value.trim().slice(0, 10);
+  const dateOnly = value.trim().slice(0, 10);
+  if (!ISO_DATE_ONLY.test(dateOnly)) return "";
+
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return "";
+  }
+
+  return dateOnly;
 }
 
 /** Today's calendar date in the local timezone (YYYY-MM-DD). */
