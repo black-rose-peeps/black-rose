@@ -28,12 +28,12 @@ export function TeamInviteCard({
             {team.tag}
           </div>
           <div>
-            <p className="text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+            <p className="font-tech text-label-readable uppercase text-amber-400">
               Team Invitation
             </p>
             <h2 className="font-display text-3xl tracking-display">{team.name}</h2>
             <span
-              className={`text-[10px] font-tech uppercase tracking-wider-2 ${GAME_COLOR[team.game]}`}
+              className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}
             >
               {team.game}
             </span>
@@ -47,7 +47,7 @@ export function TeamInviteCard({
             type="button"
             disabled={responding}
             onClick={onAccept}
-            className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+            className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
           >
             {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             Accept
@@ -57,7 +57,7 @@ export function TeamInviteCard({
             variant="outline"
             disabled={responding}
             onClick={onDecline}
-            className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+            className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
           >
             <X className="h-3.5 w-3.5" />
             Decline
@@ -65,7 +65,7 @@ export function TeamInviteCard({
           <Button
             asChild
             variant="ghost"
-            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground"
+            className="rounded-none font-tech text-label-readable uppercase text-muted-foreground"
           >
             <Link to="/teams/$id" params={{ id: team.id }}>
               View

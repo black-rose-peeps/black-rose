@@ -23,7 +23,7 @@ export function CtaBand() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <div className="mb-6 inline-flex items-center gap-3 border border-white/10 bg-white/3 px-4 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground backdrop-blur-sm">
+        <div className="mb-6 inline-flex items-center gap-3 border border-white/10 bg-white/3 px-4 py-1.5 font-tech text-label-readable uppercase text-muted-foreground backdrop-blur-sm">
           <span className="h-1.5 w-1.5 bg-foreground animate-pulse-soft" />
           Registration Open
         </div>
@@ -33,7 +33,7 @@ export function CtaBand() {
           <span className="text-stroke">Etched in black.</span>
         </h2>
 
-        <p className="mx-auto mt-6 max-w-xl text-sm text-muted-foreground md:text-base">
+        <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
           Build your team, claim your bracket, and step into the arena. Black Rose runs the
           competition — you write the history.
         </p>

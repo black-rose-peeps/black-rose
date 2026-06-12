@@ -18,7 +18,7 @@ function UnauthorizedPage() {
       </div>
 
       <div className="relative z-10 max-w-lg text-center">
-        <div className="mb-5 inline-flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+        <div className="mb-5 inline-flex items-center gap-3 font-tech text-label-readable uppercase text-muted-foreground">
           <span className="h-px w-10 bg-border" />
           Error 403
           <span className="h-px w-10 bg-border" />

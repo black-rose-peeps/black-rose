@@ -203,7 +203,7 @@ function DashboardPage() {
               {p.isVerified && (
                 <Badge
                   variant="outline"
-                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
+                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-label-readable uppercase text-emerald-400"
                 >
                   <Shield className="mr-1 h-3 w-3" />
                   Verified
@@ -212,7 +212,7 @@ function DashboardPage() {
               {p.mainGame && (
                 <Badge
                   variant="outline"
-                  className="rounded-none border-white/12 bg-white/5 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
+                  className="rounded-none border-white/12 bg-white/5 font-tech text-label-readable uppercase text-muted-foreground"
                 >
                   <Gamepad2 className="mr-1 h-3 w-3" />
                   {p.mainGame}
@@ -221,7 +221,7 @@ function DashboardPage() {
               {p.mainRole && (
                 <Badge
                   variant="outline"
-                  className="rounded-none border-white/12 bg-white/5 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
+                  className="rounded-none border-white/12 bg-white/5 font-tech text-label-readable uppercase text-muted-foreground"
                 >
                   <Users2 className="mr-1 h-3 w-3" />
                   {p.mainRole}
@@ -238,7 +238,7 @@ function DashboardPage() {
             <Button
               asChild
               variant="outline"
-              className="clip-cta rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2 hover:bg-white/10"
+              className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase hover:bg-white/10"
             >
               <Link to="/dashboard/profile" search={{ tab: "identity" }}>
                 <Pencil className="h-3.5 w-3.5" />
@@ -247,7 +247,7 @@ function DashboardPage() {
             </Button>
             <Button
               asChild
-              className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+              className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
             >
               <Link to="/members/$slug" params={{ slug: profileSlug }}>
                 Public Profile
@@ -307,7 +307,7 @@ function DashboardPage() {
               asChild
               variant="ghost"
               size="sm"
-              className="h-auto rounded-none p-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+              className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
             >
               <Link to="/dashboard/profile" search={{ tab: "identity" }}>
                 Edit →
@@ -361,7 +361,7 @@ function DashboardPage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="rounded-none border-white/10 font-tech text-[10px] uppercase tracking-wider-2"
+                  className="rounded-none border-white/10 font-tech text-ui-readable uppercase"
                 >
                   <Link to="/dashboard/profile" search={{ tab: "player" }}>
                     <Pencil className="h-3.5 w-3.5" />
@@ -382,7 +382,7 @@ function DashboardPage() {
                 asChild
                 variant="ghost"
                 size="sm"
-                className="h-auto rounded-none p-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
               >
                 <Link to="/tournaments">Browse →</Link>
               </Button>
@@ -399,7 +399,7 @@ function DashboardPage() {
                       asChild
                       variant="ghost"
                       size="sm"
-                      className="h-auto shrink-0 rounded-none p-0 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                      className="h-auto shrink-0 rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
                     >
                       <Link to="/tournaments/$id" params={{ id: entry.tournamentId }}>
                         View →
@@ -409,24 +409,24 @@ function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <Badge
                       variant="outline"
-                      className="rounded-none border-white/10 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
+                      className="rounded-none border-white/10 font-tech text-label-readable uppercase text-muted-foreground"
                     >
                       {entry.teamTag}
                     </Badge>
                     <span className="text-xs text-muted-foreground">{entry.teamName}</span>
                   </div>
                   {entry.status === "Pending" ? (
-                    <div className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-amber-400">
+                    <div className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-amber-400">
                       <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-amber-400" />
                       Pending admin approval
                     </div>
                   ) : entry.status === "Approved" ? (
-                    <div className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
+                    <div className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-emerald-400">
                       <CheckCircle className="h-3 w-3" />
                       Registered
                     </div>
                   ) : (
-                    <div className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-red-400">
+                    <div className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-red-400">
                       Declined
                     </div>
                   )}
@@ -442,7 +442,7 @@ function DashboardPage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="mt-1 clip-cta rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+                  className="mt-1 clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
                 >
                   <Link to="/tournaments">
                     Browse Tournaments
@@ -471,7 +471,7 @@ function DashboardPage() {
                       vs {m.opponent} · {m.round}
                     </p>
                   </div>
-                  <span className="shrink-0 text-right font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <span className="shrink-0 text-right font-tech text-label-readable uppercase text-muted-foreground">
                     {m.scheduledAt}
                   </span>
                 </li>
@@ -494,7 +494,7 @@ function DashboardPage() {
               asChild
               variant="ghost"
               size="sm"
-              className="h-auto rounded-none p-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+              className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
             >
               <Link to="/dashboard/profile" search={{ tab: "socials" }}>
                 Manage →
@@ -513,14 +513,14 @@ function DashboardPage() {
                     {SOCIAL_PLATFORM_LABELS[s.platform]}
                   </span>
                   {!hasUrl ? (
-                    <span className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground/35">
+                    <span className="font-tech text-label-readable uppercase text-muted-foreground/35">
                       Missing
                     </span>
                   ) : isPublic ? (
                     <div className="flex items-center gap-2">
                       <Badge
                         variant="outline"
-                        className="rounded-none border-emerald-400/20 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
+                        className="rounded-none border-emerald-400/20 bg-emerald-400/5 font-tech text-label-readable uppercase text-emerald-400"
                       >
                         Public
                       </Badge>
@@ -537,7 +537,7 @@ function DashboardPage() {
                   ) : (
                     <Badge
                       variant="outline"
-                      className="rounded-none border-white/10 bg-white/5 font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground"
+                      className="rounded-none border-white/10 bg-white/5 font-tech text-label-readable uppercase text-muted-foreground"
                     >
                       Private
                     </Badge>

@@ -19,7 +19,7 @@ export function TeamInviteBanner({
 }: TeamInviteBannerProps) {
   return (
     <div className="mb-6 border border-amber-400/25 bg-amber-400/5 p-5 clip-tab">
-      <p className="text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+      <p className="font-tech text-label-readable uppercase text-amber-400">
         Pending Invitation
       </p>
       <p className="mt-2 text-sm text-foreground">
@@ -37,7 +37,7 @@ export function TeamInviteBanner({
           type="button"
           disabled={responding}
           onClick={onAccept}
-          className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+          className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
         >
           {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
           Accept Invite
@@ -47,7 +47,7 @@ export function TeamInviteBanner({
           variant="outline"
           disabled={responding}
           onClick={onDecline}
-          className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+          className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
         >
           <X className="h-3.5 w-3.5" />
           Decline

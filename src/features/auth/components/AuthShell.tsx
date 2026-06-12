@@ -27,7 +27,7 @@ export function AuthShell({
         </Link>
 
         <div className="relative z-10 max-w-md">
-          <div className="mb-5 flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <div className="mb-5 flex items-center gap-3 font-tech text-label-readable uppercase text-muted-foreground">
             <span className="h-px w-10 bg-border" />
             Tournament Access
           </div>
@@ -35,7 +35,7 @@ export function AuthShell({
           <p className="mt-4 max-w-sm text-sm text-muted-foreground">{subheadline}</p>
         </div>
 
-        <div className="relative z-10 flex items-center justify-between text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+        <div className="relative z-10 flex items-center justify-between font-tech text-label-readable uppercase text-muted-foreground">
           <span>EST. MMXXVI</span>
           <span>Black Rose / Operations</span>
         </div>
@@ -71,7 +71,7 @@ export function SocialButton({
       className="group relative flex h-11 w-full items-center justify-center gap-3 border border-border bg-secondary px-4 text-xs font-tech uppercase tracking-wider-2 text-foreground transition hover:border-foreground/60 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span>{label}</span>
-      {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
+      {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
     </button>
   );
 }

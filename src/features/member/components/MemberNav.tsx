@@ -45,7 +45,7 @@ export function MemberNav() {
         </Link>
 
         {/* Nav links */}
-        <nav className="hidden items-center gap-10 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground md:flex">
+        <nav className="hidden items-center gap-10 font-tech text-label-readable uppercase text-muted-foreground md:flex">
           {isVerifiedMember && (
             <div className="flex items-center gap-6">
               {MEMBER_CONSOLE_NAV.map((item) => {
@@ -86,13 +86,13 @@ export function MemberNav() {
               {isVerifiedMember && <NotificationBell />}
               <Link
                 {...accountHref}
-                className="hidden h-9 items-center gap-2 px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                className="hidden min-h-11 items-center gap-2 px-4 font-tech text-label-readable uppercase text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
               >
                 <div className="h-5 w-5 shrink-0 overflow-hidden border border-white/15 bg-white/5">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center font-display text-[10px] tracking-display">
+                    <span className="flex h-full w-full items-center justify-center font-display text-label-readable tracking-display">
                       {session.displayName.slice(0, 2).toUpperCase()}
                     </span>
                   )}
@@ -103,7 +103,7 @@ export function MemberNav() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="text-xs font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-muted-foreground"
+                className="min-h-11 font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-muted-foreground"
               >
                 <LogOut className="h-3.5 w-3.5 sm:hidden" />
                 <span className="hidden sm:block">Sign Out</span>
@@ -112,7 +112,7 @@ export function MemberNav() {
           ) : (
             <Link
               to="/login"
-              className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+              className="clip-cta inline-flex h-11 items-center bg-foreground px-5 font-tech text-ui-readable uppercase text-background transition hover:bg-foreground/90"
             >
               Join Us
             </Link>

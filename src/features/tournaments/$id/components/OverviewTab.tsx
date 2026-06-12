@@ -95,7 +95,7 @@ export function OverviewTab({ tournament: t, teamTags }: OverviewTabProps) {
             {t.schedule.map((entry, i) => (
               <li key={`${entry.phase}-${i}`} className="mb-6 ml-6 last:mb-0">
                 <span className="absolute left-[-5px] mt-1.5 h-2.5 w-2.5 border border-white/20 bg-background" />
-                <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <div className="font-tech text-label-readable uppercase text-muted-foreground">
                   {entry.date}
                 </div>
                 <div className="mt-1 text-sm font-medium">{entry.phase}</div>
@@ -132,7 +132,7 @@ export function OverviewTab({ tournament: t, teamTags }: OverviewTabProps) {
                 style={{ width: `${Math.round((t.teamsRegistered / t.teamCap) * 100)}%` }}
               />
             </div>
-            <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+            <div className="font-tech text-label-readable uppercase text-muted-foreground">
               {t.teamCap - t.teamsRegistered > 0
                 ? `${t.teamCap - t.teamsRegistered} slots remaining`
                 : "Registration full"}
@@ -157,7 +157,7 @@ function Card({
     <div className="border border-white/8 bg-[oklch(0.07_0_0)]">
       <div className="flex items-center gap-2.5 border-b border-white/8 px-5 py-4">
         {icon && <span className="text-muted-foreground">{icon}</span>}
-        <h3 className="text-[11px] font-tech uppercase tracking-wider-2 text-foreground">{title}</h3>
+        <h3 className="font-tech text-label-readable uppercase text-foreground">{title}</h3>
       </div>
       <div className="px-5 py-5">{children}</div>
     </div>
@@ -167,7 +167,7 @@ function Card({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+      <dt className="font-tech text-label-readable uppercase text-muted-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm">{value}</dd>

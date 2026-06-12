@@ -72,7 +72,7 @@ function TournamentsPage() {
         />
 
         <div className="relative mx-auto max-w-7xl px-6">
-          <div className="mb-4 inline-flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <div className="mb-4 inline-flex items-center gap-3 font-tech text-label-readable uppercase text-muted-foreground">
             <span className="h-px w-10 bg-border" />
             Tournament Directory
           </div>
@@ -81,7 +81,7 @@ function TournamentsPage() {
             All Tournaments
           </h1>
 
-          <p className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">
+          <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
             Community esports organized by Black Rose. Find your next competition, lock in your
             roster, and compete.
           </p>
@@ -104,7 +104,7 @@ function TournamentsPage() {
                     <div className="font-display text-3xl tracking-display md:text-4xl">
                       {s.value}
                     </div>
-                    <div className="mt-1 text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                    <div className="mt-1 font-tech text-label-readable uppercase text-muted-foreground">
                       {s.label}
                     </div>
                   </div>
@@ -186,6 +186,7 @@ function TournamentsPage() {
                     captainRegistrationLoading={
                       showCaptainRegistrationState && captainRegistrationsLoading
                     }
+                    emptyReason={totalCount === 0 ? "empty" : "filtered"}
                   />
                 ) : filtered.some(
                     (t) => t.status !== "Live" && t.status !== "Registration Open",
@@ -208,6 +209,7 @@ function TournamentsPage() {
                       captainRegistrationLoading={
                         showCaptainRegistrationState && captainRegistrationsLoading
                       }
+                      emptyReason={totalCount === 0 ? "empty" : "filtered"}
                     />
                   )
                 )}

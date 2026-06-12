@@ -122,7 +122,7 @@ function WaitlistPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-50" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
             </span>
-            <span className="text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+            <span className="font-tech text-label-readable uppercase text-amber-400">
               Pending Verification
             </span>
           </div>
@@ -152,7 +152,7 @@ function WaitlistPage() {
                 href={DISCORD_SERVER_INVITE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex h-8 items-center gap-2 bg-[#5865F2] px-4 font-tech text-[10px] uppercase tracking-wider-2 text-white transition hover:bg-[#4752c4]"
+                className="mt-3 inline-flex h-11 items-center gap-2 bg-[#5865F2] px-4 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
               >
                 <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
                 Join Discord
@@ -172,7 +172,7 @@ function WaitlistPage() {
               <button
                 type="button"
                 onClick={() => setShowTemplates((v) => !v)}
-                className="mt-3 inline-flex h-8 items-center gap-2 border border-white/10 px-4 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground transition hover:border-white/25 hover:text-foreground"
+                className="mt-3 inline-flex h-11 items-center gap-2 border border-white/10 px-4 font-tech text-label-readable uppercase text-muted-foreground transition hover:border-white/25 hover:text-foreground"
               >
                 {showTemplates ? "Hide" : "View"} Application Formats
               </button>
@@ -187,7 +187,7 @@ function WaitlistPage() {
                         <button
                           type="button"
                           onClick={() => copyTemplate(t.game, t.fields)}
-                          className="cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground"
+                          className="cursor-pointer inline-flex items-center gap-1.5 font-tech text-label-readable uppercase text-muted-foreground transition hover:text-foreground"
                         >
                           {copiedGame === t.game ? (
                             <>
@@ -228,7 +228,7 @@ function WaitlistPage() {
                 type="button"
                 onClick={() => void syncVerification()}
                 disabled={isChecking}
-                className="mt-3 inline-flex h-8 items-center gap-2 border border-white/10 px-4 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground transition hover:border-white/25 hover:text-foreground disabled:opacity-50"
+                className="mt-3 inline-flex h-11 items-center gap-2 border border-white/10 px-4 font-tech text-label-readable uppercase text-muted-foreground transition hover:border-white/25 hover:text-foreground disabled:opacity-50"
               >
                 {isChecking ? (
                   <>

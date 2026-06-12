@@ -121,7 +121,7 @@ export function NotificationBell() {
       >
         <Bell className="h-4 w-4" />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center bg-white font-tech text-[9px] tracking-wider-2 text-black">
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center bg-white px-0.5 font-tech text-label-readable tracking-wider-2 text-black">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -132,10 +132,10 @@ export function NotificationBell() {
         <div className="absolute right-0 top-11 z-50 w-80 border border-white/12 bg-[oklch(0.08_0_0)] shadow-[0_16px_48px_rgba(0,0,0,0.8)]">
           {/* Panel header */}
           <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-            <p className="text-[10px] font-tech uppercase tracking-wider-2 text-foreground">
+            <p className="font-tech text-label-readable uppercase text-foreground">
               Notifications
               {unread > 0 && (
-                <span className="ml-2 border border-white/15 px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                <span className="ml-2 border border-white/15 px-1.5 py-0.5 text-sm text-muted-foreground">
                   {unread} new
                 </span>
               )}
@@ -146,7 +146,7 @@ export function NotificationBell() {
                   type="button"
                   onClick={handleMarkAll}
                   title="Mark all as read"
-                  className="flex items-center gap-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground"
+                  className="flex items-center gap-1 font-tech text-label-readable uppercase text-muted-foreground transition hover:text-foreground"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   All read
@@ -190,7 +190,7 @@ export function NotificationBell() {
                         >
                           {n.title}
                         </p>
-                        <span className="shrink-0 text-[9px] font-tech text-muted-foreground/50">
+                        <span className="shrink-0 font-tech text-label-readable text-muted-foreground/50">
                           {relativeTime(n.createdAt)}
                         </span>
                       </div>
@@ -263,7 +263,7 @@ export function NotificationBell() {
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="border-t border-white/8 px-4 py-2.5 text-center">
-              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/40">
+              <p className="font-tech text-label-readable uppercase text-muted-foreground/40">
                 {notifications.length} total · syncs automatically
               </p>
             </div>

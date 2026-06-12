@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
@@ -6,6 +6,7 @@ import { ChampionArchiveStatsStrip } from "@/features/championships/components/C
 import { ChampionCardsSkeleton } from "@/features/championships/components/ChampionCardsSkeleton";
 import { HallOfChampionsGrid } from "@/features/championships/components/HallOfChampionsGrid";
 import { useHallOfChampions } from "@/features/championships/hooks/useHallOfChampions";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Emblem } from "@/features/shared/components/Emblem";
 
@@ -52,7 +53,7 @@ function ChampionsPage() {
         />
 
         <div className="relative mx-auto max-w-7xl px-6">
-          <div className="mb-4 inline-flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <div className="mb-4 inline-flex items-center gap-3 font-tech text-label-readable uppercase text-muted-foreground">
             <span className="h-px w-10 bg-border" />
             Legacy Archive
           </div>
@@ -61,7 +62,7 @@ function ChampionsPage() {
             Hall of Champions
           </h1>
 
-          <p className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">
+          <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
             Every crown earned in Black Rose competition is filed here. Open a champion record to
             view their victory portrait, legacy narrative, and championship roster.
           </p>
@@ -115,12 +116,33 @@ function ChampionsPage() {
               <p className="mt-2 text-sm text-muted-foreground">{error}</p>
             </div>
           ) : champions.length === 0 ? (
-            <div className="border border-white/8 bg-card/40 px-6 py-16 text-center">
-              <p className="font-display text-2xl tracking-display">No champions crowned yet</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                The archive opens when a tournament concludes and a champion is decided.
-              </p>
-            </div>
+            <ArenaEmptyState
+              eyebrow="Archive Sealed"
+              title={
+                <>
+                  The crown awaits its <span className="text-stroke">first name.</span>
+                </>
+              }
+              description="The Hall of Champions opens when a tournament concludes and a victor is decided. Compete under the Black Rose banner to etch your team into the legacy archive."
+              actions={
+                <>
+                  <Link
+                    to="/tournaments"
+                    className="clip-cta inline-flex h-11 items-center gap-2 bg-foreground px-6 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+                  >
+                    View tournaments
+                    <span aria-hidden>→</span>
+                  </Link>
+                  <Link
+                    to="/community"
+                    className="clip-cta inline-flex h-11 items-center gap-2 border border-white/15 bg-white/4 px-6 font-tech text-xs uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
+                  >
+                    Meet the guild
+                    <span aria-hidden>→</span>
+                  </Link>
+                </>
+              }
+            />
           ) : (
             <HallOfChampionsGrid champions={champions} />
           )}

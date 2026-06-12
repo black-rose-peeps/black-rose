@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useTournamentList } from "@/features/tournaments/hooks";
 import { TournamentShowcaseCard } from "@/features/tournaments/components/TournamentShowcaseCard";
 import { pickSpotlightTournaments } from "@/features/tournaments/utils/tournament-display";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
+import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
 import { SectionHeading } from "./SectionHeading";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -64,19 +66,36 @@ export function FeaturedTournaments() {
             ))}
           </div>
         ) : (
-          <div className="border border-white/8 bg-card/40 px-6 py-12 text-center">
-            <p className="font-display text-2xl tracking-display">No open events right now</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Check back soon or browse the full tournament directory.
-            </p>
-            <Link
-              to="/tournaments"
-              className="clip-cta mt-6 inline-flex h-11 items-center gap-2 bg-foreground px-6 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
-            >
-              Browse tournaments
-              <span aria-hidden>→</span>
-            </Link>
-          </div>
+          <ArenaEmptyState
+            compact
+            eyebrow="Calendar Clear"
+            title={
+              <>
+                No events <span className="text-stroke">live yet.</span>
+              </>
+            }
+            description="Registration and live brackets will appear here when the next Black Rose season opens. Join Discord for announcements or browse the full tournament directory."
+            actions={
+              <>
+                <a
+                  href={DISCORD_SERVER_INVITE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="clip-cta inline-flex h-11 items-center gap-2 bg-foreground px-6 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+                >
+                  Join Discord
+                  <span aria-hidden>→</span>
+                </a>
+                <Link
+                  to="/tournaments"
+                  className="clip-cta inline-flex h-11 items-center gap-2 border border-white/15 bg-white/4 px-6 font-tech text-xs uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
+                >
+                  Browse directory
+                  <span aria-hidden>→</span>
+                </Link>
+              </>
+            }
+          />
         )}
       </div>
     </section>

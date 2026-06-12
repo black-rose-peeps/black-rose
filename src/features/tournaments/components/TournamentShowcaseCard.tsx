@@ -119,7 +119,7 @@ export function TournamentShowcaseCard({
           src={cover}
           alt={`${t.name} — ${t.game}`}
           loading="lazy"
-          className="h-full w-full object-cover object-center grayscale contrast-110 saturate-90 transition duration-700 group-hover:scale-[1.04] group-hover:grayscale-0 group-hover:saturate-110"
+          className="h-full w-full object-cover object-center brightness-[0.88] contrast-[0.92] saturate-[0.55] transition duration-700 group-hover:scale-[1.04] group-hover:brightness-100 group-hover:contrast-110 group-hover:saturate-110"
         />
 
         {/* Vignette + editorial fade */}
@@ -142,20 +142,23 @@ export function TournamentShowcaseCard({
         <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent opacity-0 transition duration-500 group-hover:opacity-100" />
 
         {/* Broadcast status */}
-        <div className="absolute left-4 top-4 flex items-center gap-2 border border-white/15 bg-black/75 px-2.5 py-1 font-tech text-[9px] uppercase tracking-[0.2em] text-white/90 backdrop-blur-md">
+        <div className="absolute left-4 top-4 flex items-center gap-2 border border-white/15 bg-black/75 px-2.5 py-1 font-tech text-label-readable uppercase text-white/90 backdrop-blur-md">
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
           {status.label}
         </div>
 
         {/* Game tag — techwear label */}
         <div
-          className={`absolute right-4 top-4 border px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-md ${accent.tag}`}
+          className={`absolute right-4 top-4 border px-2 py-0.5 font-tech text-label-readable uppercase backdrop-blur-md ${accent.tag}`}
         >
           {getGameAbbrev(t.game)}
         </div>
 
-        {/* Vertical editorial index */}
-        <p className="pointer-events-none absolute bottom-4 right-4 font-tech text-[9px] uppercase tracking-[0.35em] text-white/25 [writing-mode:vertical-rl] rotate-180">
+        {/* Vertical editorial index — decorative on larger screens */}
+        <p
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-4 right-4 hidden font-tech text-label-readable uppercase tracking-[0.12em] text-white/35 [writing-mode:vertical-rl] rotate-180 sm:block"
+        >
           Black Rose · {t.region}
         </p>
       </Link>
@@ -166,11 +169,11 @@ export function TournamentShowcaseCard({
 
         <div className="relative">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-tech text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="font-tech text-label-readable uppercase text-muted-foreground">
               {GAME_LABELS[t.game]}
             </span>
             <span className="text-white/15">·</span>
-            <span className="border border-white/10 px-1.5 py-px font-tech text-[8px] uppercase tracking-[0.16em] text-white/50">
+            <span className="border border-white/10 px-1.5 py-px font-tech text-label-readable uppercase text-white/50">
               {t.format}
             </span>
           </div>
@@ -187,7 +190,7 @@ export function TournamentShowcaseCard({
         {/* Luxury stat strip */}
         <dl className="relative mt-5 grid grid-cols-3 divide-x divide-white/[0.08] border-y border-white/[0.08] py-4">
           <div className="pr-3">
-            <dt className="font-tech text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
+            <dt className="font-tech text-label-readable uppercase text-muted-foreground">
               Prize Pool
             </dt>
             <dd className="mt-1.5 truncate font-display text-xl tracking-[0.06em] text-white">
@@ -195,7 +198,7 @@ export function TournamentShowcaseCard({
             </dd>
           </div>
           <div className="px-3">
-            <dt className="font-tech text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
+            <dt className="font-tech text-label-readable uppercase text-muted-foreground">
               Roster
             </dt>
             <dd className="mt-1.5 font-display text-xl tracking-[0.06em] text-white">
@@ -203,7 +206,7 @@ export function TournamentShowcaseCard({
             </dd>
           </div>
           <div className="pl-3">
-            <dt className="font-tech text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
+            <dt className="font-tech text-label-readable uppercase text-muted-foreground">
               {t.status === "Live" ? "Started" : "Deadline"}
             </dt>
             <dd className="mt-1.5 font-display text-xl tracking-[0.06em] text-white">
@@ -215,7 +218,7 @@ export function TournamentShowcaseCard({
         {/* Capacity meter */}
         {!isOver && (
           <div className="relative mt-4">
-            <div className="mb-1.5 flex items-center justify-between font-tech text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="mb-1.5 flex items-center justify-between font-tech text-label-readable uppercase text-muted-foreground">
               <span>Capacity</span>
               <span className={slotsLeft === 0 ? "text-white" : "text-white/50"}>
                 {slotsLeft === 0 ? "Full" : `${slotsLeft} slots left`}
@@ -241,7 +244,7 @@ export function TournamentShowcaseCard({
           <Link
             to="/tournaments/$id"
             params={{ id: t.id }}
-            className={`relative mt-6 clip-cta inline-flex h-11 w-full items-center justify-center gap-2 border border-transparent font-tech text-[10px] uppercase tracking-[0.22em] transition duration-300 ${cta.className} ${accent.cta}`}
+            className={`relative mt-6 clip-cta inline-flex h-12 w-full items-center justify-center gap-2 border border-transparent font-tech text-ui-readable uppercase transition duration-300 ${cta.className} ${accent.cta}`}
           >
             {cta.label}
             <span aria-hidden className="text-sm leading-none">
@@ -250,7 +253,7 @@ export function TournamentShowcaseCard({
           </Link>
         ) : (
           <div
-            className={`relative mt-6 clip-cta inline-flex h-11 w-full items-center justify-center font-tech text-[10px] uppercase tracking-[0.22em] ${cta.className}`}
+            className={`relative mt-6 clip-cta inline-flex h-12 w-full items-center justify-center font-tech text-ui-readable uppercase ${cta.className}`}
           >
             {cta.label}
           </div>

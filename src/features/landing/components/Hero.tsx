@@ -33,7 +33,7 @@ export function Hero() {
           <Emblem spin className="mb-6 relative h-64 w-64 md:h-80 md:w-80 opacity-90" />
         </div>
 
-        <div className="mb-6 inline-flex items-center gap-3 border border-border px-4 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground animate-rise">
+        <div className="mb-6 inline-flex items-center gap-3 border border-border px-4 py-1.5 font-tech text-label-readable uppercase text-muted-foreground animate-rise">
           <span className="h-1.5 w-1.5 bg-foreground animate-pulse-soft" />
           Community Esports
         </div>

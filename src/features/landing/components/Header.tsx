@@ -33,7 +33,7 @@ function GuestHeader() {
           <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
         </Link>
 
-        <nav className="hidden items-center gap-10 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground md:flex">
+        <nav className="hidden items-center gap-10 text-sm font-tech uppercase tracking-[0.08em] text-muted-foreground md:flex">
           {GUEST_NAV.map((item) => (
             <Link
               key={item.label}
@@ -50,7 +50,7 @@ function GuestHeader() {
         <div className="flex items-center gap-3">
           <Link
             to="/login"
-            className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+            className="clip-cta inline-flex h-11 items-center bg-foreground px-5 text-sm font-tech uppercase tracking-[0.08em] text-background transition hover:bg-foreground/90"
           >
             Join Us
           </Link>
