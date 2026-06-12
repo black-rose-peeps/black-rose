@@ -5,12 +5,9 @@ import { ensureAdminConsoleSession } from "@/features/admin/auth/admin-session";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
-    // Admin session is client-only (localStorage). Never render the console shell during SSR.
+    // Session lives in localStorage — unavailable during SSR. Client validates below.
     if (typeof window === "undefined") {
-      throw redirect({
-        to: "/login",
-        search: { console: "1" },
-      });
+      return;
     }
 
     const valid = await ensureAdminConsoleSession();

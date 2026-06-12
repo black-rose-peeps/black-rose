@@ -9,6 +9,7 @@ export interface PublicBracketTeamSlotProps {
   isLoser: boolean;
   hasScores?: boolean;
   swissStatus?: "active" | "advanced" | "eliminated";
+  isChampionRow?: boolean;
 }
 
 export function PublicBracketTeamSlot({
@@ -19,6 +20,7 @@ export function PublicBracketTeamSlot({
   isLoser,
   hasScores = false,
   swissStatus,
+  isChampionRow = false,
 }: PublicBracketTeamSlotProps) {
   const isTbd = name === null;
   const abbr = isTbd ? "?" : teamDisplayAbbr(name, tag);
@@ -27,7 +29,8 @@ export function PublicBracketTeamSlot({
     <div
       className={cn(
         "flex items-center gap-2 border-b border-border/40 px-2 py-1.5 last:border-0",
-        isWinner && "bg-emerald-400/10",
+        isChampionRow && "bg-amber-400/10",
+        isWinner && !isChampionRow && "bg-emerald-400/10",
         isLoser && "opacity-60",
         swissStatus === "advanced" && "bg-emerald-500/5",
         swissStatus === "eliminated" && "opacity-50",
@@ -37,9 +40,11 @@ export function PublicBracketTeamSlot({
       <span
         className={cn(
           "h-2 w-2 shrink-0 rounded-full border",
-          isWinner
-            ? "border-emerald-400 bg-emerald-400"
-            : "border-muted-foreground/30 bg-transparent",
+          isChampionRow
+            ? "border-amber-400 bg-amber-400"
+            : isWinner
+              ? "border-emerald-400 bg-emerald-400"
+              : "border-muted-foreground/30 bg-transparent",
         )}
       />
 
@@ -52,9 +57,11 @@ export function PublicBracketTeamSlot({
           "min-w-0 flex-1 truncate text-xs",
           isTbd
             ? "italic text-muted-foreground/50"
-            : isWinner
-              ? "font-semibold text-foreground"
-              : "text-muted-foreground",
+            : isChampionRow
+              ? "font-semibold text-amber-100"
+              : isWinner
+                ? "font-semibold text-foreground"
+                : "text-muted-foreground",
         )}
       >
         {isTbd ? "TBD" : name}
