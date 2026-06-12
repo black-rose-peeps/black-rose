@@ -1,6 +1,11 @@
+import { useMemo } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { IdCard, LayoutDashboard, LogOut } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
+import {
+  HeaderMobileMenu,
+  type MobileNavSection,
+} from "@/features/shared/components/HeaderMobileMenu";
 import { clearSession, getSession } from "@/features/auth/store/session";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
@@ -34,6 +39,52 @@ export function MemberNav() {
     clearSession();
     window.location.href = "/";
   }
+
+  const mobileSections = useMemo((): MobileNavSection[] => {
+    const sections: MobileNavSection[] = [];
+
+    if (isVerifiedMember) {
+      sections.push({
+        title: "Console",
+        items: MEMBER_CONSOLE_NAV.map((item) => ({
+          label: item.label,
+          to: item.to,
+          search: item.to === "/teams" ? { create: false } : undefined,
+          icon: "icon" in item ? item.icon : undefined,
+          active: pathname === item.to || pathname.startsWith(`${item.to}/`),
+        })),
+      });
+    }
+
+    sections.push({
+      title: isVerifiedMember ? "Explore" : undefined,
+      items: PUBLIC_NAV.map(({ label, to }) => ({
+        label,
+        to,
+        active: pathname === to || pathname.startsWith(`${to}/`),
+      })),
+    });
+
+    if (session) {
+      sections.push({
+        title: "Account",
+        items: [
+          {
+            label: isVerifiedMember ? "My Profile" : "Waitlist Status",
+            to: accountHref.to,
+            params: "params" in accountHref ? accountHref.params : undefined,
+            icon: IdCard,
+            active:
+              pathname.startsWith("/members/") ||
+              pathname === "/waitlist" ||
+              pathname === "/dashboard/profile",
+          },
+        ],
+      });
+    }
+
+    return sections;
+  }, [accountHref, isVerifiedMember, pathname, session]);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
@@ -80,7 +131,8 @@ export function MemberNav() {
         </nav>
 
         {/* User area */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <HeaderMobileMenu sections={mobileSections} />
           {session ? (
             <>
               {isVerifiedMember && <NotificationBell />}
