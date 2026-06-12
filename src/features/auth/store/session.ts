@@ -38,14 +38,22 @@ export function getSession(): AppUser | null {
 
 export function setSession(user: AppUser): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  sessionStorage.removeItem(SESSION_KEY);
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Storage may be unavailable (private mode, quota, SSR edge cases).
+  }
 }
 
 export function clearSession(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(SESSION_KEY);
+  try {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Storage may be unavailable (private mode, quota, SSR edge cases).
+  }
 }
 
 export function isLoggedIn(): boolean {

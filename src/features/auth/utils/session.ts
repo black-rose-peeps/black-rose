@@ -23,8 +23,9 @@ export function applyVerificationToSession(
     username: snapshot.username,
     discordUsername: snapshot.discordUsername,
     displayName: snapshot.displayName,
-    profileSlug: snapshot.profileSlug ?? session.profileSlug,
-    avatarUrl: snapshot.avatarUrl ?? session.avatarUrl,
+    profileSlug:
+      snapshot.profileSlug === undefined ? session.profileSlug : snapshot.profileSlug,
+    avatarUrl: snapshot.avatarUrl === undefined ? session.avatarUrl : snapshot.avatarUrl,
     discordId: snapshot.discordId ?? session.discordId,
     role: session.role === "admin" ? "admin" : memberStatusToUserRole(snapshot.status),
     registeredAt: snapshot.registeredAt,

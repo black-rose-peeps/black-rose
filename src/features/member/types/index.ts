@@ -14,11 +14,6 @@ export interface SocialLink {
   isPublic: boolean;
 }
 
-export interface ValorantIdentity {
-  gameName: string;
-  tagline: string;
-}
-
 export interface TournamentEntry {
   tournamentId: string;
   tournamentName: string;

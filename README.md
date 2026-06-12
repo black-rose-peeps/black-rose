@@ -1,58 +1,107 @@
 # Black Rose Arena
 
-A community esports tournament platform for creating, managing, and competing in organized events. Built with React, TanStack Start, and Tailwind CSS.
+A community esports tournament platform for creating, managing, and competing in organized events. Members sign in with Discord, build profiles and teams, register for tournaments, and follow live brackets. Operators run the full lifecycle from the admin console.
+
+Built with **React 19**, **TanStack Start**, **Supabase**, and **Tailwind CSS v4**.
 
 ---
 
 ## Prerequisites
 
-Before you start, make sure you have these installed:
-
 - **Node.js** `22.12+` — check with `node -v`
-  - If you're on an older version, upgrade via [nvm](https://github.com/coreybutler/nvm-windows) (Windows) or [nvm](https://github.com/nvm-sh/nvm) (Mac/Linux):
-    ```bash
-    nvm install 22
-    nvm use 22
-    ```
-- **npm** `10+` — comes with Node, check with `npm -v`
-- **Git** — to clone the repo
+- **npm** `10+` — check with `npm -v`
+- **Git**
+- A **Supabase** project (PostgreSQL + Auth)
+- A **Discord** application (OAuth2 for member login)
 
 ---
 
 ## Getting Started
 
-**1. Clone the repo**
+**1. Clone and install**
 
 ```bash
 git clone https://github.com/your-org/blackrose-arena.git
 cd blackrose-arena
-```
-
-**2. Install dependencies**
-
-```bash
 npm install
 ```
 
-**3. Start the dev server**
+**2. Configure environment**
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Purpose |
+| -------- | ------- |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key (browser) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side writes (OAuth, profiles) — **never expose in the client** |
+| `VITE_DISCORD_CLIENT_ID` | Discord OAuth app client ID |
+| `DISCORD_CLIENT_SECRET` | Discord OAuth secret (server only) |
+| `VITE_SITE_URL` | Public site URL for Open Graph previews |
+| `VITE_DISCORD_SERVER_INVITE` | Invite link shown on waitlist / onboarding |
+
+Register each deployment callback in Discord → OAuth2 → Redirects, e.g. `http://localhost:5173/auth/callback`.
+
+**3. Set up the database**
+
+Run the SQL scripts in Supabase SQL Editor. Start with [docs/README.md](./docs/README.md) for the admin flow and table overview, then run scripts under [docs/sql/](./docs/sql/) as needed (members, teams, tournaments, member profiles, admin accounts, etc.).
+
+**4. Start the dev server**
 
 ```bash
 npm run dev
 ```
 
-The app will be running at **http://localhost:5173**
+Open **http://localhost:5173**
+
+- **Members:** `/login` → Discord OAuth
+- **Admin console:** `/login?console=1` → username/password from `admin_accounts` (see [docs/sql/create_admin_account.sql](./docs/sql/create_admin_account.sql))
 
 ---
 
 ## Available Scripts
 
-| Command           | What it does                         |
-| ----------------- | ------------------------------------ |
-| `npm run dev`     | Start development server             |
-| `npm run build`   | Build for production                 |
+| Command | What it does |
+| ------- | ------------ |
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
 | `npm run preview` | Preview the production build locally |
-| `npm run lint`    | Run ESLint                           |
-| `npm run format`  | Run Prettier on all files            |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Run Prettier on all files |
+
+---
+
+## Key Pages
+
+| URL | Description |
+| --- | ----------- |
+| `/` | Public landing page |
+| `/tournaments` | Tournament directory (game & status filters) |
+| `/tournaments/:id` | Tournament detail — overview, teams, bracket, rules, results |
+| `/champions` | Hall of Champions archive |
+| `/community` | Guild values and community info |
+| `/login` | Sign in with Discord |
+| `/register` | Register with Discord → waitlist if unverified |
+| `/auth/callback` | Discord OAuth callback (handled automatically) |
+| `/waitlist` | Pending verification after registration |
+| `/dashboard` | Member dashboard (verified members) |
+| `/dashboard/profile` | Edit profile — identity, player info, Valorant ID, socials |
+| `/members/:slug` | Public member profile |
+| `/teams` | My teams overview |
+| `/teams/create` | Create a team |
+| `/teams/:id` | Team detail — roster, invites, tournament registration |
+| `/admin` | Admin dashboard |
+| `/admin/users` | Member registry & verification |
+| `/admin/teams` | Team directory |
+| `/admin/tournaments` | Tournament management |
+| `/admin/tournaments/:id` | Bracket manager, registrations, seeding |
+| `/admin/participants` | Registration approval queue |
+| `/admin/announcements` | Broadcast center (UI only — see status below) |
+| `/admin/settings` | Console settings |
 
 ---
 
@@ -60,185 +109,118 @@ The app will be running at **http://localhost:5173**
 
 ```text
 src/
-├── assets/                        # Images (logo, banners, etc.)
-│
-├── features/                      # ← Main source of truth for all features
-│   ├── landing/                   # Public home page (/)
-│   │   └── components/
-│   │       ├── Header.tsx
-│   │       ├── Hero.tsx
-│   │       ├── FeaturedTournaments.tsx
-│   │       ├── WhyBlackRose.tsx
-│   │       ├── HallOfChampions.tsx
-│   │       ├── CtaBand.tsx
-│   │       ├── Footer.tsx
-│   │       └── SectionHeading.tsx
-│   │
-│   ├── auth/                      # Login and Register pages
-│   │   ├── components/
-│   │   │   └── AuthShell.tsx      # Shared auth page layout shell
-│   │   ├── services/
-│   │   │   └── discord.ts         # Discord OAuth2 placeholder (wire up when backend is ready)
-│   │   ├── store/
-│   │   │   └── session.ts         # Client-side session store (placeholder until real auth)
-│   │   └── types/
-│   │       └── index.ts           # UserRole, AppUser types
-│   │
-│   ├── admin/                     # Admin console (/admin/*)
-│   │   └── components/
-│   │       ├── AdminSidebar.tsx
-│   │       ├── AdminTopbar.tsx
-│   │       └── ui.tsx             # Admin-specific UI primitives
-│   │
-│   ├── member/                    # Member dashboard and profile
-│   │   ├── components/
-│   │   │   └── MemberNav.tsx      # Sticky nav for member pages (mirrors landing Header)
-│   │   ├── types/
-│   │   │   └── index.ts           # MemberProfile, SocialLink, RiotAccount, etc.
-│   │   └── constants/
-│   │       └── index.ts           # Social platform labels and ordering
-│   │
-│   ├── teams/                     # Team creation and management
-│   │   ├── components/
-│   │   │   └── RosterTable.tsx    # Roster table with captain actions
-│   │   ├── types/
-│   │   │   └── index.ts           # Team, TeamMember, TeamMemberStatus types
-│   │   └── constants/
-│   │       └── index.ts           # Game options, role options, GAME_COLOR/ACCENT
-│   │
-│   └── shared/                    # Components reused across 2+ features
-│       └── components/
-│           └── Emblem.tsx
-│
-├── components/
-│   └── ui/                        # shadcn/ui base primitives (do not edit manually)
-│
-├── hooks/                         # Custom React hooks
-│
-├── lib/
-│   ├── mock-data.ts               # Placeholder data for admin panel + tournaments
-│   ├── mock-member.ts             # Placeholder member profile data
-│   ├── mock-teams.ts              # Placeholder team + roster data
-│   ├── mock-tournament-details.ts # Rich tournament detail data
-│   └── utils.ts                   # Utility functions (cn, etc.)
-│
-├── routes/                        # File-based routing (TanStack Router)
-│   ├── __root.tsx                 # Root layout — wraps every page
-│   ├── index.tsx                  # Home page (/)
-│   ├── login.tsx                  # Sign in (/login)
-│   ├── register.tsx               # Create account (/register)
-│   ├── unauthorized.tsx           # 403 page (/unauthorized)
-│   ├── admin.tsx                  # Admin layout wrapper
-│   ├── admin.index.tsx            # Admin dashboard (/admin)
-│   └── admin.*.tsx                # Other admin sections
-│
-├── routeTree.gen.ts               # AUTO-GENERATED — never edit by hand
-├── router.tsx                     # Router instance setup
-├── server.ts                      # SSR server entry
-├── start.ts                       # TanStack Start entry
-└── styles.css                     # Global styles + Tailwind theme
+├── features/           # Feature modules (main source of truth)
+│   ├── landing/        # Public home page
+│   ├── auth/           # Discord OAuth, session, member auth server fns
+│   ├── member/         # Profiles, dashboard, profile comments
+│   ├── teams/          # Team creation, roster, invites
+│   ├── tournaments/    # Public tournament UI, registration, brackets
+│   ├── championships/  # Hall of Champions
+│   ├── community/      # Community / guild page
+│   ├── notifications/  # In-app notification bell & sync
+│   └── admin/          # Admin console (members, teams, tournaments, bracket)
+├── routes/             # TanStack Router file-based routes (thin page shells)
+├── components/ui/      # shadcn/ui primitives
+└── lib/                # Supabase client, shared types, utilities
+
+docs/
+├── README.md           # Supabase setup & admin flow
+├── ADMIN_DATABASE.md   # Detailed schema reference
+├── ADMIN_TOURNAMENTS.md
+└── sql/                # Migration scripts
 ```
 
-### How features are organized
-
-Each folder inside `src/features/` represents one page group or feature. Inside a feature you can add these subfolders as needed:
-
-```text
-features/
-└── your-feature/
-    ├── components/   ← UI pieces specific to this feature
-    ├── hooks/        ← React hooks used only here
-    ├── types/        ← TypeScript interfaces and types
-    ├── constants/    ← Static values, enums, config
-    ├── services/     ← API calls or data-fetching logic
-    └── utils/        ← Helper functions specific to this feature
-```
-
-Only create the subfolders you actually need. Don't create empty ones.
-
-`features/shared/` is for anything genuinely used by two or more features (like `Emblem`).
-
-Route files in `routes/` stay thin — they import from `features/` and compose the page.
-
-### Key Pages
-
-| URL                      | Description                                         |
-| ------------------------ | --------------------------------------------------- |
-| `/`                      | Public landing page                                 |
-| `/tournaments`           | Tournament directory with game & status filters     |
-| `/tournaments/:id`       | Tournament detail — overview, teams, bracket, rules |
-| `/login`                 | Sign in with Discord                                |
-| `/register`              | Create account with Discord → redirects to waitlist |
-| `/waitlist`              | Pending verification — shown after registering      |
-| `/dashboard`             | Member dashboard (verified members only)            |
-| `/members/:slug`         | Public member profile page                          |
-| `/teams`                 | My team overview — create or view current team      |
-| `/teams/create`          | Create a new team                                   |
-| `/teams/:id`             | Team detail — roster, invite members, tournament    |
-| `/unauthorized`          | 403 access denied page                              |
-| `/admin`                 | Admin dashboard                                     |
-| `/admin/tournaments`     | Tournament management                               |
-| `/admin/tournaments/:id` | Tournament detail (admin view)                      |
-| `/admin/teams`           | Team directory                                      |
-| `/admin/users`           | User management                                     |
-| `/admin/participants`    | Registration queue                                  |
-| `/admin/announcements`   | Broadcast center                                    |
-| `/admin/settings`        | Console settings                                    |
+Route files stay thin — they compose pages from `features/`. The `@/` alias maps to `src/`.
 
 ---
 
 ## Tech Stack
 
-- **[React 19](https://react.dev)** — UI library
-- **[TanStack Start](https://tanstack.com/start)** — Full-stack React framework with SSR
+- **[React 19](https://react.dev)** — UI
+- **[TanStack Start](https://tanstack.com/start)** — Full-stack React with SSR
 - **[TanStack Router](https://tanstack.com/router)** — File-based routing
-- **[Tailwind CSS v4](https://tailwindcss.com)** — Utility-first styling
-- **[shadcn/ui](https://ui.shadcn.com)** — Accessible UI component primitives
+- **[Supabase](https://supabase.com)** — PostgreSQL, RLS, realtime
+- **[Tailwind CSS v4](https://tailwindcss.com)** — Styling
+- **[shadcn/ui](https://ui.shadcn.com)** — UI primitives
 - **[Vite 7](https://vite.dev)** — Build tool
-
----
-
-## Notes for Contributors
-
-- **Don't edit `routeTree.gen.ts`** — it's auto-generated by TanStack Router every time you save a route file. Any manual edits will be overwritten.
-- To add a new page, create a `.tsx` file in `src/routes/`. The router picks it up on the next dev server restart.
-- The `@/` import alias maps to `src/`. For example, `@/features/landing/components/Hero` → `src/features/landing/components/Hero.tsx`.
-- When adding a new shadcn/ui component, run `npx shadcn@latest add <component>` — it drops into `src/components/ui/` automatically. Don't move it.
-- The admin panel uses mock data from `src/lib/mock-data.ts`. No real backend or auth is connected yet.
-- Authentication uses Discord OAuth2. The placeholder service is at `src/features/auth/services/discord.ts`. To wire it up: create a Discord app at https://discord.com/developers/applications, set `VITE_DISCORD_CLIENT_ID` and `VITE_DISCORD_REDIRECT_URI` in a `.env` file, then implement the `exchangeCodeForToken` and `getDiscordUser` functions in a server function.
-- User roles are defined in `src/features/auth/types/index.ts`. New registrations get `not_verified` and land on `/waitlist`. An admin manually sets the role to `verified` to grant full access.
-- The session store at `src/features/auth/store/session.ts` is a `sessionStorage` placeholder. Replace it with real session management (JWT cookie, server-side session, etc.) when the backend is ready.
 
 ---
 
 ## Current Status
 
-The project is currently frontend-only and uses mock data for development.
+The platform is **production-capable** with Supabase as the backend. Shared domain types still live in `src/lib/mock-data.ts` (historical name only — data comes from Supabase services).
 
 ### Completed
 
-- ✅ Landing Page
-- ✅ Login — Discord OAuth2 UI (placeholder, backend not wired)
-- ✅ Registration — Discord OAuth2 UI → redirects to waitlist
-- ✅ Waitlist page — shown to `not_verified` users after registering
-- ✅ Tournament Directory — frontend with mock data
-- ✅ Tournament Details Page — frontend with mock data (overview, teams, bracket, rules)
-- ✅ Admin Dashboard UI — frontend with mock data
-- ✅ Member Dashboard — `/dashboard` (verified session required)
-- ✅ Member Profile Page — `/members/:slug` (public, session-aware)
-- ✅ Teams — `/teams`, `/teams/create`, `/teams/:id` (create team, invite members, view roster)
+**Auth & members**
 
-### Next Up
+- Discord OAuth2 sign-in and registration (`/auth/callback`, server token exchange)
+- Client session in `localStorage` with verification sync from database
+- Waitlist for unverified members; admin verification in `/admin/users`
+- Separate admin console login (`admin_accounts` + RPC)
 
-1. Discord OAuth2 backend integration (callback route, token exchange, session)
-2. Admin: user verification flow (change role `not_verified` → `verified`)
-3. Tournament Registration Flow from team page
-4. User Profile editing (social links, bio, riot account)
-5. Notifications & Announcements
+**Profiles**
 
-### Notes
+- Member profiles (`member_profiles`, social links) with public `/members/:slug`
+- Profile editing — display name, bio, game/role, socials, privacy
+- Manual **Valorant IGN + tagline** (shown in Valorant rosters, invites, and tournament views)
+- Profile comments on public profiles
+- Profile completion score on dashboard
 
-- No backend has been implemented yet.(DONE)
-- No database is connected. (DONE)
-- Authentication is not functional yet. Registration simulates a session in `sessionStorage` and redirects to `/waitlist`.
-- All users, teams, tournaments, and registrations currently use mock data. (DONE)
+**Teams**
+
+- Create teams, captain roster management, member invites (pending → accept)
+- Game-specific roles; Valorant competitive names (`IGN#TAG`) in rosters
+- One active team per game per member; roster capacity limits
+
+**Tournaments (public)**
+
+- Tournament directory and detail pages from Supabase
+- Team and solo registration flows; captain register from tournament page
+- Public bracket view (single/double elimination, Swiss)
+- Results board and podium for concluded events
+
+**Tournaments (admin)**
+
+- Create/edit/archive tournaments (Valorant, LoL, TFT, Where Winds Meet)
+- Solo vs team participation modes
+- Registration queue — approve, reject, bulk approve, veteran (`Previously Competed`) status
+- Add teams/players to events; roster sync from live team data
+- Bracket manager — seeding, scores, Swiss groups, playoff pairing, publish
+- Prize breakdown on tournaments
+
+**Other**
+
+- Hall of Champions (`/champions`) from completed tournament data
+- Community page (`/community`)
+- In-app notifications (team invites, registration updates) with realtime sync
+- Admin dashboard overview
+
+### Not yet / partial
+
+- **Announcements** — admin UI uses static mock data; no database persistence or Discord posting
+- **Riot Sign-On (RSO)** — not integrated; Valorant identity is manual IGN + tagline only
+- **Automated Discord role sync** — verification is manual in admin
+- **Email notifications** — in-app only today
+
+---
+
+## Documentation
+
+| Doc | Contents |
+| --- | -------- |
+| [docs/README.md](./docs/README.md) | Supabase tables, admin flow, env checklist |
+| [docs/ADMIN_DATABASE.md](./docs/ADMIN_DATABASE.md) | Schema detail, TypeScript mappings, RLS notes |
+| [docs/ADMIN_TOURNAMENTS.md](./docs/ADMIN_TOURNAMENTS.md) | Tournament & bracket setup step-by-step |
+| [docs/sql/](./docs/sql/) | SQL migration scripts |
+
+---
+
+## Notes for Contributors
+
+- **Do not edit `routeTree.gen.ts`** — auto-generated by TanStack Router.
+- Add pages by creating files in `src/routes/`.
+- Add shadcn components with `npx shadcn@latest add <component>`.
+- Never commit `.env` or expose `SUPABASE_SERVICE_ROLE_KEY` / `DISCORD_CLIENT_SECRET` to the client.
+- Server functions under `src/features/*/functions/` and `src/features/*/server/` use the service role for writes; browser services use the anon key with RLS.
+- When adding DB columns, add a matching script under `docs/sql/` and document it in [docs/README.md](./docs/README.md).

@@ -40,7 +40,7 @@ async function fetchMemberProfileSnapshots(
     (data ?? []).map((row) => [
       row.member_id as string,
       {
-        displayName: (row.display_name as string).trim(),
+        displayName: (row.display_name as string | null)?.trim() ?? "",
         valorantGameName: (row.valorant_game_name as string | null)?.trim() ?? "",
         valorantTagline: (row.valorant_tagline as string | null)?.trim() ?? "",
       },
@@ -54,7 +54,7 @@ async function fetchDiscordUsernames(memberIds: string[]): Promise<Map<string, s
 
   const { data, error } = await supabase
     .from("members")
-    .select("id, discord_username")
+    .select("id, username, discord_username")
     .in("id", unique);
 
   if (error) {
@@ -62,7 +62,15 @@ async function fetchDiscordUsernames(memberIds: string[]): Promise<Map<string, s
     return new Map();
   }
 
-  return new Map((data ?? []).map((row) => [row.id as string, row.discord_username as string]));
+  return new Map(
+    (data ?? []).map((row) => {
+      const id = row.id as string;
+      const username = row.username as string;
+      const discord =
+        (row.discord_username as string | null | undefined)?.trim() || username;
+      return [id, discord];
+    }),
+  );
 }
 
 function rowToTeamMember(
@@ -106,7 +114,42 @@ async function mapTeamMemberRows(
     fetchDiscordUsernames(userIds),
   ]);
 
+  return mapTeamMemberRowsWithMaps(rows, teamGame, snapshots, discordUsernames);
+}
+
+function mapTeamMemberRowsWithMaps(
+  rows: Record<string, unknown>[],
+  teamGame: Team["game"],
+  snapshots: Map<string, MemberProfileSnapshot>,
+  discordUsernames: Map<string, string>,
+): TeamMember[] {
   return rows.map((row) => rowToTeamMember(row, snapshots, discordUsernames, teamGame));
+}
+
+async function buildTeamsFromRows(
+  teamRows: Record<string, unknown>[],
+  memberRows: Record<string, unknown>[],
+): Promise<Team[]> {
+  if (!teamRows.length) return [];
+
+  const userIds = [...new Set(memberRows.map((row) => row.user_id as string))];
+  const [snapshots, discordUsernames] = await Promise.all([
+    fetchMemberProfileSnapshots(userIds),
+    fetchDiscordUsernames(userIds),
+  ]);
+
+  const membersByTeam = new Map<string, TeamMember[]>();
+  for (const teamRow of teamRows) {
+    const teamId = teamRow.id as string;
+    const teamGame = teamRow.game as Team["game"];
+    const teamMemberRows = memberRows.filter((row) => row.team_id === teamId);
+    membersByTeam.set(
+      teamId,
+      mapTeamMemberRowsWithMaps(teamMemberRows, teamGame, snapshots, discordUsernames),
+    );
+  }
+
+  return teamRows.map((row) => rowToTeam(row, membersByTeam.get(row.id as string) ?? []));
 }
 
 async function resolveMemberTeamIdentity(
@@ -288,19 +331,41 @@ export async function fetchTeams(): Promise<Team[]> {
   if (membersErr) throw new Error(membersErr.message);
 
   const rows = memberRows ?? [];
-  const membersByTeam = new Map<string, TeamMember[]>();
+  return buildTeamsFromRows(teamRows, rows);
+}
 
-  for (const teamRow of teamRows) {
-    const teamId = teamRow.id as string;
-    const teamMemberRows = rows.filter((row) => row.team_id === teamId);
-    const enrichedMembers = await mapTeamMemberRows(
-      teamMemberRows,
-      teamRow.game as Team["game"],
-    );
-    membersByTeam.set(teamId, enrichedMembers);
+const TEAMS_BY_ID_CHUNK = 100;
+
+/** Fetch specific teams with rosters (batched when many IDs). */
+export async function fetchTeamsByIds(teamIds: string[]): Promise<Team[]> {
+  const unique = [...new Set(teamIds.filter(Boolean))];
+  if (!unique.length) return [];
+
+  const teams: Team[] = [];
+  for (let i = 0; i < unique.length; i += TEAMS_BY_ID_CHUNK) {
+    const chunk = unique.slice(i, i + TEAMS_BY_ID_CHUNK);
+
+    const { data: teamRows, error: teamsErr } = await supabase
+      .from("teams")
+      .select("*")
+      .in("id", chunk);
+
+    if (teamsErr) throw new Error(teamsErr.message);
+    if (!teamRows?.length) continue;
+
+    const chunkTeamIds = teamRows.map((t) => t.id as string);
+    const { data: memberRows, error: membersErr } = await supabase
+      .from("team_members")
+      .select("*")
+      .in("team_id", chunkTeamIds)
+      .neq("status", "removed");
+
+    if (membersErr) throw new Error(membersErr.message);
+
+    teams.push(...(await buildTeamsFromRows(teamRows, memberRows ?? [])));
   }
 
-  return teamRows.map((row) => rowToTeam(row, membersByTeam.get(row.id as string) ?? []));
+  return teams;
 }
 
 export async function createTeam(input: CreateTeamInput): Promise<Team> {

@@ -1,6 +1,6 @@
 # Black Rose Admin — Supabase Database
 
-What you need in **Supabase (PostgreSQL)** to back the admin console flow. The app still uses mock services; these tables replace them.
+What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and member flows read and write through Supabase services in the app.
 
 **Detailed reference (TypeScript types, RLS examples, bracket columns):** [ADMIN_DATABASE.md](./ADMIN_DATABASE.md)
 
@@ -77,7 +77,7 @@ Members → Teams → Tournaments → Participants → Bracket
 | `id`                   | uuid        | **PK**                                                              |
 | `name`                 | text        |                                                                     |
 | `tag`                  | text        | unique                                                              |
-| `game`                 | text        | `Valorant` \| `League of Legends` \| `Teamfight Tactics` \| `Multi` |
+| `game`                 | text        | `Valorant` \| `League of Legends` \| `Teamfight Tactics` \| `Where Winds Meet` \| `Multi` |
 | `captain_user_id`      | uuid        | **FK → profiles.id**                                                |
 | `active_tournament_id` | uuid/text   | nullable **FK → tournaments.id**                                    |
 | `created_at`           | timestamptz |                                                                     |
@@ -217,11 +217,12 @@ Bracket matches point at **registrations**, not `teams` directly, so the same ro
 4. Run [sql/admin_accounts.sql](./sql/admin_accounts.sql) and seed at least one admin account.
 5. Run [sql/members_verification.sql](./sql/members_verification.sql) so Register Member accepts `Not Verified` / `Verified`.
 6. Enable **RLS** on all tables.
-7. Set env vars and swap mock services for `@supabase/supabase-js`:
+7. Set env vars (see root [README.md](../README.md#getting-started)):
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...   # server only — never in the browser
 ```
 
 Never expose the **service role** key in the browser.

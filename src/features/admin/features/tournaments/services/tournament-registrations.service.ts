@@ -5,6 +5,7 @@ import {
   assignTeamActiveTournament,
   fetchTeamById,
   fetchTeams,
+  fetchTeamsByIds,
 } from "@/features/admin/features/teams/services/teams.service";
 import type { Team } from "@/features/teams/types";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
@@ -189,9 +190,9 @@ async function enrichRegistrationsWithLiveData(
   const liveById = new Map<string, Team>();
 
   if (rosterIds.length > 0) {
-    const allTeams = await fetchTeams();
-    for (const team of allTeams) {
-      if (rosterIds.includes(team.id)) liveById.set(team.id, team);
+    const teams = await fetchTeamsByIds(rosterIds);
+    for (const team of teams) {
+      liveById.set(team.id, team);
     }
   }
 
