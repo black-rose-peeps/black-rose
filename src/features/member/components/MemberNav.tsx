@@ -66,6 +66,13 @@ export function MemberNav() {
     });
 
     if (session) {
+      const accountActive =
+        accountHref.to === "/waitlist"
+          ? pathname === "/waitlist"
+          : accountHref.to === "/members/$slug" && "params" in accountHref
+            ? pathname === `/members/${accountHref.params.slug}`
+            : pathname === "/dashboard/profile";
+
       sections.push({
         title: "Account",
         items: [
@@ -74,10 +81,7 @@ export function MemberNav() {
             to: accountHref.to,
             params: "params" in accountHref ? accountHref.params : undefined,
             icon: IdCard,
-            active:
-              pathname.startsWith("/members/") ||
-              pathname === "/waitlist" ||
-              pathname === "/dashboard/profile",
+            active: accountActive,
           },
         ],
       });
@@ -150,7 +154,10 @@ export function MemberNav() {
                   )}
                 </div>
                 {isVerifiedMember ? session.displayName : "Waitlist"}
-                <IdCard className="h-3.5 w-3.5 shrink-0 opacity-70 transition group-hover:opacity-100" strokeWidth={1.5} />
+                <IdCard
+                  className="h-3.5 w-3.5 shrink-0 opacity-70 transition group-hover:opacity-100"
+                  strokeWidth={1.5}
+                />
               </Link>
               <button
                 type="button"

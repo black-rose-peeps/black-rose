@@ -55,19 +55,17 @@ export function HeaderMobileMenu({ sections }: HeaderMobileMenuProps) {
                 </p>
               ) : null}
               <ul className="flex flex-col">
-                {section.items.map((item) => {
+                {section.items.map((item, itemIndex) => {
                   const Icon = item.icon;
                   return (
-                    <li key={`${section.title ?? "section"}-${item.label}`}>
+                    <li key={`${sectionIndex}-${itemIndex}-${item.label}`}>
                       <Link
                         to={item.to}
                         params={item.params}
                         search={item.search}
                         onClick={() => setOpen(false)}
                         className={`flex min-h-11 items-center gap-3 px-6 py-3 font-tech text-ui-readable uppercase transition hover:bg-white/5 ${
-                          item.active
-                            ? "bg-white/5 text-foreground"
-                            : "text-muted-foreground"
+                          item.active ? "bg-white/5 text-foreground" : "text-muted-foreground"
                         }`}
                       >
                         {Icon ? <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} /> : null}

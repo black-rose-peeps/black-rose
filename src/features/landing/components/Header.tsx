@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { HeaderMobileMenu } from "@/features/shared/components/HeaderMobileMenu";
@@ -14,24 +13,6 @@ const GUEST_NAV = [
 function GuestHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const mobileSections = useMemo(
-    () => [
-      {
-        items: GUEST_NAV.map((item) => ({
-          label: item.label,
-          to: item.to,
-          active:
-            item.to === "/tournaments"
-              ? pathname === "/tournaments" || pathname.startsWith("/tournaments/")
-              : item.to === "/champions"
-                ? pathname === "/champions" || pathname.startsWith("/champions/")
-                : pathname === "/community" || pathname.startsWith("/community/"),
-        })),
-      },
-    ],
-    [pathname],
-  );
-
   function isGuestNavActive(item: (typeof GUEST_NAV)[number]): boolean {
     if (item.to === "/tournaments") {
       return pathname === "/tournaments" || pathname.startsWith("/tournaments/");
@@ -44,6 +25,16 @@ function GuestHeader() {
     }
     return false;
   }
+
+  const mobileSections = [
+    {
+      items: GUEST_NAV.map((item) => ({
+        label: item.label,
+        to: item.to,
+        active: isGuestNavActive(item),
+      })),
+    },
+  ];
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
@@ -71,7 +62,7 @@ function GuestHeader() {
           <HeaderMobileMenu sections={mobileSections} />
           <Link
             to="/login"
-            className="clip-cta inline-flex h-11 items-center bg-foreground px-5 text-sm font-tech uppercase tracking-[0.08em] text-background transition hover:bg-foreground/90"
+            className="clip-cta font-semibold inline-flex h-11 items-center bg-foreground px-5 text-sm font-tech uppercase tracking-[0.08em] text-background transition hover:bg-foreground/90"
           >
             Join Us
           </Link>

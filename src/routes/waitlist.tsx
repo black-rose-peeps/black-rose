@@ -173,7 +173,7 @@ function WaitlistPage() {
                 href={DISCORD_SERVER_INVITE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex h-11 items-center gap-2 bg-[#5865F2] px-4 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
+                className="mt-3 font-medium inline-flex h-11 items-center gap-2 bg-[#5865F2] px-4 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
               >
                 <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
                 Join Discord
