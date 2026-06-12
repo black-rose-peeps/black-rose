@@ -40,7 +40,7 @@ export function TournamentGrid({
           actions={
             <Link
               to="/community"
-              className="clip-cta inline-flex h-11 items-center gap-2 border border-white/15 bg-white/4 px-6 font-tech text-xs uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
+              className="clip-cta inline-flex h-11 items-center gap-2 border border-white/15 bg-white/4 px-6 font-tech text-ui-readable uppercase transition hover:border-white/25 hover:bg-white/8"
             >
               Join the community
               <span aria-hidden>→</span>

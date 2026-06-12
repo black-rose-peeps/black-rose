@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { useVerificationSync } from "@/features/auth/hooks/useVerificationSync";
 import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
@@ -28,6 +28,9 @@ function WaitlistPage() {
   const [username, setUsername] = useState<string | null>(null);
   const [copiedGame, setCopiedGame] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const templatesToggleId = useId();
+  const templatesPanelId = useId();
 
   const goToDashboard = useCallback(() => {
     navigate({ to: "/dashboard", replace: true });
@@ -76,6 +79,14 @@ function WaitlistPage() {
     };
   }, [navigate]);
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current !== null) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
   function handleSignOut() {
     clearSession();
     navigate({ to: "/" });
@@ -85,10 +96,20 @@ function WaitlistPage() {
     const text = `Application — ${game}\n\n${fields.join("\n")}`;
     void navigator.clipboard.writeText(text).then(
       () => {
+        if (copyResetTimerRef.current !== null) {
+          clearTimeout(copyResetTimerRef.current);
+        }
         setCopiedGame(game);
-        setTimeout(() => setCopiedGame(null), 2000);
+        copyResetTimerRef.current = setTimeout(() => {
+          setCopiedGame(null);
+          copyResetTimerRef.current = null;
+        }, 2000);
       },
       () => {
+        if (copyResetTimerRef.current !== null) {
+          clearTimeout(copyResetTimerRef.current);
+          copyResetTimerRef.current = null;
+        }
         setCopiedGame(null);
       },
     );
@@ -170,8 +191,11 @@ function WaitlistPage() {
                 format for your game, fill it out, and post it.
               </p>
               <button
+                id={templatesToggleId}
                 type="button"
                 onClick={() => setShowTemplates((v) => !v)}
+                aria-expanded={showTemplates}
+                aria-controls={templatesPanelId}
                 className="mt-3 inline-flex h-11 items-center gap-2 border border-white/10 px-4 font-tech text-label-readable uppercase text-muted-foreground transition hover:border-white/25 hover:text-foreground"
               >
                 {showTemplates ? "Hide" : "View"} Application Formats
@@ -179,7 +203,12 @@ function WaitlistPage() {
 
               {/* Templates — inline under step 2 */}
               {showTemplates && (
-                <div className="mt-4 flex flex-col gap-2">
+                <div
+                  id={templatesPanelId}
+                  role="region"
+                  aria-labelledby={templatesToggleId}
+                  className="mt-4 flex flex-col gap-2"
+                >
                   {WAITLIST_TEMPLATES.map((t) => (
                     <div key={t.game} className="border border-white/8 bg-background">
                       <div className="flex items-center justify-between border-b border-white/6 px-3 py-2">
