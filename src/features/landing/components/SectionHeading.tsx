@@ -17,7 +17,9 @@ export function SectionHeading({
       </div>
       <h2 className="font-display text-4xl tracking-display sm:text-5xl md:text-6xl">{title}</h2>
       {description && (
-        <p className="max-w-xl text-base leading-7 text-muted-foreground md:text-lg">{description}</p>
+        <p className="max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
+          {description}
+        </p>
       )}
     </div>
   );

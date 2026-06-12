@@ -168,7 +168,7 @@ function TournamentsPage() {
                 {activeStatus === ALL_STATUSES &&
                   filtered.some((t) => t.status === "Registration Open") && (
                     <TournamentGroup
-                      dot="bg-emerald-400 animate-pulse-soft"
+                      dot="bg-white animate-pulse-soft"
                       label="Registration Open"
                       tournaments={filtered.filter((t) => t.status === "Registration Open")}
                       captainRegistrationByTournament={registrationByTournament}

@@ -11,10 +11,7 @@ function FeaturedTournamentsSkeleton() {
   return (
     <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="clip-angle-lg flex flex-col border border-white/[0.08] bg-card"
-        >
+        <div key={index} className="clip-angle-lg flex flex-col border border-white/[0.08] bg-card">
           <Skeleton className="h-52 rounded-none bg-white/5" />
           <div className="flex flex-col gap-4 p-6">
             <Skeleton className="h-3 w-24 rounded-none bg-white/5" />
@@ -44,14 +41,14 @@ export function FeaturedTournaments() {
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <SectionHeading
-            eyebrow="01 — Compete Now"
+            eyebrow="Compete Now"
             title="Open Events"
             description="Live and registration-open tournaments from the Black Rose calendar. Lock in your roster before slots fill."
             className="mb-0"
           />
           <Link
             to="/tournaments"
-            className="self-start text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
+            className="self-start font-semibold text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
           >
             View all tournaments →
           </Link>

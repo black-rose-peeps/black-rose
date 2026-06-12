@@ -55,8 +55,7 @@ function resolveCardCta(
     return {
       label: "View Bracket",
       interactive: true,
-      className:
-        "border border-white/25 bg-white/6 text-white backdrop-blur-sm hover:bg-white/10",
+      className: "border border-white/25 bg-white/6 text-white backdrop-blur-sm hover:bg-white/10",
     };
   }
 
@@ -142,7 +141,7 @@ export function TournamentShowcaseCard({
         <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent opacity-0 transition duration-500 group-hover:opacity-100" />
 
         {/* Broadcast status */}
-        <div className="absolute left-4 top-4 flex items-center gap-2 border border-white/15 bg-black/75 px-2.5 py-1 font-tech text-label-readable uppercase text-white/90 backdrop-blur-md">
+        <div className="absolute font-light! left-4 top-4 flex items-center gap-2 border border-white/15 bg-black/75 px-2.5 py-1 font-tech text-label-readable uppercase text-white/90 backdrop-blur-md">
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
           {status.label}
         </div>

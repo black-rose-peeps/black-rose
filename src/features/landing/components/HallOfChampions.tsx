@@ -31,14 +31,14 @@ export function HallOfChampions() {
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <SectionHeading
-            eyebrow="03 — Legacy"
+            eyebrow="Legacy"
             title="Hall of Champions"
             description="A sneak peek at the teams etched into the Black Rose archive. Open the full hall for every crowned roster."
             className="mb-0"
           />
           <Link
             to="/champions"
-            className="self-start text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
+            className="self-start font-semibold text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
           >
             View full archive →
           </Link>

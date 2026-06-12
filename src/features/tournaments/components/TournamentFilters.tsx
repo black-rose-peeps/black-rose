@@ -1,4 +1,4 @@
-import { ALL_GAMES, ALL_STATUSES, GAME_FILTERS, STATUS_FILTERS } from "../constants";
+import { ALL_GAMES, ALL_STATUSES, GAME_FILTERS, STATUS_CONFIG, STATUS_FILTERS } from "../constants";
 import type { TournamentGame, TournamentStatus } from "../types";
 
 interface TournamentFiltersProps {
@@ -27,8 +27,8 @@ function Chip({
       onClick={onClick}
       className={`inline-flex min-h-11 items-center gap-2 px-4 py-2 text-xs sm:text-sm font-tech uppercase tracking-[0.08em] transition-all duration-200 ${
         active
-          ? "bg-white text-black"
-          : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
+          ? "bg-white text-black font-semibold"
+          : "bg-white/5 font-semibold text-muted-foreground hover:bg-white/10 hover:text-white"
       }`}
     >
       {accent && (
@@ -64,21 +64,15 @@ export function TournamentFilters({
         <span className="text-sm font-tech uppercase tracking-wider-2 text-foreground">Status</span>
         <div className="flex flex-wrap gap-2">
           {STATUS_FILTERS.map((s) => {
-            // Dot accent colors per status
-            const dotColor =
-              s === "Registration Open"
-                ? "bg-emerald-400"
-                : s === "Live"
-                  ? "bg-white animate-pulse-soft"
-                  : "bg-muted-foreground";
             const showDot = s !== ALL_STATUSES;
+            const dotColor = showDot ? STATUS_CONFIG[s as TournamentStatus].dot : undefined;
             return (
               <Chip
                 key={s}
                 label={s}
                 active={activeStatus === s}
                 onClick={() => onStatusChange(s)}
-                accent={showDot ? dotColor : undefined}
+                accent={dotColor}
               />
             );
           })}
