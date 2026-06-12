@@ -28,8 +28,8 @@ function GuestHeader() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-3">
-          <Emblem className="h-8 w-8" />
+        <Link to="/" className="flex items-center">
+          <Emblem className="h-16 w-16" />
           <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
         </Link>
 
@@ -38,7 +38,7 @@ function GuestHeader() {
             <Link
               key={item.label}
               to={item.to}
-              className={`transition-colors hover:text-foreground ${
+              className={`font-semibold text-sm transition-colors hover:text-foreground ${
                 isGuestNavActive(item) ? "text-foreground" : ""
               }`}
             >

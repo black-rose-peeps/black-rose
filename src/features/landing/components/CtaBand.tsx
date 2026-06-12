@@ -41,14 +41,14 @@ export function CtaBand() {
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
             to="/login"
-            className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+            className="clip-cta font-semibold inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
           >
             Join Black Rose
             <span aria-hidden>→</span>
           </Link>
           <Link
             to="/tournaments"
-            className="clip-cta inline-flex h-12 items-center gap-3 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/8 hover:border-white/25"
+            className="clip-cta font-semibold inline-flex h-12 items-center gap-3 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/8 hover:border-white/25"
           >
             Browse Tournaments
           </Link>

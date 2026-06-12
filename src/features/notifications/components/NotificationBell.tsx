@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Bell,
+  Radar,
   X,
   CheckCheck,
   Trophy,
@@ -112,18 +112,27 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={panelRef}>
-      {/* Bell button */}
+      {/* Alert feed trigger */}
       <button
         type="button"
         onClick={handleOpen}
         aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
-        className="cursor-pointer relative flex h-9 w-9 items-center justify-center border border-white/10 bg-white/5 text-muted-foreground transition hover:border-white/20 hover:text-foreground"
+        aria-expanded={open}
+        className={`clip-tab relative flex h-10 w-10 cursor-pointer items-center justify-center border bg-white/[0.04] text-muted-foreground transition hover:border-white/25 hover:bg-white/[0.07] hover:text-foreground ${
+          unread > 0 ? "border-white/20" : "border-white/10"
+        }`}
       >
-        <Bell className="h-4 w-4" />
+        <Radar
+          className={`h-4 w-4 ${unread > 0 ? "text-foreground" : ""}`}
+          strokeWidth={1.5}
+        />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center bg-white px-0.5 font-tech text-label-readable tracking-wider-2 text-black">
-            {unread > 9 ? "9+" : unread}
-          </span>
+          <>
+            <span className="pointer-events-none absolute inset-0 animate-pulse-soft bg-white/[0.04]" />
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center bg-white px-0.5 font-tech text-label-readable tracking-wider-2 text-black">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          </>
         )}
       </button>
 
@@ -166,7 +175,7 @@ export function NotificationBell() {
           <ul className="max-h-112 overflow-y-auto divide-y divide-white/5">
             {notifications.length === 0 ? (
               <li className="flex flex-col items-center gap-2 py-10 text-center">
-                <Bell className="h-6 w-6 text-muted-foreground/30" />
+                <Radar className="h-6 w-6 text-muted-foreground/30" strokeWidth={1.25} />
                 <p className="text-sm text-muted-foreground">No notifications yet.</p>
               </li>
             ) : (

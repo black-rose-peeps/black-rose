@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, LogOut, User } from "lucide-react";
+import { IdCard, LayoutDashboard, LogOut } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { clearSession, getSession } from "@/features/auth/store/session";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
@@ -39,8 +39,8 @@ export function MemberNav() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Logo — identical to landing Header */}
-        <Link to="/" className="flex items-center gap-3">
-          <Emblem className="h-8 w-8" />
+        <Link to="/" className="flex items-center">
+          <Emblem className="h-16 w-16" />
           <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
         </Link>
 
@@ -56,7 +56,7 @@ export function MemberNav() {
                     key={item.label}
                     to={item.to}
                     search={item.to === "/teams" ? { create: false } : undefined}
-                    className={`inline-flex items-center gap-1.5 transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
+                    className={`inline-flex items-center gap-1.5 font-semibold text-sm transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
                   >
                     {Icon ? <Icon className="h-3 w-3" /> : null}
                     {item.label}
@@ -86,7 +86,7 @@ export function MemberNav() {
               {isVerifiedMember && <NotificationBell />}
               <Link
                 {...accountHref}
-                className="hidden min-h-11 items-center gap-2 px-4 font-tech text-label-readable uppercase text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                className="group hidden min-h-11 items-center gap-2 px-4 font-tech text-label-readable uppercase text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
               >
                 <div className="h-5 w-5 shrink-0 overflow-hidden border border-white/15 bg-white/5">
                   {avatarUrl ? (
@@ -98,12 +98,12 @@ export function MemberNav() {
                   )}
                 </div>
                 {isVerifiedMember ? session.displayName : "Waitlist"}
-                <User className="h-3.5 w-3.5" />
+                <IdCard className="h-3.5 w-3.5 shrink-0 opacity-70 transition group-hover:opacity-100" strokeWidth={1.5} />
               </Link>
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="min-h-11 font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-muted-foreground"
+                className="min-h-11 cursor-pointer font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-muted-foreground"
               >
                 <LogOut className="h-3.5 w-3.5 sm:hidden" />
                 <span className="hidden sm:block">Sign Out</span>
@@ -112,7 +112,7 @@ export function MemberNav() {
           ) : (
             <Link
               to="/login"
-              className="clip-cta inline-flex h-11 items-center bg-foreground px-5 font-tech text-ui-readable uppercase text-background transition hover:bg-foreground/90"
+              className="clip-cta font-semibold inline-flex h-11 items-center bg-foreground px-5 font-tech text-ui-readable uppercase text-background transition hover:bg-foreground/90"
             >
               Join Us
             </Link>

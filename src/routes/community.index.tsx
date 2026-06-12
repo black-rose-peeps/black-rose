@@ -125,14 +125,14 @@ function CommunityPage() {
               href={DISCORD_SERVER_INVITE}
               target="_blank"
               rel="noopener noreferrer"
-              className="clip-cta inline-flex h-12 items-center gap-2 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+              className="clip-cta font-semibold inline-flex h-12 items-center gap-2 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
             >
               Join Discord
               <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
             </a>
             <Link
               to="/login"
-              className="clip-cta inline-flex h-12 items-center gap-2 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
+              className="clip-cta font-semibold inline-flex h-12 items-center gap-2 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
             >
               Join Black Rose
               <span aria-hidden>→</span>

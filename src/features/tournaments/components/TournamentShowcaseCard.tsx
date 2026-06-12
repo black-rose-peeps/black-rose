@@ -243,7 +243,7 @@ export function TournamentShowcaseCard({
           <Link
             to="/tournaments/$id"
             params={{ id: t.id }}
-            className={`relative mt-6 clip-cta inline-flex h-12 w-full items-center justify-center gap-2 border border-transparent font-tech text-ui-readable uppercase transition duration-300 ${cta.className} ${accent.cta}`}
+            className={`relative mt-6 clip-cta font-semibold inline-flex h-12 w-full items-center justify-center gap-2 border border-transparent font-tech text-ui-readable uppercase transition duration-300 ${cta.className} ${accent.cta}`}
           >
             {cta.label}
             <span aria-hidden className="text-sm leading-none">

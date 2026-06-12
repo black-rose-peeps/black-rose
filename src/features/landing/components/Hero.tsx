@@ -50,14 +50,14 @@ export function Hero() {
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row animate-rise">
           <Link
             to="/login"
-            className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition"
+            className="clip-cta font-semibold inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition"
           >
             Get Started
             <span aria-hidden>→</span>
           </Link>
           <Link
             to="/tournaments"
-            className="clip-cta inline-flex h-12 items-center gap-3 border border-border bg-transparent px-8 font-tech text-sm uppercase tracking-wider-2 text-foreground hover:bg-secondary transition"
+            className="clip-cta font-semibold inline-flex h-12 items-center gap-3 border border-border bg-transparent px-8 font-tech text-sm uppercase tracking-wider-2 text-foreground hover:bg-secondary transition"
           >
             View Tournaments
           </Link>
