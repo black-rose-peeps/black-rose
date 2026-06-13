@@ -128,7 +128,7 @@ function TeamDetailPage() {
           <Button
             asChild
             variant="outline"
-            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+            className="rounded-none font-tech text-ui-readable uppercase"
           >
             <Link to="/teams" search={{ create: false }}>
               Back to Teams
@@ -148,7 +148,7 @@ function TeamDetailPage() {
           <Button
             asChild
             variant="outline"
-            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+            className="rounded-none font-tech text-ui-readable uppercase"
           >
             <Link to="/teams" search={{ create: false }}>
               Back to Teams
@@ -231,7 +231,7 @@ function TeamDetailPage() {
       <Button
         asChild
         variant="ghost"
-        className="mb-6 -ml-2 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="mb-6 -ml-2 rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
       >
         <Link to={isPublicView ? "/champions" : "/teams"} search={isPublicView ? undefined : { create: false }}>
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -264,7 +264,7 @@ function TeamDetailPage() {
                 {isCaptain && <Crown className="h-4 w-4 text-white/40" aria-label="Captain" />}
               </div>
               <span
-                className={`text-[10px] font-tech uppercase tracking-wider-2 ${GAME_COLOR[team.game]}`}
+                className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}
               >
                 {team.game}
               </span>
@@ -284,7 +284,7 @@ function TeamDetailPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setEditOpen(true)}
-                className="rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+                className="rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Edit Team
@@ -293,7 +293,7 @@ function TeamDetailPage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+                  className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
                 >
                   <Link
                     to="/tournaments/$id"
@@ -307,7 +307,7 @@ function TeamDetailPage() {
               ) : !hasBlockingRegistration ? (
                 <Button
                   asChild
-                  className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+                  className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
                 >
                   <Link to="/tournaments">
                     <Trophy className="h-3.5 w-3.5" />
@@ -368,7 +368,7 @@ function TeamDetailPage() {
                   asChild
                   variant="outline"
                   size="sm"
-                  className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+                  className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
                 >
                   <Link to="/tournaments/$id" params={{ id: registration.tournamentId }}>
                     View <ChevronRight className="h-3.5 w-3.5" />
@@ -398,7 +398,7 @@ function TeamDetailPage() {
               asChild
               variant="outline"
               size="sm"
-              className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+              className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
             >
               <Link to="/tournaments/$id" params={{ id: approvedReg.tournamentId }}>
                 View <ChevronRight className="h-3.5 w-3.5" />

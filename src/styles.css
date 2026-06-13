@@ -83,6 +83,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -111,21 +114,41 @@
     letter-spacing: 0.08em;
   }
   .tracking-wider-2 {
-    letter-spacing: 0.12em; /* reduced from 0.18em for better readability */
+    letter-spacing: 0.08em;
   }
 
-  /* Improved text sizing utilities for better readability */
-  .text-xs-readable {
-    font-size: 11px; /* up from 9px for minimum legibility */
+  .text-label-readable {
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.35;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  .text-ui-readable {
+    font-size: 0.875rem; /* 14px */
     line-height: 1.4;
+    letter-spacing: 0.08em;
+  }
+
+  .text-body-readable {
+    font-size: 1rem; /* 16px */
+    line-height: 1.6;
+  }
+
+  /* Legacy aliases — map to mobile-first readable sizes */
+  .text-xs-readable {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    letter-spacing: 0.08em;
   }
   .text-sm-readable {
-    font-size: 12px; /* up from 10px for UI elements */
+    font-size: 0.875rem;
     line-height: 1.4;
+    letter-spacing: 0.08em;
   }
   .text-base-readable {
-    font-size: 14px; /* standard readable size */
-    line-height: 1.5;
+    font-size: 1rem;
+    line-height: 1.6;
   }
 
   /* Match card animations */

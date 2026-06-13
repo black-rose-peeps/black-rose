@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ChampionCardsSkeleton } from "@/features/championships/components/ChampionCardsSkeleton";
 import { HallOfChampionsGrid } from "@/features/championships/components/HallOfChampionsGrid";
 import { useHallOfChampions } from "@/features/championships/hooks/useHallOfChampions";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { SectionHeading } from "./SectionHeading";
 
 const SNEAK_PEEK_LIMIT = 3;
@@ -30,14 +31,14 @@ export function HallOfChampions() {
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <SectionHeading
-            eyebrow="03 — Legacy"
+            eyebrow="Legacy"
             title="Hall of Champions"
             description="A sneak peek at the teams etched into the Black Rose archive. Open the full hall for every crowned roster."
             className="mb-0"
           />
           <Link
             to="/champions"
-            className="self-start text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
+            className="self-start font-semibold text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
           >
             View full archive →
           </Link>
@@ -51,12 +52,25 @@ export function HallOfChampions() {
             <p className="mt-2 text-sm text-muted-foreground">{error}</p>
           </div>
         ) : champions.length === 0 ? (
-          <div className="border border-white/8 bg-card/40 px-6 py-16 text-center">
-            <p className="font-display text-2xl tracking-display">No champions crowned yet</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              The archive opens when a tournament concludes and a champion is decided.
-            </p>
-          </div>
+          <ArenaEmptyState
+            compact
+            eyebrow="Archive Sealed"
+            title={
+              <>
+                The crown awaits its <span className="text-stroke">first name.</span>
+              </>
+            }
+            description="Victors are filed here after each concluded tournament. Step into the arena and compete to become the first name etched in black."
+            actions={
+              <Link
+                to="/tournaments"
+                className="clip-cta inline-flex h-11 items-center gap-2 bg-foreground px-6 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+              >
+                View tournaments
+                <span aria-hidden>→</span>
+              </Link>
+            }
+          />
         ) : (
           <>
             <HallOfChampionsGrid champions={champions} limit={SNEAK_PEEK_LIMIT} />

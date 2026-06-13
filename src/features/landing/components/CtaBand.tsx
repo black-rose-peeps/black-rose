@@ -23,7 +23,7 @@ export function CtaBand() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <div className="mb-6 inline-flex items-center gap-3 border border-white/10 bg-white/3 px-4 py-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground backdrop-blur-sm">
+        <div className="mb-6 inline-flex items-center gap-3 border border-white/10 bg-white/3 px-4 py-1.5 font-tech text-label-readable uppercase text-muted-foreground backdrop-blur-sm">
           <span className="h-1.5 w-1.5 bg-foreground animate-pulse-soft" />
           Registration Open
         </div>
@@ -33,7 +33,7 @@ export function CtaBand() {
           <span className="text-stroke">Etched in black.</span>
         </h2>
 
-        <p className="mx-auto mt-6 max-w-xl text-sm text-muted-foreground md:text-base">
+        <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
           Build your team, claim your bracket, and step into the arena. Black Rose runs the
           competition — you write the history.
         </p>
@@ -41,14 +41,14 @@ export function CtaBand() {
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
             to="/login"
-            className="clip-cta inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+            className="clip-cta font-semibold inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
           >
             Join Black Rose
             <span aria-hidden>→</span>
           </Link>
           <Link
             to="/tournaments"
-            className="clip-cta inline-flex h-12 items-center gap-3 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/8 hover:border-white/25"
+            className="clip-cta font-semibold inline-flex h-12 items-center gap-3 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:bg-white/8 hover:border-white/25"
           >
             Browse Tournaments
           </Link>

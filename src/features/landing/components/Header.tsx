@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Emblem } from "@/features/shared/components/Emblem";
+import { HeaderMobileMenu } from "@/features/shared/components/HeaderMobileMenu";
 import { getSession } from "@/features/auth/store/session";
 import { MemberNav } from "@/features/member/components/MemberNav";
 
@@ -25,20 +26,30 @@ function GuestHeader() {
     return false;
   }
 
+  const mobileSections = [
+    {
+      items: GUEST_NAV.map((item) => ({
+        label: item.label,
+        to: item.to,
+        active: isGuestNavActive(item),
+      })),
+    },
+  ];
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-3">
-          <Emblem className="h-8 w-8" />
+        <Link to="/" className="flex items-center">
+          <Emblem className="h-16 w-16" />
           <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
         </Link>
 
-        <nav className="hidden items-center gap-10 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground md:flex">
+        <nav className="hidden items-center gap-10 text-sm font-tech uppercase tracking-[0.08em] text-muted-foreground md:flex">
           {GUEST_NAV.map((item) => (
             <Link
               key={item.label}
               to={item.to}
-              className={`transition-colors hover:text-foreground ${
+              className={`font-semibold text-sm transition-colors hover:text-foreground ${
                 isGuestNavActive(item) ? "text-foreground" : ""
               }`}
             >
@@ -47,10 +58,11 @@ function GuestHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <HeaderMobileMenu sections={mobileSections} />
           <Link
             to="/login"
-            className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+            className="clip-cta font-semibold inline-flex h-11 items-center bg-foreground px-5 text-sm font-tech uppercase tracking-[0.08em] text-background transition hover:bg-foreground/90"
           >
             Join Us
           </Link>

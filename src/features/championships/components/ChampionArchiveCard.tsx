@@ -32,8 +32,8 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
         <ChampionPortrait champion={champion} className="border-0 border-b border-white/[0.06]" />
 
         <div className="absolute left-4 top-4 flex items-center gap-2 border border-white/15 bg-black/75 px-2.5 py-1 font-tech text-[9px] uppercase tracking-[0.2em] text-white/90 backdrop-blur-md">
-          <RoseStarMark size={10} className="text-amber-300/90" />
-          #{String(index + 1).padStart(2, "0")}
+          <RoseStarMark size={10} className="text-amber-300/90" />#
+          {String(index + 1).padStart(2, "0")}
         </div>
 
         <div
@@ -51,7 +51,7 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
             <p className="font-display text-2xl leading-[1.05] tracking-[0.04em] text-white transition group-hover:text-white">
               {champion.teamName}
             </p>
-            <p className="mt-1 truncate text-[10px] font-tech uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="mt-1 truncate font-semibold text-[11px] font-tech uppercase tracking-[0.18em] text-muted-foreground">
               {champion.tournamentName}
             </p>
           </div>
@@ -63,11 +63,11 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
         <div className="relative mt-4 flex items-center justify-between border-t border-white/[0.08] pt-4">
           <div className="flex items-center gap-2 text-amber-300/75">
             <Crown className="h-3.5 w-3.5" strokeWidth={1.25} />
-            <span className="font-tech text-[8px] uppercase tracking-[0.2em]">
+            <span className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em]">
               {formatChampionDate(champion.crownedAt)}
             </span>
           </div>
-          <span className="font-tech text-[9px] uppercase tracking-[0.2em] text-white/35 transition group-hover:text-white/60">
+          <span className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em] text-white/65 transition group-hover:text-white/60 cursor-pointer">
             Open file →
           </span>
         </div>

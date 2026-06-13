@@ -146,7 +146,7 @@ export function InviteMemberDialog({
             </div>
             <span
               className={cn(
-                "shrink-0 border px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2",
+                "shrink-0 border px-2.5 py-1 font-tech text-label-readable uppercase",
                 slotsLeft > 0
                   ? "border-white/12 bg-white/5 text-muted-foreground"
                   : "border-red-400/25 bg-red-400/5 text-red-400",
@@ -214,7 +214,7 @@ export function InviteMemberDialog({
                         variant={invited ? "outline" : "secondary"}
                         onClick={() => void handleInvite(member.id)}
                         className={cn(
-                          "min-w-[5.5rem] shrink-0 cursor-pointer rounded-none font-tech text-[10px] uppercase tracking-wider-2",
+                          "min-w-[5.5rem] shrink-0 cursor-pointer rounded-none font-tech text-ui-readable uppercase",
                           invited &&
                             "border-emerald-400/25 bg-emerald-400/5 text-emerald-400 hover:bg-emerald-400/5",
                         )}

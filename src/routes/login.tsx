@@ -92,7 +92,7 @@ function LoginPage() {
       subheadline="One Discord sign-in for new and returning members — build teams, register for tournaments, and track your competitive journey."
     >
       <div className="mb-10">
-        <div className="mb-3 flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+        <div className="mb-3 flex items-center gap-3 font-tech text-label-readable uppercase text-muted-foreground">
           <span className="h-px w-10 bg-border" />
           Member Access
         </div>
@@ -119,7 +119,7 @@ function LoginPage() {
       <div className="flex flex-col gap-4">
         <DiscordButton onClick={handleDiscordAuth} label="Continue with Discord" />
         {error && <p className="text-center text-xs text-destructive">{error}</p>}
-        <p className="text-center text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+        <p className="text-center font-tech text-label-readable uppercase text-muted-foreground">
           You will be redirected to Discord to authorize access.
         </p>
       </div>

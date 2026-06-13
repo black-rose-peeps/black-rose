@@ -1,6 +1,11 @@
+import { useMemo } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, LogOut, User } from "lucide-react";
+import { IdCard, LayoutDashboard, LogOut } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
+import {
+  HeaderMobileMenu,
+  type MobileNavSection,
+} from "@/features/shared/components/HeaderMobileMenu";
 import { clearSession, getSession } from "@/features/auth/store/session";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
@@ -35,17 +40,67 @@ export function MemberNav() {
     window.location.href = "/";
   }
 
+  const mobileSections = useMemo((): MobileNavSection[] => {
+    const sections: MobileNavSection[] = [];
+
+    if (isVerifiedMember) {
+      sections.push({
+        title: "Console",
+        items: MEMBER_CONSOLE_NAV.map((item) => ({
+          label: item.label,
+          to: item.to,
+          search: item.to === "/teams" ? { create: false } : undefined,
+          icon: "icon" in item ? item.icon : undefined,
+          active: pathname === item.to || pathname.startsWith(`${item.to}/`),
+        })),
+      });
+    }
+
+    sections.push({
+      title: isVerifiedMember ? "Explore" : undefined,
+      items: PUBLIC_NAV.map(({ label, to }) => ({
+        label,
+        to,
+        active: pathname === to || pathname.startsWith(`${to}/`),
+      })),
+    });
+
+    if (session) {
+      const accountActive =
+        accountHref.to === "/waitlist"
+          ? pathname === "/waitlist"
+          : accountHref.to === "/members/$slug" && "params" in accountHref
+            ? pathname === `/members/${accountHref.params.slug}`
+            : pathname === "/dashboard/profile";
+
+      sections.push({
+        title: "Account",
+        items: [
+          {
+            label: isVerifiedMember ? "My Profile" : "Waitlist Status",
+            to: accountHref.to,
+            params: "params" in accountHref ? accountHref.params : undefined,
+            icon: IdCard,
+            active: accountActive,
+          },
+        ],
+      });
+    }
+
+    return sections;
+  }, [accountHref, isVerifiedMember, pathname, session]);
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Logo — identical to landing Header */}
-        <Link to="/" className="flex items-center gap-3">
-          <Emblem className="h-8 w-8" />
+        <Link to="/" className="flex items-center">
+          <Emblem className="h-16 w-16" />
           <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
         </Link>
 
         {/* Nav links */}
-        <nav className="hidden items-center gap-10 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground md:flex">
+        <nav className="hidden items-center gap-10 font-tech text-label-readable uppercase text-muted-foreground md:flex">
           {isVerifiedMember && (
             <div className="flex items-center gap-6">
               {MEMBER_CONSOLE_NAV.map((item) => {
@@ -56,7 +111,7 @@ export function MemberNav() {
                     key={item.label}
                     to={item.to}
                     search={item.to === "/teams" ? { create: false } : undefined}
-                    className={`inline-flex items-center gap-1.5 transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
+                    className={`inline-flex items-center gap-1.5 font-semibold text-sm transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
                   >
                     {Icon ? <Icon className="h-3 w-3" /> : null}
                     {item.label}
@@ -80,30 +135,34 @@ export function MemberNav() {
         </nav>
 
         {/* User area */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <HeaderMobileMenu sections={mobileSections} />
           {session ? (
             <>
               {isVerifiedMember && <NotificationBell />}
               <Link
                 {...accountHref}
-                className="hidden h-9 items-center gap-2 px-4 text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                className="group hidden min-h-11 items-center gap-2 px-4 font-tech text-label-readable uppercase text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
               >
                 <div className="h-5 w-5 shrink-0 overflow-hidden border border-white/15 bg-white/5">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center font-display text-[10px] tracking-display">
+                    <span className="flex h-full w-full items-center justify-center font-display text-label-readable tracking-display">
                       {session.displayName.slice(0, 2).toUpperCase()}
                     </span>
                   )}
                 </div>
                 {isVerifiedMember ? session.displayName : "Waitlist"}
-                <User className="h-3.5 w-3.5" />
+                <IdCard
+                  className="h-3.5 w-3.5 shrink-0 opacity-70 transition group-hover:opacity-100"
+                  strokeWidth={1.5}
+                />
               </Link>
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="text-xs font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-muted-foreground"
+                className="min-h-11 cursor-pointer font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-muted-foreground"
               >
                 <LogOut className="h-3.5 w-3.5 sm:hidden" />
                 <span className="hidden sm:block">Sign Out</span>
@@ -112,7 +171,7 @@ export function MemberNav() {
           ) : (
             <Link
               to="/login"
-              className="clip-cta inline-flex h-9 items-center bg-foreground px-5 text-xs font-tech uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+              className="clip-cta font-semibold inline-flex h-11 items-center bg-foreground px-5 font-tech text-ui-readable uppercase text-background transition hover:bg-foreground/90"
             >
               Join Us
             </Link>

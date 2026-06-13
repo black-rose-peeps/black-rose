@@ -72,7 +72,7 @@ function TeamSummaryCard({
               )}
             </div>
             <span
-              className={`text-[10px] font-tech uppercase tracking-wider-2 ${GAME_COLOR[team.game]}`}
+              className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}
             >
               {team.game}
             </span>
@@ -87,7 +87,7 @@ function TeamSummaryCard({
         <Button
           asChild
           variant="outline"
-          className="clip-cta rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+          className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
         >
           <Link to="/teams/$id" params={{ id: team.id }}>
             Manage Team
@@ -107,7 +107,7 @@ function TeamSummaryCard({
               asChild
               variant="ghost"
               size="sm"
-              className="h-auto rounded-none p-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+              className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
             >
               <Link to="/tournaments/$id" params={{ id: team.activeTournamentId }}>
                 View →
@@ -282,7 +282,7 @@ function TeamsIndexPage() {
           <Button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+            className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
           >
             <Plus className="h-4 w-4" />
             Create Team
@@ -298,7 +298,7 @@ function TeamsIndexPage() {
         <div className="flex flex-col gap-5">
           {invitedTeams.length > 0 && (
             <div className="flex flex-col gap-4">
-              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+              <p className="font-tech text-label-readable uppercase text-amber-400">
                 Pending Invitations
               </p>
               {invitedTeams.map((team) => (
@@ -333,7 +333,7 @@ function TeamsIndexPage() {
               <Button
                 type="button"
                 onClick={() => setCreateOpen(true)}
-                className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+                className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
               >
                 <Plus className="h-4 w-4" />
                 Create a Team
@@ -341,7 +341,7 @@ function TeamsIndexPage() {
               <Button
                 asChild
                 variant="outline"
-                className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+                className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
               >
                 <Link to="/tournaments">Browse Tournaments</Link>
               </Button>

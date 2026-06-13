@@ -19,7 +19,7 @@ export function QuickStat({
       <CornerAccents />
       <span className="relative shrink-0 text-muted-foreground">{icon}</span>
       <div className="relative min-w-0">
-        <p className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+        <p className="font-tech text-label-readable uppercase text-muted-foreground">
           {label}
         </p>
         <p

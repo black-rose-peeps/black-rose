@@ -1,4 +1,4 @@
-import { ALL_GAMES, ALL_STATUSES, GAME_FILTERS, STATUS_FILTERS } from "../constants";
+import { ALL_GAMES, ALL_STATUSES, GAME_FILTERS, STATUS_CONFIG, STATUS_FILTERS } from "../constants";
 import type { TournamentGame, TournamentStatus } from "../types";
 
 interface TournamentFiltersProps {
@@ -25,7 +25,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-2 px-4 py-2 text-[10px] font-tech uppercase tracking-wider-2 transition-all duration-200 ${
+      className={`inline-flex min-h-11 items-center gap-2 px-4 py-2 text-xs sm:text-sm font-tech font-semibold uppercase tracking-[0.08em] transition-all duration-200 ${
         active
           ? "bg-white text-black"
           : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white"
@@ -63,32 +63,22 @@ export function TournamentFilters({
       <div className="flex flex-col gap-2.5">
         <span className="text-sm font-tech uppercase tracking-wider-2 text-foreground">Status</span>
         <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((s) => {
-            // Dot accent colors per status
-            const dotColor =
-              s === "Registration Open"
-                ? "bg-emerald-400"
-                : s === "Live"
-                  ? "bg-white animate-pulse-soft"
-                  : "bg-muted-foreground";
-            const showDot = s !== ALL_STATUSES;
-            return (
-              <Chip
-                key={s}
-                label={s}
-                active={activeStatus === s}
-                onClick={() => onStatusChange(s)}
-                accent={showDot ? dotColor : undefined}
-              />
-            );
-          })}
+          {STATUS_FILTERS.map((s) => (
+            <Chip
+              key={s}
+              label={s}
+              active={activeStatus === s}
+              onClick={() => onStatusChange(s)}
+              accent={s !== ALL_STATUSES ? STATUS_CONFIG[s].dot : undefined}
+            />
+          ))}
         </div>
       </div>
 
       {/* Divider + count */}
       <div className="flex items-center justify-between border-t border-white/6 pt-4">
         <div className="h-px flex-1" />
-        <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+        <span className="text-label-readable font-tech uppercase text-muted-foreground">
           <span className="text-white">{filteredCount}</span> / {totalCount} tournaments
         </span>
       </div>

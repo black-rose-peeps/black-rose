@@ -84,7 +84,7 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               {["Team", "Captain", "Players", "Seed", ""].map((h) => (
-                <TableHead key={h} className="text-[10px] font-tech uppercase tracking-wider-2">
+                <TableHead key={h} className="font-tech text-label-readable uppercase">
                   {h}
                 </TableHead>
               ))}
@@ -130,16 +130,16 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Team
               </TableHead>
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Captain
               </TableHead>
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Players
               </TableHead>
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Seed
               </TableHead>
               <TableHead />
@@ -165,19 +165,19 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Team
               </TableHead>
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Captain
               </TableHead>
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Players
               </TableHead>
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="font-tech text-label-readable uppercase">
                 Seed
               </TableHead>
-              <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+              <TableHead className="text-right font-tech text-label-readable uppercase">
                 Actions
               </TableHead>
             </TableRow>
@@ -191,12 +191,12 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
+                    <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary font-tech text-label-readable tracking-wider-2">
                       {team.tag}
                     </div>
                     <div>
                       <div className="font-display text-base tracking-wider">{team.name}</div>
-                      <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                      <div className="font-tech text-label-readable uppercase text-muted-foreground">
                         {team.tag}
                       </div>
                     </div>
@@ -214,7 +214,7 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="font-tech text-[10px] uppercase tracking-wider"
+                    className="font-tech text-ui-readable uppercase"
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelected(team);
@@ -242,7 +242,7 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 font-tech text-[10px] uppercase tracking-wider"
+                    className="h-11 font-tech text-ui-readable uppercase"
                     disabled={safePage <= 1}
                     onClick={() => setPage(safePage - 1)}
                   >
@@ -275,7 +275,7 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 font-tech text-[10px] uppercase tracking-wider"
+                    className="h-11 font-tech text-ui-readable uppercase"
                     disabled={safePage >= totalPages}
                     onClick={() => setPage(safePage + 1)}
                   >
@@ -316,7 +316,7 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
 
         {/* Info card */}
         <div className="rounded-lg border border-border bg-muted/10 p-4">
-          <h3 className="mb-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <h3 className="mb-3 font-tech text-label-readable uppercase text-muted-foreground">
             Team Info
           </h3>
           <dl className="space-y-2 text-sm">
@@ -337,7 +337,7 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
             </div>
             {team.seed !== undefined && (
               <div className="flex items-center gap-2">
-                <span className="h-3.5 w-3.5 shrink-0 text-center text-[10px] font-tech text-muted-foreground">
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center text-center font-tech text-label-readable text-muted-foreground">
                   #
                 </span>
                 <dt className="text-muted-foreground">Seed</dt>
@@ -346,7 +346,7 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
             )}
           </dl>
           <div className="mt-3">
-            <Badge variant="secondary" className="font-tech text-[10px] uppercase">
+            <Badge variant="secondary" className="font-tech text-label-readable uppercase">
               Registered
             </Badge>
           </div>
@@ -356,19 +356,19 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
 
         {/* Roster table */}
         <div className="space-y-3">
-          <h3 className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <h3 className="font-tech text-label-readable uppercase text-muted-foreground">
             Roster
           </h3>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                <TableHead className="font-tech text-label-readable uppercase">
                   #
                 </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                <TableHead className="font-tech text-label-readable uppercase">
                   IGN
                 </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                <TableHead className="font-tech text-label-readable uppercase">
                   Role
                 </TableHead>
               </TableRow>
@@ -389,7 +389,7 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="font-tech text-[10px] uppercase">
+                    <Badge variant="outline" className="font-tech text-label-readable uppercase">
                       {p.role}
                     </Badge>
                   </TableCell>

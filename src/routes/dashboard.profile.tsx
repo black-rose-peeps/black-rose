@@ -253,7 +253,7 @@ function ProfileEditPage() {
       <Button
         asChild
         variant="ghost"
-        className="mb-6 -ml-2 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="mb-6 -ml-2 rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
       >
         <Link to="/dashboard">
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -284,7 +284,7 @@ function ProfileEditPage() {
             <Button
               asChild
               variant="outline"
-              className="clip-cta rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+              className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
             >
               <Link to="/members/$slug" params={{ slug: profile.slug }}>
                 Preview
@@ -305,28 +305,28 @@ function ProfileEditPage() {
           <TabsList className="h-auto w-full justify-start gap-1 rounded-none border border-white/8 bg-[oklch(0.07_0_0)] p-1">
             <TabsTrigger
               value="identity"
-              className="flex-1 rounded-none font-tech text-[10px] uppercase tracking-wider-2 data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
             >
               <User className="mr-1.5 h-3.5 w-3.5" />
               Identity
             </TabsTrigger>
             <TabsTrigger
               value="player"
-              className="flex-1 rounded-none font-tech text-[10px] uppercase tracking-wider-2 data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
             >
               <Gamepad2 className="mr-1.5 h-3.5 w-3.5" />
               Player
             </TabsTrigger>
             <TabsTrigger
               value="socials"
-              className="flex-1 rounded-none font-tech text-[10px] uppercase tracking-wider-2 data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
             >
               <Share2 className="mr-1.5 h-3.5 w-3.5" />
               Socials
             </TabsTrigger>
             <TabsTrigger
               value="privacy"
-              className="flex-1 rounded-none font-tech text-[10px] uppercase tracking-wider-2 data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
             >
               <Eye className="mr-1.5 h-3.5 w-3.5" />
               Privacy
@@ -349,7 +349,7 @@ function ProfileEditPage() {
 
             <div className="mt-5 grid gap-5">
               <div className="space-y-2">
-                <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                   Display Name
                 </Label>
                 <Input
@@ -361,7 +361,7 @@ function ProfileEditPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                   Headline
                 </Label>
                 <Input
@@ -370,13 +370,13 @@ function ProfileEditPage() {
                   placeholder="Valorant Duelist · Black Rose Member"
                   className={techFieldClass}
                 />
-                <p className="text-[10px] text-muted-foreground/60">
+                <p className="text-sm text-muted-foreground/60">
                   Shown under your name on your public profile.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                   Bio
                 </Label>
                 <Textarea
@@ -394,7 +394,7 @@ function ProfileEditPage() {
             <TechPanel label="Competitive" title="Player Info">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Main Game
                   </Label>
                   <Select value={mainGame || undefined} onValueChange={setMainGame}>
@@ -412,7 +412,7 @@ function ProfileEditPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Main Role
                   </Label>
                   <Select
@@ -437,7 +437,7 @@ function ProfileEditPage() {
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
-                  <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Region
                   </Label>
                   <Input
@@ -457,7 +457,7 @@ function ProfileEditPage() {
               </p>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Valorant IGN
                   </Label>
                   <Input
@@ -469,7 +469,7 @@ function ProfileEditPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Tagline
                   </Label>
                   <div className="relative">
@@ -502,7 +502,7 @@ function ProfileEditPage() {
                     key={platform}
                     className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
                   >
-                    <span className="w-36 shrink-0 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                    <span className="w-36 shrink-0 font-tech text-label-readable uppercase text-muted-foreground">
                       {SOCIAL_PLATFORM_LABELS[platform]}
                     </span>
                     <Input
@@ -527,7 +527,7 @@ function ProfileEditPage() {
                           }))
                         }
                       />
-                      <span className="font-tech text-[9px] uppercase tracking-wider-2 text-muted-foreground">
+                      <span className="font-tech text-label-readable uppercase text-muted-foreground">
                         Public
                       </span>
                     </div>
@@ -558,7 +558,7 @@ function ProfileEditPage() {
           <Button
             type="submit"
             disabled={saving || !profile}
-            className="clip-cta h-11 rounded-none bg-white px-8 font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+            className="clip-cta h-11 rounded-none bg-white px-8 font-tech text-ui-readable uppercase text-black hover:bg-white/90"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Save Profile

@@ -73,7 +73,7 @@ export function RosterTable({
         </colgroup>
 
         <thead>
-          <tr className="border-b border-white/8 bg-white/2 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <tr className="border-b border-white/8 bg-white/2 font-tech text-label-readable uppercase text-muted-foreground">
             <th className="px-4 py-3 text-left font-normal">Player</th>
             {showIgnColumn && <th className="px-4 py-3 text-left font-normal">IGN</th>}
             <th className="px-4 py-3 text-left font-normal">Main Role</th>
@@ -132,14 +132,14 @@ export function RosterTable({
                       <button
                         type="button"
                         onClick={() => onRemove(m)}
-                        className="inline-flex cursor-pointer items-center gap-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/50 transition hover:text-red-400"
+                        className="inline-flex cursor-pointer items-center gap-1.5 font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-red-400"
                       >
                         <UserMinus className="h-3 w-3" />
                         {m.status === "invited" ? "Cancel" : "Remove"}
                       </button>
                     ) : (
                       <span
-                        className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-tech uppercase tracking-wider-2 ${badge.className}`}
+                        className={`inline-flex items-center gap-1.5 border px-2 py-0.5 font-tech text-label-readable uppercase ${badge.className}`}
                       >
                         {m.status === "invited" && <Mail className="h-2.5 w-2.5" />}
                         {badge.label}

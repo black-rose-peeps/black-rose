@@ -37,19 +37,12 @@ export function MemberNameStack({
         </span>
       </div>
       {discordLabel && (
-        <p
-          className={cn(
-            "truncate font-tech uppercase tracking-wider-2 text-muted-foreground",
-            size === "md" && "text-[11px]",
-            size === "sm" && "text-[10px]",
-            size === "xs" && "text-[9px]",
-          )}
-        >
+        <p className="truncate font-tech text-label-readable uppercase text-muted-foreground">
           {discordLabel}
         </p>
       )}
       {showYou && (
-        <span className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground/50">
+        <span className="font-tech text-label-readable uppercase text-muted-foreground/50">
           you
         </span>
       )}

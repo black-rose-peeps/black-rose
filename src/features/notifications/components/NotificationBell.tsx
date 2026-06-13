@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Bell,
+  Radar,
   X,
   CheckCheck,
   Trophy,
@@ -112,18 +112,27 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={panelRef}>
-      {/* Bell button */}
+      {/* Alert feed trigger */}
       <button
         type="button"
         onClick={handleOpen}
         aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
-        className="cursor-pointer relative flex h-9 w-9 items-center justify-center border border-white/10 bg-white/5 text-muted-foreground transition hover:border-white/20 hover:text-foreground"
+        aria-expanded={open}
+        className={`clip-tab relative flex h-10 w-10 cursor-pointer items-center justify-center border bg-white/[0.04] text-muted-foreground transition hover:border-white/25 hover:bg-white/[0.07] hover:text-foreground ${
+          unread > 0 ? "border-white/20" : "border-white/10"
+        }`}
       >
-        <Bell className="h-4 w-4" />
+        <Radar
+          className={`h-4 w-4 ${unread > 0 ? "text-foreground" : ""}`}
+          strokeWidth={1.5}
+        />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center bg-white font-tech text-[9px] tracking-wider-2 text-black">
-            {unread > 9 ? "9+" : unread}
-          </span>
+          <>
+            <span className="pointer-events-none absolute inset-0 animate-pulse-soft bg-white/[0.04]" />
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center bg-white px-0.5 font-tech text-label-readable tracking-wider-2 text-black">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          </>
         )}
       </button>
 
@@ -132,10 +141,10 @@ export function NotificationBell() {
         <div className="absolute right-0 top-11 z-50 w-80 border border-white/12 bg-[oklch(0.08_0_0)] shadow-[0_16px_48px_rgba(0,0,0,0.8)]">
           {/* Panel header */}
           <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-            <p className="text-[10px] font-tech uppercase tracking-wider-2 text-foreground">
+            <p className="font-tech text-label-readable uppercase text-foreground">
               Notifications
               {unread > 0 && (
-                <span className="ml-2 border border-white/15 px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                <span className="ml-2 border border-white/15 px-1.5 py-0.5 text-sm text-muted-foreground">
                   {unread} new
                 </span>
               )}
@@ -146,7 +155,7 @@ export function NotificationBell() {
                   type="button"
                   onClick={handleMarkAll}
                   title="Mark all as read"
-                  className="flex items-center gap-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground"
+                  className="flex items-center gap-1 font-tech text-label-readable uppercase text-muted-foreground transition hover:text-foreground"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   All read
@@ -166,7 +175,7 @@ export function NotificationBell() {
           <ul className="max-h-112 overflow-y-auto divide-y divide-white/5">
             {notifications.length === 0 ? (
               <li className="flex flex-col items-center gap-2 py-10 text-center">
-                <Bell className="h-6 w-6 text-muted-foreground/30" />
+                <Radar className="h-6 w-6 text-muted-foreground/30" strokeWidth={1.25} />
                 <p className="text-sm text-muted-foreground">No notifications yet.</p>
               </li>
             ) : (
@@ -190,7 +199,7 @@ export function NotificationBell() {
                         >
                           {n.title}
                         </p>
-                        <span className="shrink-0 text-[9px] font-tech text-muted-foreground/50">
+                        <span className="shrink-0 font-tech text-label-readable text-muted-foreground/50">
                           {relativeTime(n.createdAt)}
                         </span>
                       </div>
@@ -263,7 +272,7 @@ export function NotificationBell() {
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="border-t border-white/8 px-4 py-2.5 text-center">
-              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/40">
+              <p className="font-tech text-label-readable uppercase text-muted-foreground/40">
                 {notifications.length} total · syncs automatically
               </p>
             </div>

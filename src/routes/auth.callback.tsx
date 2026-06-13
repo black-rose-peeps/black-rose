@@ -106,7 +106,7 @@ function AuthCallbackPage() {
           <div className="mt-8 flex flex-col gap-3">
             <Link
               to="/login"
-              className="clip-cta inline-flex h-10 items-center justify-center bg-foreground px-4 font-tech text-[10px] uppercase tracking-wider-2 text-background"
+              className="clip-cta inline-flex h-11 items-center justify-center bg-foreground px-4 font-tech text-ui-readable uppercase text-background"
             >
               Try again with Discord
             </Link>
@@ -121,7 +121,7 @@ function AuthCallbackPage() {
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
       <div className="relative text-center">
         <img src={brLogo} alt="Black Rose" className="mx-auto mb-6 h-12 w-auto object-contain" />
-        <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+        <p className="font-tech text-label-readable uppercase text-muted-foreground">
           Completing Discord sign-in…
         </p>
       </div>

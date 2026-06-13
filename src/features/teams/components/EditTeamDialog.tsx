@@ -79,7 +79,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
           <div className="space-y-2">
             <Label
               htmlFor="team-name"
-              className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground"
+              className="font-tech text-label-readable uppercase text-muted-foreground"
             >
               Team Name
             </Label>
@@ -96,7 +96,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
           <div className="space-y-2">
             <Label
               htmlFor="team-tag"
-              className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground"
+              className="font-tech text-label-readable uppercase text-muted-foreground"
             >
               Team Tag (2–5 letters)
             </Label>
@@ -115,7 +115,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
           <div className="space-y-2">
             <Label
               htmlFor="team-game"
-              className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground"
+              className="font-tech text-label-readable uppercase text-muted-foreground"
             >
               Primary Game
             </Label>
@@ -136,7 +136,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
               </SelectContent>
             </Select>
             {team.activeTournamentId && (
-              <p className="text-[10px] text-muted-foreground/60">
+              <p className="text-sm text-muted-foreground/60">
                 Game cannot be changed while registered for a tournament.
               </p>
             )}
@@ -149,14 +149,14 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+              className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+              className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Save Changes

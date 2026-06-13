@@ -11,7 +11,7 @@ export function RulesTab({ rules, format, contact }: RulesTabProps) {
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="flex flex-col gap-5 lg:col-span-2">
         {format && (
-          <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+          <p className="font-tech text-label-readable uppercase text-muted-foreground">
             Rules for <span className="text-foreground">{format}</span>
           </p>
         )}
@@ -51,7 +51,7 @@ export function RulesTab({ rules, format, contact }: RulesTabProps) {
             match ending. Staff decisions are final. Attach evidence when applicable.
           </p>
           <div className="mt-5 border-t border-white/8 pt-4">
-            <div className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+            <div className="font-tech text-label-readable uppercase text-muted-foreground">
               Staff Contact
             </div>
             <div className="mt-1 text-sm">{contact}</div>

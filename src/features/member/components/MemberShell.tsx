@@ -76,7 +76,7 @@ export function TechPanel({
         <div className="flex items-start justify-between gap-3 border-b border-white/6 px-5 py-4">
           <div className="min-w-0">
             {label && (
-              <p className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+              <p className="font-tech text-label-readable uppercase text-muted-foreground">
                 {label}
               </p>
             )}
@@ -127,12 +127,12 @@ export function MemberHeroBanner({
             {children}
             <div className="min-w-0 flex-1">
               {eyebrow && (
-                <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <p className="font-tech text-label-readable uppercase text-muted-foreground">
                   {eyebrow}
                 </p>
               )}
               <h1 className="mt-1 font-display text-4xl tracking-display sm:text-5xl">{title}</h1>
-              {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
+              {subtitle && <p className="mt-2 text-base leading-7 text-muted-foreground">{subtitle}</p>}
               {meta && <div className="mt-3">{meta}</div>}
             </div>
           </div>
@@ -161,7 +161,7 @@ export function PanelEmptyState({
     <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
       <span className="text-muted-foreground/30">{icon}</span>
       <p className="text-sm text-muted-foreground">{title}</p>
-      {description && <p className="text-xs text-muted-foreground/50">{description}</p>}
+      {description && <p className="text-sm text-muted-foreground/50">{description}</p>}
       {action}
     </div>
   );

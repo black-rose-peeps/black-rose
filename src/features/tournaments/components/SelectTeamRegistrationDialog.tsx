@@ -125,7 +125,7 @@ export function SelectTeamRegistrationDialog({
               </p>
               <Button
                 asChild
-                className="rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+                className="rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
               >
                 <Link to="/teams/create">Create a Team</Link>
               </Button>
@@ -158,7 +158,7 @@ export function SelectTeamRegistrationDialog({
                           <p className="truncate font-medium text-sm">{team.name}</p>
                           <p
                             className={cn(
-                              "mt-0.5 text-[10px] font-tech uppercase tracking-wider-2",
+                              "mt-0.5 font-tech text-label-readable uppercase",
                               GAME_COLOR[team.game],
                             )}
                           >
@@ -189,7 +189,7 @@ export function SelectTeamRegistrationDialog({
                 type="button"
                 disabled={!selectedTeamId || submitting}
                 onClick={() => void handleRegister()}
-                className="clip-cta h-11 w-full rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90 disabled:opacity-70"
+                className="clip-cta h-11 w-full rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90 disabled:opacity-70"
               >
                 {submitting ? "Submitting…" : "Submit Registration"}
               </Button>

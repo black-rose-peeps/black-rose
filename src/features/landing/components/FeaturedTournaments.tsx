@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useTournamentList } from "@/features/tournaments/hooks";
 import { TournamentShowcaseCard } from "@/features/tournaments/components/TournamentShowcaseCard";
 import { pickSpotlightTournaments } from "@/features/tournaments/utils/tournament-display";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
+import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
 import { SectionHeading } from "./SectionHeading";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -9,10 +11,7 @@ function FeaturedTournamentsSkeleton() {
   return (
     <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="clip-angle-lg flex flex-col border border-white/[0.08] bg-card"
-        >
+        <div key={index} className="clip-angle-lg flex flex-col border border-white/[0.08] bg-card">
           <Skeleton className="h-52 rounded-none bg-white/5" />
           <div className="flex flex-col gap-4 p-6">
             <Skeleton className="h-3 w-24 rounded-none bg-white/5" />
@@ -42,14 +41,14 @@ export function FeaturedTournaments() {
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <SectionHeading
-            eyebrow="01 — Compete Now"
+            eyebrow="Compete Now"
             title="Open Events"
             description="Live and registration-open tournaments from the Black Rose calendar. Lock in your roster before slots fill."
             className="mb-0"
           />
           <Link
             to="/tournaments"
-            className="self-start text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
+            className="self-start font-semibold text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
           >
             View all tournaments →
           </Link>
@@ -64,19 +63,36 @@ export function FeaturedTournaments() {
             ))}
           </div>
         ) : (
-          <div className="border border-white/8 bg-card/40 px-6 py-12 text-center">
-            <p className="font-display text-2xl tracking-display">No open events right now</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Check back soon or browse the full tournament directory.
-            </p>
-            <Link
-              to="/tournaments"
-              className="clip-cta mt-6 inline-flex h-11 items-center gap-2 bg-foreground px-6 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
-            >
-              Browse tournaments
-              <span aria-hidden>→</span>
-            </Link>
-          </div>
+          <ArenaEmptyState
+            compact
+            eyebrow="Calendar Clear"
+            title={
+              <>
+                No events <span className="text-stroke">live yet.</span>
+              </>
+            }
+            description="Registration and live brackets will appear here when the next Black Rose season opens. Join Discord for announcements or browse the full tournament directory."
+            actions={
+              <>
+                <a
+                  href={DISCORD_SERVER_INVITE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="clip-cta inline-flex h-11 items-center gap-2 bg-foreground px-6 font-tech text-xs uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
+                >
+                  Join Discord
+                  <span aria-hidden>→</span>
+                </a>
+                <Link
+                  to="/tournaments"
+                  className="clip-cta inline-flex h-11 items-center gap-2 border border-white/15 bg-white/4 px-6 font-tech text-xs uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
+                >
+                  Browse directory
+                  <span aria-hidden>→</span>
+                </Link>
+              </>
+            }
+          />
         )}
       </div>
     </section>
