@@ -100,7 +100,7 @@ function MemberProfilePage() {
             <Button
               asChild
               variant="outline"
-              className="clip-cta rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+              className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
             >
               <Link to="/dashboard">Back to Dashboard</Link>
             </Button>
@@ -124,7 +124,7 @@ function MemberProfilePage() {
             <Button
               asChild
               variant="outline"
-              className="clip-cta rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+              className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
             >
               <Link to="/dashboard">Back to Dashboard</Link>
             </Button>
@@ -148,7 +148,7 @@ function MemberProfilePage() {
         <Button
           asChild
           variant="ghost"
-          className="-ml-2 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
+          className="-ml-2 rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
         >
           <Link to="/dashboard">
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -159,7 +159,7 @@ function MemberProfilePage() {
           <Button
             asChild
             variant="outline"
-            className="clip-cta rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+            className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
           >
             <Link to="/dashboard/profile" search={{ tab: "identity" }}>
               <Pencil className="h-3.5 w-3.5" />
@@ -178,26 +178,26 @@ function MemberProfilePage() {
               {p.isVerified && (
                 <Badge
                   variant="outline"
-                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-[9px] uppercase tracking-wider-2 text-emerald-400"
+                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-label-readable uppercase text-emerald-400"
                 >
                   <CheckCircle className="mr-1 h-3 w-3" />
                   Verified
                 </Badge>
               )}
               {p.mainGame && (
-                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                <span className="flex items-center gap-1.5 font-tech text-label-readable uppercase text-muted-foreground">
                   <Gamepad2 className="h-3 w-3" />
                   {p.mainGame}
                 </span>
               )}
               {p.region && (
-                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                <span className="flex items-center gap-1.5 font-tech text-label-readable uppercase text-muted-foreground">
                   <MapPin className="h-3 w-3" />
                   {p.region}
                 </span>
               )}
               {p.valorantGameName && p.valorantTagline && (
-                <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400">
+                <span className="flex items-center gap-1.5 font-tech text-ui-readable uppercase text-emerald-400">
                   <CheckCircle className="h-3 w-3" />
                   {p.valorantGameName}#{p.valorantTagline}
                 </span>
@@ -232,7 +232,7 @@ function MemberProfilePage() {
               asChild
               variant="outline"
               size="sm"
-              className="rounded-none border-white/10 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+              className="rounded-none border-white/10 bg-white/5 font-tech text-ui-readable uppercase"
             >
               <a href={s.url!} target="_blank" rel="noopener noreferrer">
                 {SOCIAL_PLATFORM_LABELS[s.platform]}
@@ -261,7 +261,7 @@ function MemberProfilePage() {
                       asChild
                       variant="outline"
                       size="sm"
-                      className="mt-1 rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+                      className="mt-1 rounded-none border-white/15 font-tech text-ui-readable uppercase"
                     >
                       <Link to="/dashboard/profile" search={{ tab: "identity" }}>
                         Add Bio
@@ -302,7 +302,7 @@ function MemberProfilePage() {
           <ProfileCard label="Player Info">
             <dl className="flex flex-col gap-3">
               <div>
-                <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <dt className="font-tech text-label-readable uppercase text-muted-foreground">
                   Main Game
                 </dt>
                 <dd className="mt-0.5 font-display text-lg tracking-display">
@@ -311,21 +311,21 @@ function MemberProfilePage() {
               </div>
               <div className="h-px bg-white/6" />
               <div>
-                <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <dt className="font-tech text-label-readable uppercase text-muted-foreground">
                   Role
                 </dt>
                 <dd className="mt-0.5 text-sm">{p.mainRole || "—"}</dd>
               </div>
               <div className="h-px bg-white/6" />
               <div>
-                <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <dt className="font-tech text-label-readable uppercase text-muted-foreground">
                   Region
                 </dt>
                 <dd className="mt-0.5 text-sm">{p.region || "—"}</dd>
               </div>
               <div className="h-px bg-white/6" />
               <div>
-                <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <dt className="font-tech text-label-readable uppercase text-muted-foreground">
                   Valorant ID
                 </dt>
                 <dd
@@ -354,13 +354,13 @@ function MemberProfilePage() {
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400 transition hover:text-emerald-300"
+                        className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-emerald-400 transition hover:text-emerald-300"
                       >
                         Added
                         <ExternalLink className="h-2.5 w-2.5" />
                       </a>
                     ) : (
-                      <span className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground/35">
+                      <span className="font-tech text-label-readable uppercase text-muted-foreground/35">
                         {link?.url ? "Private" : "—"}
                       </span>
                     )}

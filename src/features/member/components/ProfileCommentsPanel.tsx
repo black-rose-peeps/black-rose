@@ -142,7 +142,7 @@ export function ProfileCommentsPanel({
       <div className="flex flex-col gap-5">
         {canComment && (
           <div className="border border-white/8 bg-white/[0.02] p-4">
-            <p className="mb-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+            <p className="mb-3 font-tech text-label-readable uppercase text-muted-foreground">
               Leave a comment
             </p>
             <Textarea
@@ -153,7 +153,7 @@ export function ProfileCommentsPanel({
               className="min-h-[88px] resize-none rounded-none border-white/12 bg-white/[0.03] shadow-none focus-visible:ring-white/20"
             />
             <div className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/60">
+              <span className="font-tech text-label-readable uppercase text-muted-foreground/60">
                 {draft.length}/{MAX_LENGTH}
               </span>
               <Button
@@ -161,7 +161,7 @@ export function ProfileCommentsPanel({
                 size="sm"
                 disabled={posting || !draft.trim()}
                 onClick={() => void handlePost()}
-                className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+                className="rounded-none font-tech text-ui-readable uppercase"
               >
                 {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                 Post Comment
@@ -231,13 +231,13 @@ export function ProfileCommentsPanel({
                           size="sm"
                         />
                       </Link>
-                      <span className="shrink-0 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/60">
+                      <span className="shrink-0 font-tech text-label-readable uppercase text-muted-foreground/60">
                         {formatCommentDate(comment.createdAt)}
                       </span>
                     </div>
 
                     {comment.isHidden && isOwnProfile && (
-                      <span className="mt-2 inline-flex items-center gap-1 border border-amber-400/20 bg-amber-400/5 px-2 py-0.5 text-[9px] font-tech uppercase tracking-wider-2 text-amber-400">
+                      <span className="mt-2 inline-flex items-center gap-1 border border-amber-400/20 bg-amber-400/5 px-2 py-0.5 font-tech text-label-readable uppercase text-amber-400">
                         <EyeOff className="h-2.5 w-2.5" />
                         Hidden from public
                       </span>
@@ -249,13 +249,13 @@ export function ProfileCommentsPanel({
 
                     {comment.reply && (
                       <div className="mt-4 border-l-2 border-emerald-400/25 bg-emerald-400/5 px-4 py-3">
-                        <p className="text-[9px] font-tech uppercase tracking-wider-2 text-emerald-400/80">
+                        <p className="font-tech text-label-readable uppercase text-emerald-400/80">
                           Profile owner
                         </p>
                         <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                           {comment.reply.body}
                         </p>
-                        <p className="mt-2 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/50">
+                        <p className="mt-2 font-tech text-label-readable uppercase text-muted-foreground/50">
                           {formatCommentDate(comment.reply.createdAt)}
                         </p>
                       </div>
@@ -269,7 +269,7 @@ export function ProfileCommentsPanel({
                           variant="outline"
                           disabled={actionId === comment.id}
                           onClick={() => void handleHide(comment.id, !comment.isHidden)}
-                          className="rounded-none border-white/12 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+                          className="rounded-none border-white/12 bg-white/5 font-tech text-ui-readable uppercase"
                         >
                           {actionId === comment.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -288,7 +288,7 @@ export function ProfileCommentsPanel({
                               setReplyingId(replyingId === comment.id ? null : comment.id);
                               setReplyDraft("");
                             }}
-                            className="rounded-none border-white/12 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+                            className="rounded-none border-white/12 bg-white/5 font-tech text-ui-readable uppercase"
                           >
                             <Reply className="h-3 w-3" />
                             Reply
@@ -312,7 +312,7 @@ export function ProfileCommentsPanel({
                             size="sm"
                             variant="ghost"
                             onClick={() => setReplyingId(null)}
-                            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+                            className="rounded-none font-tech text-ui-readable uppercase"
                           >
                             Cancel
                           </Button>
@@ -321,7 +321,7 @@ export function ProfileCommentsPanel({
                             size="sm"
                             disabled={replyPosting || !replyDraft.trim()}
                             onClick={() => void handleReply(comment.id)}
-                            className="rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+                            className="rounded-none font-tech text-ui-readable uppercase"
                           >
                             {replyPosting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                             Post Reply

@@ -55,7 +55,7 @@ export function ChampionPortrait({
               {champion.teamTag}
             </div>
             <Crown className="mt-5 h-5 w-5 text-amber-300/80" strokeWidth={1.25} />
-            <p className="mt-3 font-tech text-[9px] uppercase tracking-[0.22em] text-white/55">
+            <p className="mt-3 font-tech font-semibold text-[10px] uppercase tracking-[0.22em] text-white/55">
               Champion Portrait
             </p>
             <p className="mt-1 max-w-[14rem] text-[10px] leading-relaxed text-white/35">
@@ -78,12 +78,14 @@ export function ChampionPortrait({
       />
 
       <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/35 to-transparent px-4 pb-4 pt-16">
-        <p className="font-tech text-[8px] uppercase tracking-[0.2em] text-amber-300/75">
+        <p className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em] text-amber-300/75">
           {crownVariantLabel(champion.crownVariant)}
         </p>
-        <p className="mt-1 font-display text-xl tracking-[0.04em] text-white">
-          {champion.teamName}
-        </p>
+        {variant === "hero" ? (
+          <p className="mt-1 font-display text-xl tracking-[0.04em] text-white">
+            {champion.teamName}
+          </p>
+        ) : null}
       </div>
     </div>
   );

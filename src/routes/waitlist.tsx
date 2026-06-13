@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { useVerificationSync } from "@/features/auth/hooks/useVerificationSync";
 import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
@@ -28,6 +28,9 @@ function WaitlistPage() {
   const [username, setUsername] = useState<string | null>(null);
   const [copiedGame, setCopiedGame] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const templatesToggleId = useId();
+  const templatesPanelId = useId();
 
   const goToDashboard = useCallback(() => {
     navigate({ to: "/dashboard", replace: true });
@@ -76,6 +79,14 @@ function WaitlistPage() {
     };
   }, [navigate]);
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current !== null) {
+        clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
   function handleSignOut() {
     clearSession();
     navigate({ to: "/" });
@@ -85,10 +96,20 @@ function WaitlistPage() {
     const text = `Application — ${game}\n\n${fields.join("\n")}`;
     void navigator.clipboard.writeText(text).then(
       () => {
+        if (copyResetTimerRef.current !== null) {
+          clearTimeout(copyResetTimerRef.current);
+        }
         setCopiedGame(game);
-        setTimeout(() => setCopiedGame(null), 2000);
+        copyResetTimerRef.current = setTimeout(() => {
+          setCopiedGame(null);
+          copyResetTimerRef.current = null;
+        }, 2000);
       },
       () => {
+        if (copyResetTimerRef.current !== null) {
+          clearTimeout(copyResetTimerRef.current);
+          copyResetTimerRef.current = null;
+        }
         setCopiedGame(null);
       },
     );
@@ -122,7 +143,7 @@ function WaitlistPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-50" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
             </span>
-            <span className="text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+            <span className="font-tech text-label-readable uppercase text-amber-400">
               Pending Verification
             </span>
           </div>
@@ -152,7 +173,7 @@ function WaitlistPage() {
                 href={DISCORD_SERVER_INVITE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex h-8 items-center gap-2 bg-[#5865F2] px-4 font-tech text-[10px] uppercase tracking-wider-2 text-white transition hover:bg-[#4752c4]"
+                className="mt-3 font-medium inline-flex h-11 items-center gap-2 bg-[#5865F2] px-4 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
               >
                 <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
                 Join Discord
@@ -170,16 +191,24 @@ function WaitlistPage() {
                 format for your game, fill it out, and post it.
               </p>
               <button
+                id={templatesToggleId}
                 type="button"
                 onClick={() => setShowTemplates((v) => !v)}
-                className="mt-3 inline-flex h-8 items-center gap-2 border border-white/10 px-4 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground transition hover:border-white/25 hover:text-foreground"
+                aria-expanded={showTemplates}
+                aria-controls={templatesPanelId}
+                className="mt-3 inline-flex h-11 items-center gap-2 border border-white/10 px-4 font-tech text-label-readable uppercase text-muted-foreground transition hover:border-white/25 hover:text-foreground"
               >
                 {showTemplates ? "Hide" : "View"} Application Formats
               </button>
 
               {/* Templates — inline under step 2 */}
               {showTemplates && (
-                <div className="mt-4 flex flex-col gap-2">
+                <div
+                  id={templatesPanelId}
+                  role="region"
+                  aria-labelledby={templatesToggleId}
+                  className="mt-4 flex flex-col gap-2"
+                >
                   {WAITLIST_TEMPLATES.map((t) => (
                     <div key={t.game} className="border border-white/8 bg-background">
                       <div className="flex items-center justify-between border-b border-white/6 px-3 py-2">
@@ -187,7 +216,7 @@ function WaitlistPage() {
                         <button
                           type="button"
                           onClick={() => copyTemplate(t.game, t.fields)}
-                          className="cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground"
+                          className="cursor-pointer inline-flex items-center gap-1.5 font-tech text-label-readable uppercase text-muted-foreground transition hover:text-foreground"
                         >
                           {copiedGame === t.game ? (
                             <>
@@ -228,7 +257,7 @@ function WaitlistPage() {
                 type="button"
                 onClick={() => void syncVerification()}
                 disabled={isChecking}
-                className="mt-3 inline-flex h-8 items-center gap-2 border border-white/10 px-4 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground transition hover:border-white/25 hover:text-foreground disabled:opacity-50"
+                className="mt-3 inline-flex h-11 items-center gap-2 border border-white/10 px-4 font-tech text-label-readable uppercase text-muted-foreground transition hover:border-white/25 hover:text-foreground disabled:opacity-50"
               >
                 {isChecking ? (
                   <>

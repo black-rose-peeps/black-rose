@@ -33,8 +33,20 @@ export function CommunityPortrait() {
               className="h-full w-full object-cover object-center contrast-105 saturate-90 transition duration-700 group-hover:scale-[1.02] group-hover:saturate-100"
             />
 
-            <div className="absolute inset-0 bg-linear-to-t from-[oklch(0.055_0_0)] via-[oklch(0.055_0_0/0.25)] to-black/10" />
-            <div className="absolute inset-0 bg-linear-to-r from-black/40 via-transparent to-black/25" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `
+      radial-gradient(
+        ellipse at center,
+        transparent 45%,
+        rgba(0,0,0,0.08) 75%,
+        rgba(0,0,0,0.22) 100%
+      )
+    `,
+              }}
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-[oklch(0.055_0_0/0.35)] via-transparent to-transparent" />
 
             <div
               className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-overlay"

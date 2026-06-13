@@ -8,8 +8,15 @@
  * Data shape: BracketRound[] → BracketMatch[] from @/features/tournaments/types.
  */
 
+import { Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
+import {
+  isChampionshipMatch,
+  isChampionshipRoundLabel,
+  isOpeningPlayInRound,
+  partitionDoubleElimRounds,
+} from "../../utils/bracket-display";
 import type { BracketRound, BracketMatch } from "../../types";
 import { PublicBracketTeamSlot } from "./PublicBracketTeamSlot";
 import { SwissBracketTab } from "./SwissBracketTab";
@@ -73,35 +80,31 @@ export function BracketTab({
   const isDoubleElim = isDoubleEliminationFormat(format);
 
   if (isDoubleElim) {
-    // Separate upper/grand rounds from lower rounds by label convention
-    const upperRounds = bracket.filter(
-      (r) =>
-        /upper/i.test(r.label) ||
-        /grand\s*final/i.test(r.label) ||
-        (!/lower/i.test(r.label) && !/lower/i.test(r.label)),
-    );
-    const lowerRounds = bracket.filter((r) => /lower/i.test(r.label));
+    const { playInRounds, upperRounds, lowerRounds } = partitionDoubleElimRounds(bracket);
 
     return (
       <div className="flex flex-col gap-10">
         <BracketHeader format={format} />
 
+        {playInRounds.length > 0 && (
+          <BracketSection title="Opening — Play-in" rounds={playInRounds} teamTags={teamTags} />
+        )}
         <BracketSection title="Upper Bracket" rounds={upperRounds} teamTags={teamTags} />
         {lowerRounds.length > 0 && (
           <BracketSection title="Lower Bracket" rounds={lowerRounds} teamTags={teamTags} />
         )}
 
-        <BracketFooter isDoubleElim />
+        <BracketFooter isDoubleElim hasPlayIn={playInRounds.length > 0} />
       </div>
     );
   }
 
-  // Single elimination — all rounds in one section
+  // Single elimination — one canvas; play-in (if any) is the first column, same as admin
   return (
     <div className="flex flex-col gap-10">
       <BracketHeader format={format} />
       <BracketSection rounds={bracket} teamTags={teamTags} />
-      <BracketFooter />
+      <BracketFooter hasPlayIn={bracket.some((r) => isOpeningPlayInRound(r.label))} />
     </div>
   );
 }
@@ -118,9 +121,34 @@ function BracketHeader({ format }: { format: string }) {
   );
 }
 
-function BracketFooter({ isDoubleElim = false }: { isDoubleElim?: boolean }) {
+function BracketFooter({
+  isDoubleElim = false,
+  hasPlayIn = false,
+}: {
+  isDoubleElim?: boolean;
+  hasPlayIn?: boolean;
+}) {
+  if (isDoubleElim && hasPlayIn) {
+    return (
+      <p className="text-[10px] font-tech font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
+        Play-in winners join the top seeds in the main double-elimination bracket. Winners advance
+        up; losers drop to the lower bracket. Grand Final: upper-bracket winner vs lower-bracket
+        winner.
+      </p>
+    );
+  }
+
+  if (hasPlayIn) {
+    return (
+      <p className="text-[10px] font-tech font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
+        Play-in winners fill the remaining main-bracket slots. TBD entries update as matches
+        conclude.
+      </p>
+    );
+  }
+
   return (
-    <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/40">
+    <p className="text-[10px] font-tech font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
       {isDoubleElim
         ? "Winners advance to upper bracket; losers drop to lower bracket."
         : "TBD entries will be filled as the tournament progresses."}
@@ -152,8 +180,8 @@ function BracketSection({
     return PAD_V + 36 + index * spacing;
   }
 
-  const isGrand = (label: string) => /grand\s*final/i.test(label);
-  const isLower = (label: string) => /lower/i.test(label);
+  const isGrand = (label: string) => isChampionshipRoundLabel(label);
+  const isLower = (label: string) => /lower/i.test(label) && !isChampionshipRoundLabel(label);
 
   return (
     <div>
@@ -177,13 +205,13 @@ function BracketSection({
             const lower = isLower(round.label);
 
             const sideBorder = grand
-              ? "border-amber-400/50"
+              ? "border-amber-400/55"
               : lower
                 ? "border-amber-400/25"
                 : "border-border";
 
             const labelColor = grand
-              ? "text-amber-400/90 border-amber-400/30"
+              ? "text-amber-300/90 border-amber-400/35"
               : "text-muted-foreground border-border";
 
             return (
@@ -203,6 +231,7 @@ function BracketSection({
                 {/* Match cards */}
                 {round.matches.map((match, mi) => {
                   const y = matchTop(mi, round.matches.length);
+                  const isChampionship = isChampionshipMatch(match, round.label);
 
                   return (
                     <PublicMatchCard
@@ -211,6 +240,7 @@ function BracketSection({
                       x={x}
                       y={y}
                       sideBorder={sideBorder}
+                      isChampionship={isChampionship}
                       teamTags={teamTags}
                     />
                   );
@@ -231,30 +261,54 @@ function PublicMatchCard({
   x,
   y,
   sideBorder,
+  isChampionship = false,
   teamTags,
 }: {
   match: BracketMatch;
   x: number;
   y: number;
   sideBorder: string;
+  isChampionship?: boolean;
   teamTags?: Map<string, string>;
 }) {
   const hasScores = match.scoreA !== undefined && match.scoreB !== undefined;
   const decided = !!match.winner;
+  const championCrowned = isChampionship && decided && !!match.winner;
 
   return (
     <div
-      className={cn("absolute bg-card border", sideBorder, decided && "ring-1 ring-emerald-400/30")}
+      className={cn(
+        "absolute bg-card border",
+        isChampionship ? "border-amber-400/55" : sideBorder,
+        decided && !isChampionship && "ring-1 ring-emerald-400/30",
+        championCrowned && "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
+      )}
       style={{ left: `${x}px`, top: `${y}px`, width: CARD_W }}
     >
       {/* Match label bar */}
-      <div className="flex items-center justify-between border-b border-border/60 px-2 py-1">
-        <span className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+      <div
+        className={cn(
+          "flex items-center justify-between border-b px-2 py-1",
+          isChampionship ? "border-amber-400/25 bg-amber-400/5" : "border-border/60",
+        )}
+      >
+        <span
+          className={cn(
+            "flex items-center gap-1 text-[10px] font-tech uppercase tracking-wider",
+            isChampionship ? "text-amber-300/90" : "text-muted-foreground",
+          )}
+        >
+          {championCrowned && <Crown className="h-3 w-3" strokeWidth={1.25} />}
           {match.round}
         </span>
         {decided && (
-          <span className="text-[9px] font-tech text-emerald-400/70 uppercase tracking-wider">
-            Final
+          <span
+            className={cn(
+              "text-[9px] font-tech uppercase tracking-wider",
+              championCrowned ? "text-amber-300/80" : "text-emerald-400/70",
+            )}
+          >
+            {championCrowned ? "Champion" : "Final"}
           </span>
         )}
       </div>
@@ -267,6 +321,7 @@ function PublicMatchCard({
         isWinner={decided && match.winner === match.teamA}
         isLoser={decided && !!match.teamA && match.winner !== match.teamA}
         hasScores={hasScores}
+        isChampionRow={championCrowned && match.winner === match.teamA}
       />
 
       {/* Team B */}
@@ -277,6 +332,7 @@ function PublicMatchCard({
         isWinner={decided && match.winner === match.teamB}
         isLoser={decided && !!match.teamB && match.winner !== match.teamB}
         hasScores={hasScores}
+        isChampionRow={championCrowned && match.winner === match.teamB}
       />
     </div>
   );

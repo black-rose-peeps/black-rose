@@ -40,22 +40,22 @@ export const STATUS_CONFIG: Record<
   },
   Live: {
     label: "Live",
-    dot: "bg-white animate-pulse-soft",
+    dot: "bg-red-500 animate-pulse-soft",
     badge: "border-white/30 text-white bg-white/5",
   },
   "Registration Closed": {
     label: "Reg. Closed",
-    dot: "bg-muted-foreground",
+    dot: "bg-orange-400",
     badge: "border-white/10 text-muted-foreground",
   },
   Completed: {
     label: "Completed",
-    dot: "bg-muted-foreground/50",
-    badge: "border-white/10 text-muted-foreground/70",
+    dot: "bg-purple-500",
+    badge: "border-sky-400/25 text-sky-300/90 bg-sky-400/5",
   },
   Archived: {
     label: "Archived",
-    dot: "bg-muted-foreground/30",
+    dot: "bg-muted-foreground",
     badge: "border-white/5 text-muted-foreground/50",
   },
 };

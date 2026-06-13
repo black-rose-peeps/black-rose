@@ -35,14 +35,14 @@ export function WhyBlackRose() {
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <SectionHeading
-            eyebrow="02 — The Code"
+            eyebrow="The Code"
             title="Why Black Rose"
             description="Three principles that define every match we host."
             className="mb-0"
           />
           <Link
             to="/community"
-            className="self-start text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
+            className="self-start font-semibold text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
           >
             Guild Code of Values →
           </Link>

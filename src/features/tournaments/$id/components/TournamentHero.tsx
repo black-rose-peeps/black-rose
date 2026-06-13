@@ -40,7 +40,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
         {/* Breadcrumb */}
         <Link
           to="/tournaments"
-          className="mb-8 inline-flex items-center gap-2 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground"
+          className="mb-8 inline-flex min-h-11 items-center gap-2 font-tech text-label-readable uppercase text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           All Tournaments
@@ -51,12 +51,12 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <span
-                className={`text-[10px] font-tech uppercase tracking-wider-2 ${GAME_TAG_COLOR[t.game]}`}
+                className={`font-tech text-label-readable uppercase ${GAME_TAG_COLOR[t.game]}`}
               >
                 {GAME_LABELS[t.game]}
               </span>
               <span
-                className={`inline-flex items-center gap-1.5 border px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 ${status.badge}`}
+                className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-tech text-label-readable uppercase ${status.badge}`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
                 {status.label}
@@ -67,7 +67,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
               {t.name}
             </h1>
 
-            <p className="mt-3 max-w-2xl text-sm text-muted-foreground md:text-base">
+            <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
               {t.description}
             </p>
           </div>
@@ -112,7 +112,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
             <div key={m.label} className="flex items-center gap-3 bg-[oklch(0.07_0_0)] px-5 py-4">
               <span className="text-muted-foreground">{m.icon}</span>
               <div>
-                <div className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <div className="font-tech text-label-readable uppercase text-muted-foreground">
                   {m.label}
                 </div>
                 <div className="mt-0.5 text-sm font-medium">{m.value}</div>
@@ -122,7 +122,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
           {/* Prize — highlighted */}
           <div className="flex items-center gap-3 bg-white px-5 py-4">
             <div>
-              <div className="text-[9px] font-tech uppercase tracking-wider-2 text-black/50">
+              <div className="font-tech text-label-readable uppercase text-black/50">
                 Prize Pool
               </div>
               <div className="mt-0.5 font-display text-xl tracking-display text-black">

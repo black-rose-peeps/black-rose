@@ -115,7 +115,7 @@ export function CreateTeamDialog({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-5">
           <div className="space-y-2">
-            <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
               Team Name
             </Label>
             <Input
@@ -129,7 +129,7 @@ export function CreateTeamDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
               Team Tag (2–5 letters)
             </Label>
             <Input
@@ -145,7 +145,7 @@ export function CreateTeamDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
               Primary Game
             </Label>
             <Select
@@ -181,14 +181,14 @@ export function CreateTeamDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
+              className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="clip-cta rounded-none bg-white font-tech text-[10px] uppercase tracking-wider-2 text-black hover:bg-white/90"
+              className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Create Team

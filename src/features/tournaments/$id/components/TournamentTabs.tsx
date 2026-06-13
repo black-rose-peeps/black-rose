@@ -30,7 +30,7 @@ export function TournamentTabs({ active, onChange, teamCount }: TournamentTabsPr
             aria-selected={active === tab.id}
             aria-controls={`tab-panel-${tab.id}`}
             onClick={() => onChange(tab.id)}
-            className={`relative px-5 py-4 text-[11px] font-tech uppercase tracking-wider-2 transition-colors duration-150 ${
+            className={`relative min-h-11 px-5 py-4 font-tech text-label-readable uppercase transition-colors duration-150 ${
               active === tab.id
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground/70"
@@ -38,7 +38,7 @@ export function TournamentTabs({ active, onChange, teamCount }: TournamentTabsPr
           >
             {tab.label}
             {tab.id === "teams" && (
-              <span className="ml-2 border border-white/10 px-1.5 py-0.5 text-[9px] text-muted-foreground">
+              <span className="ml-2 border border-white/10 px-1.5 py-0.5 text-sm text-muted-foreground">
                 {teamCount}
               </span>
             )}

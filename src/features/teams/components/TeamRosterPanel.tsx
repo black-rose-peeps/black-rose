@@ -59,7 +59,7 @@ export function TeamRosterPanel({
               size="sm"
               variant="outline"
               onClick={onInvite}
-              className="rounded-none border-white/15 bg-white/5 font-tech text-[10px] uppercase tracking-wider-2"
+              className="rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
             >
               <UserPlus className="h-3.5 w-3.5" />
               Invite Member
@@ -71,7 +71,7 @@ export function TeamRosterPanel({
         <div className="border-b border-white/6 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-tech uppercase tracking-wider-2">
+              <div className="mb-2 flex items-center justify-between gap-3 font-tech text-label-readable uppercase">
                 <span className="text-muted-foreground">Roster capacity</span>
                 <span className="text-foreground">
                   {rosterCount} / {MAX_TEAM_SIZE} slots
@@ -85,11 +85,11 @@ export function TeamRosterPanel({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 text-emerald-400">
+              <span className="border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1 font-tech text-label-readable uppercase text-emerald-400">
                 {activeMembers.length} active
               </span>
               {!isPublic && pendingMembers.length > 0 && (
-                <span className="border border-amber-400/20 bg-amber-400/5 px-2.5 py-1 text-[10px] font-tech uppercase tracking-wider-2 text-amber-400">
+                <span className="border border-amber-400/20 bg-amber-400/5 px-2.5 py-1 font-tech text-label-readable uppercase text-amber-400">
                   {pendingMembers.length} pending
                 </span>
               )}
@@ -104,11 +104,11 @@ export function TeamRosterPanel({
               <p className="font-display text-sm tracking-display text-foreground">
                 Active Roster
               </p>
-              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+              <p className="font-tech text-label-readable uppercase text-muted-foreground">
                 Members who accepted the invite
               </p>
             </div>
-            <span className="ml-auto font-tech text-[10px] uppercase tracking-wider-2 text-emerald-400/80">
+            <span className="ml-auto font-tech text-ui-readable uppercase text-emerald-400/80">
               {activeMembers.length}
             </span>
           </div>
@@ -130,11 +130,11 @@ export function TeamRosterPanel({
                 <p className="font-display text-sm tracking-display text-foreground">
                   Pending Invites
                 </p>
-                <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <p className="font-tech text-label-readable uppercase text-muted-foreground">
                   Awaiting member response
                 </p>
               </div>
-              <span className="ml-auto font-tech text-[10px] uppercase tracking-wider-2 text-amber-400/80">
+              <span className="ml-auto font-tech text-ui-readable uppercase text-amber-400/80">
                 {pendingMembers.length}
               </span>
             </div>
@@ -156,7 +156,7 @@ export function TeamRosterPanel({
                     variant="ghost"
                     size="sm"
                     onClick={onInvite}
-                    className="mt-3 rounded-none font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-foreground"
+                    className="mt-3 rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:text-foreground"
                   >
                     <UserPlus className="h-3.5 w-3.5" />
                     Invite a member
