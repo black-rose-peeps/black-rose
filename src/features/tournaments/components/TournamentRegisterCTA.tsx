@@ -3,10 +3,17 @@ import {
   memberCanRequestCaptainRegistration,
   memberCanUseCaptainRegistration,
 } from "@/features/tournaments/services/tournament-registration-requests.service";
+import {
+  fetchMemberRegistrationStatusForTournament,
+  type CaptainTournamentRegistrationStatus,
+} from "@/features/tournaments/services/team-registration.service";
 import { RegisterNowButtonSkeleton } from "./SelectTeamRegistrationSkeleton";
-import { TournamentCaptainRegister } from "./TournamentCaptainRegister";
+import {
+  TournamentCaptainRegister,
+  TournamentRegisterCreateTeamCTA,
+  TournamentRegistrationStatusBadge,
+} from "./TournamentCaptainRegister";
 import { TournamentMemberRegisterRequest } from "./TournamentMemberRegisterRequest";
-import { TournamentRegisterCreateTeamCTA } from "./TournamentCaptainRegister";
 
 interface TournamentRegisterCTAProps {
   tournamentId: string;
@@ -16,7 +23,7 @@ interface TournamentRegisterCTAProps {
   onRegistered?: () => void;
 }
 
-type RegisterMode = "loading" | "captain" | "member" | "create-team";
+type RegisterMode = "loading" | "entered" | "captain" | "member" | "create-team";
 
 export function TournamentRegisterCTA({
   tournamentId,
@@ -26,11 +33,24 @@ export function TournamentRegisterCTA({
   onRegistered,
 }: TournamentRegisterCTAProps) {
   const [mode, setMode] = useState<RegisterMode>("loading");
+  const [enteredStatus, setEnteredStatus] =
+    useState<CaptainTournamentRegistrationStatus>("none");
   const requestIdRef = useRef(0);
 
   const resolveMode = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     try {
+      const registrationStatus = await fetchMemberRegistrationStatusForTournament(
+        memberId,
+        tournamentId,
+      );
+      if (requestId !== requestIdRef.current) return;
+      if (registrationStatus !== "none") {
+        setEnteredStatus(registrationStatus);
+        setMode("entered");
+        return;
+      }
+
       const [canCaptain, canMember] = await Promise.all([
         memberCanUseCaptainRegistration(memberId, tournamentId),
         memberCanRequestCaptainRegistration(memberId, tournamentId, tournamentGame),
@@ -57,6 +77,10 @@ export function TournamentRegisterCTA({
 
   if (mode === "loading") {
     return <RegisterNowButtonSkeleton />;
+  }
+
+  if (mode === "entered") {
+    return <TournamentRegistrationStatusBadge status={enteredStatus} />;
   }
 
   if (mode === "captain") {

@@ -133,6 +133,27 @@ export async function fetchCaptainRegistrationStatusForTournament(
   return status;
 }
 
+/** Registration state for any team the member belongs to (captain or roster). */
+export async function fetchMemberRegistrationStatusForTournament(
+  memberId: string,
+  tournamentId: string,
+): Promise<CaptainTournamentRegistrationStatus> {
+  const teams = await fetchTeamsForUser(memberId);
+  const registrations = await Promise.all(
+    teams.map((team) => fetchTeamTournamentRegistration(team.id, tournamentId)),
+  );
+
+  let status: CaptainTournamentRegistrationStatus = "none";
+  for (const registration of registrations) {
+    if (!registration || registration.status === "Rejected") continue;
+    status = mergeCaptainRegistrationStatus(
+      status,
+      registrationStatusFromRow(registration.status),
+    );
+  }
+  return status;
+}
+
 export async function fetchCaptainTournamentRegistrationMap(
   memberId: string,
 ): Promise<Map<string, CaptainTournamentRegistrationStatus>> {

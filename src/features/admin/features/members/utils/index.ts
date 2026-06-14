@@ -102,7 +102,7 @@ export function buildAdminMemberFromInput(input: CreateMemberInput): AdminMember
     registeredAt: new Date().toISOString().split("T")[0],
     createdAt: new Date().toISOString(),
     avatarUrl: null,
-    profileSlug: null,
+    profileSlug: input.username.trim(),
   };
 }
 
