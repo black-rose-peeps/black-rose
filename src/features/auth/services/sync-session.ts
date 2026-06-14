@@ -16,12 +16,17 @@ async function fetchMemberSession(memberId: string): Promise<RefreshMemberSessio
     try {
       return await refreshMemberSession({ data: { memberId } });
     } catch (err) {
-      const canRetry = import.meta.env.DEV && isDevServerFnRaceError(err) && attempt < maxAttempts - 1;
-      if (!canRetry) throw err;
-      await new Promise((resolve) => window.setTimeout(resolve, 400 * (attempt + 1)));
+      const canRetry =
+        import.meta.env.DEV && isDevServerFnRaceError(err) && attempt < maxAttempts - 1;
+      if (canRetry) {
+        await new Promise((resolve) => window.setTimeout(resolve, 400 * (attempt + 1)));
+        continue;
+      }
+      throw err;
     }
   }
 
+  // maxAttempts is always >= 1; loop returns or throws above — this satisfies TypeScript.
   throw new Error("Could not refresh member session.");
 }
 

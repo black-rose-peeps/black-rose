@@ -50,6 +50,11 @@ export function InviteMemberDialog({
   const [error, setError] = useState<string | null>(null);
 
   const rosterCount = team.members.filter((m) => m.status !== "removed").length;
+  const rosterExcludeKey = team.members
+    .filter((m) => m.status !== "removed")
+    .map((m) => m.userId)
+    .sort()
+    .join(",");
   const slotsLeft = MAX_TEAM_SIZE - rosterCount;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -109,7 +114,7 @@ export function InviteMemberDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, search, page, team.id, team.game]);
+  }, [open, search, page, team.id, team.game, rosterExcludeKey]);
 
   function isMemberInvited(memberId: string): boolean {
     if (recentlyInvitedIds.has(memberId)) return true;
@@ -207,6 +212,7 @@ export function InviteMemberDialog({
                         <MemberNameStack
                           displayName={member.displayName}
                           discordUsername={member.discordUsername}
+                          profileSlug={member.profileSlug}
                           size="sm"
                           className="min-w-0"
                         />

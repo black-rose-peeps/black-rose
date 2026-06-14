@@ -349,17 +349,13 @@ function CommentCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-            <Link
-              to="/members/$slug"
-              params={{ slug: comment.author.slug }}
-              className="min-w-0 transition hover:text-foreground"
-            >
-              <MemberNameStack
-                displayName={comment.author.displayName}
-                discordUsername={comment.author.discordUsername}
-                size="sm"
-              />
-            </Link>
+            <MemberNameStack
+              displayName={comment.author.displayName}
+              discordUsername={comment.author.discordUsername}
+              profileSlug={comment.author.slug}
+              size="sm"
+              className="min-w-0"
+            />
             <time
               className="shrink-0 font-tech text-label-readable uppercase text-muted-foreground/60"
               dateTime={comment.createdAt}
@@ -659,7 +655,9 @@ export function ProfileCommentsPanel({
           />
         ) : comments.length > 0 ? (
           <ul className="flex flex-col gap-4">
-            {comments.map((comment) => (
+            {comments
+              .filter((comment) => !comment.isHidden || isOwnProfile)
+              .map((comment) => (
               <CommentCard
                 key={comment.id}
                 comment={comment}

@@ -30,7 +30,9 @@ export function profileCompletionHint(completion: number): string {
   if (completion >= 100) {
     return "Your profile is fully set up — you're ready for invites, rosters, and your public page.";
   }
-  if (completion >= 75) return "Finish your bio or add your remaining game details to complete your profile.";
+  if (completion >= 75) {
+    return "Add a bio of at least 20 characters, or finish your remaining game details.";
+  }
   if (completion >= 50) return "Set your main game, role, and region to boost your profile.";
-  return "Add your avatar, bio, and game info to get started.";
+  return "Add your avatar, a 20+ character bio, and game info to get started.";
 }

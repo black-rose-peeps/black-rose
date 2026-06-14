@@ -4,6 +4,7 @@ import {
   isValorantGame,
 } from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
+import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { escapePostgrestFilterValue, isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
 
@@ -24,7 +25,7 @@ function throwMemberUniqueViolation(error: { message: string }): never {
 export async function fetchMembers(): Promise<AdminMember[]> {
   const { data, error } = await supabase
     .from("members")
-    .select("*, member_profiles(avatar_url)")
+    .select("*, member_profiles(avatar_url, slug)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -34,7 +35,7 @@ export async function fetchMembers(): Promise<AdminMember[]> {
 export async function fetchMemberById(id: string): Promise<AdminMember | null> {
   const { data, error } = await supabase
     .from("members")
-    .select("*, member_profiles(avatar_url)")
+    .select("*, member_profiles(avatar_url, slug)")
     .eq("id", id)
     .single();
 
@@ -111,6 +112,7 @@ export interface InviteSearchMember {
   displayName: string;
   avatarInitials: string;
   avatarUrl: string | null;
+  profileSlug: string;
 }
 
 export interface InviteSearchResult {
@@ -178,12 +180,14 @@ function rowToInviteSearchMember(
         valorant_game_name?: string | null;
         valorant_tagline?: string | null;
         avatar_url?: string | null;
+        slug?: string | null;
       }
     | Array<{
         display_name?: string;
         valorant_game_name?: string | null;
         valorant_tagline?: string | null;
         avatar_url?: string | null;
+        slug?: string | null;
       }>
     | null
     | undefined;
@@ -207,6 +211,7 @@ function rowToInviteSearchMember(
     displayName,
     avatarInitials: initialsFromName(displayName),
     avatarUrl,
+    profileSlug: resolveMemberProfileSlug(profile?.slug, username),
   };
 }
 
@@ -224,7 +229,7 @@ export async function searchVerifiedMembersForInvite(
   let builder = supabase
     .from("members")
     .select(
-      "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline, avatar_url)",
+      "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline, avatar_url, slug)",
       { count: "exact" },
     )
     .eq("status", "Verified")

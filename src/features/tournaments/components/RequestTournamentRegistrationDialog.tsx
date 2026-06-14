@@ -180,14 +180,14 @@ export function RequestTournamentRegistrationDialog({
 
               <Button
                 type="button"
-                disabled={!selectedTeamId || submitting}
+                disabled={!selectedTeamId || submitting || alreadyRequested}
                 onClick={() => void handleConfirm()}
                 className="clip-cta h-11 w-full rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90 disabled:opacity-70"
               >
                 {submitting
                   ? "Sending…"
                   : alreadyRequested
-                    ? "Send Reminder to Captain"
+                    ? "Request already sent"
                     : "Notify Captain"}
               </Button>
             </>

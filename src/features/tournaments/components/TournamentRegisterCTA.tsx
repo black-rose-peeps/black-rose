@@ -43,7 +43,8 @@ export function TournamentRegisterCTA({
       } else {
         setMode("create-team");
       }
-    } catch {
+    } catch (err) {
+      console.warn("[tournaments] Failed to resolve register CTA mode:", err);
       if (requestId !== requestIdRef.current) return;
       setMode("create-team");
     }

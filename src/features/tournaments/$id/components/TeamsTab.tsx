@@ -365,6 +365,7 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
                       <MemberNameStack
                         displayName={p.ign}
                         discordUsername={p.discord}
+                        profileSlug={p.profileSlug}
                         size="sm"
                       />
                     ) : (

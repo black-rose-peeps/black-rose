@@ -3,6 +3,24 @@ import { launchDiscordDesktopApp } from "@/lib/discord-url";
 
 const SKIP_PROMPT_KEY = "br_discord_app_prompt_skip";
 
+function readSkipPrompt(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(SKIP_PROMPT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeSkipPrompt(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(SKIP_PROMPT_KEY, "1");
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
+}
+
 export interface DiscordAppLinkRequest {
   url: string;
   label: string;
@@ -17,7 +35,7 @@ export function useDiscordAppLink() {
     (url: string, label = "Discord", kind: DiscordAppLinkRequest["kind"] = "link") => {
       if (typeof window === "undefined") return;
 
-      if (localStorage.getItem(SKIP_PROMPT_KEY) === "1") {
+      if (readSkipPrompt()) {
         launchDiscordDesktopApp(url);
         return;
       }
@@ -29,7 +47,7 @@ export function useDiscordAppLink() {
 
   const confirmDiscordAppLink = useCallback((dontAskAgain: boolean) => {
     if (dontAskAgain) {
-      localStorage.setItem(SKIP_PROMPT_KEY, "1");
+      writeSkipPrompt();
     }
     const url = pending?.url;
     if (url) {

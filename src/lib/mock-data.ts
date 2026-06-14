@@ -35,6 +35,7 @@ export interface MockPlayer {
   ign: string;
   role: string;
   discord: string;
+  profileSlug?: string;
 }
 
 export interface MockTeam {

@@ -31,6 +31,7 @@ export interface TeamMember {
   displayName: string;
   avatarInitials: string;
   avatarUrl: string | null;
+  profileSlug: string;
   ign: string;
   role: TeamMemberRole;
   status: TeamMemberStatus;

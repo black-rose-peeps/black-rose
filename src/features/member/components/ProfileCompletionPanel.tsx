@@ -53,7 +53,7 @@ export function ProfileCompletionPanel({ completion }: ProfileCompletionPanelPro
       {complete && (
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent"
-          aria-hidden
+          aria-hidden={true}
         />
       )}
 
@@ -61,7 +61,7 @@ export function ProfileCompletionPanel({ completion }: ProfileCompletionPanelPro
         {complete ? (
           <div className="flex items-center gap-2.5">
             <span className="grid h-10 w-10 shrink-0 place-items-center border border-emerald-400/25 bg-emerald-400/10 text-emerald-300">
-              <CheckCircle2 className="h-5 w-5" aria-hidden />
+              <CheckCircle2 className="h-5 w-5" aria-hidden={true} />
             </span>
             <div>
               <span className="font-display text-3xl tracking-display text-emerald-100">100%</span>
@@ -93,7 +93,7 @@ export function ProfileCompletionPanel({ completion }: ProfileCompletionPanelPro
         )}
       >
         {complete && (
-          <Sparkles className="mr-1 inline h-3 w-3 -translate-y-px text-emerald-400/80" aria-hidden />
+          <Sparkles className="mr-1 inline h-3 w-3 -translate-y-px text-emerald-400/80" aria-hidden={true} />
         )}
         {profileCompletionHint(completion)}
       </p>

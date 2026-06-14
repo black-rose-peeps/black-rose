@@ -106,7 +106,10 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
       const alreadyRead = isNotificationRead(notificationId);
       const unread =
         !alreadyRead && shouldMarkInviteUnread(previousStatus, membership.status);
-      const notification: AppNotification = {
+      const read = unread
+        ? false
+        : readById.has(notificationId) || isNotificationRead(notificationId);
+      pendingInvites.push({
         id: notificationId,
         type: "team_invite",
         title: "Team Invitation",
@@ -116,13 +119,9 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
           membership.joinedAt,
           createdAtById.get(notificationId),
         ),
-        read: false,
+        read,
         href: `/teams/${team.id}`,
-      };
-      notification.read = unread
-        ? false
-        : readById.has(notificationId) || isNotificationRead(notificationId);
-      pendingInvites.push(notification);
+      });
       continue;
     }
 
@@ -134,7 +133,10 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
       if (!freshRemoval && !alreadyNotified) continue;
 
       const unread = !alreadyRead && freshRemoval;
-      const notification: AppNotification = {
+      const read = unread
+        ? false
+        : readById.has(notificationId) || isNotificationRead(notificationId);
+      removalEvents.push({
         id: notificationId,
         type: "team_removed",
         title: "Removed From Team",
@@ -144,13 +146,9 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
           membership.joinedAt,
           createdAtById.get(notificationId),
         ),
-        read: false,
+        read,
         href: "/teams",
-      };
-      notification.read = unread
-        ? false
-        : readById.has(notificationId) || isNotificationRead(notificationId);
-      removalEvents.push(notification);
+      });
     }
   }
 

@@ -123,16 +123,18 @@ export async function syncTournamentRegistrationNotifications(
         const unread =
           !alreadyRead &&
           shouldMarkUnread(previousSnapshot[registration.id], registration.status);
-        const notification = notificationForRegistration(
-          registration,
-          tournament.name,
-          unread,
-          createdAtById.get(notificationId),
-        );
-        notification.read = unread
+        const read = unread
           ? false
-          : readById.has(notification.id) || isNotificationRead(notification.id);
-        notifications.push(notification);
+          : readById.has(notificationId) || isNotificationRead(notificationId);
+        notifications.push({
+          ...notificationForRegistration(
+            registration,
+            tournament.name,
+            unread,
+            createdAtById.get(notificationId),
+          ),
+          read,
+        });
       }
     }),
   );

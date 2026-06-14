@@ -1,3 +1,4 @@
+import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import type { AdminMember } from "@/features/admin/features/members/types";
 import type { Team, TeamMember } from "@/features/teams/types";
 import type {
@@ -122,6 +123,7 @@ export function adminMemberToTeamMember(
     displayName,
     avatarInitials: initialsFromName(displayName),
     avatarUrl: member.avatarUrl,
+    profileSlug: resolveMemberProfileSlug(member.profileSlug, member.username),
     ign,
     role,
     status: "active",

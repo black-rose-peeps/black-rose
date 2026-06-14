@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { IdCard, LayoutDashboard, LogOut } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
@@ -31,7 +31,11 @@ export function MemberNav() {
   const isVerifiedMember = session ? hasFullMemberAccess(session.role) : false;
   const profileSlug = session?.profileSlug ?? session?.username ?? "";
   const avatarUrl = session?.avatarUrl ?? null;
-  setNotificationMemberId(isVerifiedMember && session?.id ? session.id : null);
+
+  useEffect(() => {
+    setNotificationMemberId(isVerifiedMember && session?.id ? session.id : null);
+  }, [isVerifiedMember, session?.id]);
+
   useNotificationSync(isVerifiedMember ? session?.id : undefined);
   useMemberAccessSync();
 

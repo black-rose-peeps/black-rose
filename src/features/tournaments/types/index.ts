@@ -68,6 +68,7 @@ export interface TournamentPlayer {
   ign: string;
   role: string;
   discord?: string;
+  profileSlug?: string;
 }
 
 export interface TournamentTeam {

@@ -9,6 +9,7 @@ export interface AdminMember {
   registeredAt: string; // "YYYY-MM-DD"
   createdAt: string;
   avatarUrl: string | null;
+  profileSlug: string | null;
 }
 
 export interface CreateMemberFormValues {

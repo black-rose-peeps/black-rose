@@ -24,7 +24,8 @@ export function useMemberAccessSync() {
         if (!hasFullMemberAccess(updated.role)) {
           navigate({ to: "/waitlist", replace: true });
         }
-      } catch {
+      } catch (err) {
+        console.warn("[auth] Member access sync failed:", err);
         // Ignore transient sync errors; the next poll will retry.
       }
     }

@@ -4,6 +4,7 @@ import { MAX_TEAM_SIZE, resolveRoleForGame } from "@/features/teams/constants";
 import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
 import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
+import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { adminMemberToTeamMember } from "../utils";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 
@@ -20,6 +21,7 @@ interface MemberProfileSnapshot {
   valorantGameName: string;
   valorantTagline: string;
   avatarUrl: string | null;
+  slug: string;
 }
 
 async function fetchMemberProfileSnapshots(
@@ -30,7 +32,7 @@ async function fetchMemberProfileSnapshots(
 
   const { data, error } = await supabase
     .from("member_profiles")
-    .select("member_id, display_name, valorant_game_name, valorant_tagline, avatar_url")
+    .select("member_id, display_name, valorant_game_name, valorant_tagline, avatar_url, slug")
     .in("member_id", unique);
 
   if (error) {
@@ -46,6 +48,7 @@ async function fetchMemberProfileSnapshots(
         valorantGameName: (row.valorant_game_name as string | null)?.trim() ?? "",
         valorantTagline: (row.valorant_tagline as string | null)?.trim() ?? "",
         avatarUrl: (row.avatar_url as string | null)?.trim() || null,
+        slug: (row.slug as string | null)?.trim() ?? "",
       },
     ]),
   );
@@ -101,6 +104,7 @@ function rowToTeamMember(
     displayName,
     avatarInitials: (row.avatar_initials as string) || initialsFromName(baseDisplayName),
     avatarUrl: snapshot?.avatarUrl ?? null,
+    profileSlug: resolveMemberProfileSlug(snapshot?.slug, username),
     ign,
     role: row.role as TeamMember["role"],
     status: row.status as TeamMember["status"],
@@ -682,6 +686,9 @@ export async function updateTeamMemberRole(
   const member = team.members.find((m) => m.userId === memberUserId);
   if (!member || member.status === "removed") {
     throw new Error("Member not found on this team.");
+  }
+  if (member.status !== "captain" && member.status !== "active") {
+    throw new Error("Only active roster members can have their role updated.");
   }
 
   const isCaptain = team.captainUserId === actingUserId;

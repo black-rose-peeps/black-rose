@@ -401,9 +401,12 @@ function ProfileEditPage() {
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   rows={5}
-                  placeholder="Tell the community about yourself..."
+                  placeholder="Tell the community about yourself…"
                   className={techFieldClass}
                 />
+                <p className="text-xs text-muted-foreground">
+                  At least 20 characters count toward profile completion.
+                </p>
               </div>
             </div>
           </TabsContent>

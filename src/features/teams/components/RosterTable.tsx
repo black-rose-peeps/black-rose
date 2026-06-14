@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Crown, UserMinus, Mail } from "lucide-react";
 import {
   Select,
@@ -109,17 +110,33 @@ export function RosterTable({
               >
                 <td className="px-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <MemberAvatar
-                      avatarUrl={m.avatarUrl}
-                      initials={m.avatarInitials}
-                      name={m.displayName}
-                      className="h-8 w-8 shrink-0 text-xs"
-                    />
+                    {m.profileSlug ? (
+                      <Link
+                        to="/members/$slug"
+                        params={{ slug: m.profileSlug }}
+                        className="shrink-0 transition hover:opacity-90"
+                      >
+                        <MemberAvatar
+                          avatarUrl={m.avatarUrl}
+                          initials={m.avatarInitials}
+                          name={m.displayName}
+                          className="h-8 w-8 shrink-0 text-xs"
+                        />
+                      </Link>
+                    ) : (
+                      <MemberAvatar
+                        avatarUrl={m.avatarUrl}
+                        initials={m.avatarInitials}
+                        name={m.displayName}
+                        className="h-8 w-8 shrink-0 text-xs"
+                      />
+                    )}
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
                         <MemberNameStack
                           displayName={m.displayName}
                           discordUsername={m.discordUsername}
+                          profileSlug={m.profileSlug}
                           showYou={isMe}
                           className="min-w-0 flex-1"
                         />

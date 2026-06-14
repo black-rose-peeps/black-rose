@@ -76,8 +76,9 @@ export function openPreparedDiscordOAuthInApp(browserFallbackUrl: string): void 
 
 /** Full browser redirect for users without the Discord app installed. */
 export function continueDiscordOAuthInBrowser(): void {
-  const state = readStoredOAuthState() ?? crypto.randomUUID();
-  if (!readStoredOAuthState()) {
+  const storedState = readStoredOAuthState();
+  const state = storedState ?? crypto.randomUUID();
+  if (!storedState) {
     persistOAuthRequest(state, getDiscordRedirectUri());
   }
   window.location.href = getDiscordOAuthUrl(state);

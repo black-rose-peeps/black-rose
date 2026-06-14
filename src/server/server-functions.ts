@@ -1,7 +1,7 @@
 /**
- * Eager imports so TanStack Start registers all server functions during dev
- * startup — avoids "Invalid server function ID" when the client calls a fn
- * before Vite has compiled its provider module.
+ * Eager imports register server function modules at startup. TanStack Start lazy-loads
+ * handlers in production, but importing here avoids dev "Invalid server function ID"
+ * races when the client calls a fn before Vite has compiled its provider module.
  */
 import "@/features/auth/functions/complete-discord-auth";
 import "@/features/auth/functions/refresh-member-session";

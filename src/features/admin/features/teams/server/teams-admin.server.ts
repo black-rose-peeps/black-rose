@@ -20,6 +20,8 @@ export async function deleteTeamAsAdmin(teamId: string): Promise<void> {
   });
   if (!rpcError) return;
 
+  console.warn("[teams-admin] delete_team_and_members RPC failed, falling back to manual delete:", rpcError.message);
+
   const { error: membersError } = await supabase
     .from("team_members")
     .delete()

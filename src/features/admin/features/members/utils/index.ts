@@ -1,3 +1,4 @@
+import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import type {
   AdminMember,
   CreateMemberFormValues,
@@ -70,12 +71,13 @@ export function formValuesToCreateInput(values: CreateMemberFormValues): CreateM
 
 export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
   const profiles = row.member_profiles as
-    | { avatar_url?: string | null }
-    | Array<{ avatar_url?: string | null }>
+    | { avatar_url?: string | null; slug?: string | null }
+    | Array<{ avatar_url?: string | null; slug?: string | null }>
     | null
     | undefined;
   const profile = Array.isArray(profiles) ? profiles[0] : profiles;
   const avatarUrl = profile?.avatar_url?.trim() || null;
+  const profileSlug = resolveMemberProfileSlug(profile?.slug, row.username as string);
 
   return {
     id: row.id as string,
@@ -86,6 +88,7 @@ export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
     registeredAt: row.registered_at as string,
     createdAt: row.created_at as string,
     avatarUrl,
+    profileSlug,
   };
 }
 
@@ -99,6 +102,7 @@ export function buildAdminMemberFromInput(input: CreateMemberInput): AdminMember
     registeredAt: new Date().toISOString().split("T")[0],
     createdAt: new Date().toISOString(),
     avatarUrl: null,
+    profileSlug: null,
   };
 }
 

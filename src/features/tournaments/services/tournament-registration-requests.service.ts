@@ -96,7 +96,11 @@ export async function fetchPendingRegistrationRequestsForCaptain(
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (error.code === "42P01") return [];
+    if (error.code === "42P01") {
+      throw new Error(
+        "Tournament registration requests are not set up yet. Run docs/sql/tournament_registration_requests.sql in Supabase.",
+      );
+    }
     throw new Error(error.message);
   }
 
