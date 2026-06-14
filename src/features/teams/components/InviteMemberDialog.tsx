@@ -16,6 +16,7 @@ import {
 } from "@/features/admin/features/members/services/members.service";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { cn } from "@/lib/utils";
 import { MAX_TEAM_SIZE } from "../constants";
 import { InviteMemberSearchSkeleton } from "./InviteMemberSearchSkeleton";
@@ -197,9 +198,12 @@ export function InviteMemberDialog({
                   return (
                     <li key={member.id} className="flex items-center justify-between gap-3 py-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
-                          {member.avatarInitials}
-                        </div>
+                        <MemberAvatar
+                          avatarUrl={member.avatarUrl}
+                          initials={member.avatarInitials}
+                          name={member.displayName}
+                          className="h-9 w-9 shrink-0 text-xs"
+                        />
                         <MemberNameStack
                           displayName={member.displayName}
                           discordUsername={member.discordUsername}

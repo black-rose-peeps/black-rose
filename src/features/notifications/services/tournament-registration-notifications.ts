@@ -4,25 +4,29 @@ import {
   fetchRegistrationsForTeam,
 } from "@/features/tournaments/services/team-registration.service";
 import type { MockTeam } from "@/lib/mock-data";
-import { getNotifications, mergeRegistrationStatusNotifications, notifyListeners } from "../store";
+import { getNotifications, isNotificationRead, mergeRegistrationStatusNotifications, notifyListeners } from "../store";
 import type { AppNotification } from "../types";
 
-const SNAPSHOT_KEY = "br_registration_status_snapshot";
+const SNAPSHOT_KEY_PREFIX = "br_registration_status_snapshot:";
 
-function loadStatusSnapshot(): Record<string, string> {
+function snapshotKey(userId: string): string {
+  return `${SNAPSHOT_KEY_PREFIX}${userId}`;
+}
+
+function loadStatusSnapshot(userId: string): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const raw = sessionStorage.getItem(SNAPSHOT_KEY);
+    const raw = localStorage.getItem(snapshotKey(userId));
     return raw ? (JSON.parse(raw) as Record<string, string>) : {};
   } catch {
     return {};
   }
 }
 
-function saveStatusSnapshot(snapshot: Record<string, string>): void {
+function saveStatusSnapshot(userId: string, snapshot: Record<string, string>): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
+    localStorage.setItem(snapshotKey(userId), JSON.stringify(snapshot));
   } catch {
     // Ignore quota errors
   }
@@ -79,14 +83,14 @@ export async function syncTournamentRegistrationNotifications(
   const memberTeams = await fetchActiveMemberTeams(userId);
   if (!memberTeams.length) {
     mergeRegistrationStatusNotifications([]);
-    saveStatusSnapshot({});
+    saveStatusSnapshot(userId, {});
     notifyListeners();
     return [];
   }
 
   const tournaments = await fetchTournaments();
   const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
-  const previousSnapshot = loadStatusSnapshot();
+  const previousSnapshot = loadStatusSnapshot(userId);
   const nextSnapshot: Record<string, string> = {};
   const existingNotifications = getNotifications().filter(
     (n) => n.type === "registration_approved" || n.type === "registration_rejected",
@@ -112,26 +116,28 @@ export async function syncTournamentRegistrationNotifications(
         if (!tournament) continue;
         if (tournament.status === "Completed" || tournament.status === "Archived") continue;
 
-        const unread = shouldMarkUnread(
-          previousSnapshot[registration.id],
-          registration.status,
-        );
         const notificationId = `registration-${
           registration.status === "Approved" ? "approved" : "rejected"
         }-${registration.id}`;
+        const alreadyRead = isNotificationRead(notificationId);
+        const unread =
+          !alreadyRead &&
+          shouldMarkUnread(previousSnapshot[registration.id], registration.status);
         const notification = notificationForRegistration(
           registration,
           tournament.name,
           unread,
           createdAtById.get(notificationId),
         );
-        notification.read = unread ? false : (readById.get(notification.id) ?? false);
+        notification.read = unread
+          ? false
+          : readById.has(notification.id) || isNotificationRead(notification.id);
         notifications.push(notification);
       }
     }),
   );
 
-  saveStatusSnapshot(nextSnapshot);
+  saveStatusSnapshot(userId, nextSnapshot);
   mergeRegistrationStatusNotifications(notifications);
   notifyListeners();
   return notifications;

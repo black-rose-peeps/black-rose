@@ -21,9 +21,9 @@ export function AuthShell({
           <Emblem className="h-full w-full" spin />
         </div>
 
-        <Link to="/" className="relative z-10 flex items-center gap-3">
-          <Emblem className="h-9 w-9" />
-          <span className="font-display text-2xl tracking-wider-2">BLACK ROSE</span>
+        <Link to="/" className="relative z-10 flex items-center">
+          <Emblem className="h-16 w-16" />
+          <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
         </Link>
 
         <div className="relative z-10 max-w-md">
@@ -43,9 +43,9 @@ export function AuthShell({
 
       {/* RIGHT — form panel */}
       <main className="flex min-h-screen flex-col px-6 py-10 sm:px-12 lg:px-16 lg:py-16">
-        <Link to="/" className="mb-10 inline-flex items-center gap-3 lg:hidden">
-          <Emblem className="h-7 w-7" />
-          <span className="font-display text-lg tracking-wider-2">BLACK ROSE</span>
+        <Link to="/" className="mb-10 inline-flex items-center lg:hidden">
+          <Emblem className="h-16 w-16" />
+          <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
         </Link>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           {children}

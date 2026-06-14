@@ -18,7 +18,7 @@ export interface RefreshMemberSessionResult {
 }
 
 export const refreshMemberSession = createServerFn({ method: "POST" })
-  .inputValidator((data: RefreshMemberSessionInput) => {
+  .validator((data: RefreshMemberSessionInput) => {
     if (!data?.memberId?.trim()) {
       throw new Error("Missing member id.");
     }

@@ -20,6 +20,7 @@ export type TeamMemberRole =
   | "Gold"
   | "DPS"
   | "Tank"
+  | "Healer"
   | "Sub"
   | "TBD";
 
@@ -29,6 +30,7 @@ export interface TeamMember {
   discordUsername: string;
   displayName: string;
   avatarInitials: string;
+  avatarUrl: string | null;
   ign: string;
   role: TeamMemberRole;
   status: TeamMemberStatus;

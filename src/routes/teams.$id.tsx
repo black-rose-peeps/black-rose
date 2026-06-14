@@ -8,6 +8,7 @@ import {
   declineTeamInvite,
   fetchTeamById,
   removeMemberFromTeam,
+  updateTeamMemberRole,
 } from "@/features/admin/features/teams/services/teams.service";
 import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
 import { markTeamInviteRead } from "@/features/notifications/store";
@@ -30,7 +31,7 @@ import { ChampionshipTitlesCard } from "@/features/championships/components/Cham
 import type { ChampionshipTitle } from "@/features/championships/types";
 import { TeamRosterPanel } from "@/features/teams/components/TeamRosterPanel";
 import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
-import type { Team, TeamMember } from "@/features/teams/types";
+import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { MockTeam } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/teams/$id")({
@@ -183,6 +184,17 @@ function TeamDetailPage() {
       setTeam(updated);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to remove member.");
+    }
+  }
+
+  async function handleRoleChange(member: TeamMember, role: TeamMemberRole) {
+    if (!memberId) return;
+    setActionError(null);
+    try {
+      const updated = await updateTeamMemberRole(team!.id, member.userId, role, memberId);
+      setTeam(updated);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to update role.");
     }
   }
 
@@ -346,6 +358,9 @@ function TeamDetailPage() {
         canInvite={canInvite}
         onInvite={() => setInviteOpen(true)}
         onRemove={handleRemove}
+        onRoleChange={
+          !isPublicView && isMember && !isInvited ? handleRoleChange : undefined
+        }
       />
 
       {!isPublicView && pendingRegs.length > 0 && (

@@ -8,7 +8,6 @@ import {
   Gamepad2,
   ArrowLeft,
   Pencil,
-  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +17,8 @@ import { MemberProfileSkeleton } from "@/features/member/components/MemberProfil
 import {
   MemberHeroBanner,
   MemberPageLayout,
-  PanelEmptyState,
 } from "@/features/member/components/MemberShell";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
 import { getSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
@@ -92,11 +91,16 @@ function MemberProfilePage() {
   if (loadError) {
     return (
       <MemberPageLayout maxWidth="max-w-4xl">
-        <PanelEmptyState
-          icon={<AlertCircle className="h-10 w-10" />}
-          title="Could not load profile"
+        <ArenaEmptyState
+          compact
+          eyebrow="Load Error"
+          title={
+            <>
+              Could not load <span className="text-stroke">profile.</span>
+            </>
+          }
           description={loadError}
-          action={
+          actions={
             <Button
               asChild
               variant="outline"
@@ -113,14 +117,16 @@ function MemberProfilePage() {
   if (notFound || !profile) {
     return (
       <MemberPageLayout maxWidth="max-w-4xl">
-        <PanelEmptyState
-          icon={
-            <span className="font-display text-5xl tracking-display text-muted-foreground/30">
-              404
-            </span>
+        <ArenaEmptyState
+          compact
+          eyebrow="Not Found"
+          title={
+            <>
+              Member <span className="text-stroke">not found.</span>
+            </>
           }
-          title="Member not found"
-          action={
+          description="This profile may have been removed or the link is incorrect."
+          actions={
             <Button
               asChild
               variant="outline"
@@ -252,16 +258,22 @@ function MemberProfilePage() {
           ) : (
             isOwnProfile && (
               <ProfileCard label="About">
-                <PanelEmptyState
-                  icon={<Pencil className="h-5 w-5" />}
-                  title="No bio yet"
+                <ArenaEmptyState
+                  compact
+                  className="border-0 bg-transparent py-10"
+                  eyebrow="About You"
+                  title={
+                    <>
+                      No bio <span className="text-stroke">yet.</span>
+                    </>
+                  }
                   description="Add a short intro so other members know who you are."
-                  action={
+                  actions={
                     <Button
                       asChild
                       variant="outline"
                       size="sm"
-                      className="mt-1 rounded-none border-white/15 font-tech text-ui-readable uppercase"
+                      className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
                     >
                       <Link to="/dashboard/profile" search={{ tab: "identity" }}>
                         Add Bio
@@ -280,6 +292,13 @@ function MemberProfilePage() {
             isOwnProfile={isOwnProfile}
             viewerMemberId={session?.id}
             viewerIsVerified={viewerIsVerified}
+            profileOwner={{
+              displayName: p.displayName,
+              slug: p.slug,
+              discordUsername: p.discordUsername,
+              avatarUrl: p.avatarUrl,
+              avatarInitials: p.avatarInitials,
+            }}
           />
 
           {p.tournamentHistory.length > 0 && (

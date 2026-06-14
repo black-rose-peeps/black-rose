@@ -2,7 +2,7 @@ import { Clock, UserPlus, Users2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TechPanel } from "@/features/member/components/MemberShell";
 import { MAX_TEAM_SIZE } from "../constants";
-import type { Team, TeamMember } from "../types";
+import type { Team, TeamMember, TeamMemberRole } from "../types";
 import { RosterTable } from "./RosterTable";
 
 interface TeamRosterPanelProps {
@@ -12,6 +12,7 @@ interface TeamRosterPanelProps {
   canInvite?: boolean;
   onInvite?: () => void;
   onRemove?: (member: TeamMember) => void;
+  onRoleChange?: (member: TeamMember, role: TeamMemberRole) => void;
   /** Public pages show active roster only — no pending invites or management chrome. */
   variant?: "manage" | "public";
 }
@@ -31,6 +32,7 @@ export function TeamRosterPanel({
   canInvite = false,
   onInvite,
   onRemove,
+  onRoleChange,
   variant = "manage",
 }: TeamRosterPanelProps) {
   const isPublic = variant === "public";
@@ -118,6 +120,7 @@ export function TeamRosterPanel({
             currentUserId={currentUserId}
             isEditable={isEditable}
             onRemove={onRemove}
+            onRoleChange={onRoleChange}
             emptyMessage="No active members yet."
           />
         </div>
@@ -145,6 +148,7 @@ export function TeamRosterPanel({
                 currentUserId={currentUserId}
                 isEditable={isEditable}
                 onRemove={onRemove}
+                onRoleChange={onRoleChange}
                 emptyMessage="No pending invites."
               />
             ) : (

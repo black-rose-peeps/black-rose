@@ -35,6 +35,7 @@ export const ROLE_OPTIONS: TeamMemberRole[] = [
   "Gold",
   "DPS",
   "Tank",
+  "Healer",
   "Sub",
   "TBD",
 ];
@@ -64,7 +65,7 @@ const LOL_ROLES: TeamMemberRole[] = [
 
 const TFT_ROLES: TeamMemberRole[] = ["Flex", "IGL", "Sub", "TBD"];
 
-const WWM_ROLES: TeamMemberRole[] = ["DPS", "Tank", "Support", "Flex", "Sub", "TBD"];
+const WWM_ROLES: TeamMemberRole[] = ["DPS", "Tank", "Healer", "Support", "Flex", "Sub", "TBD"];
 
 const GENERIC_ROLES: TeamMemberRole[] = ["IGL", "Flex", "Sub", "TBD"];
 
@@ -113,6 +114,18 @@ export function getRoleOptionsForGame(game: string): TeamMemberRole[] {
     default:
       return GENERIC_ROLES;
   }
+}
+
+/** Pick a role valid for `game`, falling back to TBD when the profile role does not apply. */
+export function resolveRoleForGame(
+  role: TeamMemberRole | string | null | undefined,
+  game: string,
+): TeamMemberRole {
+  const options = getRoleOptionsForGame(game);
+  if (role && options.includes(role as TeamMemberRole)) {
+    return role as TeamMemberRole;
+  }
+  return "TBD";
 }
 
 export const GAME_COLOR: Record<Game, string> = {

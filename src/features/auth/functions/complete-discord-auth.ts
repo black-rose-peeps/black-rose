@@ -13,7 +13,7 @@ export interface CompleteDiscordAuthResult {
 }
 
 export const completeDiscordAuth = createServerFn({ method: "POST" })
-  .inputValidator((data: CompleteDiscordAuthInput) => {
+  .validator((data: CompleteDiscordAuthInput) => {
     if (!data?.code?.trim()) {
       throw new Error("Missing Discord authorization code.");
     }

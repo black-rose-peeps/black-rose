@@ -42,7 +42,9 @@ export function validateValorantIdentityInput(
   }
 
   if (tag.length < 3 || tag.length > 5) return "Tagline must be 3–5 characters.";
-  if (!/^[a-zA-Z0-9]+$/.test(tag)) return "Tagline can only contain letters and numbers.";
+  if (!/^[\p{L}\p{N}]+$/u.test(tag)) {
+    return "Tagline can only contain letters and numbers (including non-Latin characters).";
+  }
 
   return null;
 }

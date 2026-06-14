@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle, Loader2, User, Gamepad2, Share2, Eye } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, User, Gamepad2, Share2, Eye, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +35,9 @@ import {
   fetchMemberProfileById,
   updateMemberProfile,
 } from "@/features/member/services/member-profile.service";
-import { profileCompletionHint } from "@/features/member/utils/profile-completion";
+import { profileCompletionHint, isProfileComplete } from "@/features/member/utils/profile-completion";
+import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
+import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
@@ -121,6 +123,11 @@ function ProfileEditPage() {
   const [valorantTagline, setValorantTagline] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [socials, setSocials] = useState<SocialFormState>(() => socialsFromProfile(EMPTY_PROFILE));
+  const {
+    celebrationOpen,
+    maybeCelebrate,
+    dismissCelebration,
+  } = useProfileCompleteCelebration(memberId);
 
   const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
 
@@ -202,6 +209,7 @@ function ProfileEditPage() {
     }
 
     try {
+      const previousCompletion = profile.profileCompletion;
       const updated = await updateMemberProfile({
         memberId: session.id,
         displayName,
@@ -222,6 +230,7 @@ function ProfileEditPage() {
 
       setProfile(updated);
       setSocials(socialsFromProfile(updated));
+      maybeCelebrate(previousCompletion, updated.profileCompletion);
       setSession({
         ...session,
         displayName: updated.displayName,
@@ -271,10 +280,19 @@ function ProfileEditPage() {
             <div className="max-w-xs">
               <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                 <span>{completion}% complete</span>
+                {isProfileComplete(completion) && (
+                  <span className="inline-flex items-center gap-1 text-emerald-400/90">
+                    <Sparkles className="h-3 w-3" aria-hidden />
+                    Arena ready
+                  </span>
+                )}
               </div>
               <Progress
                 value={completion}
-                className="h-1 rounded-none bg-white/10 [&>div]:rounded-none [&>div]:bg-white"
+                className={cn(
+                  "h-1 rounded-none bg-white/10 [&>div]:rounded-none",
+                  isProfileComplete(completion) ? "[&>div]:bg-emerald-400" : "[&>div]:bg-white",
+                )}
               />
             </div>
           )
@@ -572,6 +590,17 @@ function ProfileEditPage() {
           {error && <p className="text-sm text-red-400">{error}</p>}
         </div>
       </form>
+
+      {profile && (
+        <ProfileCompleteCelebrationDialog
+          open={celebrationOpen}
+          displayName={profile.displayName}
+          avatarUrl={profile.avatarUrl}
+          avatarInitials={profile.avatarInitials}
+          profileSlug={profile.slug}
+          onDismiss={dismissCelebration}
+        />
+      )}
     </MemberPageLayout>
   );
 }

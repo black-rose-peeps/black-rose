@@ -7,8 +7,10 @@ import {
   type MobileNavSection,
 } from "@/features/shared/components/HeaderMobileMenu";
 import { clearSession, getSession } from "@/features/auth/store/session";
+import { useMemberAccessSync } from "@/features/auth/hooks/useMemberAccessSync";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { setNotificationMemberId } from "@/features/notifications/store";
 import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
 
 const MEMBER_CONSOLE_NAV = [
@@ -29,13 +31,16 @@ export function MemberNav() {
   const isVerifiedMember = session ? hasFullMemberAccess(session.role) : false;
   const profileSlug = session?.profileSlug ?? session?.username ?? "";
   const avatarUrl = session?.avatarUrl ?? null;
+  setNotificationMemberId(isVerifiedMember && session?.id ? session.id : null);
   useNotificationSync(isVerifiedMember ? session?.id : undefined);
+  useMemberAccessSync();
 
   const accountHref = isVerifiedMember
     ? { to: "/members/$slug" as const, params: { slug: profileSlug } }
     : { to: getPostAuthPath(session?.role ?? "not_verified") };
 
   function handleSignOut() {
+    setNotificationMemberId(null);
     clearSession();
     window.location.href = "/";
   }

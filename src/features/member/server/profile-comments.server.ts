@@ -1,7 +1,11 @@
 import type { AdminMember } from "@/features/admin/features/members/types";
 import { rowToAdminMember } from "@/features/admin/features/members/utils";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import type { ProfileComment, ProfileCommentAuthor } from "../types/profile-comments";
+import type {
+  ProfileComment,
+  ProfileCommentAuthor,
+  ProfileCommentReply,
+} from "../types/profile-comments";
 
 const MAX_BODY_LENGTH = 500;
 
@@ -304,4 +308,59 @@ export async function setProfileCommentHidden(input: {
     .eq("id", input.commentId);
 
   if (error) throw new Error(error.message);
+}
+
+export interface ProfileCommentAlert {
+  commentId: string;
+  authorDisplayName: string;
+  authorSlug: string;
+  bodyPreview: string;
+  createdAt: string;
+  profileSlug: string;
+}
+
+export async function fetchProfileCommentAlertsForMember(
+  profileMemberId: string,
+): Promise<ProfileCommentAlert[]> {
+  await requireVerifiedMember(profileMemberId);
+
+  const supabase = getSupabaseAdmin();
+  const [{ data: profile, error: profileError }, { data: comments, error: commentsError }] =
+    await Promise.all([
+      supabase.from("member_profiles").select("slug").eq("member_id", profileMemberId).maybeSingle(),
+      supabase
+        .from("profile_comments")
+        .select("id, author_member_id, body, created_at")
+        .eq("profile_member_id", profileMemberId)
+        .is("parent_comment_id", null)
+        .eq("is_hidden", false)
+        .neq("author_member_id", profileMemberId)
+        .order("created_at", { ascending: false })
+        .limit(25),
+    ]);
+
+  if (profileError) throw new Error(profileError.message);
+  if (commentsError) {
+    if (commentsError.code === "42P01") return [];
+    throw new Error(commentsError.message);
+  }
+
+  const authorIds = [...new Set((comments ?? []).map((row) => row.author_member_id as string))];
+  const authors = await loadAuthorMap(authorIds);
+  const profileSlug = (profile?.slug as string | undefined)?.trim() || profileMemberId;
+
+  return (comments ?? []).map((row) => {
+    const author = authors.get(row.author_member_id as string);
+    const body = row.body as string;
+    const preview = body.length > 80 ? `${body.slice(0, 77)}…` : body;
+
+    return {
+      commentId: row.id as string,
+      authorDisplayName: author?.displayName ?? "A member",
+      authorSlug: author?.slug ?? "",
+      bodyPreview: preview,
+      createdAt: row.created_at as string,
+      profileSlug,
+    };
+  });
 }

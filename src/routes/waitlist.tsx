@@ -5,7 +5,9 @@ import { useVerificationSync } from "@/features/auth/hooks/useVerificationSync";
 import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
 import { getSession, clearSession } from "@/features/auth/store/session";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
-import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
+import { DISCORD_SERVER_INVITE, DISCORD_VERIFICATION_CHANNEL_URL } from "@/features/auth/constants";
+import { DiscordAppLinkDialog } from "@/features/shared/components/DiscordAppLinkDialog";
+import { useDiscordAppLink } from "@/features/shared/hooks/useDiscordAppLink";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
 import { StepNum } from "@/features/waitlist/components/StepNum";
 import { WAITLIST_TEMPLATES } from "@/features/waitlist/constants";
@@ -31,6 +33,12 @@ function WaitlistPage() {
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const templatesToggleId = useId();
   const templatesPanelId = useId();
+  const {
+    pending: discordLinkPending,
+    requestDiscordAppLink,
+    confirmDiscordAppLink,
+    cancelDiscordAppLink,
+  } = useDiscordAppLink();
 
   const goToDashboard = useCallback(() => {
     navigate({ to: "/dashboard", replace: true });
@@ -169,15 +177,14 @@ function WaitlistPage() {
               <p className="mt-0.5 text-xs text-muted-foreground">
                 All operations happen here. You'll need to be in the server.
               </p>
-              <a
-                href={DISCORD_SERVER_INVITE}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => requestDiscordAppLink(DISCORD_SERVER_INVITE, "the Black Rose Discord server")}
                 className="mt-3 font-medium inline-flex h-11 items-center gap-2 bg-[#5865F2] px-4 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
               >
                 <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
                 Join Discord
-              </a>
+              </button>
             </div>
           </div>
 
@@ -187,8 +194,20 @@ function WaitlistPage() {
             <div className="min-w-0 w-full">
               <p className="text-sm font-medium">Post your application</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                In the <span className="text-foreground">#application</span> channel, copy the
-                format for your game, fill it out, and post it.
+                In the{" "}
+                <button
+                  type="button"
+                  onClick={() =>
+                    requestDiscordAppLink(
+                      DISCORD_VERIFICATION_CHANNEL_URL,
+                      "the # ✅ㆍverification channel",
+                    )
+                  }
+                  className="cursor-pointer text-foreground underline-offset-2 hover:underline"
+                >
+                  # ✅ㆍverification
+                </button>{" "}
+                channel, copy the format for your game, fill it out, and post it.
               </p>
               <button
                 id={templatesToggleId}
@@ -290,6 +309,12 @@ function WaitlistPage() {
           </button>
         </div>
       </div>
+
+      <DiscordAppLinkDialog
+        pending={discordLinkPending}
+        onConfirm={confirmDiscordAppLink}
+        onCancel={cancelDiscordAppLink}
+      />
     </div>
   );
 }

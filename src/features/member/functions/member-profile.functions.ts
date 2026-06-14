@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { MemberProfile, SocialPlatform } from "../types";
 
 export const fetchMemberProfileBySlug = createServerFn({ method: "POST" })
-  .inputValidator((data: { slug: string; viewerMemberId?: string }) => {
+  .validator((data: { slug: string; viewerMemberId?: string }) => {
     if (!data?.slug?.trim()) throw new Error("Missing profile slug.");
     return {
       slug: data.slug.trim(),
@@ -15,7 +15,7 @@ export const fetchMemberProfileBySlug = createServerFn({ method: "POST" })
   });
 
 export const fetchMyMemberProfile = createServerFn({ method: "POST" })
-  .inputValidator((data: { memberId: string }) => {
+  .validator((data: { memberId: string }) => {
     if (!data?.memberId?.trim()) throw new Error("Missing member id.");
     return { memberId: data.memberId.trim() };
   })
@@ -39,7 +39,7 @@ export interface UpdateMyMemberProfileInput {
 }
 
 export const updateMyMemberProfile = createServerFn({ method: "POST" })
-  .inputValidator((data: UpdateMyMemberProfileInput) => {
+  .validator((data: UpdateMyMemberProfileInput) => {
     if (!data?.memberId?.trim()) throw new Error("Missing member id.");
     return data;
   })

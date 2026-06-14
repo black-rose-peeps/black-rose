@@ -27,6 +27,7 @@ import {
   MIN_TEAM_SIZE,
   getRoleOptionsForGame,
   normalizeGameKey,
+  resolveRoleForGame,
 } from "@/features/teams/constants";
 import type { Team } from "@/features/teams/types";
 import type { TeamMemberRole } from "@/features/teams/types";
@@ -47,9 +48,11 @@ export function CreateTeamDialog({
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [game, setGame] = useState<(typeof GAME_OPTIONS)[number]["value"]>("Valorant");
-  const [profileMainRole, setProfileMainRole] = useState<TeamMemberRole>("TBD");
+  const [captainRole, setCaptainRole] = useState<TeamMemberRole>("TBD");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const roleOptions = getRoleOptionsForGame(game);
 
   useEffect(() => {
     if (!open) return;
@@ -57,6 +60,7 @@ export function CreateTeamDialog({
     setName("");
     setTag("");
     setGame("Valorant");
+    setCaptainRole("TBD");
     setError(null);
 
     let cancelled = false;
@@ -64,15 +68,12 @@ export function CreateTeamDialog({
       .then((profile) => {
         if (cancelled || !profile) return;
         const normalizedGame = normalizeGameKey(profile.mainGame);
-        if (normalizedGame && GAME_OPTIONS.some((g) => g.value === normalizedGame)) {
-          setGame(normalizedGame);
-          const roleOptions = getRoleOptionsForGame(normalizedGame);
-          if (profile.mainRole && roleOptions.includes(profile.mainRole as TeamMemberRole)) {
-            setProfileMainRole(profile.mainRole as TeamMemberRole);
-          } else {
-            setProfileMainRole("TBD");
-          }
-        }
+        const nextGame =
+          normalizedGame && GAME_OPTIONS.some((g) => g.value === normalizedGame)
+            ? normalizedGame
+            : "Valorant";
+        setGame(nextGame);
+        setCaptainRole(resolveRoleForGame(profile.mainRole, nextGame));
       })
       .catch(() => {});
 
@@ -80,6 +81,10 @@ export function CreateTeamDialog({
       cancelled = true;
     };
   }, [open, memberId]);
+
+  useEffect(() => {
+    setCaptainRole((current) => resolveRoleForGame(current, game));
+  }, [game]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -92,7 +97,7 @@ export function CreateTeamDialog({
         tag: tag.trim().toUpperCase(),
         game,
         captainMemberId: memberId,
-        captainRole: profileMainRole || "TBD",
+        captainRole: resolveRoleForGame(captainRole, game),
       });
       onCreated(team);
       onOpenChange(false);
@@ -109,7 +114,8 @@ export function CreateTeamDialog({
         <DialogHeader className="border-b border-white/8 px-6 py-5">
           <DialogTitle className="font-display text-2xl tracking-display">Create Team</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            You will be set as captain. Your main role from your profile is used on the roster.
+            You will be set as captain. Choose the game first — your roster role is based on that
+            game, not your profile main game.
           </DialogDescription>
         </DialogHeader>
 
@@ -165,12 +171,33 @@ export function CreateTeamDialog({
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+              Your Role on This Team
+            </Label>
+            <Select
+              value={captainRole}
+              onValueChange={(v) => setCaptainRole(v as TeamMemberRole)}
+            >
+              <SelectTrigger className={techFieldClass}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                {roleOptions.map((role) => (
+                  <SelectItem key={role} value={role} className="font-tech text-xs">
+                    {role}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-start gap-3 border border-white/8 bg-white/[0.02] px-4 py-3">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="text-xs leading-relaxed text-muted-foreground">
               Teams need at least <strong className="text-foreground">{MIN_TEAM_SIZE} active members</strong>{" "}
-              for most tournaments. Max roster is {MAX_TEAM_SIZE}. Update your main role in{" "}
-              <span className="text-foreground">Edit Profile → Player</span> if needed.
+              for most tournaments. Max roster is {MAX_TEAM_SIZE}. You can change your role later on
+              the team page.
             </p>
           </div>
 

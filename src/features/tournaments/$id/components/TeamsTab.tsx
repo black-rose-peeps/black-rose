@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import type { TournamentTeam } from "../../types";
 
 // ── Page size ──────────────────────────────────────────────────────────────
@@ -126,34 +127,16 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
 
   if (teams.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="font-tech text-label-readable uppercase">
-                Team
-              </TableHead>
-              <TableHead className="font-tech text-label-readable uppercase">
-                Captain
-              </TableHead>
-              <TableHead className="font-tech text-label-readable uppercase">
-                Players
-              </TableHead>
-              <TableHead className="font-tech text-label-readable uppercase">
-                Seed
-              </TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell colSpan={5} className="py-16 text-center text-muted-foreground">
-                No teams registered yet. Check back once registrations are approved.
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
+      <ArenaEmptyState
+        compact
+        eyebrow="Roster Pending"
+        title={
+          <>
+            No teams <span className="text-stroke">registered.</span>
+          </>
+        }
+        description="Check back once registrations are approved and rosters are finalized."
+      />
     );
   }
 

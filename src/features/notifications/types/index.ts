@@ -7,6 +7,8 @@ export type NotificationType =
   | "tournament_open" // Registration opened for a tournament
   | "registration_approved" // Your team registration was approved
   | "registration_rejected" // Your team registration was rejected
+  | "registration_request" // A teammate asked the captain to register for a tournament
+  | "profile_comment" // A verified member commented on your public profile
   | "match_scheduled" // A match has been scheduled for your team
   | "announcement"; // General Black Rose announcement
 

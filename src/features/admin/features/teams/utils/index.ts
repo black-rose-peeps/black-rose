@@ -121,6 +121,7 @@ export function adminMemberToTeamMember(
     discordUsername: member.discordUsername,
     displayName,
     avatarInitials: initialsFromName(displayName),
+    avatarUrl: member.avatarUrl,
     ign,
     role,
     status: "active",

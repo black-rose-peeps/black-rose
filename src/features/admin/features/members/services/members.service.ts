@@ -24,7 +24,7 @@ function throwMemberUniqueViolation(error: { message: string }): never {
 export async function fetchMembers(): Promise<AdminMember[]> {
   const { data, error } = await supabase
     .from("members")
-    .select("*")
+    .select("*, member_profiles(avatar_url)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -32,7 +32,11 @@ export async function fetchMembers(): Promise<AdminMember[]> {
 }
 
 export async function fetchMemberById(id: string): Promise<AdminMember | null> {
-  const { data, error } = await supabase.from("members").select("*").eq("id", id).single();
+  const { data, error } = await supabase
+    .from("members")
+    .select("*, member_profiles(avatar_url)")
+    .eq("id", id)
+    .single();
 
   if (error) {
     if (error.code === "PGRST116") return null; // not found
@@ -106,6 +110,7 @@ export interface InviteSearchMember {
   discordUsername: string;
   displayName: string;
   avatarInitials: string;
+  avatarUrl: string | null;
 }
 
 export interface InviteSearchResult {
@@ -172,11 +177,13 @@ function rowToInviteSearchMember(
         display_name?: string;
         valorant_game_name?: string | null;
         valorant_tagline?: string | null;
+        avatar_url?: string | null;
       }
     | Array<{
         display_name?: string;
         valorant_game_name?: string | null;
         valorant_tagline?: string | null;
+        avatar_url?: string | null;
       }>
     | null
     | undefined;
@@ -191,12 +198,15 @@ function rowToInviteSearchMember(
   const displayName =
     game && isValorantGame(game) && valorantId ? valorantId : baseDisplayName;
 
+  const avatarUrl = profile?.avatar_url?.trim() || null;
+
   return {
     id: row.id as string,
     username,
     discordUsername,
     displayName,
     avatarInitials: initialsFromName(displayName),
+    avatarUrl,
   };
 }
 
@@ -214,7 +224,7 @@ export async function searchVerifiedMembersForInvite(
   let builder = supabase
     .from("members")
     .select(
-      "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline)",
+      "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline, avatar_url)",
       { count: "exact" },
     )
     .eq("status", "Verified")
