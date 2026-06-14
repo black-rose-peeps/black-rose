@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { HeaderMobileMenu } from "@/features/shared/components/HeaderMobileMenu";
-import { getSession } from "@/features/auth/store/session";
+import { getSession, subscribeToSessionChanges } from "@/features/auth/store/session";
 import { MemberNav } from "@/features/member/components/MemberNav";
 
 const GUEST_NAV = [
@@ -74,7 +75,16 @@ function GuestHeader() {
 
 /** Public-site header — uses member nav when a session exists. */
 export function Header() {
-  const session = getSession();
+  const [session, setSessionState] = useState(() => getSession());
+
+  useEffect(() => {
+    function refresh() {
+      setSessionState(getSession());
+    }
+
+    refresh();
+    return subscribeToSessionChanges(refresh);
+  }, []);
 
   if (session) {
     return <MemberNav />;

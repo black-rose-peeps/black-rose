@@ -15,6 +15,9 @@ import {
   adminTableTextTruncate,
 } from "@/features/admin/components/AdminManagementTable";
 import { AdminSection } from "@/features/admin/components/AdminSection";
+import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminEmptyTitle } from "@/features/admin/constants/empty-state-titles";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { MEMBERS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
@@ -99,54 +102,50 @@ export function MembersManagement() {
         )}
 
         <div className="p-6 pt-4">
-          <AdminManagementTable columnWidths={MEMBERS_TABLE_COLUMNS}>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Username
-                </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Discord
-                </TableHead>
-                <SortableTableHead
-                  label="Registered"
-                  sortKey="registered"
-                  activeKey={sortKey}
-                  direction={direction}
-                  onSort={toggleSort}
-                />
-                <SortableTableHead
-                  label="Verification"
-                  sortKey="verification"
-                  activeKey={sortKey}
-                  direction={direction}
-                  onSort={toggleSort}
-                />
-                <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
+          {isLoading ? (
+            <AdminManagementTable columnWidths={MEMBERS_TABLE_COLUMNS}>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                    Username
+                  </TableHead>
+                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                    Discord
+                  </TableHead>
+                  <SortableTableHead
+                    label="Registered"
+                    sortKey="registered"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                  />
+                  <SortableTableHead
+                    label="Verification"
+                    sortKey="verification"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                  />
+                  <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {/* Username */}
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Skeleton className="h-8 w-8 shrink-0" />
                         <Skeleton className="h-4 w-28" />
                       </div>
                     </TableCell>
-                    {/* Discord */}
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
-                    {/* Registered */}
                     <TableCell>
                       <Skeleton className="h-3.5 w-20" />
                     </TableCell>
-                    {/* Verification */}
                     <TableCell>
                       <Skeleton className="h-5 w-14 rounded-full" />
                     </TableCell>
@@ -158,15 +157,57 @@ export function MembersManagement() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              ) : members.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    No members yet. Register the first member to continue.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pagination.paginatedItems.map((member) => (
+                ))}
+              </TableBody>
+            </AdminManagementTable>
+          ) : members.length === 0 ? (
+            <AdminEmptyState
+              eyebrow="Roster Pipeline"
+              title={<AdminEmptyTitle noun="members" />}
+              description="Members appear here when they sign in with Discord on Black Rose. New accounts land on the waitlist as Not Verified. Once you verify a member, assign them the ROSE role on the Black Rose Discord server — that unlocks the dashboard, teams, and tournament registration."
+              actions={
+                <Button
+                  onClick={() => setIsCreateOpen(true)}
+                  size="sm"
+                  className="gap-2 font-tech uppercase tracking-wider"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Register Member
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              <AdminManagementTable columnWidths={MEMBERS_TABLE_COLUMNS}>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Username
+                    </TableHead>
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Discord
+                    </TableHead>
+                    <SortableTableHead
+                      label="Registered"
+                      sortKey="registered"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <SortableTableHead
+                      label="Verification"
+                      sortKey="verification"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagination.paginatedItems.map((member) => (
                   <TableRow
                     key={member.id}
                     className="cursor-pointer transition-colors hover:bg-white/[0.03]"
@@ -179,9 +220,12 @@ export function MembersManagement() {
                         className="flex min-w-0 items-center gap-3 hover:text-foreground"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="grid h-8 w-8 shrink-0 place-items-center border border-white/10 bg-white/5 text-[10px] font-tech tracking-wider-2">
-                          {member.username.slice(0, 2).toUpperCase()}
-                        </div>
+                        <MemberAvatar
+                          avatarUrl={member.avatarUrl}
+                          initials={member.username.slice(0, 2).toUpperCase()}
+                          name={member.username}
+                          className="h-8 w-8 shrink-0 text-[10px] font-tech tracking-wider-2"
+                        />
                         <span className={cn("font-medium", adminTableTextTruncate)}>
                           {member.username}
                         </span>
@@ -260,18 +304,19 @@ export function MembersManagement() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </AdminManagementTable>
-          <AdminTablePagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            rangeStart={pagination.rangeStart}
-            rangeEnd={pagination.rangeEnd}
-            onPageChange={pagination.setPage}
-          />
+                ))}
+                </TableBody>
+              </AdminManagementTable>
+              <AdminTablePagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                total={pagination.total}
+                rangeStart={pagination.rangeStart}
+                rangeEnd={pagination.rangeEnd}
+                onPageChange={pagination.setPage}
+              />
+            </>
+          )}
         </div>
       </AdminSection>
 

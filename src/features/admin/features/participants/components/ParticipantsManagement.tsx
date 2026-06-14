@@ -13,6 +13,8 @@ import {
   adminTableTextTruncate,
 } from "@/features/admin/components/AdminManagementTable";
 import { AdminSection } from "@/features/admin/components/AdminSection";
+import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminEmptyTitle } from "@/features/admin/constants/empty-state-titles";
 import { PARTICIPANTS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
@@ -178,109 +180,159 @@ export function ParticipantsManagement() {
           </div>
         )}
 
-        <AdminManagementTable columnWidths={PARTICIPANTS_TABLE_COLUMNS}>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-10 px-2">
-                <Checkbox
-                  checked={allApprovableSelected}
-                  disabled={approvableOnPage.length === 0 || isBulkUpdating}
-                  onCheckedChange={(value) => toggleSelectAllOnPage(value === true)}
-                  aria-label="Select all approvable on this page"
+        {isLoading ? (
+          <AdminManagementTable columnWidths={PARTICIPANTS_TABLE_COLUMNS}>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-10 px-2">
+                  <Checkbox disabled aria-label="Select all approvable on this page" />
+                </TableHead>
+                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                  Team
+                </TableHead>
+                <SortableTableHead
+                  label="Tournament"
+                  sortKey="tournament"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
                 />
-              </TableHead>
-
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                Team
-              </TableHead>
-
-              <SortableTableHead
-                label="Tournament"
-                sortKey="tournament"
-                activeKey={sortKey}
-                direction={direction}
-                onSort={toggleSort}
-              />
-
-              <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                Captain
-              </TableHead>
-
-              <SortableTableHead
-                label="Registered"
-                sortKey="registered"
-                activeKey={sortKey}
-                direction={direction}
-                onSort={toggleSort}
-              />
-
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                activeKey={sortKey}
-                direction={direction}
-                onSort={toggleSort}
-              />
-
-              <SortableTableHead
-                label="Actions"
-                sortKey="actions"
-                activeKey={sortKey}
-                direction={direction}
-                onSort={toggleSort}
-                align="right"
-                className="text-right"
-              />
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
+                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                  Captain
+                </TableHead>
+                <SortableTableHead
+                  label="Registered"
+                  sortKey="registered"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                />
+                <SortableTableHead
+                  label="Actions"
+                  sortKey="actions"
+                  activeKey={sortKey}
+                  direction={direction}
+                  onSort={toggleSort}
+                  align="right"
+                  className="text-right"
+                />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
                   <TableCell className="px-2">
                     <Skeleton className="h-4 w-4" />
                   </TableCell>
-
                   <TableCell>
                     <Skeleton className="h-4 w-36 mb-1.5" />
-
                     <Skeleton className="h-3 w-24" />
                   </TableCell>
-
                   <TableCell>
                     <Skeleton className="h-4 w-32" />
                   </TableCell>
-
                   <TableCell>
                     <Skeleton className="h-4 w-20" />
                   </TableCell>
-
                   <TableCell>
                     <Skeleton className="h-4 w-20" />
                   </TableCell>
-
                   <TableCell>
                     <Skeleton className="h-5 w-16 rounded-full" />
                   </TableCell>
-
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Skeleton className="h-7 w-16 rounded-md" />
-
                       <Skeleton className="h-7 w-14 rounded-md" />
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            ) : participants.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
-                  No registrations yet. Add teams from a tournament detail page.
-                </TableCell>
-              </TableRow>
-            ) : (
-              pagination.paginatedItems.map((team) => {
+              ))}
+            </TableBody>
+          </AdminManagementTable>
+        ) : participants.length === 0 ? (
+          <AdminEmptyState
+            eyebrow="Registrations"
+            title={<AdminEmptyTitle noun="registrations" />}
+            description="Tournament entries show up here when teams or solo players register for an event. Open a tournament to add entrants manually, or approve pending sign-ups once registration is open."
+            actions={
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="font-tech uppercase tracking-wider"
+              >
+                <Link to="/admin/tournaments">View Tournaments</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <>
+            <AdminManagementTable columnWidths={PARTICIPANTS_TABLE_COLUMNS}>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-10 px-2">
+                    <Checkbox
+                      checked={allApprovableSelected}
+                      disabled={approvableOnPage.length === 0 || isBulkUpdating}
+                      onCheckedChange={(value) => toggleSelectAllOnPage(value === true)}
+                      aria-label="Select all approvable on this page"
+                    />
+                  </TableHead>
+
+                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                    Team
+                  </TableHead>
+
+                  <SortableTableHead
+                    label="Tournament"
+                    sortKey="tournament"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                  />
+
+                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                    Captain
+                  </TableHead>
+
+                  <SortableTableHead
+                    label="Registered"
+                    sortKey="registered"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                  />
+
+                  <SortableTableHead
+                    label="Status"
+                    sortKey="status"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                  />
+
+                  <SortableTableHead
+                    label="Actions"
+                    sortKey="actions"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                    align="right"
+                    className="text-right"
+                  />
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {pagination.paginatedItems.map((team) => {
                 const isUpdating = updatingId === team.id;
 
                 const actionsEnabled = registrationActionsEnabled(team.tournamentStatus);
@@ -391,19 +443,20 @@ export function ParticipantsManagement() {
                     </TableCell>
                   </TableRow>
                 );
-              })
-            )}
-          </TableBody>
-        </AdminManagementTable>
+              })}
+              </TableBody>
+            </AdminManagementTable>
 
-        <AdminTablePagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          rangeStart={pagination.rangeStart}
-          rangeEnd={pagination.rangeEnd}
-          onPageChange={pagination.setPage}
-        />
+            <AdminTablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              rangeStart={pagination.rangeStart}
+              rangeEnd={pagination.rangeEnd}
+              onPageChange={pagination.setPage}
+            />
+          </>
+        )}
       </div>
 
       {openTeam && (

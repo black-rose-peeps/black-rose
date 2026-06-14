@@ -14,6 +14,8 @@ import {
   adminTableTextTruncate,
 } from "@/features/admin/components/AdminManagementTable";
 import { AdminSection } from "@/features/admin/components/AdminSection";
+import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminEmptyTitle } from "@/features/admin/constants/empty-state-titles";
 import { TOURNAMENTS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
@@ -106,59 +108,54 @@ export function TournamentsManagement() {
         )}
 
         <div className="p-6 pt-4">
-          <AdminManagementTable columnWidths={TOURNAMENTS_TABLE_COLUMNS}>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Tournament
-                </TableHead>
-                <SortableTableHead
-                  label="Format"
-                  sortKey="format"
-                  activeKey={sortKey}
-                  direction={direction}
-                  onSort={toggleSort}
-                />
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Prize
-                </TableHead>
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Teams
-                </TableHead>
-                <SortableTableHead
-                  label="Status"
-                  sortKey="status"
-                  activeKey={sortKey}
-                  direction={direction}
-                  onSort={toggleSort}
-                />
-                <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
+          {isLoading ? (
+            <AdminManagementTable columnWidths={TOURNAMENTS_TABLE_COLUMNS}>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                    Tournament
+                  </TableHead>
+                  <SortableTableHead
+                    label="Format"
+                    sortKey="format"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                  />
+                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                    Prize
+                  </TableHead>
+                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                    Teams
+                  </TableHead>
+                  <SortableTableHead
+                    label="Status"
+                    sortKey="status"
+                    activeKey={sortKey}
+                    direction={direction}
+                    onSort={toggleSort}
+                  />
+                  <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {/* Tournament name + meta */}
                     <TableCell>
                       <Skeleton className="h-4 w-40 mb-1.5" />
                       <Skeleton className="h-3 w-24" />
                     </TableCell>
-                    {/* Format */}
                     <TableCell>
                       <Skeleton className="h-4 w-28" />
                     </TableCell>
-                    {/* Prize */}
                     <TableCell>
                       <Skeleton className="h-4 w-16" />
                     </TableCell>
-                    {/* Teams */}
                     <TableCell>
                       <Skeleton className="h-4 w-10" />
                     </TableCell>
-                    {/* Status */}
                     <TableCell>
                       <Skeleton className="h-5 w-24 rounded-full" />
                     </TableCell>
@@ -166,15 +163,60 @@ export function TournamentsManagement() {
                       <Skeleton className="ml-auto h-8 w-8 rounded-md" />
                     </TableCell>
                   </TableRow>
-                ))
-              ) : tournaments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    No tournaments yet. Create your first event to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pagination.paginatedItems.map((t) => (
+                ))}
+              </TableBody>
+            </AdminManagementTable>
+          ) : tournaments.length === 0 ? (
+            <AdminEmptyState
+              eyebrow="Events"
+              title={<AdminEmptyTitle noun="tournaments" />}
+              description="Create your first competitive event to open registration, manage brackets, and publish results. Supported formats include single elimination, double elimination, and Swiss — once enough teams are approved."
+              actions={
+                <Button
+                  onClick={() => setIsCreateOpen(true)}
+                  size="sm"
+                  className="gap-2 font-tech uppercase tracking-wider"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Tournament
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              <AdminManagementTable columnWidths={TOURNAMENTS_TABLE_COLUMNS}>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Tournament
+                    </TableHead>
+                    <SortableTableHead
+                      label="Format"
+                      sortKey="format"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Prize
+                    </TableHead>
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Teams
+                    </TableHead>
+                    <SortableTableHead
+                      label="Status"
+                      sortKey="status"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagination.paginatedItems.map((t) => (
                   <TableRow
                     key={t.id}
                     role="button"
@@ -224,18 +266,19 @@ export function TournamentsManagement() {
                       />
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </AdminManagementTable>
-          <AdminTablePagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            rangeStart={pagination.rangeStart}
-            rangeEnd={pagination.rangeEnd}
-            onPageChange={pagination.setPage}
-          />
+                ))}
+                </TableBody>
+              </AdminManagementTable>
+              <AdminTablePagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                total={pagination.total}
+                rangeStart={pagination.rangeStart}
+                rangeEnd={pagination.rangeEnd}
+                onPageChange={pagination.setPage}
+              />
+            </>
+          )}
         </div>
       </AdminSection>
 

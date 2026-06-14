@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import {
   CalendarClock,
   CheckCircle2,
-  Shield,
   Swords,
   Trophy,
   Users,
   UsersRound,
 } from "lucide-react";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminEmptyTitle, AdminEmptyTitleAllClear } from "@/features/admin/constants/empty-state-titles";
 import { Panel, PanelHeader, StatCard, StatusPill } from "@/features/admin/components/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -177,13 +178,21 @@ function AdminDashboard() {
                 ))
               )}
               {!isLoading && activeTournaments.length === 0 && (
-                <div className="px-6 py-12 text-center">
-                  <p className="font-display text-lg tracking-wider text-muted-foreground">
-                    No active tournaments
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground/80">
-                    Create an event under Tournaments to get started.
-                  </p>
+                <div className="px-6 py-8">
+                  <AdminEmptyState
+                    embedded
+                    eyebrow="Live Operations"
+                    title={<AdminEmptyTitle noun="active events" />}
+                    description="Events with open registration or live brackets appear here. Create a tournament or move a draft into registration to populate this list."
+                    actions={
+                      <Link
+                        to="/admin/tournaments"
+                        className="font-tech text-ui-readable uppercase underline-offset-4 hover:underline"
+                      >
+                        Go to Tournaments
+                      </Link>
+                    }
+                  />
                 </div>
               )}
             </div>
@@ -238,9 +247,21 @@ function AdminDashboard() {
                 ))
               )}
               {!isLoading && pendingRegistrations.length === 0 && (
-                <div className="px-6 py-12 text-center">
-                  <Shield className="mx-auto h-5 w-5 text-muted-foreground/60" />
-                  <p className="mt-3 text-sm text-muted-foreground">No pending registrations.</p>
+                <div className="px-6 py-8">
+                  <AdminEmptyState
+                    embedded
+                    eyebrow="Awaiting Action"
+                    title={<AdminEmptyTitleAllClear phrase="All caught up." />}
+                    description="Pending team registrations will show here when captains sign up for tournaments. Approve or reject entries before brackets are generated."
+                    actions={
+                      <Link
+                        to="/admin/participants"
+                        className="font-tech text-ui-readable uppercase underline-offset-4 hover:underline"
+                      >
+                        View Participants
+                      </Link>
+                    }
+                  />
                 </div>
               )}
             </div>

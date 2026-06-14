@@ -53,6 +53,7 @@ export function mockTeamToTournamentTeam(team: MockTeam, index: number): Tournam
       ign: m.ign,
       role: m.role,
       discord: m.discord,
+      profileSlug: m.profileSlug,
     })),
   };
 }

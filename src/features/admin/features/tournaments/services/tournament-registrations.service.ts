@@ -175,6 +175,7 @@ function mockTeamFromLiveRoster(reg: MockTeam, liveTeam: Team): MockTeam {
             ign: m.ign,
             role: m.role,
             discord: m.discordUsername || m.username,
+            profileSlug: m.profileSlug,
           }))
         : reg.members,
   };

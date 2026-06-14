@@ -1,7 +1,17 @@
+import { Link } from "@tanstack/react-router";
 import { Crown, UserMinus, Mail } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { isValorantGame } from "@/features/member/utils/valorant-identity";
-import type { Team, TeamMember } from "../types";
+import { getRoleOptionsForGame } from "../constants";
+import type { Team, TeamMember, TeamMemberRole } from "../types";
 
 interface RosterTableProps {
   team: Team;
@@ -9,6 +19,7 @@ interface RosterTableProps {
   currentUserId: string;
   isEditable?: boolean;
   onRemove?: (member: TeamMember) => void;
+  onRoleChange?: (member: TeamMember, role: TeamMemberRole) => void;
   emptyMessage?: string;
   showStatusColumn?: boolean;
 }
@@ -26,10 +37,12 @@ export function RosterTable({
   currentUserId,
   isEditable = false,
   onRemove,
+  onRoleChange,
   emptyMessage = "No members in this section.",
   showStatusColumn = true,
 }: RosterTableProps) {
   const isCaptain = team.captainUserId === currentUserId;
+  const roleOptions = getRoleOptionsForGame(team.game);
   const showIgnColumn = !isValorantGame(team.game);
   const visible =
     members ?? team.members.filter((m) => m.status !== "removed");
@@ -97,14 +110,33 @@ export function RosterTable({
               >
                 <td className="px-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
-                      {m.avatarInitials}
-                    </div>
+                    {m.profileSlug ? (
+                      <Link
+                        to="/members/$slug"
+                        params={{ slug: m.profileSlug }}
+                        className="shrink-0 transition hover:opacity-90"
+                      >
+                        <MemberAvatar
+                          avatarUrl={m.avatarUrl}
+                          initials={m.avatarInitials}
+                          name={m.displayName}
+                          className="h-8 w-8 shrink-0 text-xs"
+                        />
+                      </Link>
+                    ) : (
+                      <MemberAvatar
+                        avatarUrl={m.avatarUrl}
+                        initials={m.avatarInitials}
+                        name={m.displayName}
+                        className="h-8 w-8 shrink-0 text-xs"
+                      />
+                    )}
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
                         <MemberNameStack
                           displayName={m.displayName}
                           discordUsername={m.discordUsername}
+                          profileSlug={m.profileSlug}
                           showYou={isMe}
                           className="min-w-0 flex-1"
                         />
@@ -123,7 +155,27 @@ export function RosterTable({
                 )}
 
                 <td className="px-4 py-3">
-                  <span className="truncate text-muted-foreground">{m.role || "—"}</span>
+                  {onRoleChange &&
+                  (isCaptain || isMe) &&
+                  (m.status === "captain" || m.status === "active") ? (
+                    <Select
+                      value={m.role}
+                      onValueChange={(value) => onRoleChange(m, value as TeamMemberRole)}
+                    >
+                      <SelectTrigger className="h-8 w-full max-w-[9rem] rounded-none border-white/12 bg-white/5 font-tech text-xs uppercase">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                        {roleOptions.map((role) => (
+                          <SelectItem key={role} value={role} className="font-tech text-xs">
+                            {role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="truncate text-muted-foreground">{m.role || "—"}</span>
+                  )}
                 </td>
 
                 {showStatusColumn && (

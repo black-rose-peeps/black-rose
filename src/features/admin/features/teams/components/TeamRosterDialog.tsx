@@ -105,6 +105,7 @@ export function TeamRosterDialog({ open, team, onClose, onUpdated }: TeamRosterD
                     <MemberNameStack
                       displayName={member.displayName}
                       discordUsername={member.discordUsername}
+                      profileSlug={member.profileSlug}
                       size="sm"
                     />
                     {showIgnSubline && (

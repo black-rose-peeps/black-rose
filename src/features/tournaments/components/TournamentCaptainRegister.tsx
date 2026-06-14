@@ -12,6 +12,31 @@ import {
 import { RegisterNowButtonSkeleton } from "./SelectTeamRegistrationSkeleton";
 import { SelectTeamRegistrationDialog } from "./SelectTeamRegistrationDialog";
 
+export function TournamentRegistrationStatusBadge({
+  status,
+}: {
+  status: CaptainTournamentRegistrationStatus;
+}) {
+  if (isPendingCaptainRegistrationStatus(status)) {
+    return (
+      <div className="inline-flex h-12 items-center gap-3 border border-amber-400/30 bg-amber-400/10 px-8 font-tech text-sm uppercase tracking-wider-2 text-amber-300">
+        Registration pending admin approval
+      </div>
+    );
+  }
+
+  if (isRegisteredCaptainStatus(status)) {
+    return (
+      <div className="inline-flex h-12 items-center gap-2 border border-emerald-400/30 bg-emerald-400/10 px-8 font-tech text-sm uppercase tracking-wider-2 text-emerald-300">
+        <CheckCircle2 className="h-4 w-4" />
+        Registered
+      </div>
+    );
+  }
+
+  return null;
+}
+
 interface TournamentCaptainRegisterProps {
   tournamentId: string;
   tournamentName: string;
@@ -68,15 +93,9 @@ export function TournamentCaptainRegister({
     <>
       {initialLoading ? (
         <RegisterNowButtonSkeleton />
-      ) : isPendingCaptainRegistrationStatus(registrationStatus) ? (
-        <div className="inline-flex h-12 items-center gap-3 border border-amber-400/30 bg-amber-400/10 px-8 font-tech text-sm uppercase tracking-wider-2 text-amber-300">
-          Registration pending admin approval
-        </div>
-      ) : isRegisteredCaptainStatus(registrationStatus) ? (
-        <div className="inline-flex h-12 items-center gap-2 border border-emerald-400/30 bg-emerald-400/10 px-8 font-tech text-sm uppercase tracking-wider-2 text-emerald-300">
-          <CheckCircle2 className="h-4 w-4" />
-          Registered
-        </div>
+      ) : isPendingCaptainRegistrationStatus(registrationStatus) ||
+        isRegisteredCaptainStatus(registrationStatus) ? (
+        <TournamentRegistrationStatusBadge status={registrationStatus} />
       ) : (
         <button
           type="button"
