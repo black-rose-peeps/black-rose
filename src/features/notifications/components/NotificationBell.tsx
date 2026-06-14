@@ -9,6 +9,7 @@ import {
   Megaphone,
   Calendar,
   ShieldCheck,
+  MessageSquare,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -32,6 +33,8 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   tournament_open: <Trophy className="h-4 w-4" />,
   registration_approved: <ShieldCheck className="h-4 w-4" />,
   registration_rejected: <ShieldCheck className="h-4 w-4" />,
+  registration_request: <Trophy className="h-4 w-4" />,
+  profile_comment: <MessageSquare className="h-4 w-4" />,
   match_scheduled: <Calendar className="h-4 w-4" />,
   announcement: <Megaphone className="h-4 w-4" />,
 };
@@ -45,6 +48,8 @@ const TYPE_COLOR: Record<NotificationType, string> = {
   tournament_open: "text-emerald-400",
   registration_approved: "text-emerald-400",
   registration_rejected: "text-red-400",
+  registration_request: "text-amber-400",
+  profile_comment: "text-violet-400",
   match_scheduled: "text-white",
   announcement: "text-muted-foreground",
 };
@@ -216,6 +221,7 @@ export function NotificationBell() {
                 );
 
                 const teamInviteMatch = n.href?.match(/^\/teams\/([^/]+)$/);
+                const memberProfileMatch = n.href?.match(/^\/members\/([^/]+)$/);
 
                 return (
                   <li key={n.id}>
@@ -235,6 +241,18 @@ export function NotificationBell() {
                       <Link
                         to="/teams/$id"
                         params={{ id: teamInviteMatch[1] }}
+                        onClick={() => {
+                          handleRead(n.id);
+                          setOpen(false);
+                        }}
+                        className="block"
+                      >
+                        {content}
+                      </Link>
+                    ) : memberProfileMatch ? (
+                      <Link
+                        to="/members/$slug"
+                        params={{ slug: memberProfileMatch[1] }}
                         onClick={() => {
                           handleRead(n.id);
                           setOpen(false);

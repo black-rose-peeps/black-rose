@@ -6,28 +6,33 @@ import type { Team } from "@/features/teams/types";
 import type { TeamMemberStatus } from "@/features/teams/types";
 import {
   getNotifications,
+  isNotificationRead,
   mergeTeamEventNotifications,
   mergeTeamInviteNotifications,
   notifyListeners,
 } from "../store";
 import type { AppNotification } from "../types";
 
-const SNAPSHOT_KEY = "br_team_membership_snapshot";
+const SNAPSHOT_KEY_PREFIX = "br_team_membership_snapshot:";
 
-function loadStatusSnapshot(): Record<string, TeamMemberStatus> {
+function snapshotKey(userId: string): string {
+  return `${SNAPSHOT_KEY_PREFIX}${userId}`;
+}
+
+function loadStatusSnapshot(userId: string): Record<string, TeamMemberStatus> {
   if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    const raw = localStorage.getItem(snapshotKey(userId));
     return raw ? (JSON.parse(raw) as Record<string, TeamMemberStatus>) : {};
   } catch {
     return {};
   }
 }
 
-function saveStatusSnapshot(snapshot: Record<string, TeamMemberStatus>): void {
+function saveStatusSnapshot(userId: string, snapshot: Record<string, TeamMemberStatus>): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
+    localStorage.setItem(snapshotKey(userId), JSON.stringify(snapshot));
   } catch {
     // Ignore quota errors
   }
@@ -68,7 +73,7 @@ function resolveNotificationTime(
 /** Sync pending invites and roster-removal alerts for the logged-in member. */
 export async function syncTeamMembershipNotifications(userId: string): Promise<AppNotification[]> {
   const memberships = await fetchUserTeamMembershipRows(userId);
-  const previousSnapshot = loadStatusSnapshot();
+  const previousSnapshot = loadStatusSnapshot(userId);
   const nextSnapshot: Record<string, TeamMemberStatus> = {};
 
   const existingNotifications = getNotifications();
@@ -97,9 +102,14 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
     if (!team) continue;
 
     if (membership.status === "invited") {
-      const unread = shouldMarkInviteUnread(previousStatus, membership.status);
       const notificationId = `team-invite-${team.id}`;
-      const notification: AppNotification = {
+      const alreadyRead = isNotificationRead(notificationId);
+      const unread =
+        !alreadyRead && shouldMarkInviteUnread(previousStatus, membership.status);
+      const read = unread
+        ? false
+        : readById.has(notificationId) || isNotificationRead(notificationId);
+      pendingInvites.push({
         id: notificationId,
         type: "team_invite",
         title: "Team Invitation",
@@ -109,22 +119,24 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
           membership.joinedAt,
           createdAtById.get(notificationId),
         ),
-        read: false,
+        read,
         href: `/teams/${team.id}`,
-      };
-      notification.read = unread ? false : (readById.get(notificationId) ?? false);
-      pendingInvites.push(notification);
+      });
       continue;
     }
 
     if (membership.status === "removed") {
       const notificationId = `team-removed-${team.id}`;
+      const alreadyRead = isNotificationRead(notificationId);
       const freshRemoval = shouldNotifyRemoval(previousStatus, membership.status);
       const alreadyNotified = existingById.has(notificationId);
       if (!freshRemoval && !alreadyNotified) continue;
 
-      const unread = freshRemoval;
-      const notification: AppNotification = {
+      const unread = !alreadyRead && freshRemoval;
+      const read = unread
+        ? false
+        : readById.has(notificationId) || isNotificationRead(notificationId);
+      removalEvents.push({
         id: notificationId,
         type: "team_removed",
         title: "Removed From Team",
@@ -134,15 +146,13 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
           membership.joinedAt,
           createdAtById.get(notificationId),
         ),
-        read: false,
+        read,
         href: "/teams",
-      };
-      notification.read = unread ? false : (readById.get(notificationId) ?? false);
-      removalEvents.push(notification);
+      });
     }
   }
 
-  saveStatusSnapshot(nextSnapshot);
+  saveStatusSnapshot(userId, nextSnapshot);
   mergeTeamInviteNotifications(pendingInvites);
   mergeTeamEventNotifications(removalEvents);
   notifyListeners();

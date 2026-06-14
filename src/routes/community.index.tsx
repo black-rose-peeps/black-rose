@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ExternalLink } from "lucide-react";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { CommunityPortrait } from "@/features/community/components/CommunityPortrait";
 import { GuildCodeGrid } from "@/features/community/components/GuildCodeGrid";
 import { GUILD_MASTER_ATTRIBUTION } from "@/features/community/constants/guild-code";
 import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
+import { DiscordAppLinkDialog } from "@/features/shared/components/DiscordAppLinkDialog";
+import { useDiscordAppLink } from "@/features/shared/hooks/useDiscordAppLink";
 import { Emblem } from "@/features/shared/components/Emblem";
 
 export const Route = createFileRoute("/community/")({
@@ -23,6 +24,13 @@ export const Route = createFileRoute("/community/")({
 });
 
 function CommunityPage() {
+  const {
+    pending: discordLinkPending,
+    requestDiscordAppLink,
+    confirmDiscordAppLink,
+    cancelDiscordAppLink,
+  } = useDiscordAppLink();
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
@@ -121,15 +129,16 @@ function CommunityPage() {
             Join the Discord, meet the roster, and compete under the Black Rose banner.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a
-              href={DISCORD_SERVER_INVITE}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() =>
+                requestDiscordAppLink(DISCORD_SERVER_INVITE, "the Black Rose Discord server")
+              }
               className="clip-cta font-semibold inline-flex h-12 items-center gap-2 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
             >
               Join Discord
-              <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
-            </a>
+              <span aria-hidden>→</span>
+            </button>
             <Link
               to="/login"
               className="clip-cta font-semibold inline-flex h-12 items-center gap-2 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
@@ -142,6 +151,12 @@ function CommunityPage() {
       </section>
 
       <Footer />
+
+      <DiscordAppLinkDialog
+        pending={discordLinkPending}
+        onConfirm={confirmDiscordAppLink}
+        onCancel={cancelDiscordAppLink}
+      />
     </div>
   );
 }

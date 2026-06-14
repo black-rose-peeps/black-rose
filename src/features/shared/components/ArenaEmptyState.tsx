@@ -10,6 +10,8 @@ export interface ArenaEmptyStateProps {
   className?: string;
   /** Slightly tighter layout for landing section embeds */
   compact?: boolean;
+  /** Minimal inset layout for dashboard panels and profile sections */
+  embedded?: boolean;
 }
 
 export function ArenaEmptyState({
@@ -19,7 +21,30 @@ export function ArenaEmptyState({
   actions,
   className,
   compact = false,
+  embedded = false,
 }: ArenaEmptyStateProps) {
+  if (embedded) {
+    return (
+      <div
+        className={cn(
+          "relative border border-white/6 bg-white/[0.02] px-4 py-6 text-left sm:px-5",
+          className,
+        )}
+      >
+        <p className="font-tech text-label-readable uppercase text-muted-foreground/70">{eyebrow}</p>
+        <h3 className="mt-2 font-display text-xl leading-tight tracking-display sm:text-2xl">
+          {title}
+        </h3>
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{description}</p>
+        {actions ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 [&_a]:font-semibold [&_button]:font-semibold">
+            {actions}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -58,7 +83,9 @@ export function ArenaEmptyState({
         <p className="mx-auto mt-5 max-w-md text-base leading-7 text-muted-foreground">{description}</p>
 
         {actions ? (
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">{actions}</div>
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row [&_a]:font-semibold [&_button]:font-semibold">
+            {actions}
+          </div>
         ) : null}
       </div>
     </div>

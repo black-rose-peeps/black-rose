@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Users2, Plus, Trophy, ChevronRight, Crown } from "lucide-react";
+import { Plus, Trophy, ChevronRight, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -9,6 +9,7 @@ import {
   fetchTeamsForUser,
 } from "@/features/admin/features/teams/services/teams.service";
 import { MemberHeroBanner, MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { getSession } from "@/features/auth/store/session";
 import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
 import { markTeamInviteRead } from "@/features/notifications/store";
@@ -323,13 +324,17 @@ function TeamsIndexPage() {
           ))}
         </div>
       ) : (
-        <TechPanel label="Teams" title="No Teams Yet">
-          <div className="flex flex-col items-center gap-6 py-10 text-center">
-            <Users2 className="h-10 w-10 text-muted-foreground/30" />
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Create a team for each game you compete in, or ask a captain to invite you.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
+        <ArenaEmptyState
+          compact
+          eyebrow="No Roster"
+          title={
+            <>
+              No teams <span className="text-stroke">yet.</span>
+            </>
+          }
+          description="Create a team for each game you compete in, or ask a captain to invite you."
+          actions={
+            <>
               <Button
                 type="button"
                 onClick={() => setCreateOpen(true)}
@@ -341,13 +346,13 @@ function TeamsIndexPage() {
               <Button
                 asChild
                 variant="outline"
-                className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
+                className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
               >
                 <Link to="/tournaments">Browse Tournaments</Link>
               </Button>
-            </div>
-          </div>
-        </TechPanel>
+            </>
+          }
+        />
       )}
 
       <CreateTeamDialog

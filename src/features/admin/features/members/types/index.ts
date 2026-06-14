@@ -8,6 +8,8 @@ export interface AdminMember {
   status: MemberVerificationStatus;
   registeredAt: string; // "YYYY-MM-DD"
   createdAt: string;
+  avatarUrl: string | null;
+  profileSlug: string;
 }
 
 export interface CreateMemberFormValues {

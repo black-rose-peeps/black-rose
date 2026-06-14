@@ -277,6 +277,7 @@ export function TeamModal({
                       <MemberNameStack
                         displayName={member.displayName}
                         discordUsername={member.discordUsername}
+                        profileSlug={member.profileSlug}
                         size="sm"
                       />
                     </TableCell>

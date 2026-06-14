@@ -20,7 +20,7 @@ import {
   toPublicTournamentStatus,
 } from "@/features/tournaments/utils";
 import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
-import { TournamentCaptainRegister } from "@/features/tournaments/components/TournamentCaptainRegister";
+import { TournamentRegisterCTA } from "@/features/tournaments/components/TournamentRegisterCTA";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
 import { fetchTournamentById } from "@/features/tournaments/services";
 import { getSession } from "@/features/auth/store/session";
@@ -299,7 +299,7 @@ function TournamentDetailPage() {
         tournament={liveDetail}
         registrationAction={
           canRegisterTeam ? (
-            <TournamentCaptainRegister
+            <TournamentRegisterCTA
               tournamentId={liveDetail.id}
               tournamentName={liveDetail.name}
               tournamentGame={liveDetail.game}

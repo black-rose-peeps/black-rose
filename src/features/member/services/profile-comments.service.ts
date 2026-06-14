@@ -1,16 +1,24 @@
 import {
   createProfileComment as createFn,
   fetchProfileComments as fetchFn,
+  fetchProfileCommentAlerts as fetchAlertsFn,
   replyToProfileComment as replyFn,
   setProfileCommentHidden as hideFn,
 } from "../functions/profile-comments.functions";
 import type { ProfileComment, ProfileCommentReply } from "../types/profile-comments";
+import type { ProfileCommentAlert } from "../server/profile-comments.server";
 
 export async function fetchProfileComments(
   profileMemberId: string,
   viewerMemberId?: string,
 ): Promise<ProfileComment[]> {
   return fetchFn({ data: { profileMemberId, viewerMemberId } });
+}
+
+export async function fetchProfileCommentAlerts(input: {
+  memberId: string;
+}): Promise<ProfileCommentAlert[]> {
+  return fetchAlertsFn({ data: input });
 }
 
 export async function createProfileComment(input: {

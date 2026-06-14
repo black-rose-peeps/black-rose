@@ -1,5 +1,6 @@
 import { createCsrfMiddleware, createStart, createMiddleware } from "@tanstack/react-start";
 
+import "./server/server-functions";
 import { renderErrorPage } from "./lib/error-page";
 
 const csrfMiddleware = createCsrfMiddleware({

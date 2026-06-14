@@ -19,6 +19,7 @@ import type { AdminMember } from "@/features/admin/features/members/types";
 import { useAddTeamMember } from "../hooks";
 import type { Team } from "../types";
 import { getMembersAvailableForRoster } from "../utils";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 
 interface AddTeamMemberDialogProps {
   open: boolean;
@@ -193,6 +194,12 @@ export function AddTeamMemberDialog({
                         checked={checked}
                         onCheckedChange={(value) => toggleMember(member.id, value === true)}
                         disabled={isSubmitting}
+                      />
+                      <MemberAvatar
+                        avatarUrl={member.avatarUrl}
+                        initials={member.username.slice(0, 2).toUpperCase()}
+                        name={member.username}
+                        className="h-8 w-8 shrink-0 text-[10px] font-tech tracking-wider-2"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{member.username}</p>

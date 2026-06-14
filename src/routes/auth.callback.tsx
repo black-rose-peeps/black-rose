@@ -1,13 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { completeDiscordAuth } from "@/features/auth/functions/complete-discord-auth";
 import { getDiscordRedirectUri } from "@/lib/app-url";
-import { DISCORD_OAUTH_STATE_KEY } from "@/features/auth/constants";
 import {
   clearDiscordLinked,
-  getDiscordOAuthUrl,
+  clearStoredOAuthState,
   markDiscordLinked,
   readStoredOAuthRedirectUri,
+  retryDiscordOAuthInApp,
   shouldRetryDiscordWithConsent,
   validateOAuthState,
 } from "@/features/auth/services/discord";
@@ -31,10 +31,7 @@ export const Route = createFileRoute("/auth/callback")({
       typeof search.error_description === "string" ? search.error_description : undefined,
   }),
   head: () => ({
-    meta: [
-      { title: "Signing In — Black Rose" },
-      { name: "robots", content: "noindex,nofollow" },
-    ],
+    meta: [{ title: "Signing In — Black Rose" }, { name: "robots", content: "noindex,nofollow" }],
   }),
   component: AuthCallbackPage,
 });
@@ -43,29 +40,34 @@ function AuthCallbackPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const authStartedRef = useRef(false);
 
   useEffect(() => {
+    if (authStartedRef.current) return;
+    authStartedRef.current = true;
+
     let cancelled = false;
 
     async function finishAuth() {
       if (search.error) {
         if (shouldRetryDiscordWithConsent(search.error)) {
           clearDiscordLinked();
-          const state = crypto.randomUUID();
-          sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
-          window.location.href = getDiscordOAuthUrl(state);
+          retryDiscordOAuthInApp();
           return;
         }
+        clearStoredOAuthState();
         setErrorMessage(search.error_description ?? "Discord authorization was denied.");
         return;
       }
 
       if (!search.code) {
+        clearStoredOAuthState();
         setErrorMessage("Missing authorization code from Discord.");
         return;
       }
 
       if (!validateOAuthState(search.state)) {
+        clearStoredOAuthState();
         setErrorMessage("Invalid or expired sign-in session. Please try again.");
         return;
       }
@@ -77,13 +79,14 @@ function AuthCallbackPage() {
         });
         if (cancelled) return;
 
+        clearStoredOAuthState();
         setSession(user);
         markDiscordLinked();
         navigate({ to: getPostAuthPath(user.role), replace: true });
       } catch (err) {
         if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : "Could not complete Discord sign-in.";
+        clearStoredOAuthState();
+        const message = err instanceof Error ? err.message : "Could not complete Discord sign-in.";
         setErrorMessage(message);
       }
     }

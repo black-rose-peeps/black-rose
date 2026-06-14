@@ -16,6 +16,7 @@ import {
 } from "@/features/admin/features/members/services/members.service";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
+import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { cn } from "@/lib/utils";
 import { MAX_TEAM_SIZE } from "../constants";
 import { InviteMemberSearchSkeleton } from "./InviteMemberSearchSkeleton";
@@ -49,6 +50,11 @@ export function InviteMemberDialog({
   const [error, setError] = useState<string | null>(null);
 
   const rosterCount = team.members.filter((m) => m.status !== "removed").length;
+  const rosterExcludeKey = team.members
+    .filter((m) => m.status !== "removed")
+    .map((m) => m.userId)
+    .sort()
+    .join(",");
   const slotsLeft = MAX_TEAM_SIZE - rosterCount;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -108,7 +114,7 @@ export function InviteMemberDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, search, page, team.id, team.game]);
+  }, [open, search, page, team.id, team.game, rosterExcludeKey]);
 
   function isMemberInvited(memberId: string): boolean {
     if (recentlyInvitedIds.has(memberId)) return true;
@@ -197,12 +203,16 @@ export function InviteMemberDialog({
                   return (
                     <li key={member.id} className="flex items-center justify-between gap-3 py-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/5 font-display text-xs tracking-display">
-                          {member.avatarInitials}
-                        </div>
+                        <MemberAvatar
+                          avatarUrl={member.avatarUrl}
+                          initials={member.avatarInitials}
+                          name={member.displayName}
+                          className="h-9 w-9 shrink-0 text-xs"
+                        />
                         <MemberNameStack
                           displayName={member.displayName}
                           discordUsername={member.discordUsername}
+                          profileSlug={member.profileSlug}
                           size="sm"
                           className="min-w-0"
                         />

@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { fetchActiveMemberTeams } from "@/features/tournaments/services/team-registration.service";
+import { setNotificationMemberId } from "../store";
 import { syncTeamMembershipNotifications } from "../services/team-membership-notifications";
+import { syncProfileCommentNotifications } from "../services/profile-comment-notifications";
+import { syncTournamentRegistrationRequestNotifications } from "../services/tournament-registration-request-notifications";
 import { syncTournamentRegistrationNotifications } from "../services/tournament-registration-notifications";
 
 function teamIdsEqual(a: string[], b: string[]): boolean {
@@ -13,6 +16,7 @@ function teamIdsEqual(a: string[], b: string[]): boolean {
 /** Keep member notifications in sync via Supabase Realtime. */
 export function useNotificationSync(memberId: string | undefined) {
   useEffect(() => {
+    setNotificationMemberId(memberId ?? null);
     if (!memberId) return;
 
     const userId = memberId;
@@ -29,6 +33,8 @@ export function useNotificationSync(memberId: string | undefined) {
           await Promise.all([
             syncTeamMembershipNotifications(userId),
             syncTournamentRegistrationNotifications(userId),
+            syncTournamentRegistrationRequestNotifications(userId),
+            syncProfileCommentNotifications(userId),
           ]);
         } catch (err) {
           if (!cancelled) {
@@ -108,6 +114,19 @@ export function useNotificationSync(memberId: string | undefined) {
         );
       }
 
+      nextChannel = nextChannel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profile_comments",
+          filter: `profile_member_id=eq.${userId}`,
+        },
+        () => {
+          void syncAll();
+        },
+      );
+
       channel = nextChannel.subscribe();
     }
 
@@ -124,6 +143,7 @@ export function useNotificationSync(memberId: string | undefined) {
       cancelled = true;
       window.removeEventListener("focus", handleFocus);
       void teardownChannel();
+      setNotificationMemberId(null);
     };
   }, [memberId]);
 }

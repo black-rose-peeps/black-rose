@@ -2,7 +2,7 @@
  * Discord OAuth2 client helpers
  *
  * Flow:
- *  1. startDiscordOAuth() → redirect to Discord consent screen
+ *  1. prepareDiscordOAuth() → store CSRF state, show Discord app modal
  *  2. Discord redirects to /auth/callback?code=...&state=...
  *  3. Callback page calls completeDiscordAuth server function
  *
@@ -11,6 +11,7 @@
  */
 
 import { getDiscordRedirectUri, isAllowedDiscordRedirectUri } from "@/lib/app-url";
+import { launchDiscordDesktopApp } from "@/lib/discord-url";
 import {
   DISCORD_LINKED_KEY,
   DISCORD_OAUTH_REDIRECT_KEY,
@@ -40,12 +41,6 @@ export function getDiscordOAuthUrl(state: string): string {
     state,
   });
 
-  // Returning users: skip consent if Discord already authorized this app.
-  // First-time users omit prompt so Discord shows the consent screen once.
-  if (typeof window !== "undefined" && localStorage.getItem(DISCORD_LINKED_KEY) === "1") {
-    params.set("prompt", "none");
-  }
-
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }
 
@@ -59,22 +54,48 @@ export function clearDiscordLinked(): void {
   localStorage.removeItem(DISCORD_LINKED_KEY);
 }
 
-/** Redirect the browser to Discord OAuth. Stores CSRF state in sessionStorage. */
-export function startDiscordOAuth(): void {
+function persistOAuthRequest(state: string, redirectUri: string): void {
+  localStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
+  localStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
+  sessionStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
+  sessionStorage.removeItem(DISCORD_OAUTH_REDIRECT_KEY);
+}
+
+/** Store OAuth CSRF state and return the authorize URL (does not open Discord yet). */
+export function prepareDiscordOAuth(): { browserFallbackUrl: string } {
   const state = crypto.randomUUID();
   const redirectUri = getDiscordRedirectUri();
-  sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
-  sessionStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
+  persistOAuthRequest(state, redirectUri);
+  return { browserFallbackUrl: getDiscordOAuthUrl(state) };
+}
+
+/** Open the in-flight OAuth authorize URL in the Discord app (foreground). */
+export function openPreparedDiscordOAuthInApp(browserFallbackUrl: string): void {
+  launchDiscordDesktopApp(browserFallbackUrl);
+}
+
+/** Full browser redirect for users without the Discord app installed. */
+export function continueDiscordOAuthInBrowser(): void {
+  const storedState = readStoredOAuthState();
+  const state = storedState ?? crypto.randomUUID();
+  if (!storedState) {
+    persistOAuthRequest(state, getDiscordRedirectUri());
+  }
   window.location.href = getDiscordOAuthUrl(state);
 }
 
 export function readStoredOAuthState(): string | null {
   if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(DISCORD_OAUTH_STATE_KEY);
+  return (
+    localStorage.getItem(DISCORD_OAUTH_STATE_KEY) ??
+    sessionStorage.getItem(DISCORD_OAUTH_STATE_KEY)
+  );
 }
 
 export function clearStoredOAuthState(): void {
   if (typeof window === "undefined") return;
+  localStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
+  localStorage.removeItem(DISCORD_OAUTH_REDIRECT_KEY);
   sessionStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
   sessionStorage.removeItem(DISCORD_OAUTH_REDIRECT_KEY);
 }
@@ -82,18 +103,31 @@ export function clearStoredOAuthState(): void {
 /** Redirect URI from the OAuth request that sent the user to Discord. */
 export function readStoredOAuthRedirectUri(): string | null {
   if (typeof window === "undefined") return null;
-  const stored = sessionStorage.getItem(DISCORD_OAUTH_REDIRECT_KEY);
+  const stored =
+    localStorage.getItem(DISCORD_OAUTH_REDIRECT_KEY) ??
+    sessionStorage.getItem(DISCORD_OAUTH_REDIRECT_KEY);
   if (stored && isAllowedDiscordRedirectUri(stored)) return stored;
   return null;
 }
 
 export function validateOAuthState(returnedState: string | undefined): boolean {
   const expected = readStoredOAuthState();
-  clearStoredOAuthState();
   return Boolean(expected && returnedState && expected === returnedState);
 }
 
 /** Discord returns error=consent_required when prompt=none but auth was revoked. */
 export function shouldRetryDiscordWithConsent(errorCode: string | undefined): boolean {
   return errorCode === "consent_required" || errorCode === "interaction_required";
+}
+
+/** Retry OAuth in the Discord app after a consent_required error. */
+export function retryDiscordOAuthInApp(): void {
+  const { browserFallbackUrl } = prepareDiscordOAuth();
+  openPreparedDiscordOAuthInApp(browserFallbackUrl);
+}
+
+/** Retry OAuth entirely in the browser. */
+export function retryDiscordOAuthInBrowser(): void {
+  prepareDiscordOAuth();
+  continueDiscordOAuthInBrowser();
 }

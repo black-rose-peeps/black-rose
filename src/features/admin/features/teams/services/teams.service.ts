@@ -1,8 +1,10 @@
 import { supabase } from "@/lib/supabase";
-import { MAX_TEAM_SIZE } from "@/features/teams/constants";
-import type { Team, TeamMember } from "@/features/teams/types";
+import { deleteTeamAdminFn } from "../functions/delete-team.functions";
+import { MAX_TEAM_SIZE, resolveRoleForGame } from "@/features/teams/constants";
+import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
 import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
+import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { adminMemberToTeamMember } from "../utils";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 
@@ -18,6 +20,8 @@ interface MemberProfileSnapshot {
   displayName: string;
   valorantGameName: string;
   valorantTagline: string;
+  avatarUrl: string | null;
+  slug: string;
 }
 
 async function fetchMemberProfileSnapshots(
@@ -28,7 +32,7 @@ async function fetchMemberProfileSnapshots(
 
   const { data, error } = await supabase
     .from("member_profiles")
-    .select("member_id, display_name, valorant_game_name, valorant_tagline")
+    .select("member_id, display_name, valorant_game_name, valorant_tagline, avatar_url, slug")
     .in("member_id", unique);
 
   if (error) {
@@ -43,6 +47,8 @@ async function fetchMemberProfileSnapshots(
         displayName: (row.display_name as string | null)?.trim() ?? "",
         valorantGameName: (row.valorant_game_name as string | null)?.trim() ?? "",
         valorantTagline: (row.valorant_tagline as string | null)?.trim() ?? "",
+        avatarUrl: (row.avatar_url as string | null)?.trim() || null,
+        slug: (row.slug as string | null)?.trim() ?? "",
       },
     ]),
   );
@@ -97,6 +103,8 @@ function rowToTeamMember(
     discordUsername: discordUsernames.get(userId) || username,
     displayName,
     avatarInitials: (row.avatar_initials as string) || initialsFromName(baseDisplayName),
+    avatarUrl: snapshot?.avatarUrl ?? null,
+    profileSlug: resolveMemberProfileSlug(snapshot?.slug, username),
     ign,
     role: row.role as TeamMember["role"],
     status: row.status as TeamMember["status"],
@@ -392,7 +400,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
   }
 
   // Insert captain as first team member
-  const captainRole = input.captainRole ?? "IGL";
+  const captainRole = resolveRoleForGame(input.captainRole ?? "TBD", input.game);
   const captainIdentity = await resolveMemberTeamIdentity(
     captain.id,
     captain.username,
@@ -436,9 +444,10 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
     member.username,
     team.game,
   );
+  const memberRole = resolveRoleForGame(input.role ?? "TBD", team.game);
   const teamMember = adminMemberToTeamMember(
     member,
-    input.role ?? "TBD",
+    memberRole,
     memberIdentity.displayName,
     memberIdentity.ign,
   );
@@ -450,7 +459,7 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
       display_name: teamMember.displayName,
       avatar_initials: teamMember.avatarInitials,
       ign: teamMember.ign,
-      role: input.role ?? "TBD",
+      role: memberRole,
       status: "active",
     },
     member.username,
@@ -506,9 +515,10 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
     member.username,
     team.game,
   );
+  const memberRole = resolveRoleForGame(input.role ?? "TBD", team.game);
   const teamMember = adminMemberToTeamMember(
     member,
-    input.role ?? "TBD",
+    memberRole,
     memberIdentity.displayName,
     memberIdentity.ign,
   );
@@ -520,7 +530,7 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
       display_name: teamMember.displayName,
       avatar_initials: teamMember.avatarInitials,
       ign: teamMember.ign,
-      role: input.role ?? "TBD",
+      role: memberRole,
       status: "invited",
     },
     member.username,
@@ -666,12 +676,39 @@ export async function removeMemberFromTeam(teamId: string, userId: string): Prom
   return fetchTeamWithMembers(teamId);
 }
 
-export async function deleteTeam(teamId: string): Promise<void> {
-  const { error } = await supabase.rpc("delete_team_and_members", {
-    p_team_id: teamId,
-  });
+export async function updateTeamMemberRole(
+  teamId: string,
+  memberUserId: string,
+  role: TeamMemberRole,
+  actingUserId: string,
+): Promise<Team> {
+  const team = await fetchTeamWithMembers(teamId);
+  const member = team.members.find((m) => m.userId === memberUserId);
+  if (!member || member.status === "removed") {
+    throw new Error("Member not found on this team.");
+  }
+  if (member.status !== "captain" && member.status !== "active") {
+    throw new Error("Only active roster members can have their role updated.");
+  }
+
+  const isCaptain = team.captainUserId === actingUserId;
+  if (!isCaptain && memberUserId !== actingUserId) {
+    throw new Error("You can only update your own role.");
+  }
+
+  const sanitizedRole = resolveRoleForGame(role, team.game);
+  const { error } = await supabase
+    .from("team_members")
+    .update({ role: sanitizedRole })
+    .eq("team_id", teamId)
+    .eq("user_id", memberUserId);
 
   if (error) throw new Error(error.message);
+  return fetchTeamWithMembers(teamId);
+}
+
+export async function deleteTeam(teamId: string): Promise<void> {
+  await deleteTeamAdminFn({ data: { teamId } });
 }
 
 export async function assignTeamActiveTournament(

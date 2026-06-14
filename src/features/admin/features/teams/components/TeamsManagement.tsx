@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { Plus, UserPlus, Users } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,6 +14,8 @@ import {
   adminTableTextTruncate,
 } from "@/features/admin/components/AdminManagementTable";
 import { AdminSection } from "@/features/admin/components/AdminSection";
+import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminEmptyTitle } from "@/features/admin/constants/empty-state-titles";
 import { TEAMS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
@@ -64,7 +67,7 @@ export function TeamsManagement() {
       <AdminSection
         eyebrow="Roster Pipeline"
         title="Teams"
-        description="Create teams and assign registered members to rosters before tournament registration."
+        description="Teams appear here when verified members create them on the site, or when you build rosters from the console before tournament registration."
         actions={
           <Button
             onClick={() => setIsCreateOpen(true)}
@@ -78,16 +81,6 @@ export function TeamsManagement() {
           </Button>
         }
       >
-        {members.length === 0 && !membersLoading && (
-          <div className="px-6 pt-4">
-            <Alert>
-              <AlertDescription>
-                Register members first under the Members tab before creating teams.
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
-
         {error && (
           <div className="px-6 pt-4">
             <Alert variant="destructive">
@@ -97,7 +90,8 @@ export function TeamsManagement() {
         )}
 
         <div className="p-6 pt-4">
-          <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
+          {isLoading ? (
+            <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
@@ -126,37 +120,93 @@ export function TeamsManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-9 w-9 shrink-0" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-3.5 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-16" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="ml-auto h-7 w-28 rounded-md" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : teams.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    No teams yet. Create a team to start building rosters.
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-9 w-9 shrink-0" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3.5 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-16" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-7 w-28 rounded-md" />
                   </TableCell>
                 </TableRow>
-              ) : (
-                pagination.paginatedItems.map((team) => (
+              ))}
+            </TableBody>
+          </AdminManagementTable>
+          ) : teams.length === 0 ? (
+            <AdminEmptyState
+              eyebrow="Roster Pipeline"
+              title={<AdminEmptyTitle noun="teams" />}
+              description={
+                members.length === 0
+                  ? "Teams show up here when verified members create them under Teams on the site, or when you build rosters from this console. Members must sign in with Discord first — verify them and assign the ROSE role on the Black Rose Discord server before rosters can form."
+                  : "Teams appear here when verified members create them on the user-side Teams page, or when you create one from this console. Pick a captain, fill the roster, then register for tournaments once entries open."
+              }
+              actions={
+                members.length === 0 ? (
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="font-tech uppercase tracking-wider"
+                  >
+                    <Link to="/admin/users">Go to Members</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setIsCreateOpen(true)}
+                    size="sm"
+                    className="gap-2 font-tech uppercase tracking-wider"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Team
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <>
+              <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Team
+                    </TableHead>
+                    <SortableTableHead
+                      label="Game"
+                      sortKey="game"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Captain
+                    </TableHead>
+                    <SortableTableHead
+                      label="Roster"
+                      sortKey="roster"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagination.paginatedItems.map((team) => (
                   <TableRow key={team.id} className="transition-colors hover:bg-secondary/40">
                     <TableCell className={adminTableCellClip}>
                       <div className="flex min-w-0 items-center gap-3">
@@ -218,18 +268,19 @@ export function TeamsManagement() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </AdminManagementTable>
-          <AdminTablePagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            rangeStart={pagination.rangeStart}
-            rangeEnd={pagination.rangeEnd}
-            onPageChange={pagination.setPage}
-          />
+                ))}
+                </TableBody>
+              </AdminManagementTable>
+              <AdminTablePagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                total={pagination.total}
+                rangeStart={pagination.rangeStart}
+                rangeEnd={pagination.rangeEnd}
+                onPageChange={pagination.setPage}
+              />
+            </>
+          )}
         </div>
       </AdminSection>
 

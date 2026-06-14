@@ -8,6 +8,30 @@
 import type { AppUser } from "../types";
 
 const SESSION_KEY = "br_session";
+const SESSION_CHANGED = "br-session-changed";
+
+function notifySessionChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(SESSION_CHANGED));
+}
+
+export function subscribeToSessionChanges(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  function onStorage(event: StorageEvent) {
+    if (event.key === SESSION_KEY || event.key === null) {
+      listener();
+    }
+  }
+
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(SESSION_CHANGED, listener);
+
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(SESSION_CHANGED, listener);
+  };
+}
 
 function readStoredSession(): string | null {
   const fromLocal = localStorage.getItem(SESSION_KEY);
@@ -41,6 +65,7 @@ export function setSession(user: AppUser): void {
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
     sessionStorage.removeItem(SESSION_KEY);
+    notifySessionChanged();
   } catch {
     // Storage may be unavailable (private mode, quota, SSR edge cases).
   }
@@ -51,6 +76,7 @@ export function clearSession(): void {
   try {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
+    notifySessionChanged();
   } catch {
     // Storage may be unavailable (private mode, quota, SSR edge cases).
   }

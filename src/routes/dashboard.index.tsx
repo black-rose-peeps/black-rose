@@ -13,15 +13,19 @@ import {
   Calendar,
   Pencil,
   Shield,
+  Sparkles,
 } from "lucide-react";
 import { formatValorantRiotId } from "@/features/member/utils/valorant-identity";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { QuickStat, DashboardSection } from "@/features/member/components/DashboardSection";
+import { ProfileCompletionPanel } from "@/features/member/components/ProfileCompletionPanel";
+import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
+import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import { MemberDashboardSkeleton } from "@/features/member/components/MemberDashboardSkeleton";
-import { MemberHeroBanner, MemberPageLayout, PanelEmptyState } from "@/features/member/components/MemberShell";
+import { MemberHeroBanner, MemberPageLayout } from "@/features/member/components/MemberShell";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { getSession } from "@/features/auth/store/session";
 import { SOCIAL_PLATFORM_LABELS } from "@/features/member/constants";
 import { fetchMemberProfileById } from "@/features/member/services/member-profile.service";
@@ -30,7 +34,7 @@ import { ChampionMarkGroup } from "@/features/championships/components/ChampionM
 import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
 import type { ChampionshipTitle } from "@/features/championships/types";
 import { fetchMemberTournamentDashboard } from "@/features/member/services/member-dashboard.service";
-import { profileCompletionHint } from "@/features/member/utils/profile-completion";
+import { isProfileComplete } from "@/features/member/utils/profile-completion";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
 import type { AppUser } from "@/features/auth/types";
 import type { MemberProfile } from "@/features/member/types";
@@ -75,6 +79,11 @@ function DashboardPage() {
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [isSyncing, setIsSyncing] = useState(true);
   const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
+  const {
+    celebrationOpen,
+    celebrateIfUnseen,
+    dismissCelebration,
+  } = useProfileCompleteCelebration(session?.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,6 +153,11 @@ function DashboardPage() {
   }, [navigate]);
 
   useEffect(() => {
+    if (!profile || isSyncing) return;
+    celebrateIfUnseen(profile.profileCompletion);
+  }, [profile, isSyncing, celebrateIfUnseen]);
+
+  useEffect(() => {
     if (!session?.id || !hasFullMemberAccess(session.role)) return;
 
     const memberId = session.id;
@@ -207,6 +221,15 @@ function DashboardPage() {
                 >
                   <Shield className="mr-1 h-3 w-3" />
                   Verified
+                </Badge>
+              )}
+              {isProfileComplete(p.profileCompletion) && (
+                <Badge
+                  variant="outline"
+                  className="rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-label-readable uppercase text-emerald-300"
+                >
+                  <Sparkles className="mr-1 h-3 w-3" />
+                  Arena Ready
                 </Badge>
               )}
               {p.mainGame && (
@@ -299,34 +322,7 @@ function DashboardPage() {
       </div>
 
       <div className="mb-6 grid gap-5 lg:grid-cols-3">
-        <DashboardSection
-          label="Profile"
-          title="Completion"
-          action={
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
-            >
-              <Link to="/dashboard/profile" search={{ tab: "identity" }}>
-                Edit →
-              </Link>
-            </Button>
-          }
-        >
-          <div className="mb-3 flex items-end justify-between">
-            <span className="font-display text-4xl tracking-display">{p.profileCompletion}%</span>
-            <span className="mb-1 text-xs text-muted-foreground">Complete</span>
-          </div>
-          <Progress
-            value={p.profileCompletion}
-            className="mb-4 h-1 rounded-none bg-white/10 [&>div]:rounded-none [&>div]:bg-white"
-          />
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {profileCompletionHint(p.profileCompletion)}
-          </p>
-        </DashboardSection>
+        <ProfileCompletionPanel completion={p.profileCompletion} />
 
         <DashboardSection label="Accounts" title="Valorant ID">
           {(() => {
@@ -434,15 +430,20 @@ function DashboardPage() {
               ))}
             </ul>
           ) : (
-            <PanelEmptyState
-              icon={<Trophy className="h-6 w-6" />}
-              title="No active registrations"
-              description="Browse open tournaments and register your team."
-              action={
+            <ArenaEmptyState
+              embedded
+              eyebrow="No Entries"
+              title={
+                <>
+                  No active <span className="text-stroke">registrations.</span>
+                </>
+              }
+              description="Browse open tournaments and register your team when the next bracket opens."
+              actions={
                 <Button
                   asChild
                   variant="outline"
-                  className="mt-1 clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
+                  className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
                 >
                   <Link to="/tournaments">
                     Browse Tournaments
@@ -478,10 +479,15 @@ function DashboardPage() {
               ))}
             </ul>
           ) : (
-            <PanelEmptyState
-              icon={<Calendar className="h-6 w-6" />}
-              title="No scheduled matches yet"
-              description="Register for a tournament to get matched."
+            <ArenaEmptyState
+              embedded
+              eyebrow="Clear Schedule"
+              title={
+                <>
+                  No matches <span className="text-stroke">scheduled.</span>
+                </>
+              }
+              description="Register for a tournament to get matched and see your upcoming games here."
             />
           )}
         </DashboardSection>
@@ -554,6 +560,15 @@ function DashboardPage() {
           <ChampionshipTitlesCard titles={championships} />
         </div>
       )}
+
+      <ProfileCompleteCelebrationDialog
+        open={celebrationOpen}
+        displayName={p.displayName}
+        avatarUrl={p.avatarUrl}
+        avatarInitials={p.avatarInitials}
+        profileSlug={p.slug}
+        onDismiss={dismissCelebration}
+      />
     </MemberPageLayout>
   );
 }

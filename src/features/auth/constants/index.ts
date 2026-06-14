@@ -8,7 +8,11 @@
 export const DISCORD_SERVER_INVITE =
   import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.com/invite/Epe4aDdt8N";
 
-/** OAuth2 CSRF state — stored in sessionStorage between redirect and callback. */
+/** Verification channel — # ✅ㆍverification */
+export const DISCORD_VERIFICATION_CHANNEL_URL =
+  "https://discord.com/channels/1193921905795792906/1196472627439599716";
+
+/** OAuth2 CSRF state — stored in localStorage so callback works across tabs after Discord app OAuth. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";
 
 /** Redirect URI used for the in-flight OAuth request (must match token exchange). */

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { ProfileComment, ProfileCommentReply } from "../types/profile-comments";
 
 export const fetchProfileComments = createServerFn({ method: "POST" })
-  .inputValidator((data: { profileMemberId: string; viewerMemberId?: string }) => {
+  .validator((data: { profileMemberId: string; viewerMemberId?: string }) => {
     if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
     return {
       profileMemberId: data.profileMemberId.trim(),
@@ -15,7 +15,7 @@ export const fetchProfileComments = createServerFn({ method: "POST" })
   });
 
 export const createProfileComment = createServerFn({ method: "POST" })
-  .inputValidator((data: { authorMemberId: string; profileMemberId: string; body: string }) => {
+  .validator((data: { authorMemberId: string; profileMemberId: string; body: string }) => {
     if (!data?.authorMemberId?.trim()) throw new Error("Missing author member id.");
     if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
     return {
@@ -30,7 +30,7 @@ export const createProfileComment = createServerFn({ method: "POST" })
   });
 
 export const replyToProfileComment = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     (data: {
       profileMemberId: string;
       parentCommentId: string;
@@ -54,7 +54,7 @@ export const replyToProfileComment = createServerFn({ method: "POST" })
   });
 
 export const setProfileCommentHidden = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     (data: {
       profileMemberId: string;
       commentId: string;
@@ -75,4 +75,14 @@ export const setProfileCommentHidden = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<void> => {
     const { setProfileCommentHidden } = await import("../server/profile-comments.server");
     return setProfileCommentHidden(data);
+  });
+
+export const fetchProfileCommentAlerts = createServerFn({ method: "POST" })
+  .validator((data: { memberId: string }) => {
+    if (!data?.memberId?.trim()) throw new Error("Missing member id.");
+    return { memberId: data.memberId.trim() };
+  })
+  .handler(async ({ data }) => {
+    const { fetchProfileCommentAlertsForMember } = await import("../server/profile-comments.server");
+    return fetchProfileCommentAlertsForMember(data.memberId);
   });
