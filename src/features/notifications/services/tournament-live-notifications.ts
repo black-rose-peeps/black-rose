@@ -5,7 +5,6 @@ import {
 } from "@/features/tournaments/services/team-registration.service";
 import type { MockTeam } from "@/lib/mock-data";
 import {
-  getNotifications,
   isNotificationRead,
   mergeTournamentLiveNotifications,
   notifyListeners,
@@ -69,16 +68,13 @@ export async function syncTournamentLiveNotifications(userId: string): Promise<A
 
   const previousSnapshot = loadSnapshot(userId);
   const nextSnapshot: Record<string, string> = { ...previousSnapshot };
-  const existingNotifications = getNotifications().filter((n) => n.type === "tournament_live");
-  const createdAtById = new Map(
-    existingNotifications.map((n) => [n.id, n.createdAt] as const),
-  );
+  const createdAtById = new Map<string, string>();
 
   const notifications: AppNotification[] = [];
   const seenTournamentIds = new Set<string>();
 
   if (memberTeams.length > 0 && liveById.size > 0) {
-    await Promise.all(
+    const results = await Promise.allSettled(
       memberTeams.map(async (team) => {
         const registrations = await fetchRegistrationsForTeam(team.id);
         for (const registration of registrations) {
@@ -90,7 +86,7 @@ export async function syncTournamentLiveNotifications(userId: string): Promise<A
           seenTournamentIds.add(tournament.id);
           const notificationId = `tournament-live-${tournament.id}`;
           const wasLive = previousSnapshot[tournament.id] === "Live";
-          const alreadyRead = isNotificationRead(notificationId);
+          const alreadyRead = isNotificationRead(notificationId, userId);
           const unread = !wasLive && !alreadyRead;
 
           notifications.push({
@@ -108,6 +104,12 @@ export async function syncTournamentLiveNotifications(userId: string): Promise<A
         }
       }),
     );
+
+    for (const result of results) {
+      if (result.status === "rejected") {
+        console.warn("[notifications] Failed to sync live tournament registrations:", result.reason);
+      }
+    }
   }
 
   for (const tournament of tournaments) {
@@ -117,7 +119,7 @@ export async function syncTournamentLiveNotifications(userId: string): Promise<A
   }
 
   saveSnapshot(userId, nextSnapshot);
-  mergeTournamentLiveNotifications(notifications);
+  mergeTournamentLiveNotifications(notifications, userId);
   notifyListeners();
   return notifications;
 }

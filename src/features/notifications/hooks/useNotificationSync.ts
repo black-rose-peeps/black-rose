@@ -27,6 +27,20 @@ export function useNotificationSync(memberId: string | undefined) {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let subscribedTeamIds: string[] = [];
 
+    function syncTournamentNotifications() {
+      syncTail = syncTail.then(async () => {
+        if (cancelled) return;
+        try {
+          await syncTournamentLiveNotifications(userId);
+        } catch (err) {
+          if (!cancelled) {
+            console.warn("[notifications] tournament live sync failed:", err);
+          }
+        }
+      });
+      return syncTail;
+    }
+
     function syncAll() {
       syncTail = syncTail.then(async () => {
         if (cancelled) return;
@@ -137,7 +151,7 @@ export function useNotificationSync(memberId: string | undefined) {
           table: "tournaments",
         },
         () => {
-          void syncAll();
+          void syncTournamentNotifications();
         },
       );
 

@@ -154,6 +154,19 @@ export async function fetchMemberRegistrationStatusForTournament(
   return status;
 }
 
+function mergeRegistrationsIntoMap(
+  map: Map<string, CaptainTournamentRegistrationStatus>,
+  registrations: MockTeam[],
+): void {
+  for (const registration of registrations) {
+    const next = registrationStatusFromRow(registration.status);
+    if (next === "none") continue;
+    const tournamentId = registration.tournamentId;
+    const current = map.get(tournamentId) ?? "none";
+    map.set(tournamentId, mergeCaptainRegistrationStatus(current, next));
+  }
+}
+
 export async function fetchCaptainTournamentRegistrationMap(
   memberId: string,
 ): Promise<Map<string, CaptainTournamentRegistrationStatus>> {
@@ -163,13 +176,7 @@ export async function fetchCaptainTournamentRegistrationMap(
   await Promise.all(
     teams.map(async (team) => {
       const registrations = await fetchRegistrationsForTeam(team.id);
-      for (const registration of registrations) {
-        const next = registrationStatusFromRow(registration.status);
-        if (next === "none") continue;
-        const tournamentId = registration.tournamentId;
-        const current = map.get(tournamentId) ?? "none";
-        map.set(tournamentId, mergeCaptainRegistrationStatus(current, next));
-      }
+      mergeRegistrationsIntoMap(map, registrations);
     }),
   );
 
@@ -186,13 +193,7 @@ export async function fetchMemberTournamentRegistrationMap(
   await Promise.all(
     teams.map(async (team) => {
       const registrations = await fetchRegistrationsForTeam(team.id);
-      for (const registration of registrations) {
-        const next = registrationStatusFromRow(registration.status);
-        if (next === "none") continue;
-        const tournamentId = registration.tournamentId;
-        const current = map.get(tournamentId) ?? "none";
-        map.set(tournamentId, mergeCaptainRegistrationStatus(current, next));
-      }
+      mergeRegistrationsIntoMap(map, registrations);
     }),
   );
 

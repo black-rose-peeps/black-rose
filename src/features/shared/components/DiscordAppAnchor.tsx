@@ -1,7 +1,8 @@
 import type { AnchorHTMLAttributes } from "react";
 import { isDiscordAppUrl, openDiscordInBrowser, toDiscordAppUrl } from "@/lib/discord-url";
 
-interface DiscordAppAnchorProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+interface DiscordAppAnchorProps
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "target" | "rel"> {
   /** https://discord.com/... invite, channel, or OAuth authorize URL */
   discordUrl: string;
 }

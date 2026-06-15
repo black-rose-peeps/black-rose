@@ -62,7 +62,7 @@ export function launchDiscordDesktopApp(httpsUrl: string): void {
   openDiscordApp(httpsUrl);
 }
 
-/** @deprecated Use openDiscordInBrowser */
+/** @deprecated Use openDiscordApp */
 export function openDiscordLink(httpsUrl: string): void {
   openDiscordApp(httpsUrl);
 }

@@ -26,7 +26,7 @@ import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { useMembers, useUpdateMemberVerification } from "../hooks";
 import type { AdminMember } from "../types";
 import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
-import { memberStatusBadgeVariant } from "../utils";
+import { memberStatusBadgeVariant, initialsFromName } from "../utils";
 import { CreateMemberModal } from "./CreateMemberModal";
 import { EditMemberModal } from "./EditMemberModal";
 import { useDeleteMember } from "../hooks/useDeleteMember";
@@ -222,7 +222,7 @@ export function MembersManagement() {
                       >
                         <MemberAvatar
                           avatarUrl={member.avatarUrl}
-                          initials={member.displayName.slice(0, 2).toUpperCase()}
+                          initials={initialsFromName(member.displayName)}
                           name={member.displayName}
                           className="h-8 w-8 shrink-0 text-[10px] font-tech tracking-wider-2"
                         />

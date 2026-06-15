@@ -55,10 +55,26 @@ export function clearDiscordLinked(): void {
 }
 
 function persistOAuthRequest(state: string, redirectUri: string): void {
-  localStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
-  localStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
-  sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
-  sessionStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
+  try {
+    localStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
+  } catch {
+    // Private mode or quota — sessionStorage may still work.
+  }
+  try {
+    localStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
+  } catch {
+    // Ignore — redirect URI may still be recoverable from sessionStorage.
+  }
+  try {
+    sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
+  } catch {
+    // Ignore — localStorage may still hold state for the callback tab.
+  }
+  try {
+    sessionStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
+  } catch {
+    // Ignore
+  }
 }
 
 /** Store OAuth CSRF state and return the authorize URL (does not open Discord yet). */

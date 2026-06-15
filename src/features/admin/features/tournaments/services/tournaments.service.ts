@@ -250,6 +250,16 @@ export async function updateTournament(
   input: CreateTournamentInput,
 ): Promise<MockTournament> {
   const previous = await fetchTournamentById(id);
+  const renaming = Boolean(previous && input.name !== previous.name);
+
+  if (renaming) {
+    const { error: teamNameErr } = await supabase
+      .from("teams")
+      .update({ active_tournament_name: input.name })
+      .eq("active_tournament_id", id);
+
+    if (teamNameErr) throw new Error(teamNameErr.message);
+  }
 
   const { data, error } = await supabase
     .from("tournaments")
@@ -271,6 +281,12 @@ export async function updateTournament(
     .single();
 
   if (error) {
+    if (renaming && previous) {
+      await supabase
+        .from("teams")
+        .update({ active_tournament_name: previous.name })
+        .eq("active_tournament_id", id);
+    }
     if (participationColumnsMissing(error.message)) {
       throw new Error(
         "Participation mode columns are missing. Run docs/sql/tournament_participation_mode.sql in Supabase.",
@@ -280,14 +296,6 @@ export async function updateTournament(
   }
 
   let updated = rowToTournament(data);
-  if (previous && input.name !== previous.name) {
-    const { error: teamNameErr } = await supabase
-      .from("teams")
-      .update({ active_tournament_name: input.name })
-      .eq("active_tournament_id", id);
-
-    if (teamNameErr) throw new Error(teamNameErr.message);
-  }
 
   if (updated.status === "Completed" || updated.status === "Archived") {
     await concludeTournamentRegistrations(id);

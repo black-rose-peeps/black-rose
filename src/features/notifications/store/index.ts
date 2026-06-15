@@ -118,10 +118,7 @@ function applyPersistedReadState(
   }));
 }
 
-function getAll(): AppNotification[] {
-  const memberId = requireMemberId();
-  if (!memberId) return [];
-
+function getAllForMember(memberId: string): AppNotification[] {
   migrateLegacyStore(memberId);
 
   const stored = load(memberId);
@@ -129,6 +126,13 @@ function getAll(): AppNotification[] {
 
   save([], memberId);
   return [];
+}
+
+function getAll(): AppNotification[] {
+  const memberId = requireMemberId();
+  if (!memberId) return [];
+
+  return getAllForMember(memberId);
 }
 
 function mergeReadState(
@@ -293,18 +297,21 @@ export function mergeRegistrationRequestNotifications(incoming: AppNotification[
 
 const TOURNAMENT_LIVE_NOTIFICATION_TYPES = new Set<AppNotification["type"]>(["tournament_live"]);
 
-export function mergeTournamentLiveNotifications(incoming: AppNotification[]): void {
-  const memberId = requireMemberId();
-  if (!memberId) return;
+export function mergeTournamentLiveNotifications(
+  incoming: AppNotification[],
+  memberId?: string,
+): void {
+  const resolvedMemberId = memberId ?? requireMemberId();
+  if (!resolvedMemberId) return;
 
-  const existing = getAll();
+  const existing = getAllForMember(resolvedMemberId);
   const other = existing.filter((n) => !TOURNAMENT_LIVE_NOTIFICATION_TYPES.has(n.type));
-  const merged = mergeReadState(incoming, existing, memberId);
+  const merged = mergeReadState(incoming, existing, resolvedMemberId);
 
   const combined = [...merged, ...other].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
-  save(combined, memberId);
+  save(combined, resolvedMemberId);
 }
 
 const NOTIFICATIONS_UPDATED = "br-notifications-updated";
@@ -319,4 +326,4 @@ export function subscribeToNotifications(listener: () => void): () => void {
   window.addEventListener(NOTIFICATIONS_UPDATED, listener);
   return () => window.removeEventListener(NOTIFICATIONS_UPDATED, listener);
 }
-
+
