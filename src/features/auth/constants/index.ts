@@ -6,7 +6,7 @@
  * Example: "https://discord.gg/AbCdEfGh"
  */
 export const DISCORD_SERVER_INVITE =
-  import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.com/invite/Epe4aDdt8N";
+  import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.com/invite/blackrosehq";
 
 /** Verification channel — # ✅ㆍverification */
 export const DISCORD_VERIFICATION_CHANNEL_URL =

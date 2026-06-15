@@ -280,6 +280,15 @@ export async function updateTournament(
   }
 
   let updated = rowToTournament(data);
+  if (previous && input.name !== previous.name) {
+    const { error: teamNameErr } = await supabase
+      .from("teams")
+      .update({ active_tournament_name: input.name })
+      .eq("active_tournament_id", id);
+
+    if (teamNameErr) throw new Error(teamNameErr.message);
+  }
+
   if (updated.status === "Completed" || updated.status === "Archived") {
     await concludeTournamentRegistrations(id);
     await releaseTeamsFromTournament(id);

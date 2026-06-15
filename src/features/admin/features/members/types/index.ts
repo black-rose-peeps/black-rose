@@ -3,6 +3,8 @@ export type MemberVerificationStatus = "Not Verified" | "Verified";
 export interface AdminMember {
   id: string;
   username: string;
+  /** Discord display name from profile (global name), falls back to username. */
+  displayName: string;
   discordUsername: string;
   discordId?: string | null;
   status: MemberVerificationStatus;

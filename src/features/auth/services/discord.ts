@@ -11,7 +11,7 @@
  */
 
 import { getDiscordRedirectUri, isAllowedDiscordRedirectUri } from "@/lib/app-url";
-import { launchDiscordDesktopApp } from "@/lib/discord-url";
+import { openDiscordApp } from "@/lib/discord-url";
 import {
   DISCORD_LINKED_KEY,
   DISCORD_OAUTH_REDIRECT_KEY,
@@ -57,8 +57,8 @@ export function clearDiscordLinked(): void {
 function persistOAuthRequest(state: string, redirectUri: string): void {
   localStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
   localStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
-  sessionStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
-  sessionStorage.removeItem(DISCORD_OAUTH_REDIRECT_KEY);
+  sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
+  sessionStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
 }
 
 /** Store OAuth CSRF state and return the authorize URL (does not open Discord yet). */
@@ -71,7 +71,7 @@ export function prepareDiscordOAuth(): { browserFallbackUrl: string } {
 
 /** Open the in-flight OAuth authorize URL in the Discord app (foreground). */
 export function openPreparedDiscordOAuthInApp(browserFallbackUrl: string): void {
-  launchDiscordDesktopApp(browserFallbackUrl);
+  openDiscordApp(browserFallbackUrl);
 }
 
 /** Full browser redirect for users without the Discord app installed. */

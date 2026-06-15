@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  fetchCaptainTournamentRegistrationMap,
+  fetchMemberTournamentRegistrationMap,
   type CaptainTournamentRegistrationStatus,
 } from "../services/team-registration.service";
 
@@ -25,7 +25,7 @@ export function useCaptainTournamentRegistrations(memberId: string | undefined) 
     if (!hasLoadedRef.current) setIsLoading(true);
 
     try {
-      const map = await fetchCaptainTournamentRegistrationMap(memberId);
+      const map = await fetchMemberTournamentRegistrationMap(memberId);
       if (fetchId !== fetchIdRef.current) return;
       setRegistrationByTournament(map);
       hasLoadedRef.current = true;

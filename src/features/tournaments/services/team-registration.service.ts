@@ -176,6 +176,29 @@ export async function fetchCaptainTournamentRegistrationMap(
   return map;
 }
 
+/** Registration state across all teams the member belongs to (captain or roster). */
+export async function fetchMemberTournamentRegistrationMap(
+  memberId: string,
+): Promise<Map<string, CaptainTournamentRegistrationStatus>> {
+  const teams = await fetchTeamsForUser(memberId);
+  const map = new Map<string, CaptainTournamentRegistrationStatus>();
+
+  await Promise.all(
+    teams.map(async (team) => {
+      const registrations = await fetchRegistrationsForTeam(team.id);
+      for (const registration of registrations) {
+        const next = registrationStatusFromRow(registration.status);
+        if (next === "none") continue;
+        const tournamentId = registration.tournamentId;
+        const current = map.get(tournamentId) ?? "none";
+        map.set(tournamentId, mergeCaptainRegistrationStatus(current, next));
+      }
+    }),
+  );
+
+  return map;
+}
+
 export async function fetchCaptainTeamsForTournament(
   memberId: string,
   tournamentId: string,

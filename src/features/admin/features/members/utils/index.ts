@@ -71,17 +71,19 @@ export function formValuesToCreateInput(values: CreateMemberFormValues): CreateM
 
 export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
   const profiles = row.member_profiles as
-    | { avatar_url?: string | null; slug?: string | null }
-    | Array<{ avatar_url?: string | null; slug?: string | null }>
+    | { avatar_url?: string | null; slug?: string | null; display_name?: string | null }
+    | Array<{ avatar_url?: string | null; slug?: string | null; display_name?: string | null }>
     | null
     | undefined;
   const profile = Array.isArray(profiles) ? profiles[0] : profiles;
   const avatarUrl = profile?.avatar_url?.trim() || null;
   const profileSlug = resolveMemberProfileSlug(profile?.slug, row.username as string);
+  const displayName = profile?.display_name?.trim() || (row.username as string);
 
   return {
     id: row.id as string,
     username: row.username as string,
+    displayName,
     discordUsername: row.discord_username as string,
     discordId: row.discord_id as string | null,
     status: normalizeMemberStatus(String(row.status ?? "Not Verified")),
@@ -103,6 +105,7 @@ export function buildAdminMemberFromInput(input: CreateMemberInput): AdminMember
     createdAt: new Date().toISOString(),
     avatarUrl: null,
     profileSlug: input.username.trim(),
+    displayName: input.username.trim(),
   };
 }
 

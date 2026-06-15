@@ -6,6 +6,7 @@ import { syncTeamMembershipNotifications } from "../services/team-membership-not
 import { syncProfileCommentNotifications } from "../services/profile-comment-notifications";
 import { syncTournamentRegistrationRequestNotifications } from "../services/tournament-registration-request-notifications";
 import { syncTournamentRegistrationNotifications } from "../services/tournament-registration-notifications";
+import { syncTournamentLiveNotifications } from "../services/tournament-live-notifications";
 
 function teamIdsEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -34,6 +35,7 @@ export function useNotificationSync(memberId: string | undefined) {
             syncTeamMembershipNotifications(userId),
             syncTournamentRegistrationNotifications(userId),
             syncTournamentRegistrationRequestNotifications(userId),
+            syncTournamentLiveNotifications(userId),
             syncProfileCommentNotifications(userId),
           ]);
         } catch (err) {
@@ -121,6 +123,18 @@ export function useNotificationSync(memberId: string | undefined) {
           schema: "public",
           table: "profile_comments",
           filter: `profile_member_id=eq.${userId}`,
+        },
+        () => {
+          void syncAll();
+        },
+      );
+
+      nextChannel = nextChannel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tournaments",
         },
         () => {
           void syncAll();
