@@ -9,6 +9,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "discord-bot": "node --env-file=.env --env-file=.env.local --import tsx/esm scripts/discord-role-bot.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -83,6 +84,7 @@
     "globals": "^15.15.0",
     "nitro": "3.0.260429-beta",
     "prettier": "^3.7.3",
+    "tsx": "^4.22.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^7.3.1"

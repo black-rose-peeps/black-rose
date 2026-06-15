@@ -8,9 +8,13 @@
 export const DISCORD_SERVER_INVITE =
   import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.com/invite/blackrosehq";
 
-/** Verification channel — # ✅ㆍverification */
+/** Verification channel deep link — falls back to the server invite if unset. */
 export const DISCORD_VERIFICATION_CHANNEL_URL =
-  "https://discord.com/channels/1193921905795792906/1196472627439599716";
+  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_URL ?? DISCORD_SERVER_INVITE;
+
+/** Label shown on the waitlist for the verification channel. */
+export const DISCORD_VERIFICATION_CHANNEL_LABEL =
+  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_LABEL ?? "#verification";
 
 /** OAuth2 CSRF state — stored in localStorage and sessionStorage for cross-tab OAuth. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";

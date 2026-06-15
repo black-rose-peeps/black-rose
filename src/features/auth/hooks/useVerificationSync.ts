@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { syncSessionFromDatabase } from "../services/sync-session";
 import { getSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
+import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
 
-const POLL_INTERVAL_MS = 10_000;
+/** DB-only fallback if Realtime is unavailable. */
+const FALLBACK_POLL_INTERVAL_MS = 60_000;
 
 interface UseVerificationSyncOptions {
   /** Called when DB status becomes Verified. */
   onVerified: () => void;
-  /** Poll automatically while the user waits on the waitlist. */
+  /** Poll Supabase as a fallback while the user waits on the waitlist. */
   poll?: boolean;
 }
 
@@ -18,23 +20,27 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
   const onVerifiedRef = useRef(onVerified);
   onVerifiedRef.current = onVerified;
 
-  const syncVerification = useCallback(async () => {
+  const applySessionUpdate = useCallback(async () => {
     const session = getSession();
     if (!session) return false;
 
+    const updated = await syncSessionFromDatabase();
+    if (!updated) return false;
+
+    if (hasFullMemberAccess(updated.role)) {
+      onVerifiedRef.current();
+      return true;
+    }
+
+    return false;
+  }, []);
+
+  const syncVerification = useCallback(async () => {
     setIsChecking(true);
     setCheckError(null);
 
     try {
-      const updated = await syncSessionFromDatabase();
-      if (!updated) return false;
-
-      if (hasFullMemberAccess(updated.role)) {
-        onVerifiedRef.current();
-        return true;
-      }
-
-      return false;
+      return await applySessionUpdate();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not refresh verification status.";
@@ -43,15 +49,23 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [applySessionUpdate]);
+
+  const session = getSession();
+  useMemberVerificationRealtime(session?.id ?? null, () => {
+    void applySessionUpdate();
+  });
+
+  useEffect(() => {
+    void syncVerification();
+  }, [syncVerification]);
 
   useEffect(() => {
     if (!poll) return;
 
-    void syncVerification();
     const intervalId = window.setInterval(() => {
       void syncVerification();
-    }, POLL_INTERVAL_MS);
+    }, FALLBACK_POLL_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
   }, [poll, syncVerification]);

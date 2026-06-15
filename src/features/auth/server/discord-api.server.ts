@@ -135,3 +135,40 @@ export async function fetchDiscordConnections(accessToken: string): Promise<Disc
 
   return (await response.json()) as DiscordConnection[];
 }
+
+interface DiscordOAuthGuildMember {
+  roles: string[];
+}
+
+/**
+ * Fetch the signed-in user's roles in a guild (requires `guilds.members.read`).
+ * Returns null when the scope is missing or the lookup cannot run — caller should fall back to the bot API.
+ * Returns an empty array when the user is not in the guild.
+ */
+export async function fetchOAuthGuildMemberRoleIds(
+  accessToken: string,
+  guildId: string,
+): Promise<string[] | null> {
+  const response = await discordFetch(`${DISCORD_API_BASE}/users/@me/guilds/${guildId}/member`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": DISCORD_USER_AGENT,
+    },
+  });
+
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new DiscordApiError(response.status, detail);
+  }
+
+  const member = (await response.json()) as DiscordOAuthGuildMember;
+  return member.roles ?? [];
+}

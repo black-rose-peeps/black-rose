@@ -26,6 +26,7 @@ export const refreshMemberSession = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<RefreshMemberSessionResult> => {
     const { findMemberById } = await import("../server/member-auth.server");
+
     const member = await findMemberById(data.memberId);
     if (!member) {
       throw new Error("Member account not found. Please sign in with Discord again.");
