@@ -5,6 +5,7 @@ export type NotificationType =
   | "invite_declined" // A member declined your team invite
   | "tournament_new" // A new tournament was posted
   | "tournament_open" // Registration opened for a tournament
+  | "tournament_live" // A registered tournament bracket went live
   | "registration_approved" // Your team registration was approved
   | "registration_rejected" // Your team registration was rejected
   | "registration_request" // A teammate asked the captain to register for a tournament

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 import { fetchTeams } from "../services/teams.service";
 import type { Team } from "../types";
 
@@ -7,21 +8,46 @@ export function useTeams() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const refetch = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const data = await fetchTeams();
       setTeams(data);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load teams.");
+      if (!options?.silent) {
+        setError(err instanceof Error ? err.message : "Failed to load teams.");
+      }
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refetch();
+    void refetch();
+
+    const supabase = getSupabaseClient();
+    const channel = supabase
+      .channel("admin-teams-list")
+      .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, () => {
+        void refetch({ silent: true });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [refetch]);
+
+  useEffect(() => {
+    function handleFocus() {
+      void refetch({ silent: true });
+    }
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [refetch]);
 
   const prependTeam = useCallback((team: Team) => {

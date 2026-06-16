@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CornerAccents } from "@/features/member/components/MemberShell";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
 import type { DiscordAppLinkRequest } from "@/features/shared/hooks/useDiscordAppLink";
+import { isDiscordAppUrl, toDiscordAppUrl } from "@/lib/discord-url";
 
 interface DiscordAppLinkDialogProps {
   pending: DiscordAppLinkRequest | null;
@@ -28,6 +29,8 @@ export function DiscordAppLinkDialog({
 }: DiscordAppLinkDialogProps) {
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const isOAuth = pending?.kind === "oauth";
+  const appUrl = pending ? toDiscordAppUrl(pending.url) : null;
+  const openHref = appUrl && isDiscordAppUrl(appUrl) ? appUrl : pending?.url;
 
   function handleOpenChange(open: boolean) {
     if (!open) {
@@ -36,7 +39,7 @@ export function DiscordAppLinkDialog({
     }
   }
 
-  function handleConfirm() {
+  function handleConfirmClick() {
     onConfirm(dontAskAgain);
     setDontAskAgain(false);
   }
@@ -63,7 +66,7 @@ export function DiscordAppLinkDialog({
               ) : (
                 "This opens the link in your Discord desktop app."
               )}{" "}
-              {!isOAuth && "If your browser asks to allow discord:// links, choose Open."}
+              If your browser asks to allow discord:// links, choose Open or Allow.
             </DialogDescription>
           </DialogHeader>
 
@@ -77,7 +80,7 @@ export function DiscordAppLinkDialog({
             <span className="text-sm text-muted-foreground">Don&apos;t ask again</span>
           </label>
 
-          {isOAuth && onBrowserFallback && (
+          {onBrowserFallback && (
             <button
               type="button"
               onClick={() => {
@@ -87,7 +90,7 @@ export function DiscordAppLinkDialog({
               }}
               className="relative mt-4 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              No Discord app? Continue in browser
+              {isOAuth ? "No Discord app? Continue in browser" : "Open in browser instead"}
             </button>
           )}
         </div>
@@ -101,14 +104,27 @@ export function DiscordAppLinkDialog({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            className="clip-cta inline-flex h-11 items-center gap-2 rounded-none bg-[#5865F2] px-5 font-tech text-ui-readable uppercase text-white hover:bg-[#4752c4]"
-          >
-            <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
-            {isOAuth ? "Open Discord" : "Open App"}
-          </Button>
+          {openHref ? (
+            <a
+              href={openHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleConfirmClick}
+              className="clip-cta inline-flex h-11 items-center gap-2 rounded-none bg-[#5865F2] px-5 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
+            >
+              <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
+              {isOAuth ? "Open Discord" : "Open App"}
+            </a>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleConfirmClick}
+              className="clip-cta inline-flex h-11 items-center gap-2 rounded-none bg-[#5865F2] px-5 font-tech text-ui-readable uppercase text-white hover:bg-[#4752c4]"
+            >
+              <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
+              {isOAuth ? "Open Discord" : "Open App"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

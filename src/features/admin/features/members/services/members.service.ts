@@ -25,7 +25,7 @@ function throwMemberUniqueViolation(error: { message: string }): never {
 export async function fetchMembers(): Promise<AdminMember[]> {
   const { data, error } = await supabase
     .from("members")
-    .select("*, member_profiles(avatar_url, slug)")
+    .select("*, member_profiles(avatar_url, slug, display_name)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -35,7 +35,7 @@ export async function fetchMembers(): Promise<AdminMember[]> {
 export async function fetchMemberById(id: string): Promise<AdminMember | null> {
   const { data, error } = await supabase
     .from("members")
-    .select("*, member_profiles(avatar_url, slug)")
+    .select("*, member_profiles(avatar_url, slug, display_name)")
     .eq("id", id)
     .single();
 
