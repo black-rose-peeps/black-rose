@@ -8,7 +8,11 @@ import {
   deleteProfileCommentByOwner as deleteOwnerFn,
   deleteProfileCommentAsAdmin as deleteAdminFn,
 } from "../functions/profile-comments.functions";
-import type { ProfileComment, ProfileCommentReply, ProfileCommentsPage } from "../types/profile-comments";
+import type {
+  ProfileComment,
+  ProfileCommentReply,
+  ProfileCommentsPage,
+} from "../types/profile-comments";
 import type { ProfileCommentAlert } from "../server/profile-comments.server";
 
 export async function fetchProfileComments(

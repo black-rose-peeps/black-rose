@@ -79,6 +79,12 @@ const SOCIAL_PLATFORM_SVG: Record<SocialPlatform, string> = {
   discord: "/discord-tile.svg",
 };
 
+function isDefinedPublicSocialLink(
+  link: MemberProfile["socialLinks"][number] | undefined,
+): link is MemberProfile["socialLinks"][number] & { url: string } {
+  return Boolean(link && isSocialLinkPublic(link));
+}
+
 function MemberProfilePage() {
   const { slug } = Route.useParams();
   const session = getSession();
@@ -187,7 +193,7 @@ function MemberProfilePage() {
 
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
     p.socialLinks.find((s) => s.platform === platform),
-  ).filter((s): s is NonNullable<typeof s> => !!s && isSocialLinkPublic(s));
+  ).filter(isDefinedPublicSocialLink);
 
   return (
     <MemberPageLayout maxWidth="max-w-4xl">
@@ -270,7 +276,7 @@ function MemberProfilePage() {
           {publicSocials.map((s) => (
             <ProfileExternalLink
               key={s.platform}
-              href={s.url!}
+              href={s.url}
               className="group relative inline-flex h-11 items-center gap-2 overflow-hidden border border-white/10 bg-white/5 px-3 transition hover:border-white/20 hover:bg-white/10"
               title={SOCIAL_PLATFORM_LABELS[s.platform]}
               aria-label={SOCIAL_PLATFORM_LABELS[s.platform]}
