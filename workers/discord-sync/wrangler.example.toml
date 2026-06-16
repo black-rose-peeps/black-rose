@@ -1,0 +1,8 @@
+# Example — copy values into wrangler.toml [vars] or set in Cloudflare dashboard.
+# Secrets (DISCORD_BOT_TOKEN, SUPABASE_SERVICE_ROLE_KEY) must use: wrangler secret put
+
+DISCORD_GUILD_ID=1193921905795792906
+DISCORD_ROSE_ROLE_ID=1465647773658517660
+DISCORD_ROSE_ROLE_NAME=ROSE
+SUPABASE_URL=https://your-project.supabase.co
+SYNC_BATCH_SIZE=22

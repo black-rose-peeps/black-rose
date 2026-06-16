@@ -19,7 +19,7 @@ import {
 } from "../constants";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID ?? "";
-const DISCORD_SCOPES = ["identify", "email", "connections"].join(" ");
+const DISCORD_SCOPES = ["identify", "email", "connections", "guilds.members.read"].join(" ");
 
 export function isDiscordOAuthConfigured(): boolean {
   return Boolean(DISCORD_CLIENT_ID);

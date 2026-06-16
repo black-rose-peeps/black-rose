@@ -1,0 +1,17 @@
+name = "blackrose-discord-sync"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+
+# Sync ROSE role → Supabase every 2 minutes (Workers Paid recommended for production).
+[triggers]
+crons = ["*/2 * * * *"]
+
+[vars]
+DISCORD_GUILD_ID = "1193921905795792906"
+DISCORD_ROSE_ROLE_NAME = "ROSE"
+SUPABASE_URL = "https://qupypapvfdhzvmseolhi.supabase.co"
+SYNC_BATCH_SIZE = "22"
+DISCORD_ROSE_ROLE_ID = "1465647773658517660"
+
+[observability]
+enabled = true

@@ -200,7 +200,7 @@ The platform is **production-capable** with Supabase as the backend. Shared doma
 
 - **Announcements** — admin UI uses static mock data; no database persistence or Discord posting
 - **Riot Sign-On (RSO)** — not integrated; Valorant identity is manual IGN + tagline only
-- **Automated Discord role sync** — verification is manual in admin
+- **Discord ROSE role sync** — Cloudflare Cron Worker (`workers/discord-sync`) or optional Gateway bot; see [docs/discord-bot.md](./docs/discord-bot.md)
 - **Email notifications** — in-app only today
 
 ---
