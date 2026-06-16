@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { launchDiscordDesktopApp } from "@/lib/discord-url";
+import { openDiscordApp } from "@/lib/discord-url";
 
 const SKIP_PROMPT_KEY = "br_discord_app_prompt_skip";
 
@@ -36,7 +36,7 @@ export function useDiscordAppLink() {
       if (typeof window === "undefined") return;
 
       if (readSkipPrompt()) {
-        launchDiscordDesktopApp(url);
+        openDiscordApp(url);
         return;
       }
 
@@ -45,16 +45,13 @@ export function useDiscordAppLink() {
     [],
   );
 
+  /** Called when the user confirms — navigation is handled by the dialog anchor. */
   const confirmDiscordAppLink = useCallback((dontAskAgain: boolean) => {
     if (dontAskAgain) {
       writeSkipPrompt();
     }
-    const url = pending?.url;
-    if (url) {
-      launchDiscordDesktopApp(url);
-    }
     setPending(null);
-  }, [pending]);
+  }, []);
 
   const cancelDiscordAppLink = useCallback(() => {
     setPending(null);

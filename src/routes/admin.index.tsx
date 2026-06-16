@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CalendarClock,
   CheckCircle2,
@@ -13,6 +13,7 @@ import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminEmptyTitle, AdminEmptyTitleAllClear } from "@/features/admin/constants/empty-state-titles";
 import { Panel, PanelHeader, StatCard, StatusPill } from "@/features/admin/components/ui";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getSupabaseClient } from "@/lib/supabase";
 import {
   fetchAdminDashboard,
   type AdminDashboardData,
@@ -27,28 +28,46 @@ function useAdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
+  const refetch = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+      setError(null);
+    }
 
-    fetchAdminDashboard()
-      .then((result) => {
-        if (!cancelled) setData(result);
+    try {
+      const result = await fetchAdminDashboard();
+      setData(result);
+      setError(null);
+    } catch (err) {
+      if (!options?.silent) {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard.");
+      }
+    } finally {
+      if (!options?.silent) setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refetch();
+
+    const supabase = getSupabaseClient();
+    const channel = supabase
+      .channel("admin-dashboard-tournaments")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
+        void refetch({ silent: true });
       })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load dashboard.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+      .subscribe();
+
+    function handleFocus() {
+      void refetch({ silent: true });
+    }
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      cancelled = true;
+      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", handleFocus);
     };
-  }, []);
+  }, [refetch]);
 
   return { data, isLoading, error };
 }

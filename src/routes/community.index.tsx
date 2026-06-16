@@ -5,8 +5,7 @@ import { CommunityPortrait } from "@/features/community/components/CommunityPort
 import { GuildCodeGrid } from "@/features/community/components/GuildCodeGrid";
 import { GUILD_MASTER_ATTRIBUTION } from "@/features/community/constants/guild-code";
 import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
-import { DiscordAppLinkDialog } from "@/features/shared/components/DiscordAppLinkDialog";
-import { useDiscordAppLink } from "@/features/shared/hooks/useDiscordAppLink";
+import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
 import { Emblem } from "@/features/shared/components/Emblem";
 
 export const Route = createFileRoute("/community/")({
@@ -24,13 +23,6 @@ export const Route = createFileRoute("/community/")({
 });
 
 function CommunityPage() {
-  const {
-    pending: discordLinkPending,
-    requestDiscordAppLink,
-    confirmDiscordAppLink,
-    cancelDiscordAppLink,
-  } = useDiscordAppLink();
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
@@ -129,16 +121,13 @@ function CommunityPage() {
             Join the Discord, meet the roster, and compete under the Black Rose banner.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <button
-              type="button"
-              onClick={() =>
-                requestDiscordAppLink(DISCORD_SERVER_INVITE, "the Black Rose Discord server")
-              }
+            <DiscordAppAnchor
+              discordUrl={DISCORD_SERVER_INVITE}
               className="clip-cta font-semibold inline-flex h-12 items-center gap-2 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
             >
               Join Discord
               <span aria-hidden>→</span>
-            </button>
+            </DiscordAppAnchor>
             <Link
               to="/login"
               className="clip-cta font-semibold inline-flex h-12 items-center gap-2 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
@@ -151,12 +140,6 @@ function CommunityPage() {
       </section>
 
       <Footer />
-
-      <DiscordAppLinkDialog
-        pending={discordLinkPending}
-        onConfirm={confirmDiscordAppLink}
-        onCancel={cancelDiscordAppLink}
-      />
     </div>
   );
 }

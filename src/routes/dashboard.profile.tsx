@@ -402,7 +402,7 @@ function ProfileEditPage() {
                   onChange={(e) => setBio(e.target.value)}
                   rows={5}
                   placeholder="Tell the community about yourself…"
-                  className={techFieldClass}
+                  className={cn(techFieldClass, "custom-scrollbar max-h-48 resize-y overflow-y-auto")}
                 />
                 <p className="text-xs text-muted-foreground">
                   At least 20 characters count toward profile completion.
@@ -501,6 +501,7 @@ function ProfileEditPage() {
                       value={valorantTagline}
                       onChange={(e) => setValorantTagline(e.target.value.replace(/^#/, ""))}
                       placeholder="000"
+                      maxLength={6}
                       className={cn(techFieldClass, "pl-7")}
                     />
                   </div>

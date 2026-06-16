@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 import { withResolvedTournamentStatus } from "@/features/tournaments/utils/tournament-status";
 import { fetchTournaments } from "../services/tournaments.service";
 import type { AdminTournament } from "../types";
@@ -27,7 +28,19 @@ export function useTournaments() {
   }, []);
 
   useEffect(() => {
-    refetch();
+    void refetch();
+
+    const supabase = getSupabaseClient();
+    const channel = supabase
+      .channel("admin-tournaments-list")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
+        void refetch({ silent: true });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [refetch]);
 
   useEffect(() => {

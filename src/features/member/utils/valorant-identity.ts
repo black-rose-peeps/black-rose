@@ -41,7 +41,7 @@ export function validateValorantIdentityInput(
     return "IGN can only contain letters, numbers, and spaces.";
   }
 
-  if (tag.length < 3 || tag.length > 5) return "Tagline must be 3–5 characters.";
+  if (tag.length < 3 || tag.length > 6) return "Tagline must be 3–6 characters.";
   if (!/^[\p{L}\p{N}]+$/u.test(tag)) {
     return "Tagline can only contain letters and numbers (including non-Latin characters).";
   }

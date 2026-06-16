@@ -22,6 +22,33 @@ type AuthCallbackSearch = {
   error_description?: string;
 };
 
+function isDevServerFnRaceError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes("Invalid server function ID");
+}
+
+async function exchangeDiscordCode(code: string, redirectUri: string) {
+  const maxAttempts = import.meta.env.DEV ? 3 : 1;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await completeDiscordAuth({
+        data: { code, redirectUri },
+      });
+    } catch (err) {
+      const canRetry =
+        import.meta.env.DEV && isDevServerFnRaceError(err) && attempt < maxAttempts - 1;
+      if (canRetry) {
+        await new Promise((resolve) => window.setTimeout(resolve, 400 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("Could not complete Discord sign-in.");
+}
+
 export const Route = createFileRoute("/auth/callback")({
   validateSearch: (search: Record<string, unknown>): AuthCallbackSearch => ({
     code: typeof search.code === "string" ? search.code : undefined,
@@ -68,15 +95,15 @@ function AuthCallbackPage() {
 
       if (!validateOAuthState(search.state)) {
         clearStoredOAuthState();
-        setErrorMessage("Invalid or expired sign-in session. Please try again.");
+        setErrorMessage(
+          "Invalid or expired sign-in session. Start sign-in again on the same browser you used, or choose “Continue in browser” on the login page.",
+        );
         return;
       }
 
       try {
         const redirectUri = readStoredOAuthRedirectUri() ?? getDiscordRedirectUri();
-        const { user } = await completeDiscordAuth({
-          data: { code: search.code, redirectUri },
-        });
+        const { user } = await exchangeDiscordCode(search.code, redirectUri);
         if (cancelled) return;
 
         clearStoredOAuthState();
