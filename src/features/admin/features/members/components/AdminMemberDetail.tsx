@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AdminDetailGrid, AdminPageHero, TechPanel } from "@/features/admin/components/AdminShell";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
+import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { memberStatusBadgeVariant } from "../utils";
 import { AdminMemberCommentsPanel } from "./AdminMemberCommentsPanel";
 import type { AdminMember } from "../types";
@@ -186,7 +187,7 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
             profileMemberId={member.id}
             profileOwner={{
               displayName: profile?.displayName ?? member.username,
-              slug: profile?.slug ?? member.username,
+              slug: resolveMemberProfileSlug(profile?.slug, member.username),
               discordUsername: member.discordUsername,
               avatarUrl: profile?.avatarUrl ?? null,
               avatarInitials: initials,
