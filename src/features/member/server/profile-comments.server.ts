@@ -252,6 +252,9 @@ async function fetchProfileCommentsPage(
 
     if (repliesError) throw new Error(repliesError.message);
     replyRows = (replies ?? []) as CommentRow[];
+    if (!includeHidden) {
+      replyRows = replyRows.filter((row) => !row.is_hidden);
+    }
   }
 
   const repliesByParent = groupRepliesByParent(replyRows);
@@ -428,13 +431,6 @@ async function deleteCommentThread(profileMemberId: string, commentId: string): 
   }
 
   const threadRootId = (comment.parent_comment_id as string | null) ?? (comment.id as string);
-
-  const { error: repliesError } = await supabase
-    .from("profile_comments")
-    .delete()
-    .eq("parent_comment_id", threadRootId);
-
-  if (repliesError) throw new Error(repliesError.message);
 
   const { error: rootError } = await supabase
     .from("profile_comments")

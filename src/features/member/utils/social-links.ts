@@ -1,7 +1,7 @@
 import type { SocialLink } from "../types";
 
 /** True when a link has a URL and is marked public. */
-export function isSocialLinkPublic(link: SocialLink): boolean {
+export function isSocialLinkPublic(link: SocialLink): link is SocialLink & { url: string } {
   return Boolean(link.url?.trim() && link.isPublic);
 }
 

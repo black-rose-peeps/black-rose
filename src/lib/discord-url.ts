@@ -14,7 +14,7 @@ export function toDiscordAppUrl(httpsUrl: string): string {
       if (inviteMatch?.[1]) {
         return `discord://-/invite/${inviteMatch[1]}`;
       }
-      if (parsed.pathname && parsed.pathname !== "/") {
+      if (parsed.pathname !== "/") {
         return `discord://-${parsed.pathname}${parsed.search}`;
       }
     }
@@ -29,7 +29,8 @@ export function isDiscordHttpsUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "");
-    return host === "discord.com" || host === "discord.gg";
+    const isHttp = parsed.protocol === "http:" || parsed.protocol === "https:";
+    return isHttp && (host === "discord.com" || host === "discord.gg");
   } catch {
     return false;
   }

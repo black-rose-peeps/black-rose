@@ -21,6 +21,8 @@ create table if not exists public.profile_comments (
 create index if not exists profile_comments_profile_idx
   on public.profile_comments (profile_member_id, created_at desc);
 
+drop index if exists public.profile_comments_one_reply_per_parent;
+
 create index if not exists profile_comments_parent_idx
   on public.profile_comments (parent_comment_id)
   where parent_comment_id is not null;
