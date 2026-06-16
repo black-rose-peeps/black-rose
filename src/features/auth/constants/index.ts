@@ -1,20 +1,17 @@
 /**
- * Auth-related constants.
- *
- * DISCORD_SERVER_INVITE — replace this with your actual Discord invite link.
- * You can find or generate it in your Discord server settings under Invites.
- * Example: "https://discord.gg/AbCdEfGh"
+ * Auth-related constants — Black Rose official Discord server.
  */
 export const DISCORD_SERVER_INVITE =
   import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.com/invite/blackrosehq";
 
-/** Verification channel deep link — falls back to the server invite if unset. */
+/** Official #✅ㆍverification channel deep link. */
 export const DISCORD_VERIFICATION_CHANNEL_URL =
-  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_URL ?? DISCORD_SERVER_INVITE;
+  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_URL ??
+  "https://discord.com/channels/1193921905795792906/1196472627439599716";
 
 /** Label shown on the waitlist for the verification channel. */
 export const DISCORD_VERIFICATION_CHANNEL_LABEL =
-  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_LABEL ?? "#verification";
+  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_LABEL ?? "✅ㆍverification";
 
 /** OAuth2 CSRF state — stored in localStorage and sessionStorage for cross-tab OAuth. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";

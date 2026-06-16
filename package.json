@@ -10,6 +10,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "discord-bot": "node --env-file=.env --env-file=.env.local --import tsx/esm scripts/discord-role-bot.ts",
+    "discord-sync:dev": "npm run dev --prefix workers/discord-sync",
+    "discord-sync:deploy": "npm run deploy --prefix workers/discord-sync",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

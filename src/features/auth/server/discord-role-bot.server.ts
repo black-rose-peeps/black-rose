@@ -101,21 +101,22 @@ export async function startDiscordRoleBot(): Promise<void> {
 
   const connect = (): void => {
     void (async () => {
+      let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+      const reconnect = (reason: string): void => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+        reconnectAttempt += 1;
+        const delayMs = Math.min(30_000, 1_000 * 2 ** Math.min(reconnectAttempt, 5));
+        console.warn(`[discord-bot] ${reason} Reconnecting in ${delayMs}ms…`);
+        setTimeout(connect, delayMs);
+      };
+
       try {
         const url = resumeGatewayUrl ?? (await fetchGatewayBotUrl());
         const ws = new WebSocket(url);
-        let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-
-        const reconnect = (reason: string): void => {
-          if (heartbeatTimer) {
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = null;
-          }
-          reconnectAttempt += 1;
-          const delayMs = Math.min(30_000, 1_000 * 2 ** Math.min(reconnectAttempt, 5));
-          console.warn(`[discord-bot] ${reason} Reconnecting in ${delayMs}ms…`);
-          setTimeout(connect, delayMs);
-        };
 
         ws.on("message", (raw) => {
           let payload: GatewayPayload;
