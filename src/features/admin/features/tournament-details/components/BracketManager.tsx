@@ -45,7 +45,8 @@ import {
   updateSwissMatchScores,
   type SwissBracketState,
 } from "../utils/managed-swiss-bracket";
-import { eliminationRoundCount } from "../utils/bracket-field";
+import { eliminationRoundCount, orderedTeamNamesFromAssignments, playInMatchCount } from "../utils/bracket-field";
+import { isOpeningPlayInRound } from "@/features/tournaments/utils/bracket-display";
 import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/bracket-store";
 import { fetchBracketState } from "../services/bracket.service";
 import type { PersistedBracketPayload } from "../services/bracket.service";
@@ -58,12 +59,14 @@ function managedMatchesToPublicRounds(
   roundMetas: BracketRoundMeta[],
 ): BracketRound[] {
   return roundMetas.map((meta) => ({
+    id: meta.id,
     label: meta.label,
     matches: meta.matchIds
       .map((id) => matches.find((m) => m.id === id))
       .filter((m): m is ManagedMatch => !!m)
       .map((m) => ({
         id: m.id,
+        label: m.label,
         round: m.swissPool
           ? `${m.roundLabel} · ${formatSwissPoolLabel(m.swissPool)}`
           : m.roundLabel,
@@ -147,6 +150,7 @@ function deriveBracketState(
   initialBracket: BracketRound[],
   teams: TournamentTeam[],
   bracketSize: number,
+  format: string,
 ): {
   assignments: Array<TournamentTeam | null>;
   status: BracketStatus;
@@ -154,19 +158,48 @@ function deriveBracketState(
   bracketLocked: boolean;
 } {
   const assignments: Array<TournamentTeam | null> = Array(bracketSize).fill(null);
-  const firstRound = initialBracket[0];
+  const findTeam = (name: string | null | undefined) =>
+    name ? (teams.find((t) => t.name === name) ?? null) : null;
 
-  if (firstRound?.matches?.length) {
-    let slot = 0;
-    for (const match of firstRound.matches) {
-      if (slot >= bracketSize) break;
-      assignments[slot++] = match.teamA
-        ? (teams.find((t) => t.name === match.teamA) ?? null)
-        : null;
-      if (slot >= bracketSize) break;
-      assignments[slot++] = match.teamB
-        ? (teams.find((t) => t.name === match.teamB) ?? null)
-        : null;
+  const openingPlayInMatches = playInMatchCount(bracketSize);
+
+  if (isDoubleEliminationFormat(format) && openingPlayInMatches > 0) {
+    const directCount = bracketSize - openingPlayInMatches * 2;
+    const directMatchCount = directCount / 2;
+    const upperR1 = initialBracket.find(
+      (round) => /upper/i.test(round.label) && /round\s*1/i.test(round.label),
+    );
+    const playInRound = initialBracket.find((round) => isOpeningPlayInRound(round.label));
+
+    if (upperR1?.matches?.length) {
+      for (let i = 0; i < directMatchCount; i++) {
+        const match = upperR1.matches[i];
+        if (!match) continue;
+        assignments[i * 2] = findTeam(match.teamA);
+        assignments[i * 2 + 1] = findTeam(match.teamB);
+      }
+    }
+
+    if (playInRound?.matches?.length) {
+      let slot = directCount;
+      for (const match of playInRound.matches) {
+        if (slot >= bracketSize) break;
+        assignments[slot++] = findTeam(match.teamA);
+        if (slot >= bracketSize) break;
+        assignments[slot++] = findTeam(match.teamB);
+      }
+    }
+  } else {
+    const firstRound = initialBracket[0];
+
+    if (firstRound?.matches?.length) {
+      let slot = 0;
+      for (const match of firstRound.matches) {
+        if (slot >= bracketSize) break;
+        assignments[slot++] = findTeam(match.teamA);
+        if (slot >= bracketSize) break;
+        assignments[slot++] = findTeam(match.teamB);
+      }
     }
   }
 
@@ -375,7 +408,7 @@ export function BracketManager({
     if (!loadedFromDb || status === "published") return;
     if (bracketGenerated && managedMatches.length > 0) return;
 
-    const derived = deriveBracketState(initialBracket, teams, bracketSize);
+    const derived = deriveBracketState(initialBracket, teams, bracketSize, format);
     setStatus(derived.status);
     setAssignments(derived.assignments);
     setBracketGenerated(derived.bracketGenerated);
@@ -383,7 +416,7 @@ export function BracketManager({
 
     bracketEngine.reset();
     if (derived.bracketGenerated) {
-      const teamNames = derived.assignments.filter(Boolean).map((t) => t!.name);
+      const teamNames = orderedTeamNamesFromAssignments(derived.assignments, bracketSize);
       if (teamNames.length > 0) {
         bracketEngine.autoSeed(teamNames);
         const managed = buildManagedState(teamNames, format);
@@ -411,6 +444,10 @@ export function BracketManager({
     managedMatches.length,
   ]);
 
+  const openingPlayInMatches = isDoubleElim ? playInMatchCount(bracketSize) : 0;
+  const directSeeds =
+    openingPlayInMatches > 0 ? bracketSize - openingPlayInMatches * 2 : undefined;
+
   const validation = bracketEngine.validateBracketIntegrity();
   const assignedCount = assignments.slice(0, bracketSize).filter(Boolean).length;
   const parityOk = teams.length % 2 === 0 || (isSwiss && hasSwissByeSlot);
@@ -430,7 +467,7 @@ export function BracketManager({
       return;
     }
 
-    const teamNames = assignments.filter(Boolean).map((t) => t!.name);
+    const teamNames = orderedTeamNamesFromAssignments(assignments, bracketSize);
     bracketEngine.autoSeed(teamNames);
 
     const managed = buildManagedState(teamNames, format);
@@ -451,7 +488,7 @@ export function BracketManager({
     const assignedTeams = nextAssignments.filter(Boolean) as TournamentTeam[];
     if (assignedTeams.length !== teams.length) return;
 
-    const names = assignedTeams.map((team) => team.name);
+    const names = orderedTeamNamesFromAssignments(nextAssignments, bracketSize);
     bracketEngine.autoSeed(names);
     const managed = buildManagedState(names, format);
     setManagedMatches(managed.matches);
@@ -929,6 +966,8 @@ export function BracketManager({
             bracketSize={bracketSize}
             seedingMatchCount={seedingMatchCount}
             hasSwissByeSlot={hasSwissByeSlot}
+            directSeedCount={directSeeds}
+            playInMatchCount={openingPlayInMatches > 0 ? openingPlayInMatches : undefined}
             disabled={seedingShuffleDisabled}
             onTeamSelect={onTeamSelect}
           />

@@ -9,6 +9,7 @@ import {
   playInMatchCount,
   powerOfTwoElimRoundMatchCounts,
 } from "./bracket-field";
+import { roundFlowRank } from "@/features/tournaments/utils/bracket-round-order";
 
 export type BestOfFormat = "BO1" | "BO3" | "BO5";
 
@@ -201,18 +202,111 @@ function wirePlayInToMainBracket(
   }
 }
 
-/** Dedicated lower-bracket pool for play-in losers (separate from upper drop-ins). */
+function rewireWinnerNext(
+  matches: ManagedMatch[],
+  fromId: string,
+  toId: string,
+  slot: "teamA" | "teamB",
+): void {
+  const from = matches.find((match) => match.id === fromId);
+  if (!from) return;
+  from.winnerNext = { matchId: toId, slot };
+}
+
+function insertRoundMetaBefore(
+  roundMetas: BracketRoundMeta[],
+  beforeId: string,
+  meta: BracketRoundMeta,
+): void {
+  const idx = roundMetas.findIndex((round) => round.id === beforeId);
+  roundMetas.splice(idx >= 0 ? idx : roundMetas.length, 0, meta);
+}
+
+/**
+ * When opening play-in creates more lower-pool winners than lower-round-1 slots,
+ * add reduction rounds (lb-pd*) until the pool count matches lb-r1 capacity.
+ */
+function reduceLowerPoolWinners(
+  matches: ManagedMatch[],
+  roundMetas: BracketRoundMeta[],
+  poolMatchIds: string[],
+  targetCount: number,
+): string[] {
+  let currentIds = [...poolMatchIds];
+  let stage = 0;
+
+  while (currentIds.length > targetCount) {
+    stage++;
+    const roundId = `lb-pd${stage}`;
+    const roundLabel =
+      stage === 1 && currentIds.length === targetCount + 1
+        ? "Lower — Play-in Final"
+        : `Lower — Play-in Stage ${stage + 1}`;
+    const nextIds: string[] = [];
+    const reductionMatchIds: string[] = [];
+    const pairCount = Math.floor(currentIds.length / 2);
+
+    for (let i = 0; i < pairCount; i++) {
+      const id = `${roundId}-m${i}`;
+      reductionMatchIds.push(id);
+      matches.push({
+        id,
+        roundId,
+        roundLabel,
+        label: pairCount > 1 ? `Play-in LB ${i + 1}` : roundLabel,
+        bracketSide: "lower",
+        teamA: null,
+        teamB: null,
+        scoreA: 0,
+        scoreB: 0,
+        winner: null,
+        confirmed: false,
+        winnerNext: null,
+        loserNext: null,
+      });
+      link(matches, currentIds[i * 2], id, "teamA");
+      link(matches, currentIds[i * 2 + 1], id, "teamB");
+      nextIds.push(id);
+    }
+
+    if (currentIds.length % 2 === 1) {
+      nextIds.push(currentIds[currentIds.length - 1]);
+    }
+
+    insertRoundMetaBefore(roundMetas, "lb-r1", {
+      id: roundId,
+      label: roundLabel,
+      side: "lower",
+      matchIds: reductionMatchIds,
+    });
+
+    currentIds = nextIds;
+  }
+
+  return currentIds;
+}
+
+/**
+ * Opening play-in losers enter a dedicated lower pool (lb-pi), optionally reduced
+ * through lb-pd* rounds, then face lower-round-1 survivors in crossover (lb-pc)
+ * before meeting upper-bracket drop-ins at lower round 2.
+ */
 function addPlayInLowerPool(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
   playInMatches: number,
 ): string {
   const poolMatchCount = Math.ceil(playInMatches / 2);
-  const matchIds: string[] = [];
+  const piMatchIds: string[] = [];
+
+  const lbR1Meta = roundMetas.find((meta) => meta.id === "lb-r1");
+  const lbR2Meta = roundMetas.find((meta) => meta.id === "lb-r2");
+  const lbR1Count = lbR1Meta?.matchIds.length ?? 0;
+  const lbR2Count = lbR2Meta?.matchIds.length ?? 0;
 
   for (let i = 0; i < poolMatchCount; i++) {
     const id = `lb-pi-m${i}`;
-    matchIds.push(id);
+    piMatchIds.push(id);
     matches.push({
       id,
       roundId: "lb-pi",
@@ -230,28 +324,69 @@ function addPlayInLowerPool(
     });
   }
 
-  const lbR1Idx = roundMetas.findIndex((m) => m.id === "lb-r1");
-  roundMetas.splice(lbR1Idx >= 0 ? lbR1Idx : roundMetas.length, 0, {
+  insertRoundMetaBefore(roundMetas, "lb-r1", {
     id: "lb-pi",
     label: "Lower — Play-in",
     side: "lower",
-    matchIds,
+    matchIds: piMatchIds,
   });
 
-  const lbR2Meta = roundMetas.find((m) => m.id === "lb-r2");
-  for (let i = 0; i < matchIds.length; i++) {
-    const piId = matchIds[i];
-    if (lbR2Meta?.matchIds[i]) {
-      link(matches, piId, lbR2Meta.matchIds[i], "teamB");
-    } else {
-      const lbFMeta = roundMetas.find((m) => m.id === "lb-f");
-      if (lbFMeta) {
-        link(matches, piId, lbFMeta.matchIds[0], i === 0 ? "teamA" : "teamB");
-      }
+  const poolFeederIds =
+    lbR1Count > 0
+      ? reduceLowerPoolWinners(matches, roundMetas, piMatchIds, lbR1Count)
+      : piMatchIds;
+
+  const crossoverCount = Math.min(poolFeederIds.length, lbR1Count, lbR2Count);
+  const crossoverIds: string[] = [];
+
+  for (let i = 0; i < crossoverCount; i++) {
+    const id = `lb-pc-m${i}`;
+    crossoverIds.push(id);
+    matches.push({
+      id,
+      roundId: "lb-pc",
+      roundLabel: "Lower — Crossover",
+      label: crossoverCount > 1 ? `Crossover ${i + 1}` : "Lower — Crossover",
+      bracketSide: "lower",
+      teamA: null,
+      teamB: null,
+      scoreA: 0,
+      scoreB: 0,
+      winner: null,
+      confirmed: false,
+      winnerNext: null,
+      loserNext: null,
+    });
+  }
+
+  if (crossoverCount > 0) {
+    insertRoundMetaBefore(roundMetas, "lb-r2", {
+      id: "lb-pc",
+      label: "Lower — Crossover",
+      side: "lower",
+      matchIds: crossoverIds,
+    });
+  }
+
+  const lbR1AfterInsert = roundMetas.find((meta) => meta.id === "lb-r1");
+  const lbR2AfterInsert = roundMetas.find((meta) => meta.id === "lb-r2");
+
+  for (let i = 0; i < crossoverCount; i++) {
+    const poolId = poolFeederIds[i];
+    const pcId = crossoverIds[i];
+
+    if (lbR1AfterInsert?.matchIds[i]) {
+      rewireWinnerNext(matches, lbR1AfterInsert.matchIds[i], pcId, "teamA");
+    }
+
+    link(matches, poolId, pcId, "teamB");
+
+    if (lbR2AfterInsert?.matchIds[i]) {
+      link(matches, pcId, lbR2AfterInsert.matchIds[i], "teamA");
     }
   }
 
-  return matchIds[0];
+  return piMatchIds[0];
 }
 
 /** Single elimination for any even team count ≥ 2. */
@@ -890,46 +1025,8 @@ function resetTeamsForRecompute(match: ManagedMatch, fedSlots: Set<string>): Man
   };
 }
 
-/** Deterministic feeder order for any bracket graph produced by build*Matches. */
-function roundProcessRank(roundId: string): number {
-  if (roundId === "gf") return 1_000_000;
-
-  if (roundId === PLAY_IN_ROUND_ID) return 5;
-
-  const poMatch = roundId.match(/^po-r(\d+)$/);
-  if (poMatch) return 10_000 + parseInt(poMatch[1], 10) * 10;
-
-  const seMatch = roundId.match(/^se-r(\d+)$/);
-  if (seMatch) return parseInt(seMatch[1], 10) * 10;
-
-  const ubSpecial: Record<string, number> = {
-    "ub-r1": 100,
-    "ub-qf": 300,
-    "ub-sf": 500,
-    "ub-f": 700,
-  };
-  if (roundId in ubSpecial) return ubSpecial[roundId];
-
-  const ubMatch = roundId.match(/^ub-r(\d+)$/);
-  if (ubMatch) return 100 + (parseInt(ubMatch[1], 10) - 1) * 100;
-
-  const lbSpecial: Record<string, number> = {
-    "lb-pi": 150,
-    "lb-r1": 200,
-    "lb-r2": 400,
-    "lb-sf": 600,
-    "lb-f": 800,
-  };
-  if (roundId in lbSpecial) return lbSpecial[roundId];
-
-  const lbMatch = roundId.match(/^lb-r(\d+)$/);
-  if (lbMatch) return 200 + (parseInt(lbMatch[1], 10) - 1) * 100;
-
-  return 99_999;
-}
-
 function processingOrder(matches: ManagedMatch[]): ManagedMatch[] {
-  return [...matches].sort((a, b) => roundProcessRank(a.roundId) - roundProcessRank(b.roundId));
+  return [...matches].sort((a, b) => roundFlowRank(a.roundId) - roundFlowRank(b.roundId));
 }
 
 function isEliminationMatch(match: ManagedMatch): boolean {

@@ -1,8 +1,27 @@
 import type { BracketMatch, BracketRound } from "../types";
+import { sortBracketRoundsByFlow } from "./bracket-round-order";
 
 /** Opening play-in round (e.g. "Opening — Play-in", id pi-r1 in admin). */
 export function isOpeningPlayInRound(label: string): boolean {
   return /opening.*play-in/i.test(label);
+}
+
+/** Extract managed round id from a match id (e.g. `lb-f-m0` → `lb-f`). */
+export function inferRoundIdFromMatchId(matchId: string | undefined): string | null {
+  if (!matchId) return null;
+  const match = matchId.match(/^(.+)-m\d+$/);
+  return match?.[1] ?? null;
+}
+
+/** Map published round labels to managed bracket sides. */
+export function inferPublicBracketSide(
+  roundLabel: string,
+): "main" | "upper" | "lower" | "grand" | "playoff" {
+  if (/grand/i.test(roundLabel)) return "grand";
+  if (isOpeningPlayInRound(roundLabel)) return "playoff";
+  if (/upper/i.test(roundLabel)) return "upper";
+  if (/lower/i.test(roundLabel)) return "lower";
+  return "main";
 }
 
 export function isLowerBracketRound(label: string): boolean {
@@ -37,9 +56,15 @@ export function partitionDoubleElimRounds(bracket: BracketRound[]): {
   upperRounds: BracketRound[];
   lowerRounds: BracketRound[];
 } {
-  const playInRounds = bracket.filter((r) => isOpeningPlayInRound(r.label));
-  const upperRounds = bracket.filter((r) => isUpperBracketRound(r.label) || isGrandFinalRound(r.label));
-  const lowerRounds = bracket.filter((r) => isLowerBracketRound(r.label));
+  const playInRounds = sortBracketRoundsByFlow(
+    bracket.filter((round) => isOpeningPlayInRound(round.label)),
+  );
+  const upperRounds = sortBracketRoundsByFlow(
+    bracket.filter((round) => isUpperBracketRound(round.label) || isGrandFinalRound(round.label)),
+  );
+  const lowerRounds = sortBracketRoundsByFlow(
+    bracket.filter((round) => isLowerBracketRound(round.label)),
+  );
 
   return { playInRounds, upperRounds, lowerRounds };
 }
