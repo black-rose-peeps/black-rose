@@ -11,6 +11,8 @@ export interface ProfileCommentReply {
   id: string;
   body: string;
   createdAt: string;
+  author: ProfileCommentAuthor;
+  isProfileOwnerReply: boolean;
 }
 
 export interface ProfileComment {
@@ -20,5 +22,13 @@ export interface ProfileComment {
   body: string;
   isHidden: boolean;
   createdAt: string;
-  reply: ProfileCommentReply | null;
+  replies: ProfileCommentReply[];
+}
+
+export interface ProfileCommentsPage {
+  comments: ProfileComment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }

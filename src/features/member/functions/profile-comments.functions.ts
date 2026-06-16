@@ -1,17 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { ProfileComment, ProfileCommentReply } from "../types/profile-comments";
+import type {
+  ProfileComment,
+  ProfileCommentReply,
+  ProfileCommentsPage,
+} from "../types/profile-comments";
 
 export const fetchProfileComments = createServerFn({ method: "POST" })
-  .validator((data: { profileMemberId: string; viewerMemberId?: string }) => {
-    if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
-    return {
-      profileMemberId: data.profileMemberId.trim(),
-      viewerMemberId: data.viewerMemberId?.trim() || undefined,
-    };
-  })
-  .handler(async ({ data }): Promise<ProfileComment[]> => {
+  .validator(
+    (data: {
+      profileMemberId: string;
+      viewerMemberId?: string;
+      page?: number;
+      pageSize?: number;
+    }) => {
+      if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
+      return {
+        profileMemberId: data.profileMemberId.trim(),
+        viewerMemberId: data.viewerMemberId?.trim() || undefined,
+        page: data.page,
+        pageSize: data.pageSize,
+      };
+    },
+  )
+  .handler(async ({ data }): Promise<ProfileCommentsPage> => {
     const { fetchProfileComments } = await import("../server/profile-comments.server");
-    return fetchProfileComments(data.profileMemberId, data.viewerMemberId);
+    return fetchProfileComments(data.profileMemberId, data.viewerMemberId, {
+      page: data.page,
+      pageSize: data.pageSize,
+    });
   });
 
 export const createProfileComment = createServerFn({ method: "POST" })
@@ -83,6 +99,54 @@ export const fetchProfileCommentAlerts = createServerFn({ method: "POST" })
     return { memberId: data.memberId.trim() };
   })
   .handler(async ({ data }) => {
-    const { fetchProfileCommentAlertsForMember } = await import("../server/profile-comments.server");
+    const { fetchProfileCommentAlertsForMember } =
+      await import("../server/profile-comments.server");
     return fetchProfileCommentAlertsForMember(data.memberId);
+  });
+
+export const fetchProfileCommentsAsAdmin = createServerFn({ method: "POST" })
+  .validator((data: { profileMemberId: string; page?: number; pageSize?: number }) => {
+    if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
+    return {
+      profileMemberId: data.profileMemberId.trim(),
+      page: data.page,
+      pageSize: data.pageSize,
+    };
+  })
+  .handler(async ({ data }): Promise<ProfileCommentsPage> => {
+    const { fetchProfileCommentsAsAdmin } = await import("../server/profile-comments.server");
+    return fetchProfileCommentsAsAdmin(data.profileMemberId, {
+      page: data.page,
+      pageSize: data.pageSize,
+    });
+  });
+
+export const deleteProfileCommentByOwner = createServerFn({ method: "POST" })
+  .validator((data: { profileMemberId: string; commentId: string; authorMemberId: string }) => {
+    if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
+    if (!data?.commentId?.trim()) throw new Error("Missing comment id.");
+    if (!data?.authorMemberId?.trim()) throw new Error("Missing author member id.");
+    return {
+      profileMemberId: data.profileMemberId.trim(),
+      commentId: data.commentId.trim(),
+      authorMemberId: data.authorMemberId.trim(),
+    };
+  })
+  .handler(async ({ data }): Promise<void> => {
+    const { deleteProfileCommentByOwner } = await import("../server/profile-comments.server");
+    return deleteProfileCommentByOwner(data);
+  });
+
+export const deleteProfileCommentAsAdmin = createServerFn({ method: "POST" })
+  .validator((data: { profileMemberId: string; commentId: string }) => {
+    if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
+    if (!data?.commentId?.trim()) throw new Error("Missing comment id.");
+    return {
+      profileMemberId: data.profileMemberId.trim(),
+      commentId: data.commentId.trim(),
+    };
+  })
+  .handler(async ({ data }): Promise<void> => {
+    const { deleteProfileCommentAsAdmin } = await import("../server/profile-comments.server");
+    return deleteProfileCommentAsAdmin(data);
   });

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ExternalLink,
   CheckCircle,
@@ -14,11 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { ProfileCard } from "@/features/member/components/ProfileCard";
 import { MemberProfileSkeleton } from "@/features/member/components/MemberProfileSkeleton";
-import {
-  MemberHeroBanner,
-  MemberPageLayout,
-} from "@/features/member/components/MemberShell";
+import { MemberHeroBanner, MemberPageLayout } from "@/features/member/components/MemberShell";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
+import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
 import { getSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
@@ -28,8 +26,9 @@ import { fetchMemberChampionships } from "@/features/championships/services/cham
 import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
 import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
 import type { ChampionshipTitle } from "@/features/championships/types";
-import type { MemberProfile } from "@/features/member/types";
+import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
+import { isDiscordHttpsUrl } from "@/lib/discord-url";
 
 export const Route = createFileRoute("/members/$slug")({
   head: () => ({
@@ -37,6 +36,40 @@ export const Route = createFileRoute("/members/$slug")({
   }),
   component: MemberProfilePage,
 });
+
+function ProfileExternalLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  if (isDiscordHttpsUrl(href)) {
+    return (
+      <DiscordAppAnchor discordUrl={href} className={className}>
+        {children}
+      </DiscordAppAnchor>
+    );
+  }
+
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      {children}
+    </a>
+  );
+}
+
+const SOCIAL_PLATFORM_SVG: Record<SocialPlatform, string> = {
+  twitch: "/twitch-tile.svg",
+  youtube: "/youtube-tile.svg",
+  tiktok: "/tiktok-icon.svg",
+  facebook: "/facebook-tile.svg",
+  x: "/x-icon.svg",
+  instagram: "/instagram-icon.svg",
+  discord: "/discord-tile.svg",
+};
 
 function MemberProfilePage() {
   const { slug } = Route.useParams();
@@ -202,12 +235,6 @@ function MemberProfilePage() {
                   {p.region}
                 </span>
               )}
-              {p.valorantGameName && p.valorantTagline && (
-                <span className="flex items-center gap-1.5 font-tech text-ui-readable uppercase text-emerald-400">
-                  <CheckCircle className="h-3 w-3" />
-                  {p.valorantGameName}#{p.valorantTagline}
-                </span>
-              )}
             </div>
             {championships.length > 0 && (
               <ChampionMarkGroup titles={championships} size="md" showLabel />
@@ -231,20 +258,28 @@ function MemberProfilePage() {
       </MemberHeroBanner>
 
       {publicSocials.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-2 border border-white/8 bg-[oklch(0.07_0_0)] p-4 clip-tab">
+        <div className="mb-6 flex flex-wrap items-center gap-2 border border-white/8 bg-[oklch(0.07_0_0)] p-4 clip-tab">
           {publicSocials.map((s) => (
-            <Button
+            <ProfileExternalLink
               key={s.platform}
-              asChild
-              variant="outline"
-              size="sm"
-              className="rounded-none border-white/10 bg-white/5 font-tech text-ui-readable uppercase"
+              href={s.url!}
+              className="group relative inline-flex h-11 items-center gap-2 overflow-hidden border border-white/10 bg-white/5 px-3 transition hover:border-white/20 hover:bg-white/10"
+              title={SOCIAL_PLATFORM_LABELS[s.platform]}
+              aria-label={SOCIAL_PLATFORM_LABELS[s.platform]}
             >
-              <a href={s.url!} target="_blank" rel="noopener noreferrer">
-                {SOCIAL_PLATFORM_LABELS[s.platform]}
-                <ExternalLink className="h-2.5 w-2.5" />
-              </a>
-            </Button>
+              <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100 bg-[radial-gradient(circle_at_0%_0%,rgba(255,255,255,0.12),transparent_55%)]" />
+              <div className="relative inline-flex items-center gap-2">
+                <img
+                  src={SOCIAL_PLATFORM_SVG[s.platform]}
+                  alt={`${SOCIAL_PLATFORM_LABELS[s.platform]} logo`}
+                  className="h-5 w-5 shrink-0 object-contain"
+                  loading="lazy"
+                />
+                <span className="font-tech text-label-readable uppercase whitespace-nowrap text-foreground">
+                  {SOCIAL_PLATFORM_LABELS[s.platform]}
+                </span>
+              </div>
+            </ProfileExternalLink>
           ))}
         </div>
       )}
@@ -369,15 +404,13 @@ function MemberProfilePage() {
                       {SOCIAL_PLATFORM_LABELS[platform]}
                     </span>
                     {isPublic && link?.url ? (
-                      <a
+                      <ProfileExternalLink
                         href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-emerald-400 transition hover:text-emerald-300"
                       >
                         Added
                         <ExternalLink className="h-2.5 w-2.5" />
-                      </a>
+                      </ProfileExternalLink>
                     ) : (
                       <span className="font-tech text-label-readable uppercase text-muted-foreground/35">
                         {link?.url ? "Private" : "—"}
