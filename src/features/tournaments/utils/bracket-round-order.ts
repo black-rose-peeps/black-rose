@@ -4,6 +4,7 @@ import type { BracketRound } from "../types";
 /** Deterministic left-to-right order for bracket columns (matches advancement processing). */
 export function roundFlowRank(roundId: string): number {
   if (roundId === "gf") return 1_000_000;
+  if (roundId === "gf-reset") return 1_000_001;
   if (roundId === "pi-r1") return 5;
 
   const poMatch = roundId.match(/^po-r(\d+)$/);
@@ -42,15 +43,21 @@ export function roundFlowRank(roundId: string): number {
   return 99_999;
 }
 
-export function resolveRoundId(round: { id?: string; label: string; matches: { id: string }[] }): string {
+type RoundFlowSortable = {
+  id?: string;
+  label: string;
+  matches?: { id: string }[];
+  matchIds?: string[];
+};
+
+export function resolveRoundId(round: RoundFlowSortable): string {
   if (round.id) return round.id;
-  const fromMatch = inferRoundIdFromMatchId(round.matches[0]?.id);
+  const firstMatchId = round.matches?.[0]?.id ?? round.matchIds?.[0];
+  const fromMatch = inferRoundIdFromMatchId(firstMatchId);
   return fromMatch ?? round.label;
 }
 
-export function sortBracketRoundsByFlow<T extends { id?: string; label: string; matches: { id: string }[] }>(
-  rounds: T[],
-): T[] {
+export function sortBracketRoundsByFlow<T extends RoundFlowSortable>(rounds: T[]): T[] {
   return [...rounds].sort(
     (a, b) => roundFlowRank(resolveRoundId(a)) - roundFlowRank(resolveRoundId(b)),
   );
