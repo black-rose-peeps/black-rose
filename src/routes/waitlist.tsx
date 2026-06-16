@@ -5,7 +5,11 @@ import { useVerificationSync } from "@/features/auth/hooks/useVerificationSync";
 import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
 import { getSession, clearSession } from "@/features/auth/store/session";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
-import { DISCORD_SERVER_INVITE, DISCORD_VERIFICATION_CHANNEL_URL } from "@/features/auth/constants";
+import {
+  DISCORD_SERVER_INVITE,
+  DISCORD_VERIFICATION_CHANNEL_URL,
+  DISCORD_VERIFICATION_CHANNEL_LABEL,
+} from "@/features/auth/constants";
 import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
 import { StepNum } from "@/features/waitlist/components/StepNum";
@@ -202,7 +206,7 @@ function WaitlistPage() {
                   discordUrl={DISCORD_VERIFICATION_CHANNEL_URL}
                   className="cursor-pointer text-foreground underline-offset-2 hover:underline"
                 >
-                  # ✅ㆍverification
+                  {DISCORD_VERIFICATION_CHANNEL_LABEL}
                 </DiscordAppAnchor>{" "}
                 channel, copy the format for your game, fill it out, and post it.
               </p>
@@ -265,9 +269,9 @@ function WaitlistPage() {
             <div className="min-w-0">
               <p className="text-sm font-medium">Wait for briefing</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                An officer will reach out on Discord, brief you, and verify your account. This page
-                checks automatically every few seconds — once you&apos;re verified, you&apos;ll be
-                sent to your dashboard.
+                An officer will brief you on Discord and assign the{" "}
+                <span className="font-medium text-foreground">ROSE</span> role. You'll be redirected
+                automatically once it's assigned.
               </p>
               <button
                 type="button"

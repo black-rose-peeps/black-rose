@@ -32,6 +32,9 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
     const accessToken = await exchangeDiscordCodeForToken(data.code, data.redirectUri);
     const discordUser = await fetchDiscordUser(accessToken);
 
+    const { resolveHasRoseRoleAtLogin } = await import("../server/discord-guild.server");
+    const hasRoseRole = await resolveHasRoseRoleAtLogin(accessToken, discordUser.id);
+
     let connections: Awaited<ReturnType<typeof fetchDiscordConnections>> = [];
     try {
       connections = await fetchDiscordConnections(accessToken);
@@ -44,7 +47,8 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
       }
     }
 
-    const member = await upsertMemberFromDiscord(discordUser);
+    let member = await upsertMemberFromDiscord(discordUser, hasRoseRole);
+
     const displayName = discordUser.global_name?.trim() || discordUser.username;
     const avatarUrl = buildDiscordAvatarUrl(discordUser.id, discordUser.avatar);
 

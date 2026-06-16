@@ -1,45 +1,48 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { syncSessionFromDatabase } from "../services/sync-session";
 import { getSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
+import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
 
-const POLL_INTERVAL_MS = 10_000;
+const FALLBACK_POLL_INTERVAL_MS = 120_000;
 
-/** Redirect verified members to the waitlist if an admin revokes their access. */
+/** Redirect verified members to the waitlist if the Discord bot revokes their ROSE role. */
 export function useMemberAccessSync() {
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const checkAccess = useCallback(async () => {
     const session = getSession();
     if (!session || !hasFullMemberAccess(session.role)) return;
 
-    let cancelled = false;
-
-    async function checkAccess() {
-      if (cancelled) return;
-      try {
-        const updated = await syncSessionFromDatabase();
-        if (cancelled || !updated) return;
-        if (!hasFullMemberAccess(updated.role)) {
-          navigate({ to: "/waitlist", replace: true });
-        }
-      } catch (err) {
-        console.warn("[auth] Member access sync failed:", err);
-        // Ignore transient sync errors; the next poll will retry.
+    try {
+      const updated = await syncSessionFromDatabase();
+      if (!updated) return;
+      if (!hasFullMemberAccess(updated.role)) {
+        navigate({ to: "/waitlist", replace: true });
       }
+    } catch (err) {
+      console.warn("[auth] Member access sync failed:", err);
     }
+  }, [navigate]);
+
+  const session = getSession();
+  useMemberVerificationRealtime(session?.id ?? null, () => {
+    void checkAccess();
+  });
+
+  useEffect(() => {
+    if (!session || !hasFullMemberAccess(session.role)) return;
 
     void checkAccess();
     const intervalId = window.setInterval(() => {
       void checkAccess();
-    }, POLL_INTERVAL_MS);
+    }, FALLBACK_POLL_INTERVAL_MS);
     window.addEventListener("focus", checkAccess);
 
     return () => {
-      cancelled = true;
       window.clearInterval(intervalId);
       window.removeEventListener("focus", checkAccess);
     };
-  }, [navigate]);
+  }, [checkAccess, session]);
 }

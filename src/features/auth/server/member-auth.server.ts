@@ -1,5 +1,5 @@
 import { rowToAdminMember } from "@/features/admin/features/members/utils";
-import type { AdminMember } from "@/features/admin/features/members/types";
+import type { AdminMember, MemberVerificationStatus } from "@/features/admin/features/members/types";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type { DiscordOAuthUser } from "./discord-api.server";
 
@@ -50,18 +50,26 @@ async function pickUniqueUsername(baseUsername: string, discordId: string): Prom
 
 /**
  * Create or update a member row from a Discord OAuth profile.
- * New members always start as "Not Verified".
+ * `hasRoseRole` is resolved at login from Discord (OAuth or bot) so existing ROSE holders
+ * land as Verified on first sign-in.
  */
-export async function upsertMemberFromDiscord(discordUser: DiscordOAuthUser): Promise<AdminMember> {
+export async function upsertMemberFromDiscord(
+  discordUser: DiscordOAuthUser,
+  hasRoseRole = false,
+): Promise<AdminMember> {
   const supabase = getSupabaseAdmin();
   const discordId = discordUser.id;
   const discordUsername = discordUser.username;
+  const targetStatus: MemberVerificationStatus = hasRoseRole ? "Verified" : "Not Verified";
   const existing = await findMemberByDiscordId(discordId);
 
   if (existing) {
     const updates: Record<string, string> = {};
     if (existing.discordUsername !== discordUsername) {
       updates.discord_username = discordUsername;
+    }
+    if (existing.status !== targetStatus) {
+      updates.status = targetStatus;
     }
 
     if (Object.keys(updates).length === 0) return existing;
@@ -84,7 +92,7 @@ export async function upsertMemberFromDiscord(discordUser: DiscordOAuthUser): Pr
       username,
       discord_username: discordUsername,
       discord_id: discordId,
-      status: "Not Verified",
+      status: targetStatus,
     })
     .select()
     .single();
@@ -92,7 +100,26 @@ export async function upsertMemberFromDiscord(discordUser: DiscordOAuthUser): Pr
   if (error) {
     if (error.code === "23505") {
       const raced = await findMemberByDiscordId(discordId);
-      if (raced) return raced;
+      if (raced) {
+        if (raced.status === targetStatus && raced.discordUsername === discordUsername) {
+          return raced;
+        }
+        const raceUpdates: Record<string, string> = {};
+        if (raced.discordUsername !== discordUsername) {
+          raceUpdates.discord_username = discordUsername;
+        }
+        if (raced.status !== targetStatus) {
+          raceUpdates.status = targetStatus;
+        }
+        const { data: updated, error: updateError } = await supabase
+          .from("members")
+          .update(raceUpdates)
+          .eq("id", raced.id)
+          .select()
+          .single();
+        if (updateError) throw new Error(updateError.message);
+        return rowToAdminMember(updated);
+      }
     }
     throw new Error(error.message);
   }
