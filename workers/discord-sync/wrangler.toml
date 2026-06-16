@@ -2,7 +2,7 @@ name = "blackrose-discord-sync"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 
-# Sync ROSE role → Supabase every 2 minutes (Workers Paid recommended for production).
+# Sync ROSE role → Supabase (cron fires every minute; runtime applies baseline/boost cadence).
 [triggers]
 crons = ["* * * * *"]
 

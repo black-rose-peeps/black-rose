@@ -17,7 +17,7 @@ export async function getBoostUntilMs(env: Env): Promise<number | null> {
 
   if (error) {
     // If table is not created yet, run with baseline cadence.
-    if (/worker_runtime_flags/i.test(error.message)) return null;
+    if (error.code === "42P01") return null;
     throw new Error(`Failed to read boost window: ${error.message}`);
   }
 

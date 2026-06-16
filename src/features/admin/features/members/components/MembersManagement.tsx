@@ -184,7 +184,7 @@ export function MembersManagement() {
           </div>
         }
       >
-        {(error || verificationError || syncBoostMessage) && (
+        {(error || verificationError || syncBoostMessage || (isBoostActive && boostUntil)) && (
           <div className="px-6 pt-4">
             {error || verificationError ? (
               <Alert variant="destructive">

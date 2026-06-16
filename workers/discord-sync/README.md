@@ -116,13 +116,14 @@ curl http://localhost:8787/health
 - **Rate limits:** Workers Free allows **50 subrequests per cron run**. Default batch is **22** members per page (Discord fetch + possible DB update = up to 2 subrequests each).
 - **Guild scope:** the Worker only inspects `DISCORD_GUILD_ID`. Members **not in that server** are treated as **Not Verified** (no ROSE possible).
 - **Boost mode:** `/sync/boost` enables 1-minute checks for `SYNC_BOOST_WINDOW_MINUTES` (default 10), useful during active admin verification waves.
-- **Gateway bot (`npm run discord-bot`)** is optional — use the Worker instead for Cloudflare hosting. The Gateway bot gives ~instant updates; the cron Worker gives ~1-2 min latency.
+- **Gateway bot (`npm run discord-bot`)** is optional — use the Worker instead for Cloudflare hosting. The Gateway bot gives ~instant updates; the cron Worker follows the configured baseline cadence (default ~15 min) unless boosted.
 
 ## Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Liveness check |
+| GET | `/sync/status` | Current boost status (`boostActive`, `boostUntil`) |
 | POST | `/sync` | Manual sync run (optional `Authorization: Bearer SYNC_SECRET`) |
 | POST | `/sync/boost` | Activate temporary 1-minute mode + run an immediate sync |
 

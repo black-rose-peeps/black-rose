@@ -69,7 +69,7 @@ export default {
 };
 
 function isAuthorized(request: Request, env: Env): boolean {
-  if (!env.SYNC_SECRET) return true;
+  if (!env.SYNC_SECRET?.trim()) return false;
   const auth = request.headers.get("authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
   return token === env.SYNC_SECRET;
