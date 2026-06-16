@@ -14,12 +14,25 @@ export function toDiscordAppUrl(httpsUrl: string): string {
       if (inviteMatch?.[1]) {
         return `discord://-/invite/${inviteMatch[1]}`;
       }
-      return `discord://${host}${parsed.pathname}${parsed.search}`;
+      if (parsed.pathname && parsed.pathname !== "/") {
+        return `discord://-${parsed.pathname}${parsed.search}`;
+      }
     }
   } catch {
     // Fall through to the original URL.
   }
   return httpsUrl;
+}
+
+/** True when the URL points at Discord (https invite, channel, user profile, etc.). */
+export function isDiscordHttpsUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    return host === "discord.com" || host === "discord.gg";
+  } catch {
+    return false;
+  }
 }
 
 /** True when the URL can be handed off to the Discord desktop/mobile app. */
