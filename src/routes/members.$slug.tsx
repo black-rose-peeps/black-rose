@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import type { AnchorHTMLAttributes } from "react";
 import {
   ExternalLink,
   CheckCircle,
@@ -41,21 +42,28 @@ function ProfileExternalLink({
   href,
   className,
   children,
+  ...props
 }: {
   href: string;
   className?: string;
   children: ReactNode;
-}) {
+} & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   if (isDiscordHttpsUrl(href)) {
     return (
-      <DiscordAppAnchor discordUrl={href} className={className}>
+      <DiscordAppAnchor discordUrl={href} className={className} {...props}>
         {children}
       </DiscordAppAnchor>
     );
   }
 
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className}
+      {...props}
+    >
       {children}
     </a>
   );
