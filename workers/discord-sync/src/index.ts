@@ -1,13 +1,15 @@
 import type { Env } from "./env";
-import { syncRoseRoles } from "./sync";
+import { getBaselineIntervalMinutes, getBoostWindowMinutes } from "./env";
+import { getBoostUntilMs, setBoostUntilMs } from "./boost";
+import { syncRoseRoles, type SyncSummary } from "./sync";
 
 export default {
   async scheduled(
-    _event: ScheduledEvent,
+    event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
-    ctx.waitUntil(runSync(env));
+    ctx.waitUntil(runScheduledSync(event, env));
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -18,13 +20,7 @@ export default {
     }
 
     if (url.pathname === "/sync" && request.method === "POST") {
-      if (env.SYNC_SECRET) {
-        const auth = request.headers.get("authorization");
-        const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
-        if (token !== env.SYNC_SECRET) {
-          return new Response("Unauthorized", { status: 401 });
-        }
-      }
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
 
       const promise = runSync(env);
       ctx.waitUntil(promise);
@@ -32,11 +28,83 @@ export default {
       return Response.json(summary);
     }
 
+    if (url.pathname === "/sync/status" && request.method === "GET") {
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
+      const boostUntilMs = await getBoostUntilMs(env);
+      return Response.json(buildBoostStatus(boostUntilMs));
+    }
+
+    if (url.pathname === "/sync/boost" && request.method === "POST") {
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
+
+      const currentBoostUntilMs = await getBoostUntilMs(env);
+      const currentStatus = buildBoostStatus(currentBoostUntilMs);
+      if (currentStatus.boostActive) {
+        return Response.json({
+          boosted: true,
+          alreadyActive: true,
+          ...currentStatus,
+        });
+      }
+
+      const boostMinutes = getBoostWindowMinutes(env);
+      const boostUntilMs = Date.now() + boostMinutes * 60 * 1000;
+      await setBoostUntilMs(env, boostUntilMs);
+
+      const promise = runSync(env);
+      ctx.waitUntil(promise);
+      const summary = await promise;
+
+      return Response.json({
+        boosted: true,
+        alreadyActive: false,
+        boostMinutes,
+        ...buildBoostStatus(boostUntilMs),
+        summary,
+      });
+    }
+
     return new Response("Not found", { status: 404 });
   },
 };
 
-async function runSync(env: Env): Promise<Record<string, number>> {
+function isAuthorized(request: Request, env: Env): boolean {
+  if (!env.SYNC_SECRET) return true;
+  const auth = request.headers.get("authorization");
+  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  return token === env.SYNC_SECRET;
+}
+
+function buildBoostStatus(boostUntilMs: number | null) {
+  const nowMs = Date.now();
+  const boostActive = Boolean(boostUntilMs && boostUntilMs > nowMs);
+  return {
+    boostActive,
+    boostUntil: boostUntilMs ? new Date(boostUntilMs).toISOString() : null,
+  };
+}
+
+async function runScheduledSync(event: ScheduledEvent, env: Env): Promise<void> {
+  validateEnv(env);
+
+  const nowMs = Number.isFinite(event.scheduledTime) ? event.scheduledTime : Date.now();
+  const boostUntilMs = await getBoostUntilMs(env);
+  const isBoosted = Boolean(boostUntilMs && boostUntilMs > nowMs);
+  const baselineMinutes = getBaselineIntervalMinutes(env);
+  const minute = new Date(nowMs).getUTCMinutes();
+  const onBaselineMinute = minute % baselineMinutes === 0;
+
+  if (!isBoosted && !onBaselineMinute) {
+    console.info(
+      `[discord-sync] Skip minute (baseline every ${baselineMinutes} minutes)`,
+    );
+    return;
+  }
+
+  await runSync(env);
+}
+
+async function runSync(env: Env): Promise<SyncSummary> {
   validateEnv(env);
 
   try {

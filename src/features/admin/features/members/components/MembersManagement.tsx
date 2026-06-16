@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { ChevronRight, UserPlus } from "lucide-react";
+import { ChevronRight, Loader2, UserPlus, Zap } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,6 +40,10 @@ import { memberStatusBadgeVariant, initialsFromName } from "../utils";
 import { CreateMemberModal } from "./CreateMemberModal";
 import { EditMemberModal } from "./EditMemberModal";
 import { useDeleteMember } from "../hooks/useDeleteMember";
+import {
+  fetchDiscordSyncBoostStatus,
+  triggerDiscordSyncBoost,
+} from "../functions/discord-sync.functions";
 
 export function MembersManagement() {
   const navigate = useNavigate();
@@ -41,6 +55,11 @@ export function MembersManagement() {
     resetError: resetVerificationError,
   } = useUpdateMemberVerification();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBoostConfirmOpen, setIsBoostConfirmOpen] = useState(false);
+  const [isBoostingSync, setIsBoostingSync] = useState(false);
+  const [isBoostActive, setIsBoostActive] = useState(false);
+  const [boostUntil, setBoostUntil] = useState<string | null>(null);
+  const [syncBoostMessage, setSyncBoostMessage] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
   const {
@@ -76,6 +95,58 @@ export function MembersManagement() {
     pagination.setPage(1);
   }
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshBoostStatus() {
+      try {
+        const status = await fetchDiscordSyncBoostStatus({});
+        if (cancelled) return;
+        setIsBoostActive(status.boostActive);
+        setBoostUntil(status.boostUntil);
+      } catch {
+        // Keep UI non-blocking if status check fails.
+      }
+    }
+
+    void refreshBoostStatus();
+    const interval = window.setInterval(() => {
+      void refreshBoostStatus();
+    }, 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  async function handleBoostSyncConfirm() {
+    setIsBoostingSync(true);
+    setSyncBoostMessage(null);
+    try {
+      const response = await triggerDiscordSyncBoost({});
+      setIsBoostActive(response.boostActive);
+      setBoostUntil(response.boostUntil);
+      const until = response.boostUntil
+        ? new Date(response.boostUntil).toLocaleTimeString()
+        : "soon";
+      if (response.alreadyActive) {
+        setSyncBoostMessage(`Boost already active until ${until}.`);
+      } else {
+        setSyncBoostMessage(
+          `1-minute boost active for ${response.boostMinutes ?? 10} minutes (until ${until}).`,
+        );
+      }
+      setIsBoostConfirmOpen(false);
+    } catch (err) {
+      setSyncBoostMessage(
+        err instanceof Error ? err.message : "Failed to activate sync boost.",
+      );
+    } finally {
+      setIsBoostingSync(false);
+    }
+  }
+
   return (
     <>
       <AdminSection
@@ -83,21 +154,56 @@ export function MembersManagement() {
         title="Members"
         description="Register players manually. Click a member to view their profile, socials, and verification details."
         actions={
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            size="sm"
-            className="gap-2 font-tech uppercase tracking-wider"
-          >
-            <UserPlus className="h-4 w-4" />
-            Register Member
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isBoostingSync || isBoostActive}
+              className="gap-2 font-tech uppercase tracking-wider"
+              onClick={() => {
+                if (isBoostActive) return;
+                setIsBoostConfirmOpen(true);
+              }}
+            >
+              {isBoostingSync || isBoostActive ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4" />
+              )}
+              {isBoostActive ? "Live Syncing..." : "Boost Sync (10m)"}
+            </Button>
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              size="sm"
+              className="gap-2 font-tech uppercase tracking-wider"
+            >
+              <UserPlus className="h-4 w-4" />
+              Register Member
+            </Button>
+          </div>
         }
       >
-        {(error || verificationError) && (
+        {(error || verificationError || syncBoostMessage) && (
           <div className="px-6 pt-4">
-            <Alert variant="destructive">
-              <AlertDescription>{error ?? verificationError}</AlertDescription>
-            </Alert>
+            {error || verificationError ? (
+              <Alert variant="destructive">
+                <AlertDescription>{error ?? verificationError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {syncBoostMessage ? (
+              <Alert className="mt-2 border-white/10 bg-white/2">
+                <AlertDescription>{syncBoostMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+            {isBoostActive && boostUntil ? (
+              <Alert className="mt-2 border-white/10 bg-white/2">
+                <AlertDescription>
+                  Boost is active until {new Date(boostUntil).toLocaleTimeString()}. Boost button is
+                  temporarily locked to prevent duplicate runs.
+                </AlertDescription>
+              </Alert>
+            ) : null}
           </div>
         )}
 
@@ -210,7 +316,7 @@ export function MembersManagement() {
                   {pagination.paginatedItems.map((member) => (
                   <TableRow
                     key={member.id}
-                    className="cursor-pointer transition-colors hover:bg-white/[0.03]"
+                    className="cursor-pointer transition-colors hover:bg-white/3"
                     onClick={() => navigate({ to: "/admin/users/$memberId", params: { memberId: member.id } })}
                   >
                     <TableCell className={adminTableCellClip}>
@@ -357,6 +463,36 @@ export function MembersManagement() {
           }
         }}
       />
+
+      <AlertDialog
+        open={isBoostConfirmOpen}
+        onOpenChange={(next) => {
+          if (!isBoostingSync) setIsBoostConfirmOpen(next);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Activate Discord Sync Boost?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will trigger an immediate ROSE sync against the official Black Rose Discord
+              server, then temporarily check every 1 minute for 10 minutes. Members who already
+              have the ROSE role can be marked as Verified faster during this window.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBoostingSync}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isBoostingSync}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleBoostSyncConfirm();
+              }}
+            >
+              {isBoostingSync ? "Activating..." : "Activate Boost"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
