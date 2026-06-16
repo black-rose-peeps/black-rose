@@ -1,18 +1,22 @@
 import {
   createProfileComment as createFn,
   fetchProfileComments as fetchFn,
+  fetchProfileCommentsAsAdmin as fetchAdminFn,
   fetchProfileCommentAlerts as fetchAlertsFn,
   replyToProfileComment as replyFn,
   setProfileCommentHidden as hideFn,
+  deleteProfileCommentByOwner as deleteOwnerFn,
+  deleteProfileCommentAsAdmin as deleteAdminFn,
 } from "../functions/profile-comments.functions";
-import type { ProfileComment, ProfileCommentReply } from "../types/profile-comments";
+import type { ProfileComment, ProfileCommentReply, ProfileCommentsPage } from "../types/profile-comments";
 import type { ProfileCommentAlert } from "../server/profile-comments.server";
 
 export async function fetchProfileComments(
   profileMemberId: string,
   viewerMemberId?: string,
-): Promise<ProfileComment[]> {
-  return fetchFn({ data: { profileMemberId, viewerMemberId } });
+  options?: { page?: number; pageSize?: number },
+): Promise<ProfileCommentsPage> {
+  return fetchFn({ data: { profileMemberId, viewerMemberId, ...options } });
 }
 
 export async function fetchProfileCommentAlerts(input: {
@@ -45,4 +49,26 @@ export async function setProfileCommentHidden(input: {
   hidden: boolean;
 }): Promise<void> {
   return hideFn({ data: input });
+}
+
+export async function fetchProfileCommentsAsAdmin(
+  profileMemberId: string,
+  options?: { page?: number; pageSize?: number },
+): Promise<ProfileCommentsPage> {
+  return fetchAdminFn({ data: { profileMemberId, ...options } });
+}
+
+export async function deleteProfileCommentByOwner(input: {
+  profileMemberId: string;
+  commentId: string;
+  authorMemberId: string;
+}): Promise<void> {
+  return deleteOwnerFn({ data: input });
+}
+
+export async function deleteProfileCommentAsAdmin(input: {
+  profileMemberId: string;
+  commentId: string;
+}): Promise<void> {
+  return deleteAdminFn({ data: input });
 }

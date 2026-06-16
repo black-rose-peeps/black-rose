@@ -4,7 +4,7 @@ export const SOCIAL_PLATFORM_LABELS: Record<SocialPlatform, string> = {
   twitch: "Twitch",
   youtube: "YouTube",
   tiktok: "TikTok",
-  facebook: "Facebook Gaming",
+  facebook: "Facebook",
   x: "X / Twitter",
   instagram: "Instagram",
   discord: "Discord",

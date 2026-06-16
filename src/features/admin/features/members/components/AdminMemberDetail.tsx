@@ -1,24 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  CheckCircle,
-  ExternalLink,
-  Gamepad2,
-  MapPin,
-  Shield,
-  User,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle, ExternalLink, Gamepad2, MapPin, Shield, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  AdminDetailGrid,
-  AdminPageHero,
-  TechPanel,
-} from "@/features/admin/components/AdminShell";
+import { AdminDetailGrid, AdminPageHero, TechPanel } from "@/features/admin/components/AdminShell";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
 import { memberStatusBadgeVariant } from "../utils";
+import { AdminMemberCommentsPanel } from "./AdminMemberCommentsPanel";
 import type { AdminMember } from "../types";
 import type { MemberProfile } from "@/features/member/types";
 
@@ -134,9 +123,7 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
                   <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                     Headline
                   </dt>
-                  <dd className="mt-0.5 text-muted-foreground">
-                    {profile?.headline || "—"}
-                  </dd>
+                  <dd className="mt-0.5 text-muted-foreground">{profile?.headline || "—"}</dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
@@ -194,6 +181,17 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
               })}
             </ul>
           </TechPanel>
+
+          <AdminMemberCommentsPanel
+            profileMemberId={member.id}
+            profileOwner={{
+              displayName: profile?.displayName ?? member.username,
+              slug: profile?.slug ?? member.username,
+              discordUsername: member.discordUsername,
+              avatarUrl: profile?.avatarUrl ?? null,
+              avatarInitials: initials,
+            }}
+          />
         </div>
 
         <div className="flex flex-col gap-5">

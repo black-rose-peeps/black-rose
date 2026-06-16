@@ -5,38 +5,50 @@ import {
   Loader2,
   MessageSquare,
   MessageSquarePlus,
-  Reply,
   Shield,
   Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { getSession } from "@/features/auth/store/session";
 import { MemberAvatar } from "@/features/member/components/MemberAvatar";
-import { MemberNameStack } from "@/features/member/components/MemberNameStack";
+import {
+  ProfileCommentThread,
+  type ProfileOwnerInfo,
+} from "@/features/member/components/ProfileCommentThread";
 import { CornerAccents, TechPanel } from "@/features/member/components/MemberShell";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
-import { relativeTime } from "@/features/notifications/utils/relative-time";
 import {
   createProfileComment,
+  deleteProfileCommentByOwner,
   fetchProfileComments,
   replyToProfileComment,
   setProfileCommentHidden,
 } from "@/features/member/services/profile-comments.service";
-import type { ProfileComment, ProfileCommentReply } from "@/features/member/types/profile-comments";
+import type { ProfileComment } from "@/features/member/types/profile-comments";
 import { cn } from "@/lib/utils";
 
 const MAX_LENGTH = 500;
+const PAGE_SIZE = 5;
 
-export interface ProfileOwnerInfo {
-  displayName: string;
-  slug: string;
-  discordUsername: string;
-  avatarUrl: string | null;
-  avatarInitials: string;
-}
+export type { ProfileOwnerInfo };
 
 interface ProfileCommentsPanelProps {
   profileMemberId: string;
@@ -46,15 +58,20 @@ interface ProfileCommentsPanelProps {
   profileOwner: ProfileOwnerInfo;
 }
 
-function formatCommentDate(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+function clampPage(page: number, totalPages: number): number {
+  return Math.max(1, Math.min(page, Math.max(1, totalPages)));
+}
+
+function pageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | "ellipsis")[] = [1];
+  if (current > 3) pages.push("ellipsis");
+  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) {
+    pages.push(p);
+  }
+  if (current < total - 2) pages.push("ellipsis");
+  pages.push(total);
+  return pages;
 }
 
 function CommentsLoadingSkeleton() {
@@ -124,8 +141,8 @@ function OwnerModerationHint() {
         <div>
           <p className="text-sm font-medium text-foreground">Your comment wall</p>
           <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
-            Verified members can leave notes here. You can reply once per comment or hide entries
-            from your public profile.
+            Verified members can leave notes here. You and the commenter can keep a threaded
+            conversation — hide or delete entries from your public profile anytime.
           </p>
         </div>
       </div>
@@ -247,222 +264,81 @@ function CommentComposer({
   );
 }
 
-function OwnerReplyBlock({
-  owner,
-  reply,
+function ProfileCommentsPagination({
+  page,
+  totalPages,
+  total,
+  rangeStart,
+  rangeEnd,
+  onPageChange,
 }: {
-  owner: ProfileOwnerInfo;
-  reply: ProfileCommentReply;
+  page: number;
+  totalPages: number;
+  total: number;
+  rangeStart: number;
+  rangeEnd: number;
+  onPageChange: (page: number) => void;
 }) {
-  return (
-    <div className="relative mt-4 pl-5 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-px">
-      <div className="relative overflow-hidden p-4">
-        <CornerAccents className="" />
-        <div className="flex items-start gap-3">
-          <MemberAvatar
-            avatarUrl={owner.avatarUrl}
-            initials={owner.avatarInitials}
-            name={owner.displayName}
-            className="h-9 w-9 text-xs"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <MemberNameStack
-                displayName={owner.displayName}
-                discordUsername={owner.discordUsername}
-                size="sm"
-              />
-              <Badge
-                variant="outline"
-                className="rounded-none border-emerald-400/25 bg-emerald-400/10 font-tech text-label-readable uppercase text-emerald-400"
-              >
-                <Shield className="mr-1 h-2.5 w-2.5" />
-                Profile Owner
-              </Badge>
-              <span
-                className="font-tech text-label-readable uppercase text-muted-foreground/50"
-                title={formatCommentDate(reply.createdAt)}
-              >
-                {relativeTime(reply.createdAt)}
-              </span>
-            </div>
-            <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-              {reply.body}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CommentCard({
-  comment,
-  isOwnProfile,
-  profileOwner,
-  replyingId,
-  replyDraft,
-  replyPosting,
-  actionId,
-  onHide,
-  onToggleReply,
-  onReplyDraftChange,
-  onReply,
-  onCancelReply,
-}: {
-  comment: ProfileComment;
-  isOwnProfile: boolean;
-  profileOwner: ProfileOwnerInfo;
-  replyingId: string | null;
-  replyDraft: string;
-  replyPosting: boolean;
-  actionId: string | null;
-  onHide: (commentId: string, hidden: boolean) => void;
-  onToggleReply: (commentId: string) => void;
-  onReplyDraftChange: (value: string) => void;
-  onReply: (commentId: string) => void;
-  onCancelReply: () => void;
-}) {
-  const isReplying = replyingId === comment.id;
+  if (total === 0) return null;
 
   return (
-    <li
-      className={cn(
-        "relative overflow-hidden border border-white/8 p-4 sm:p-5",
-        comment.isHidden ? "bg-white/[0.01] opacity-80" : "bg-white/[0.02]",
-      )}
-    >
-      <CornerAccents />
-      <div className="flex items-start gap-3 sm:gap-4">
-        <Link
-          to="/members/$slug"
-          params={{ slug: comment.author.slug }}
-          className="shrink-0 transition hover:opacity-90"
-        >
-          <MemberAvatar
-            avatarUrl={comment.author.avatarUrl}
-            initials={comment.author.avatarInitials}
-            name={comment.author.displayName}
-            className="h-11 w-11 text-sm"
-          />
-        </Link>
+    <div className="flex flex-col gap-3 border-t border-white/8 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="font-tech text-label-readable uppercase text-muted-foreground">
+        Showing {rangeStart}–{rangeEnd} of {total}
+      </p>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-            <MemberNameStack
-              displayName={comment.author.displayName}
-              discordUsername={comment.author.discordUsername}
-              profileSlug={comment.author.slug}
-              size="sm"
-              className="min-w-0"
-            />
-            <time
-              className="shrink-0 font-tech text-label-readable uppercase text-muted-foreground/60"
-              dateTime={comment.createdAt}
-              title={formatCommentDate(comment.createdAt)}
-            >
-              {relativeTime(comment.createdAt)}
-            </time>
-          </div>
-
-          {comment.isHidden && isOwnProfile && (
-            <span className="mt-2 inline-flex items-center gap-1 border border-amber-400/20 bg-amber-400/5 px-2 py-0.5 font-tech text-label-readable uppercase text-amber-400">
-              <EyeOff className="h-2.5 w-2.5" />
-              Hidden from public
-            </span>
-          )}
-
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-            {comment.body}
-          </p>
-
-          {comment.reply && <OwnerReplyBlock owner={profileOwner} reply={comment.reply} />}
-
-          {isOwnProfile && (
-            <div className="mt-4 flex flex-wrap gap-2">
+      {totalPages > 1 && (
+        <Pagination className="mx-0 w-auto justify-end">
+          <PaginationContent>
+            <PaginationItem>
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
-                disabled={actionId === comment.id}
-                onClick={() => onHide(comment.id, !comment.isHidden)}
-                className="clip-cta inline-flex h-9 items-center gap-1.5 rounded-none border-white/12 bg-white/5 font-tech text-ui-readable uppercase"
+                size="sm"
+                className="clip-cta h-11 rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
+                disabled={page <= 1}
+                onClick={() => onPageChange(page - 1)}
               >
-                {actionId === comment.id ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <EyeOff className="h-3 w-3" />
-                )}
-                {comment.isHidden ? "Unhide" : "Hide"}
+                Previous
               </Button>
+            </PaginationItem>
 
-              {!comment.reply && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onToggleReply(comment.id)}
-                  className={cn(
-                    "clip-cta inline-flex h-9 items-center gap-1.5 rounded-none border-white/12 bg-white/5 font-tech text-ui-readable uppercase",
-                    isReplying && "border-white/25 bg-white/10 text-foreground",
-                  )}
-                >
-                  <Reply className="h-3 w-3" />
-                  {isReplying ? "Cancel Reply" : "Reply"}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {isOwnProfile && isReplying && !comment.reply && (
-            <div className="relative mt-4 overflow-hidden border border-white/10 bg-white/[0.03] p-4">
-              <CornerAccents />
-              <p className="mb-3 font-tech text-label-readable uppercase text-muted-foreground">
-                Your reply
-              </p>
-              <Textarea
-                value={replyDraft}
-                onChange={(e) => onReplyDraftChange(e.target.value.slice(0, MAX_LENGTH))}
-                placeholder={`Reply as ${profileOwner.displayName}…`}
-                rows={3}
-                autoFocus
-                className="min-h-[88px] resize-none rounded-none border-white/12 bg-white/[0.03] shadow-none focus-visible:ring-white/20"
-              />
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className="font-tech text-label-readable uppercase text-muted-foreground/60">
-                  {replyDraft.length}/{MAX_LENGTH}
-                </span>
-                <div className="flex justify-end gap-2">
+            {pageNumbers(page, totalPages).map((p, index) =>
+              p === "ellipsis" ? (
+                <PaginationItem key={`ellipsis-${index}`}>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              ) : (
+                <PaginationItem key={p}>
                   <Button
                     type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={onCancelReply}
-                    className="rounded-none font-tech text-ui-readable uppercase"
+                    variant={p === page ? "default" : "ghost"}
+                    size="icon"
+                    className="h-8 w-8 rounded-none font-tech text-xs"
+                    onClick={() => onPageChange(p)}
                   >
-                    Cancel
+                    {p}
                   </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={replyPosting || !replyDraft.trim()}
-                    onClick={() => onReply(comment.id)}
-                    className="clip-cta inline-flex h-9 items-center gap-1.5 rounded-none bg-white px-4 font-tech text-ui-readable uppercase text-black hover:bg-white/90 disabled:opacity-50"
-                  >
-                    {replyPosting ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Send className="h-3 w-3" />
-                    )}
-                    {replyPosting ? "Posting…" : "Post Reply"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </li>
+                </PaginationItem>
+              ),
+            )}
+
+            <PaginationItem>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="clip-cta h-11 rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
+                disabled={page >= totalPages}
+                onClick={() => onPageChange(page + 1)}
+              >
+                Next
+              </Button>
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+    </div>
   );
 }
 
@@ -474,6 +350,9 @@ export function ProfileCommentsPanel({
   profileOwner,
 }: ProfileCommentsPanelProps) {
   const [comments, setComments] = useState<ProfileComment[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -483,28 +362,53 @@ export function ProfileCommentsPanel({
   const [replyDraft, setReplyDraft] = useState("");
   const [replyPosting, setReplyPosting] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const isLoggedIn = Boolean(viewerMemberId);
   const canComment = viewerIsVerified && isLoggedIn && !isOwnProfile;
   const showGuestCTA = !isOwnProfile && !canComment;
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchProfileComments(profileMemberId, viewerMemberId);
-      setComments(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load comments.");
-      setComments([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [profileMemberId, viewerMemberId]);
+  useEffect(() => {
+    setPage(1);
+  }, [profileMemberId]);
+
+  const loadPage = useCallback(
+    async (pageToLoad: number) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchProfileComments(profileMemberId, viewerMemberId, {
+          page: pageToLoad,
+          pageSize: PAGE_SIZE,
+        });
+        setComments(data.comments);
+        setTotal(data.total);
+        setPage(data.page);
+        setTotalPages(data.totalPages);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load comments.");
+        setComments([]);
+        setTotal(0);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [profileMemberId, viewerMemberId],
+  );
 
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    void loadPage(page);
+  }, [loadPage, page]);
+
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, total);
+  const visibleComments = comments.filter((comment) => !comment.isHidden || isOwnProfile);
+  const hasComments = total > 0;
+
+  function handlePageChange(nextPage: number) {
+    setPage(clampPage(nextPage, totalPages));
+  }
 
   async function handlePost() {
     if (!viewerMemberId || !draft.trim()) return;
@@ -517,9 +421,18 @@ export function ProfileCommentsPanel({
         profileMemberId,
         body: draft,
       });
-      setComments((prev) => [created, ...prev]);
       setDraft("");
       setComposerOpen(false);
+      if (page === 1) {
+        setComments((prev) => [created, ...prev].slice(0, PAGE_SIZE));
+        setTotal((prev) => {
+          const nextTotal = prev + 1;
+          setTotalPages(Math.max(1, Math.ceil(nextTotal / PAGE_SIZE)));
+          return nextTotal;
+        });
+      } else {
+        setPage(1);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to post comment.");
     } finally {
@@ -539,7 +452,7 @@ export function ProfileCommentsPanel({
         authorMemberId: viewerMemberId,
         hidden,
       });
-      await reload();
+      await loadPage(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update comment.");
     } finally {
@@ -560,7 +473,11 @@ export function ProfileCommentsPanel({
         body: replyDraft,
       });
       setComments((prev) =>
-        prev.map((comment) => (comment.id === parentCommentId ? { ...comment, reply } : comment)),
+        prev.map((comment) =>
+          comment.id === parentCommentId
+            ? { ...comment, replies: [...comment.replies, reply] }
+            : comment,
+        ),
       );
       setReplyingId(null);
       setReplyDraft("");
@@ -568,6 +485,27 @@ export function ProfileCommentsPanel({
       setError(err instanceof Error ? err.message : "Failed to post reply.");
     } finally {
       setReplyPosting(false);
+    }
+  }
+
+  async function handleDelete(commentId: string) {
+    if (!viewerMemberId) return;
+
+    setActionId(commentId);
+    setError(null);
+    try {
+      await deleteProfileCommentByOwner({
+        profileMemberId,
+        commentId,
+        authorMemberId: viewerMemberId,
+      });
+      setDeleteTargetId(null);
+      setReplyingId((current) => (current === commentId ? null : current));
+      await loadPage(page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete comment.");
+    } finally {
+      setActionId(null);
     }
   }
 
@@ -581,16 +519,14 @@ export function ProfileCommentsPanel({
     setReplyDraft("");
   }
 
-  const visibleCount = comments.filter((c) => !c.isHidden || isOwnProfile).length;
-
   return (
     <TechPanel
       label="Community"
       title={
         loading
           ? "Profile Comments"
-          : visibleCount > 0
-            ? `Profile Comments · ${visibleCount}`
+          : total > 0
+            ? `Profile Comments · ${total}`
             : "Profile Comments"
       }
       icon={<MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />}
@@ -598,12 +534,12 @@ export function ProfileCommentsPanel({
       <div className="flex flex-col gap-5">
         {isOwnProfile && <OwnerModerationHint />}
 
-        {canComment && (comments.length > 0 || composerOpen) && (
+        {canComment && (hasComments || composerOpen) && (
           <CommentComposer
             draft={draft}
             posting={posting}
             composerOpen={composerOpen}
-            hasComments={comments.length > 0}
+            hasComments={hasComments}
             onDraftChange={setDraft}
             onPost={() => void handlePost()}
             onOpen={() => setComposerOpen(true)}
@@ -624,7 +560,7 @@ export function ProfileCommentsPanel({
 
         {loading ? (
           <CommentsLoadingSkeleton />
-        ) : comments.length === 0 && !(canComment && composerOpen) ? (
+        ) : !hasComments && !(canComment && composerOpen) ? (
           <ArenaEmptyState
             embedded
             eyebrow="Profile Comments"
@@ -653,32 +589,75 @@ export function ProfileCommentsPanel({
               ) : undefined
             }
           />
-        ) : comments.length > 0 ? (
-          <ul className="flex flex-col gap-4">
-            {comments
-              .filter((comment) => !comment.isHidden || isOwnProfile)
-              .map((comment) => (
-              <CommentCard
-                key={comment.id}
-                comment={comment}
-                isOwnProfile={isOwnProfile}
-                profileOwner={profileOwner}
-                replyingId={replyingId}
-                replyDraft={replyDraft}
-                replyPosting={replyPosting}
-                actionId={actionId}
-                onHide={(id, hidden) => void handleHide(id, hidden)}
-                onToggleReply={handleToggleReply}
-                onReplyDraftChange={setReplyDraft}
-                onReply={(id) => void handleReply(id)}
-                onCancelReply={() => {
-                  setReplyingId(null);
-                  setReplyDraft("");
-                }}
-              />
-            ))}
-          </ul>
+        ) : hasComments ? (
+          <>
+            <ul className="flex flex-col gap-4">
+              {visibleComments.map((comment) => (
+                <ProfileCommentThread
+                  key={comment.id}
+                  comment={comment}
+                  profileMemberId={profileMemberId}
+                  profileOwner={profileOwner}
+                  viewerMemberId={viewerMemberId}
+                  showModeration={isOwnProfile}
+                  replyingId={replyingId}
+                  replyDraft={replyDraft}
+                  replyPosting={replyPosting}
+                  actionId={actionId}
+                  onHide={(id, hidden) => void handleHide(id, hidden)}
+                  onDelete={(id) => setDeleteTargetId(id)}
+                  onToggleReply={handleToggleReply}
+                  onReplyDraftChange={setReplyDraft}
+                  onReply={(id) => void handleReply(id)}
+                  onCancelReply={() => {
+                    setReplyingId(null);
+                    setReplyDraft("");
+                  }}
+                />
+              ))}
+            </ul>
+            <ProfileCommentsPagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              onPageChange={handlePageChange}
+            />
+          </>
         ) : null}
+
+        <AlertDialog
+          open={deleteTargetId !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTargetId(null);
+          }}
+        >
+          <AlertDialogContent className="rounded-none border-white/12 bg-[oklch(0.07_0_0)]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display text-xl tracking-display">
+                Delete comment?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-muted-foreground">
+                This permanently removes the comment and any reply in the thread. This cannot be
+                undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-none font-tech text-ui-readable uppercase">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="clip-cta rounded-none bg-red-500 font-tech text-ui-readable uppercase text-white hover:bg-red-500/90"
+                onClick={() => {
+                  if (deleteTargetId) void handleDelete(deleteTargetId);
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TechPanel>
   );

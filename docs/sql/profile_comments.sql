@@ -1,7 +1,7 @@
 -- Profile comments (Steam-style testimonials) — run in Supabase SQL Editor
 --
 -- Verified members can leave comments on other verified members' public profiles.
--- Profile owners can hide comments or post a single reply per top-level comment.
+-- Profile owners and the original commenter can exchange multiple replies per thread.
 
 create table if not exists public.profile_comments (
   id uuid primary key default gen_random_uuid(),
@@ -22,11 +22,6 @@ create index if not exists profile_comments_profile_idx
   on public.profile_comments (profile_member_id, created_at desc);
 
 create index if not exists profile_comments_parent_idx
-  on public.profile_comments (parent_comment_id)
-  where parent_comment_id is not null;
-
--- One owner reply per top-level comment
-create unique index if not exists profile_comments_one_reply_per_parent
   on public.profile_comments (parent_comment_id)
   where parent_comment_id is not null;
 

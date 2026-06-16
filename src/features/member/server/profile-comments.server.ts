@@ -5,6 +5,7 @@ import type {
   ProfileComment,
   ProfileCommentAuthor,
   ProfileCommentReply,
+  ProfileCommentsPage,
 } from "../types/profile-comments";
 
 const MAX_BODY_LENGTH = 500;
@@ -101,19 +102,51 @@ async function loadAuthorMap(memberIds: string[]): Promise<Map<string, ProfileCo
   );
 }
 
+function groupRepliesByParent(rows: CommentRow[]): Map<string, CommentRow[]> {
+  const map = new Map<string, CommentRow[]>();
+
+  for (const row of rows) {
+    if (!row.parent_comment_id) continue;
+    const list = map.get(row.parent_comment_id) ?? [];
+    list.push(row);
+    map.set(row.parent_comment_id, list);
+  }
+
+  for (const [parentId, list] of map) {
+    list.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    map.set(parentId, list);
+  }
+
+  return map;
+}
+
 function rowToComment(
   row: CommentRow,
   authors: Map<string, ProfileCommentAuthor>,
-  replies: Map<string, CommentRow>,
-  isProfileOwner: boolean,
+  repliesByParent: Map<string, CommentRow[]>,
+  includeHidden: boolean,
 ): ProfileComment | null {
   if (row.parent_comment_id) return null;
-  if (row.is_hidden && !isProfileOwner) return null;
+  if (row.is_hidden && !includeHidden) return null;
 
   const author = authors.get(row.author_member_id);
   if (!author) return null;
 
-  const replyRow = replies.get(row.id);
+  const replyRows = repliesByParent.get(row.id) ?? [];
+  const replies = replyRows
+    .map((replyRow) => {
+      const replyAuthor = authors.get(replyRow.author_member_id);
+      if (!replyAuthor) return null;
+
+      return {
+        id: replyRow.id,
+        body: replyRow.body,
+        createdAt: replyRow.created_at,
+        author: replyAuthor,
+        isProfileOwnerReply: replyRow.author_member_id === row.profile_member_id,
+      } satisfies ProfileCommentReply;
+    })
+    .filter((reply): reply is ProfileCommentReply => reply !== null);
 
   return {
     id: row.id,
@@ -122,48 +155,115 @@ function rowToComment(
     body: row.body,
     isHidden: row.is_hidden,
     createdAt: row.created_at,
-    reply: replyRow
-      ? {
-          id: replyRow.id,
-          body: replyRow.body,
-          createdAt: replyRow.created_at,
-        }
-      : null,
+    replies,
   };
 }
 
 export async function fetchProfileComments(
   profileMemberId: string,
   viewerMemberId?: string,
-): Promise<ProfileComment[]> {
-  const supabase = getSupabaseAdmin();
+  options?: { page?: number; pageSize?: number },
+): Promise<ProfileCommentsPage> {
   const isProfileOwner = Boolean(viewerMemberId && viewerMemberId === profileMemberId);
+  return fetchProfileCommentsPage(profileMemberId, {
+    ...options,
+    includeHidden: isProfileOwner,
+  });
+}
 
-  const { data, error } = await supabase
+export async function fetchProfileCommentsAsAdmin(
+  profileMemberId: string,
+  options?: { page?: number; pageSize?: number },
+): Promise<ProfileCommentsPage> {
+  return fetchProfileCommentsPage(profileMemberId, {
+    ...options,
+    includeHidden: true,
+  });
+}
+
+async function fetchProfileCommentsPage(
+  profileMemberId: string,
+  options?: { page?: number; pageSize?: number; includeHidden?: boolean },
+): Promise<ProfileCommentsPage> {
+  const supabase = getSupabaseAdmin();
+  const includeHidden = Boolean(options?.includeHidden);
+  const pageSize = Math.max(1, Math.min(options?.pageSize ?? 10, 50));
+  const requestedPage = Math.max(1, options?.page ?? 1);
+
+  let countQuery = supabase
+    .from("profile_comments")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_member_id", profileMemberId)
+    .is("parent_comment_id", null);
+
+  if (!includeHidden) {
+    countQuery = countQuery.eq("is_hidden", false);
+  }
+
+  const { count, error: countError } = await countQuery;
+
+  if (countError) {
+    if (countError.code === "42P01") {
+      return { comments: [], total: 0, page: 1, pageSize, totalPages: 1 };
+    }
+    throw new Error(countError.message);
+  }
+
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  if (total === 0) {
+    return { comments: [], total: 0, page: 1, pageSize, totalPages: 1 };
+  }
+
+  let dataQuery = supabase
     .from("profile_comments")
     .select("*")
     .eq("profile_member_id", profileMemberId)
-    .order("created_at", { ascending: false });
+    .is("parent_comment_id", null)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (!includeHidden) {
+    dataQuery = dataQuery.eq("is_hidden", false);
+  }
+
+  const { data, error } = await dataQuery;
 
   if (error) {
-    if (error.code === "42P01") return [];
+    if (error.code === "42P01") {
+      return { comments: [], total: 0, page: 1, pageSize, totalPages: 1 };
+    }
     throw new Error(error.message);
   }
 
-  const rows = (data ?? []) as CommentRow[];
-  const topLevel = rows.filter((row) => !row.parent_comment_id);
-  const replies = new Map(
-    rows
-      .filter((row): row is CommentRow & { parent_comment_id: string } => Boolean(row.parent_comment_id))
-      .map((row) => [row.parent_comment_id, row]),
-  );
+  const topLevel = (data ?? []) as CommentRow[];
+  const topLevelIds = topLevel.map((row) => row.id);
 
-  const authorIds = rows.map((row) => row.author_member_id);
+  let replyRows: CommentRow[] = [];
+  if (topLevelIds.length > 0) {
+    const { data: replies, error: repliesError } = await supabase
+      .from("profile_comments")
+      .select("*")
+      .in("parent_comment_id", topLevelIds);
+
+    if (repliesError) throw new Error(repliesError.message);
+    replyRows = (replies ?? []) as CommentRow[];
+  }
+
+  const repliesByParent = groupRepliesByParent(replyRows);
+
+  const authorIds = [...topLevel, ...replyRows].map((row) => row.author_member_id);
   const authors = await loadAuthorMap(authorIds);
 
-  return topLevel
-    .map((row) => rowToComment(row, authors, replies, isProfileOwner))
+  const comments = topLevel
+    .map((row) => rowToComment(row, authors, repliesByParent, includeHidden))
     .filter((comment): comment is ProfileComment => comment !== null);
+
+  return { comments, total, page, pageSize, totalPages };
 }
 
 export async function createProfileComment(input: {
@@ -206,7 +306,7 @@ export async function createProfileComment(input: {
     body: data.body as string,
     isHidden: false,
     createdAt: data.created_at as string,
-    reply: null,
+    replies: [],
   };
 }
 
@@ -218,10 +318,6 @@ export async function replyToProfileComment(input: {
 }): Promise<ProfileCommentReply> {
   const body = normalizeBody(input.body);
   if (!body) throw new Error("Reply cannot be empty.");
-
-  if (input.authorMemberId !== input.profileMemberId) {
-    throw new Error("Only the profile owner can reply to comments.");
-  }
 
   await requireVerifiedMember(input.authorMemberId);
 
@@ -241,14 +337,15 @@ export async function replyToProfileComment(input: {
     throw new Error("You can only reply to top-level comments.");
   }
 
-  const { data: existingReply } = await supabase
-    .from("profile_comments")
-    .select("id")
-    .eq("parent_comment_id", input.parentCommentId)
-    .maybeSingle();
+  const isOwner = input.authorMemberId === input.profileMemberId;
+  const isCommentAuthor = input.authorMemberId === parent.author_member_id;
 
-  if (existingReply) {
-    throw new Error("A reply already exists for this comment.");
+  if (!isOwner && !isCommentAuthor) {
+    throw new Error("Only the profile owner or the original commenter can reply in this thread.");
+  }
+
+  if (parent.is_hidden && !isOwner) {
+    throw new Error("Cannot reply to a hidden comment.");
   }
 
   const { data, error } = await supabase
@@ -264,10 +361,16 @@ export async function replyToProfileComment(input: {
 
   if (error) throw new Error(error.message);
 
+  const authors = await loadAuthorMap([input.authorMemberId]);
+  const author = authors.get(input.authorMemberId);
+  if (!author) throw new Error("Failed to load reply author.");
+
   return {
     id: data.id as string,
     body: data.body as string,
     createdAt: data.created_at as string,
+    author,
+    isProfileOwnerReply: isOwner,
   };
 }
 
@@ -308,6 +411,57 @@ export async function setProfileCommentHidden(input: {
     .eq("id", input.commentId);
 
   if (error) throw new Error(error.message);
+}
+
+async function deleteCommentThread(profileMemberId: string, commentId: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const { data: comment, error: commentError } = await supabase
+    .from("profile_comments")
+    .select("id, profile_member_id, parent_comment_id")
+    .eq("id", commentId)
+    .maybeSingle();
+
+  if (commentError) throw new Error(commentError.message);
+  if (!comment) throw new Error("Comment not found.");
+  if (comment.profile_member_id !== profileMemberId) {
+    throw new Error("Comment does not belong to this profile.");
+  }
+
+  const threadRootId = (comment.parent_comment_id as string | null) ?? (comment.id as string);
+
+  const { error: repliesError } = await supabase
+    .from("profile_comments")
+    .delete()
+    .eq("parent_comment_id", threadRootId);
+
+  if (repliesError) throw new Error(repliesError.message);
+
+  const { error: rootError } = await supabase
+    .from("profile_comments")
+    .delete()
+    .eq("id", threadRootId);
+
+  if (rootError) throw new Error(rootError.message);
+}
+
+export async function deleteProfileCommentByOwner(input: {
+  profileMemberId: string;
+  commentId: string;
+  authorMemberId: string;
+}): Promise<void> {
+  if (input.authorMemberId !== input.profileMemberId) {
+    throw new Error("Only the profile owner can delete comments.");
+  }
+
+  await requireVerifiedMember(input.authorMemberId);
+  await deleteCommentThread(input.profileMemberId, input.commentId);
+}
+
+export async function deleteProfileCommentAsAdmin(input: {
+  profileMemberId: string;
+  commentId: string;
+}): Promise<void> {
+  await deleteCommentThread(input.profileMemberId, input.commentId);
 }
 
 export interface ProfileCommentAlert {
