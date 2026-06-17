@@ -9,6 +9,9 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import {
+  enrichPublicRounds,
+} from "@/features/tournaments/utils/bracket-connectors";
+import {
   fetchPublishedBracketPayload,
   type PersistedBracketPayload,
   resetBracketState,
@@ -56,11 +59,17 @@ function _payloadFromUnknown(payload: unknown): PersistedBracketPayload | null {
   return payload as PersistedBracketPayload;
 }
 
+function _normalizePayload(payload: PersistedBracketPayload): PersistedBracketPayload {
+  const rounds = enrichPublicRounds(payload.rounds, payload.admin?.managedMatches);
+  return { ...payload, rounds };
+}
+
 function _setLocal(tournamentId: string, payload: PersistedBracketPayload, updatedAt?: string) {
+  const normalized = _normalizePayload(payload);
   _store.set(tournamentId, {
-    rounds: payload.rounds,
-    placements: payload.placements ?? null,
-    prizeBreakdown: payload.prizeBreakdown ?? null,
+    rounds: normalized.rounds,
+    placements: normalized.placements ?? null,
+    prizeBreakdown: normalized.prizeBreakdown ?? null,
     updatedAt: updatedAt ?? new Date().toISOString(),
   });
   _notify(tournamentId);
