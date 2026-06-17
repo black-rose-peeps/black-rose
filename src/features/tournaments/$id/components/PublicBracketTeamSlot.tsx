@@ -4,6 +4,7 @@ import { teamDisplayAbbr } from "../../utils/team-tags";
 export interface PublicBracketTeamSlotProps {
   name: string | null;
   tag?: string;
+  placeholder?: string;
   score?: number;
   isWinner: boolean;
   isLoser: boolean;
@@ -15,6 +16,7 @@ export interface PublicBracketTeamSlotProps {
 export function PublicBracketTeamSlot({
   name,
   tag,
+  placeholder,
   score,
   isWinner,
   isLoser,
@@ -56,7 +58,9 @@ export function PublicBracketTeamSlot({
         className={cn(
           "min-w-0 flex-1 truncate text-xs",
           isTbd
-            ? "italic text-muted-foreground/50"
+            ? placeholder
+              ? "font-tech text-[10px] uppercase tracking-wider text-muted-foreground/70"
+              : "italic text-muted-foreground/50"
             : isChampionRow
               ? "font-semibold text-amber-100"
               : isWinner
@@ -64,7 +68,7 @@ export function PublicBracketTeamSlot({
                 : "text-muted-foreground",
         )}
       >
-        {isTbd ? "TBD" : name}
+        {isTbd ? (placeholder ?? "TBD") : name}
       </span>
 
       {(hasScores || score !== undefined) && !isTbd && (

@@ -63,6 +63,9 @@ export interface BracketMatch {
   /** Precomputed at publish time for public read-only view. */
   winnerAdvancesTo?: string;
   loserAdvancesTo?: string;
+  /** Shown on empty slots so TBD entries explain where teams come from. */
+  teamAHint?: string;
+  teamBHint?: string;
 }
 
 export interface BracketRound {

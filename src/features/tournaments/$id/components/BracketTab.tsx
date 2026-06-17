@@ -1,16 +1,31 @@
 /**
  * Public read-only bracket viewer.
  *
- * Mirrors the visual layout of the admin ManagedBracketView (canvas-positioned
- * columns, card-per-match, winner highlights) but strips all interactive controls.
+ * Uses the shared elimination bracket canvas (tree layout, connectors, pan/zoom)
+ * with Black Rose styling. Mirrors admin ManagedBracketView structure.
  */
 
-import { Crown } from "lucide-react";
+import { useState } from "react";
+import { Crown, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
 import {
+  BracketSectionHeader,
+  DoubleElimViewControls,
+  EliminationBracketCanvas,
+  GrandFinalSection,
+  type BracketRoundColumn,
+  type DoubleElimViewMode,
+  type SplitBracketSide,
+} from "@/features/tournaments/components/bracket";
+import {
+  publicToLayoutMatches,
+  splitGrandFinalRounds,
+} from "@/features/tournaments/utils/bracket-connectors";
+import {
   isChampionshipMatch,
   isChampionshipRoundLabel,
+  isGrandFinalRound,
   isOpeningPlayInRound,
   partitionDoubleElimRounds,
 } from "../../utils/bracket-display";
@@ -20,7 +35,9 @@ import {
   bracketCanvasSize,
   bracketMatchTop,
 } from "../../utils/bracket-layout";
-import { sortPublicBracketRounds } from "../../utils/bracket-round-order";
+import { hasLowerPlayInPool } from "@/features/tournaments/utils/bracket-slot-hints";
+import { sortPublicBracketRounds } from "@/features/tournaments/utils/bracket-round-order";
+import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
 import type { BracketRound, BracketMatch } from "../../types";
 import { PublicBracketTeamSlot } from "./PublicBracketTeamSlot";
 import { SwissBracketTab } from "./SwissBracketTab";
@@ -40,6 +57,9 @@ export function BracketTab({
   teamTags,
   tournamentStatus,
 }: BracketTabProps) {
+  const [viewMode, setViewMode] = useState<DoubleElimViewMode>("full");
+  const [splitSide, setSplitSide] = useState<SplitBracketSide>("upper");
+
   if (isLoading) {
     return <BracketSkeleton />;
   }
@@ -70,6 +90,73 @@ export function BracketTab({
   }
 
   const isDoubleElim = isDoubleEliminationFormat(format);
+  const matchById = new Map(
+    bracket.flatMap((round) => round.matches.map((match) => [match.id, match] as const)),
+  );
+
+  const renderSection = (
+    title: string | undefined,
+    accent: "primary" | "accent" | "warning",
+    rounds: BracketRound[],
+  ) => {
+    const { bracketRounds, grandRounds } = splitGrandFinalRounds(rounds, (round) =>
+      isGrandFinalRound(round.label),
+    );
+    const columns = toPublicRoundColumns(bracketRounds);
+    const sectionLayoutMatches = publicToLayoutMatches(rounds);
+    const sectionHasLowerPlayIn = hasLowerPlayInPool(rounds);
+    const teamCount = countBracketTeams(bracket);
+
+    return (
+      <div className="space-y-4">
+        {title && <BracketSectionHeader title={title} accent={accent} />}
+        {sectionHasLowerPlayIn && <LowerBracketPlayInGuide teamCount={teamCount} />}
+        {columns.length > 0 && (
+          <EliminationBracketCanvas
+            rounds={columns}
+            layoutMatches={sectionLayoutMatches}
+            renderMatch={(matchId) => {
+              const match = matchById.get(matchId);
+              if (!match) return null;
+              const round = bracket.find((item) => item.matches.some((entry) => entry.id === matchId));
+              return (
+                <PublicMatchCard
+                  match={match}
+                  roundLabel={round?.label}
+                  teamTags={teamTags}
+                />
+              );
+            }}
+          />
+        )}
+        {grandRounds.map((round) => {
+          const grandMatch = round.matches[0];
+          if (!grandMatch) return null;
+
+          return (
+            <GrandFinalSection key={round.id ?? round.label}>
+              <div className="flex flex-col items-center gap-4 sm:flex-row">
+                <div className="hidden h-20 w-20 shrink-0 place-items-center border border-amber-400/30 bg-amber-400/10 sm:grid">
+                  <Trophy className="h-10 w-10 text-amber-300" />
+                </div>
+                <div className="w-full max-w-sm">
+                  <p className="mb-2 font-tech text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                    Championship Match
+                  </p>
+                  <PublicMatchCard
+                    match={grandMatch}
+                    roundLabel={round.label}
+                    teamTags={teamTags}
+                    isGrand
+                  />
+                </div>
+              </div>
+            </GrandFinalSection>
+          );
+        })}
+      </div>
+    );
+  };
 
   if (isDoubleElim) {
     const { playInRounds, upperRounds, lowerRounds } = partitionDoubleElimRounds(bracket);
@@ -77,15 +164,23 @@ export function BracketTab({
     return (
       <div className="flex flex-col gap-10">
         <BracketHeader format={format} />
-
-        {playInRounds.length > 0 && (
-          <BracketSection title="Opening — Play-in" rounds={playInRounds} teamTags={teamTags} />
+        <DoubleElimViewControls
+          viewMode={viewMode}
+          splitSide={splitSide}
+          onViewModeChange={setViewMode}
+          onSplitSideChange={setSplitSide}
+        />
+        {playInRounds.length > 0 && renderSection("Opening — Play-in", "accent", playInRounds)}
+        {viewMode === "full" ? (
+          <>
+            {renderSection("Upper Bracket", "primary", upperRounds)}
+            {lowerRounds.length > 0 && renderSection("Lower Bracket", "accent", lowerRounds)}
+          </>
+        ) : splitSide === "upper" ? (
+          renderSection("Upper Bracket", "primary", upperRounds)
+        ) : (
+          lowerRounds.length > 0 && renderSection("Lower Bracket", "accent", lowerRounds)
         )}
-        <BracketSection title="Upper Bracket" rounds={upperRounds} teamTags={teamTags} />
-        {lowerRounds.length > 0 && (
-          <BracketSection title="Lower Bracket" rounds={lowerRounds} teamTags={teamTags} />
-        )}
-
         <BracketFooter isDoubleElim hasPlayIn={playInRounds.length > 0} />
       </div>
     );
@@ -94,15 +189,36 @@ export function BracketTab({
   return (
     <div className="flex flex-col gap-10">
       <BracketHeader format={format} />
-      <BracketSection rounds={sortPublicBracketRounds(bracket)} teamTags={teamTags} />
-      <BracketFooter hasPlayIn={bracket.some((r) => isOpeningPlayInRound(r.label))} />
+      {renderSection(undefined, "primary", sortPublicBracketRounds(bracket))}
+      <BracketFooter hasPlayIn={bracket.some((round) => isOpeningPlayInRound(round.label))} />
     </div>
   );
 }
 
+function toPublicRoundColumns(rounds: BracketRound[]): BracketRoundColumn[] {
+  return rounds
+    .filter((round) => !isGrandFinalRound(round.label))
+    .map((round) => ({
+      id: round.id ?? round.label,
+      label: round.label,
+      matchIds: round.matches.map((match) => match.id),
+    }));
+}
+
+function countBracketTeams(rounds: BracketRound[]): number {
+  const names = new Set<string>();
+  for (const round of rounds) {
+    for (const match of round.matches) {
+      if (match.teamA) names.add(match.teamA);
+      if (match.teamB) names.add(match.teamB);
+    }
+  }
+  return names.size;
+}
+
 function BracketHeader({ format }: { format: string }) {
   return (
-    <div className="flex items-center gap-3 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+    <div className="flex items-center gap-3 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
       <span className="h-px w-8 bg-border" />
       {format} Bracket
       <span className="h-px flex-1 bg-border" />
@@ -119,7 +235,7 @@ function BracketFooter({
 }) {
   if (isDoubleElim && hasPlayIn) {
     return (
-      <p className="text-[10px] font-tech font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
+      <p className="font-tech text-[10px] font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
         Play-in winners join the main upper bracket. Lower bracket columns run left to right in
         match order. Grand Final: upper-bracket winner vs lower-bracket winner.
       </p>
@@ -128,7 +244,7 @@ function BracketFooter({
 
   if (hasPlayIn) {
     return (
-      <p className="text-[10px] font-tech font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
+      <p className="font-tech text-[10px] font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
         Play-in winners fill the remaining main-bracket slots. TBD entries update as matches
         conclude.
       </p>
@@ -136,7 +252,7 @@ function BracketFooter({
   }
 
   return (
-    <p className="text-[10px] font-tech font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
+    <p className="font-tech text-[10px] font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
       {isDoubleElim
         ? "Winners advance to upper bracket; losers drop to lower bracket."
         : "TBD entries will be filled as the tournament progresses."}
@@ -144,121 +260,38 @@ function BracketFooter({
   );
 }
 
-function BracketSection({
-  title,
-  rounds,
-  teamTags,
-}: {
-  title?: string;
-  rounds: BracketRound[];
-  teamTags?: Map<string, string>;
-}) {
-  if (rounds.length === 0) return null;
-
-  const maxMatches = Math.max(...rounds.map((r) => r.matches.length), 1);
-  const { width: totalW, height: canvasHeight } = bracketCanvasSize(rounds.length, maxMatches);
-
-  const isGrand = (label: string) => isChampionshipRoundLabel(label);
-  const isLower = (label: string) => /lower/i.test(label) && !isChampionshipRoundLabel(label);
-
-  return (
-    <div>
-      {title && (
-        <div className="mb-3 flex items-center gap-3">
-          <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-            {title}
-          </span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-      )}
-
-      <div className="custom-scrollbar overflow-auto pb-2">
-        <div
-          className="relative min-w-full"
-          style={{ width: `${totalW}px`, height: `${canvasHeight}px`, minHeight: 300 }}
-        >
-          {rounds.map((round, colIndex) => {
-            const x = colIndex * (BRACKET_CARD_W + BRACKET_COL_GAP) + 20;
-            const grand = isGrand(round.label);
-            const lower = isLower(round.label);
-
-            const sideBorder = grand
-              ? "border-amber-400/55"
-              : lower
-                ? "border-amber-400/25"
-                : "border-border";
-
-            const labelColor = grand
-              ? "text-amber-300/90 border-amber-400/35"
-              : "text-muted-foreground border-border";
-
-            return (
-              <div key={round.id ?? round.label}>
-                <div className="absolute top-0" style={{ left: `${x}px`, width: `${BRACKET_CARD_W}px` }}>
-                  <span
-                    className={cn(
-                      "block border-b pb-1 font-display text-[10px] font-bold uppercase tracking-wider",
-                      labelColor,
-                    )}
-                  >
-                    {round.label}
-                  </span>
-                </div>
-
-                {round.matches.map((match, mi) => {
-                  const y = bracketMatchTop(mi, round.matches.length, canvasHeight);
-                  const isChampionship = isChampionshipMatch(match, round.label);
-
-                  return (
-                    <PublicMatchCard
-                      key={match.id}
-                      match={match}
-                      x={x}
-                      y={y}
-                      sideBorder={sideBorder}
-                      isChampionship={isChampionship}
-                      teamTags={teamTags}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PublicMatchCard({
   match,
-  x,
-  y,
-  sideBorder,
-  isChampionship = false,
+  roundLabel,
   teamTags,
+  isGrand = false,
 }: {
   match: BracketMatch;
-  x: number;
-  y: number;
-  sideBorder: string;
-  isChampionship?: boolean;
+  roundLabel?: string;
   teamTags?: Map<string, string>;
+  isGrand?: boolean;
 }) {
   const hasScores = match.scoreA !== undefined && match.scoreB !== undefined;
   const decided = !!match.winner;
+  const isChampionship = isGrand || isChampionshipMatch(match, roundLabel);
   const championCrowned = isChampionship && decided && !!match.winner;
   const matchTitle = match.label ?? match.round;
+  const isLower = roundLabel ? /lower/i.test(roundLabel) && !isChampionshipRoundLabel(roundLabel) : false;
+
+  const sideBorder = isChampionship
+    ? "border-amber-400/55"
+    : isLower
+      ? "border-amber-400/25"
+      : "border-border";
 
   return (
     <div
       className={cn(
-        "absolute bg-card border",
-        isChampionship ? "border-amber-400/55" : sideBorder,
+        "border bg-card",
+        sideBorder,
         decided && !isChampionship && "ring-1 ring-emerald-400/30",
         championCrowned && "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
       )}
-      style={{ left: `${x}px`, top: `${y}px`, width: BRACKET_CARD_W }}
     >
       <div
         className={cn(
@@ -268,7 +301,7 @@ function PublicMatchCard({
       >
         <span
           className={cn(
-            "flex items-center gap-1 text-[10px] font-tech uppercase tracking-wider",
+            "flex items-center gap-1 font-tech text-[10px] uppercase tracking-wider",
             isChampionship ? "text-amber-300/90" : "text-muted-foreground",
           )}
         >
@@ -278,7 +311,7 @@ function PublicMatchCard({
         {decided && (
           <span
             className={cn(
-              "text-[9px] font-tech uppercase tracking-wider",
+              "font-tech text-[9px] uppercase tracking-wider",
               championCrowned ? "text-amber-300/80" : "text-emerald-400/70",
             )}
           >
@@ -290,6 +323,7 @@ function PublicMatchCard({
       <PublicBracketTeamSlot
         name={match.teamA}
         tag={match.teamA ? teamTags?.get(match.teamA) : undefined}
+        placeholder={match.teamAHint}
         score={match.scoreA}
         isWinner={decided && match.winner === match.teamA}
         isLoser={decided && !!match.teamA && match.winner !== match.teamA}
@@ -300,13 +334,13 @@ function PublicMatchCard({
       <PublicBracketTeamSlot
         name={match.teamB}
         tag={match.teamB ? teamTags?.get(match.teamB) : undefined}
+        placeholder={match.teamBHint}
         score={match.scoreB}
         isWinner={decided && match.winner === match.teamB}
         isLoser={decided && !!match.teamB && match.winner !== match.teamB}
         hasScores={hasScores}
         isChampionRow={championCrowned && match.winner === match.teamB}
       />
-
     </div>
   );
 }
@@ -321,20 +355,20 @@ function BracketSkeleton() {
         className="relative animate-pulse"
         style={{ width: `${totalW}px`, height: `${canvasH}px`, minHeight: 300 }}
       >
-        {cols.map((x, ci) => {
-          const matchCount = Math.max(1, 4 >> ci);
+        {cols.map((x, columnIndex) => {
+          const matchCount = Math.max(1, 4 >> columnIndex);
           return (
-            <div key={ci}>
+            <div key={columnIndex}>
               <div
-                className="absolute top-0 h-4 rounded bg-primary/10"
+                className="absolute top-0 h-4 bg-primary/10"
                 style={{ left: `${x + 20}px`, width: BRACKET_CARD_W - 20 }}
               />
-              {Array.from({ length: matchCount }).map((_, mi) => {
-                const y = bracketMatchTop(mi, matchCount, canvasH);
+              {Array.from({ length: matchCount }).map((_, matchIndex) => {
+                const y = bracketMatchTop(matchIndex, matchCount, canvasH);
                 return (
                   <div
-                    key={mi}
-                    className="absolute rounded bg-primary/10"
+                    key={matchIndex}
+                    className="absolute bg-primary/10"
                     style={{
                       left: `${x + 20}px`,
                       top: `${y}px`,
