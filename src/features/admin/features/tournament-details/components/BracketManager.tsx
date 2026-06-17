@@ -46,7 +46,9 @@ import {
   type SwissBracketState,
 } from "../utils/managed-swiss-bracket";
 import { eliminationRoundCount, orderedTeamNamesFromAssignments, playInMatchCount } from "../utils/bracket-field";
+import { assignmentsFromBracketMatches } from "@/features/tournaments/utils/tournament-seeding";
 import { isOpeningPlayInRound } from "@/features/tournaments/utils/bracket-display";
+import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/bracket-store";
 import { fetchBracketState } from "../services/bracket.service";
 import type { PersistedBracketPayload } from "../services/bracket.service";
@@ -58,24 +60,33 @@ function managedMatchesToPublicRounds(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
 ): BracketRound[] {
+  const slotHints = buildMatchSlotHints(matches);
+
   return roundMetas.map((meta) => ({
     id: meta.id,
     label: meta.label,
     matches: meta.matchIds
       .map((id) => matches.find((m) => m.id === id))
       .filter((m): m is ManagedMatch => !!m)
-      .map((m) => ({
-        id: m.id,
-        label: m.label,
-        round: m.swissPool
-          ? `${m.roundLabel} · ${formatSwissPoolLabel(m.swissPool)}`
-          : m.roundLabel,
-        teamA: m.teamA,
-        teamB: m.teamB,
-        scoreA: m.scoreA,
-        scoreB: m.scoreB,
-        winner: m.winner ?? undefined,
-      })),
+      .map((m) => {
+        const hints = slotHints.get(m.id);
+        return {
+          id: m.id,
+          label: m.label,
+          round: m.swissPool
+            ? `${m.roundLabel} · ${formatSwissPoolLabel(m.swissPool)}`
+            : m.roundLabel,
+          teamA: m.teamA,
+          teamB: m.teamB,
+          scoreA: m.scoreA,
+          scoreB: m.scoreB,
+          winner: m.winner ?? undefined,
+          winnerAdvancesTo: m.winnerNext?.matchId,
+          loserAdvancesTo: m.loserNext?.matchId,
+          teamAHint: hints?.teamA,
+          teamBHint: hints?.teamB,
+        };
+      }),
   }));
 }
 
@@ -164,42 +175,38 @@ function deriveBracketState(
   const openingPlayInMatches = playInMatchCount(bracketSize);
 
   if (isDoubleEliminationFormat(format) && openingPlayInMatches > 0) {
-    const directCount = bracketSize - openingPlayInMatches * 2;
-    const directMatchCount = directCount / 2;
     const upperR1 = initialBracket.find(
       (round) => /upper/i.test(round.label) && /round\s*1/i.test(round.label),
     );
     const playInRound = initialBracket.find((round) => isOpeningPlayInRound(round.label));
 
-    if (upperR1?.matches?.length) {
-      for (let i = 0; i < directMatchCount; i++) {
-        const match = upperR1.matches[i];
-        if (!match) continue;
-        assignments[i * 2] = findTeam(match.teamA);
-        assignments[i * 2 + 1] = findTeam(match.teamB);
-      }
-    }
-
-    if (playInRound?.matches?.length) {
-      let slot = directCount;
-      for (const match of playInRound.matches) {
-        if (slot >= bracketSize) break;
-        assignments[slot++] = findTeam(match.teamA);
-        if (slot >= bracketSize) break;
-        assignments[slot++] = findTeam(match.teamB);
-      }
+    const hydrated = assignmentsFromBracketMatches(
+      bracketSize,
+      {
+        isDoubleElimWithPlayIn: true,
+        upperRoundOne: upperR1?.matches,
+        playInMatches: playInRound?.matches,
+      },
+      findTeam,
+    );
+    for (let i = 0; i < bracketSize; i++) {
+      assignments[i] = hydrated[i];
     }
   } else {
-    const firstRound = initialBracket[0];
+    const playInRound = initialBracket.find((round) => isOpeningPlayInRound(round.label));
+    const firstRound = initialBracket.find((round) => !isOpeningPlayInRound(round.label));
 
-    if (firstRound?.matches?.length) {
-      let slot = 0;
-      for (const match of firstRound.matches) {
-        if (slot >= bracketSize) break;
-        assignments[slot++] = findTeam(match.teamA);
-        if (slot >= bracketSize) break;
-        assignments[slot++] = findTeam(match.teamB);
-      }
+    const hydrated = assignmentsFromBracketMatches(
+      bracketSize,
+      {
+        isDoubleElimWithPlayIn: false,
+        playInMatches: playInRound?.matches,
+        firstRoundMatches: firstRound?.matches ?? initialBracket[0]?.matches,
+      },
+      findTeam,
+    );
+    for (let i = 0; i < bracketSize; i++) {
+      assignments[i] = hydrated[i];
     }
   }
 

@@ -2,6 +2,13 @@ import { useMemo } from "react";
 import { Swords, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
+import { isPowerOfTwo } from "../utils/bracket-field";
+import {
+  firstRoundSeedPairings,
+  formatSeedLabel,
+  playInSeedPairings,
+  projectedUpperRoundOnePairings,
+} from "@/features/tournaments/utils/tournament-seeding";
 import { SeedingTeamPicker } from "./SeedingTeamPicker";
 
 interface SeedingPanelProps {
@@ -25,6 +32,7 @@ function SeedingMatchCard({
   teamA,
   teamB,
   isByeSlot,
+  seedLabel,
   teams,
   usedTeamIds,
   disabled,
@@ -36,6 +44,7 @@ function SeedingMatchCard({
   teamA: TournamentTeam | null;
   teamB: TournamentTeam | null;
   isByeSlot: boolean;
+  seedLabel?: string;
   teams: TournamentTeam[];
   usedTeamIds: Set<string>;
   disabled?: boolean;
@@ -63,9 +72,10 @@ function SeedingMatchCard({
             isComplete ? "text-amber-300/80" : "text-muted-foreground",
           )}
         >
-          {isByeSlot
-            ? `Seed ${teamAIdx + 1} — BYE`
-            : `Seeds ${teamAIdx + 1} – ${teamBIdx + 1}`}
+          {seedLabel ??
+            (isByeSlot
+              ? `Seed ${teamAIdx + 1} — BYE`
+              : `Seeds ${teamAIdx + 1} – ${teamBIdx + 1}`)}
         </span>
       </div>
 
@@ -110,6 +120,70 @@ function SeedingMatchCard({
   );
 }
 
+function ProtectedSeedSlot({
+  seed,
+  team,
+  teams,
+  usedTeamIds,
+  disabled,
+  onTeamSelect,
+}: {
+  seed: number;
+  team: TournamentTeam | null;
+  teams: TournamentTeam[];
+  usedTeamIds: Set<string>;
+  disabled?: boolean;
+  onTeamSelect: (slotIdx: number, teamId: string | null) => void;
+}) {
+  return (
+    <div className="border border-border bg-card p-4">
+      <SeedingTeamPicker
+        label={`Protected seed`}
+        seed={seed}
+        value={team}
+        teams={teams}
+        usedTeamIds={usedTeamIds}
+        onChange={(teamId) => onTeamSelect(seed - 1, teamId)}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+function UpperRoundOnePreviewCard({
+  matchIndex,
+  seedA,
+  seedB,
+  playInMatchIndexA,
+  playInMatchIndexB,
+  assignments,
+}: {
+  matchIndex: number;
+  seedA: number | "play-in";
+  seedB: number | "play-in";
+  playInMatchIndexA?: number;
+  playInMatchIndexB?: number;
+  assignments: Array<TournamentTeam | null>;
+}) {
+  const nameFor = (seed: number | "play-in", playInIdx?: number) => {
+    if (seed === "play-in") return formatSeedLabel(seed, playInIdx);
+    return assignments[seed - 1]?.name ?? formatSeedLabel(seed);
+  };
+
+  return (
+    <div className="border border-border/70 bg-secondary/10 px-4 py-3">
+      <p className="mb-2 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+        Upper R1 · Match {matchIndex + 1}
+      </p>
+      <p className="font-display text-sm tracking-wider text-foreground/90">
+        {nameFor(seedA, playInMatchIndexA)}
+        <span className="mx-2 text-muted-foreground/50">vs</span>
+        {nameFor(seedB, playInMatchIndexB)}
+      </p>
+    </div>
+  );
+}
+
 export function SeedingPanel({
   teams,
   assignments,
@@ -139,17 +213,33 @@ export function SeedingPanel({
     [teams, usedTeamIds],
   );
 
+  const playInMatches = useMemo(
+    () =>
+      hasPlayInSeeding
+        ? playInSeedPairings(bracketSize).map((pairing, index) => ({
+            key: `playin-${index}`,
+            matchIndex: index,
+            teamAIdx: pairing.seedA - 1,
+            teamBIdx: pairing.seedB - 1,
+            seedLabel: `Seeds ${pairing.seedA} – ${pairing.seedB}`,
+          }))
+        : [],
+    [bracketSize, hasPlayInSeeding],
+  );
+
+  const upperPreview = useMemo(
+    () => (hasPlayInSeeding ? projectedUpperRoundOnePairings(bracketSize) : []),
+    [bracketSize, hasPlayInSeeding],
+  );
+
   const readyMatches = useMemo(() => {
     if (hasPlayInSeeding) {
       let ready = 0;
-      const directMatches = directSeedCount / 2;
-      for (let i = 0; i < directMatches; i++) {
-        if (assignments[i * 2] && assignments[i * 2 + 1]) ready++;
+      for (let seed = 1; seed <= directSeedCount; seed++) {
+        if (assignments[seed - 1]) ready++;
       }
-      for (let i = 0; i < playInMatchCount; i++) {
-        const teamAIdx = directSeedCount + i * 2;
-        const teamBIdx = teamAIdx + 1;
-        if (assignments[teamAIdx] && assignments[teamBIdx]) ready++;
+      for (const match of playInMatches) {
+        if (assignments[match.teamAIdx] && assignments[match.teamBIdx]) ready++;
       }
       return ready;
     }
@@ -157,8 +247,9 @@ export function SeedingPanel({
     let ready = 0;
     for (let i = 0; i < seedingMatchCount; i++) {
       const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
-      const teamAIdx = isByeSlot ? bracketSize - 1 : i * 2;
-      const teamBIdx = i * 2 + 1;
+      const pairing = firstRoundSeedPairings(bracketSize)[i];
+      const teamAIdx = isByeSlot ? bracketSize - 1 : pairing.seedA - 1;
+      const teamBIdx = pairing.seedB - 1;
       const teamA = assignments[teamAIdx];
       const teamB = isByeSlot ? null : assignments[teamBIdx];
       if (isByeSlot ? teamA : teamA && teamB) ready++;
@@ -170,54 +261,40 @@ export function SeedingPanel({
     directSeedCount,
     hasPlayInSeeding,
     hasSwissByeSlot,
-    playInMatchCount,
+    playInMatches,
     seedingMatchCount,
   ]);
 
   const totalMatchCount = hasPlayInSeeding
-    ? directSeedCount / 2 + playInMatchCount
+    ? directSeedCount + playInMatchCount
     : seedingMatchCount;
-
-  const directMatches = hasPlayInSeeding
-    ? Array.from({ length: directSeedCount / 2 }, (_, i) => ({
-        key: `direct-${i}`,
-        matchIndex: i,
-        teamAIdx: i * 2,
-        teamBIdx: i * 2 + 1,
-        isByeSlot: false,
-      }))
-    : [];
-
-  const playInMatches = hasPlayInSeeding
-    ? Array.from({ length: playInMatchCount }, (_, i) => ({
-        key: `playin-${i}`,
-        matchIndex: i,
-        teamAIdx: directSeedCount + i * 2,
-        teamBIdx: directSeedCount + i * 2 + 1,
-        isByeSlot: false,
-      }))
-    : [];
 
   const standardMatches = hasPlayInSeeding
     ? []
-    : Array.from({ length: seedingMatchCount }, (_, i) => ({
-        key: `match-${i}`,
-        matchIndex: i,
-        teamAIdx: hasSwissByeSlot && i === seedingMatchCount - 1 ? bracketSize - 1 : i * 2,
-        teamBIdx: i * 2 + 1,
-        isByeSlot: hasSwissByeSlot && i === seedingMatchCount - 1,
-      }));
+    : firstRoundSeedPairings(bracketSize).map((pairing, index) => {
+        const isByeSlot = hasSwissByeSlot && index === seedingMatchCount - 1;
+        return {
+          key: `match-${index}`,
+          matchIndex: index,
+          teamAIdx: isByeSlot ? bracketSize - 1 : pairing.seedA - 1,
+          teamBIdx: pairing.seedB - 1,
+          isByeSlot,
+          seedLabel: isByeSlot
+            ? `Seed ${pairing.seedA} — BYE`
+            : `Seeds ${pairing.seedA} – ${pairing.seedB}`,
+        };
+      });
 
   return (
-    <div className="p-8 border-b border-border">
+    <div className="border-b border-border p-8">
       <div className="mb-6 overflow-hidden border border-border bg-card">
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                Round 1 seeding
+              <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+                Traditional seeding
               </p>
-              <h3 className="mt-1 font-display text-lg tracking-wider">Match assignments</h3>
+              <h3 className="mt-1 font-display text-lg tracking-wider">Seed assignments</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 border border-border bg-secondary/30 px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -226,13 +303,13 @@ export function SeedingPanel({
               </span>
               <span className="inline-flex items-center gap-1.5 border border-border bg-secondary/30 px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
                 <Swords className="h-3.5 w-3.5" />
-                {readyMatches}/{totalMatchCount} matches ready
+                {readyMatches}/{totalMatchCount} slots ready
               </span>
             </div>
           </div>
 
           <div className="mt-4">
-            <div className="mb-1.5 flex items-center justify-between text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1.5 flex items-center justify-between font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
               <span>Progress</span>
               <span>{progress}%</span>
             </div>
@@ -250,15 +327,21 @@ export function SeedingPanel({
 
         {hasPlayInSeeding && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            Seeds 1–{directSeedCount} join the upper bracket directly. Seeds {directSeedCount + 1}–
-            {bracketSize} play in opening play-in matches; winners fill the remaining upper-bracket
-            slots.
+            Seeds 1–{directSeedCount} skip opening play-in and enter upper bracket with protection.
+            Seeds {directSeedCount + 1}–{bracketSize} play in traditional high-vs-low play-in pairings;
+            winners join upper round 1 at the correct bracket positions.
+          </div>
+        )}
+
+        {!hasPlayInSeeding && isPowerOfTwo(bracketSize) && (
+          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            Round 1 uses standard bracket seeding (1 vs {bracketSize}, 2 vs {bracketSize - 1}, …).
           </div>
         )}
 
         {unassignedTeams.length > 0 && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3">
-            <p className="mb-2 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+            <p className="mb-2 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
               Unassigned ({unassignedTeams.length})
             </p>
             <div className="flex flex-wrap gap-2">
@@ -290,20 +373,16 @@ export function SeedingPanel({
           <div>
             <div className="mb-4 flex items-center gap-3">
               <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-                Upper bracket — direct seeds
+                Protected seeds — upper bracket
               </span>
               <span className="h-px flex-1 bg-border" />
             </div>
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              {directMatches.map((match) => (
-                <SeedingMatchCard
-                  key={match.key}
-                  matchIndex={match.matchIndex}
-                  teamAIdx={match.teamAIdx}
-                  teamBIdx={match.teamBIdx}
-                  teamA={assignments[match.teamAIdx]}
-                  teamB={assignments[match.teamBIdx]}
-                  isByeSlot={match.isByeSlot}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: directSeedCount }, (_, index) => (
+                <ProtectedSeedSlot
+                  key={`protected-${index + 1}`}
+                  seed={index + 1}
+                  team={assignments[index]}
                   teams={teams}
                   usedTeamIds={usedTeamIds}
                   disabled={disabled}
@@ -329,7 +408,8 @@ export function SeedingPanel({
                   teamBIdx={match.teamBIdx}
                   teamA={assignments[match.teamAIdx]}
                   teamB={assignments[match.teamBIdx]}
-                  isByeSlot={match.isByeSlot}
+                  isByeSlot={false}
+                  seedLabel={match.seedLabel}
                   teams={teams}
                   usedTeamIds={usedTeamIds}
                   disabled={disabled}
@@ -338,6 +418,30 @@ export function SeedingPanel({
               ))}
             </div>
           </div>
+
+          {upperPreview.length > 0 && (
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
+                  Upper bracket round 1 preview
+                </span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {upperPreview.map((preview) => (
+                  <UpperRoundOnePreviewCard
+                    key={`ub-preview-${preview.matchIndex}`}
+                    matchIndex={preview.matchIndex}
+                    seedA={preview.seedA}
+                    seedB={preview.seedB}
+                    playInMatchIndexA={preview.playInMatchIndexA}
+                    playInMatchIndexB={preview.playInMatchIndexB}
+                    assignments={assignments}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -350,6 +454,7 @@ export function SeedingPanel({
               teamA={assignments[match.teamAIdx]}
               teamB={match.isByeSlot ? null : assignments[match.teamBIdx]}
               isByeSlot={match.isByeSlot}
+              seedLabel={match.seedLabel}
               teams={teams}
               usedTeamIds={usedTeamIds}
               disabled={disabled}

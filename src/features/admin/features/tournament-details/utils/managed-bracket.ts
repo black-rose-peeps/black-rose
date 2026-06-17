@@ -8,8 +8,14 @@ import {
   mainBracketSize,
   playInMatchCount,
   powerOfTwoElimRoundMatchCounts,
+  directSeedCount,
 } from "./bracket-field";
 import { roundFlowRank } from "@/features/tournaments/utils/bracket-round-order";
+import {
+  playInWinnerTargetSeed,
+  seedToMainBracketSlot,
+  standardSeedOrder,
+} from "@/features/tournaments/utils/tournament-seeding";
 
 export type BestOfFormat = "BO1" | "BO3" | "BO5";
 
@@ -112,9 +118,36 @@ function linkWinnerAdvancementPath(
 
 const PLAY_IN_ROUND_ID = "pi-r1";
 
+function slotTeamForSeed(
+  seed: number,
+  seedOrderedNames: string[],
+  teamCount: number,
+): string | null {
+  const direct = directSeedCount(teamCount);
+  if (seed > teamCount || seed > direct) return null;
+  return seedOrderedNames[seed - 1] ?? null;
+}
+
+function placeStandardFirstRound(
+  roundMatches: ManagedMatch[],
+  seedOrderedNames: string[],
+  teamCount: number,
+  mainFieldSize: number,
+): void {
+  const order = standardSeedOrder(mainFieldSize);
+
+  for (let i = 0; i < roundMatches.length; i++) {
+    const seedA = order[i * 2];
+    const seedB = order[i * 2 + 1];
+    roundMatches[i].teamA = slotTeamForSeed(seedA, seedOrderedNames, teamCount);
+    roundMatches[i].teamB = slotTeamForSeed(seedB, seedOrderedNames, teamCount);
+  }
+}
+
 function buildPlayInRound(
   playInTeams: string[],
   playInMatches: number,
+  teamCount: number,
 ): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
@@ -131,8 +164,8 @@ function buildPlayInRound(
       roundLabel: "Opening — Play-in",
       label: `Play-in ${i + 1}`,
       bracketSide: "playoff",
-      teamA: playInTeams[i * 2] ?? null,
-      teamB: playInTeams[i * 2 + 1] ?? null,
+      teamA: playInTeams[i] ?? null,
+      teamB: playInTeams[playInTeams.length - 1 - i] ?? null,
       scoreA: 0,
       scoreB: 0,
       winner: null,
@@ -175,29 +208,29 @@ function playInLoserDropTarget(
 function wirePlayInToMainBracket(
   playInMatches: ManagedMatch[],
   mainMatches: ManagedMatch[],
-  directTeamCount: number,
+  teamCount: number,
   playInMatchCount: number,
   mainFirstRoundId: string,
+  mainFieldSize: number,
   mirrorLoserDrop = false,
   playInLoserMatchId: string | null = null,
 ): void {
   for (let i = 0; i < playInMatchCount; i++) {
-    const slotIndex = directTeamCount + i;
-    const mainMatchIdx = Math.floor(slotIndex / 2);
-    const mainSlot: "teamA" | "teamB" = slotIndex % 2 === 0 ? "teamA" : "teamB";
-    const mainMatchId = `${mainFirstRoundId}-m${mainMatchIdx}`;
+    const targetSeed = playInWinnerTargetSeed(teamCount, i);
+    const { matchIndex, slot } = seedToMainBracketSlot(targetSeed, mainFieldSize);
+    const mainMatchId = `${mainFirstRoundId}-m${matchIndex}`;
     const mainMatch = mainMatches.find((match) => match.id === mainMatchId);
     const playInId = `${PLAY_IN_ROUND_ID}-m${i}`;
 
     if (mainMatch) {
-      mainMatch[mainSlot] = null;
+      mainMatch[slot] = null;
     }
 
-    link(playInMatches, playInId, mainMatchId, mainSlot);
+    link(playInMatches, playInId, mainMatchId, slot);
 
     if (mirrorLoserDrop && playInLoserMatchId) {
-      const { matchId, slot } = playInLoserDropTarget(i, playInLoserMatchId);
-      link(playInMatches, playInId, matchId, slot, true);
+      const { matchId, slot: loserSlot } = playInLoserDropTarget(i, playInLoserMatchId);
+      link(playInMatches, playInId, matchId, loserSlot, true);
     }
   }
 }
@@ -450,10 +483,7 @@ export function buildSingleElimMatches(teamNames: string[]): {
   linkWinnerAdvancementPath(matches, seRoundIds, roundCounts);
 
   const r1 = matches.filter((m) => m.roundId === "se-r0");
-  for (let i = 0; i < r1.length; i++) {
-    r1[i].teamA = teamNames[i * 2] ?? null;
-    r1[i].teamB = teamNames[i * 2 + 1] ?? null;
-  }
+  placeStandardFirstRound(r1, teamNames, n, n);
 
   return { matches: recomputeAdvancements(matches), roundMetas };
 }
@@ -465,22 +495,22 @@ function buildSingleElimWithPlayIn(teamNames: string[]): {
   const n = teamNames.length;
   const playInMatches = playInMatchCount(n);
   const playInTeamCount = playInMatches * 2;
-  const directTeams = teamNames.slice(0, n - playInTeamCount);
   const playInTeams = teamNames.slice(n - playInTeamCount);
+  const mainSize = mainBracketSize(n);
 
-  const playInBuilt = buildPlayInRound(playInTeams, playInMatches);
-  const mainPlaceholders = [
-    ...directTeams,
-    ...Array.from({ length: playInMatches }, (_, i) => `__PI_${i}__`),
-  ];
-  const mainBuilt = buildSingleElimMatches(mainPlaceholders);
+  const playInBuilt = buildPlayInRound(playInTeams, playInMatches, n);
+  const mainBuilt = buildSingleElimMatches(Array.from({ length: mainSize }, () => ""));
+
+  const r1 = mainBuilt.matches.filter((m) => m.roundId === "se-r0");
+  placeStandardFirstRound(r1, teamNames, n, mainSize);
 
   wirePlayInToMainBracket(
     playInBuilt.matches,
     mainBuilt.matches,
-    directTeams.length,
+    n,
     playInMatches,
     "se-r0",
+    mainSize,
   );
 
   return {
@@ -689,21 +719,25 @@ function buildDoubleElimWithPlayIn(teamNames: string[]): {
   const n = teamNames.length;
   const playInMatches = playInMatchCount(n);
   const playInTeamCount = playInMatches * 2;
-  const directTeams = teamNames.slice(0, n - playInTeamCount);
   const playInTeams = teamNames.slice(n - playInTeamCount);
   const mainSize = mainBracketSize(n);
 
-  const playInBuilt = buildPlayInRound(playInTeams, playInMatches);
-  const mainPlaceholders = [
-    ...directTeams,
-    ...Array.from({ length: playInMatches }, (_, i) => `__PI_${i}__`),
-  ];
+  const playInBuilt = buildPlayInRound(playInTeams, playInMatches, n);
 
   const hasPlayIn = playInMatches > 0;
   const mainBuilt =
     mainSize === 4
-      ? buildFourTeamDoubleElim(mainPlaceholders, { hasPlayInLosersPool: hasPlayIn })
-      : buildDoubleElimPowerOfTwo(mainPlaceholders);
+      ? buildFourTeamDoubleElim(teamNames, { hasPlayInLosersPool: hasPlayIn, teamCount: n })
+      : buildDoubleElimPowerOfTwo(Array.from({ length: mainSize }, () => ""));
+
+  if (mainSize !== 4) {
+    placeStandardFirstRound(
+      mainBuilt.matches.filter((match) => match.roundId === "ub-r1"),
+      teamNames,
+      n,
+      mainSize,
+    );
+  }
 
   let playInLoserMatchId: string | null = null;
   if (hasPlayIn) {
@@ -716,9 +750,10 @@ function buildDoubleElimWithPlayIn(teamNames: string[]): {
   wirePlayInToMainBracket(
     playInBuilt.matches,
     mainBuilt.matches,
-    directTeams.length,
+    n,
     playInMatches,
     "ub-r1",
+    mainSize,
     hasPlayIn,
     playInLoserMatchId,
   );
@@ -903,10 +938,7 @@ function buildDoubleElimPowerOfTwo(teamNames: string[]): {
   link(matches, `${lbRoundIds[lbRoundCount - 1]}-m0`, "gf-m0", "teamB");
 
   const ubR1 = matches.filter((m) => m.roundId === "ub-r1");
-  for (let i = 0; i < ubR1.length; i++) {
-    ubR1[i].teamA = teamNames[i * 2] ?? null;
-    ubR1[i].teamB = teamNames[i * 2 + 1] ?? null;
-  }
+  placeStandardFirstRound(ubR1, teamNames, n, n);
 
   return { matches: recomputeAdvancements(matches), roundMetas };
 }
@@ -914,7 +946,7 @@ function buildDoubleElimPowerOfTwo(teamNames: string[]): {
 /** Minimal 4-team double elimination (upper R1 → upper F; lower R1 → lower F → GF). */
 function buildFourTeamDoubleElim(
   teamNames: string[],
-  options?: { hasPlayInLosersPool?: boolean },
+  options?: { hasPlayInLosersPool?: boolean; teamCount?: number },
 ): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
@@ -985,10 +1017,9 @@ function buildFourTeamDoubleElim(
   link(matches, "ub-f-m0", "lb-f-m0", "teamB", true);
   link(matches, "lb-f-m0", "gf-m0", "teamB");
 
-  matches.find((m) => m.id === "ub-r1-m0")!.teamA = teamNames[0] ?? null;
-  matches.find((m) => m.id === "ub-r1-m0")!.teamB = teamNames[1] ?? null;
-  matches.find((m) => m.id === "ub-r1-m1")!.teamA = teamNames[2] ?? null;
-  matches.find((m) => m.id === "ub-r1-m1")!.teamB = teamNames[3] ?? null;
+  const ubR1 = matches.filter((m) => m.id.startsWith("ub-r1-"));
+  const teamCount = options?.teamCount ?? teamNames.length;
+  placeStandardFirstRound(ubR1, teamNames, teamCount, 4);
 
   return { matches, roundMetas };
 }
