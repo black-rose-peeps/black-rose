@@ -27,7 +27,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
   const isOver = t.status === "Completed" || t.status === "Archived";
 
   return (
-    <section className="relative overflow-hidden border-b border-white/6 pt-28 pb-12">
+    <section className="relative overflow-hidden border-b border-white/6 pt-24 pb-8 sm:pt-28 sm:pb-12">
       {/* Background depth */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
       <div
@@ -36,7 +36,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/12 to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-background to-transparent" />
 
-      <div className="relative mx-auto max-w-7xl px-6">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
         {/* Breadcrumb */}
         <Link
           to="/tournaments"
@@ -48,7 +48,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           {/* Left — title block */}
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={`font-tech text-label-readable uppercase ${GAME_TAG_COLOR[t.game]}`}
@@ -63,29 +63,29 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
               </span>
             </div>
 
-            <h1 className="mt-3 font-display text-4xl tracking-display sm:text-5xl md:text-6xl">
+            <h1 className="mt-3 font-display text-3xl tracking-display sm:text-5xl md:text-6xl">
               {t.name}
             </h1>
 
-            <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base md:text-lg">
               {t.description}
             </p>
           </div>
 
           {/* Right — CTA */}
           {!isOver && (
-            <div className="shrink-0">
+            <div className="w-full shrink-0 sm:w-auto">
               {t.status === "Registration Open" && registrationAction ? (
-                registrationAction
+                <div className="[&_button]:w-full sm:[&_button]:w-auto">{registrationAction}</div>
               ) : t.status === "Registration Open" ? (
                 <Link
                   to="/login"
-                  className="clip-cta inline-flex h-12 items-center gap-3 bg-white px-8 font-tech text-sm uppercase tracking-wider-2 text-black transition hover:bg-white/90"
+                  className="clip-cta inline-flex h-12 w-full items-center justify-center gap-3 bg-white px-8 font-tech text-sm uppercase tracking-wider-2 text-black transition hover:bg-white/90 sm:w-auto"
                 >
                   Join to Register <span aria-hidden>→</span>
                 </Link>
               ) : (
-                <div className="inline-flex h-12 items-center gap-3 border border-white/15 bg-white/5 px-8 font-tech text-sm uppercase tracking-wider-2 text-muted-foreground">
+                <div className="inline-flex h-12 w-full items-center justify-center gap-3 border border-white/15 bg-white/5 px-8 font-tech text-sm uppercase tracking-wider-2 text-muted-foreground sm:w-auto">
                   {t.status === "Live" ? "In Progress" : "Registration Closed"}
                 </div>
               )}
@@ -94,7 +94,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
         </div>
 
         {/* Meta strip */}
-        <div className="mt-10 flex flex-wrap gap-px border border-white/8 bg-white/5">
+        <div className="mt-8 grid grid-cols-2 gap-px border border-white/8 bg-white/5 sm:mt-10 sm:grid-cols-3 lg:flex lg:flex-wrap">
           {[
             {
               icon: <Calendar className="h-3.5 w-3.5" />,
@@ -109,23 +109,26 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
             { icon: <Layers className="h-3.5 w-3.5" />, label: "Format", value: t.format },
             { icon: <MapPin className="h-3.5 w-3.5" />, label: "Region", value: t.region },
           ].map((m) => (
-            <div key={m.label} className="flex items-center gap-3 bg-[oklch(0.07_0_0)] px-5 py-4">
-              <span className="text-muted-foreground">{m.icon}</span>
-              <div>
+            <div
+              key={m.label}
+              className="flex min-w-0 items-center gap-3 bg-[oklch(0.07_0_0)] px-4 py-3 sm:px-5 sm:py-4 lg:min-w-[9.5rem] lg:flex-1"
+            >
+              <span className="shrink-0 text-muted-foreground">{m.icon}</span>
+              <div className="min-w-0">
                 <div className="font-tech text-label-readable uppercase text-muted-foreground">
                   {m.label}
                 </div>
-                <div className="mt-0.5 text-sm font-medium">{m.value}</div>
+                <div className="mt-0.5 text-sm font-medium break-words">{m.value}</div>
               </div>
             </div>
           ))}
           {/* Prize — highlighted */}
-          <div className="flex items-center gap-3 bg-white px-5 py-4">
-            <div>
+          <div className="col-span-2 flex min-w-0 items-center gap-3 bg-white px-4 py-3 sm:col-span-1 sm:px-5 sm:py-4 lg:min-w-[9.5rem] lg:flex-1">
+            <div className="min-w-0">
               <div className="font-tech text-label-readable uppercase text-black/50">
                 Prize Pool
               </div>
-              <div className="mt-0.5 font-display text-xl tracking-display text-black">
+              <div className="mt-0.5 font-display text-lg tracking-display text-black break-words sm:text-xl">
                 {t.prizePool}
               </div>
             </div>

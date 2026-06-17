@@ -81,44 +81,60 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {["Team", "Captain", "Players", "Seed", ""].map((h) => (
-                <TableHead key={h} className="font-tech text-label-readable uppercase">
-                  {h}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <TableRow key={i} className="hover:bg-transparent">
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-9 w-9 shrink-0" />
-                    <div className="space-y-1.5">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-12" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-8" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-7 w-14 ml-auto" />
-                </TableCell>
+        <div className="divide-y divide-border md:hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-3 p-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 shrink-0" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+              <Skeleton className="h-3 w-40" />
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                {["Team", "Captain", "Players", "Seed", ""].map((h) => (
+                  <TableHead key={h} className="font-tech text-label-readable uppercase">
+                    {h}
+                  </TableHead>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-9 w-9 shrink-0" />
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-12" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-8" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-7 w-14" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     );
   }
@@ -145,74 +161,79 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
   return (
     <>
       <div className="rounded-lg border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="font-tech text-label-readable uppercase">
-                Team
-              </TableHead>
-              <TableHead className="font-tech text-label-readable uppercase">
-                Captain
-              </TableHead>
-              <TableHead className="font-tech text-label-readable uppercase">
-                Players
-              </TableHead>
-              <TableHead className="font-tech text-label-readable uppercase">
-                Seed
-              </TableHead>
-              <TableHead className="text-right font-tech text-label-readable uppercase">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paged.map((team, i) => (
-              <TableRow
-                key={team.id}
-                className="cursor-pointer transition-colors hover:bg-secondary/40"
-                onClick={() => setSelected(team)}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary font-tech text-label-readable tracking-wider-2">
-                      {team.tag}
-                    </div>
-                    <div>
-                      <div className="font-display text-base tracking-wider">{team.name}</div>
-                      <div className="font-tech text-label-readable uppercase text-muted-foreground">
-                        {team.tag}
-                      </div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm">{team.captain}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {team.players.length} players
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  #{team.seed ?? start + i + 1}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="font-tech text-ui-readable uppercase"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelected(team);
-                    }}
-                  >
-                    View
-                  </Button>
-                </TableCell>
+        {/* Mobile — card list */}
+        <div className="divide-y divide-border md:hidden">
+          {paged.map((team, i) => (
+            <TeamMobileCard
+              key={team.id}
+              team={team}
+              seed={team.seed ?? start + i + 1}
+              onOpen={() => setSelected(team)}
+            />
+          ))}
+        </div>
+
+        {/* Desktop — table */}
+        <div className="hidden overflow-x-auto md:block">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="font-tech text-label-readable uppercase">
+                  Team
+                </TableHead>
+                <TableHead className="font-tech text-label-readable uppercase">
+                  Captain
+                </TableHead>
+                <TableHead className="font-tech text-label-readable uppercase">
+                  Players
+                </TableHead>
+                <TableHead className="font-tech text-label-readable uppercase">
+                  Seed
+                </TableHead>
+                <TableHead className="text-right font-tech text-label-readable uppercase">
+                  Actions
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paged.map((team, i) => (
+                <TableRow
+                  key={team.id}
+                  className="cursor-pointer transition-colors hover:bg-secondary/40"
+                  onClick={() => setSelected(team)}
+                >
+                  <TableCell>
+                    <TeamIdentity team={team} />
+                  </TableCell>
+                  <TableCell className="text-sm">{team.captain}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {team.players.length} players
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    #{team.seed ?? start + i + 1}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="font-tech text-ui-readable uppercase"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelected(team);
+                      }}
+                    >
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
 
         {/* Pagination footer */}
-        <div className="flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-xs text-muted-foreground">
             Showing {rangeStart}–{rangeEnd} of {teams.length}
           </p>
@@ -277,12 +298,75 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
   );
 }
 
+function TeamIdentity({ team }: { team: TournamentTeam }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary font-tech text-label-readable tracking-wider-2">
+        {team.tag}
+      </div>
+      <div className="min-w-0">
+        <div className="truncate font-display text-base tracking-wider">{team.name}</div>
+        <div className="font-tech text-label-readable uppercase text-muted-foreground">
+          {team.tag}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamMobileCard({
+  team,
+  seed,
+  onOpen,
+}: {
+  team: TournamentTeam;
+  seed: number;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          onClick={onOpen}
+        >
+          <TeamIdentity team={team} />
+        </button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0 font-tech text-ui-readable uppercase"
+          onClick={onOpen}
+        >
+          View
+        </Button>
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="min-w-0">
+          <dt className="font-tech uppercase text-muted-foreground">Captain</dt>
+          <dd className="mt-0.5 truncate text-sm">{team.captain}</dd>
+        </div>
+        <div>
+          <dt className="font-tech uppercase text-muted-foreground">Players</dt>
+          <dd className="mt-0.5 text-sm">{team.players.length}</dd>
+        </div>
+        <div>
+          <dt className="font-tech uppercase text-muted-foreground">Seed</dt>
+          <dd className="mt-0.5 text-sm">#{seed}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 // ── Team detail modal ──────────────────────────────────────────────────────
 
 function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="custom-scrollbar max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="custom-scrollbar max-h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <div className="flex items-start gap-4 pr-6">
             <div className="grid h-12 w-12 shrink-0 place-items-center border border-border bg-secondary font-tech text-sm tracking-wider">
@@ -338,11 +422,11 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
         <Separator />
 
         {/* Roster table */}
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-x-auto">
           <h3 className="font-tech text-label-readable uppercase text-muted-foreground">
             Roster
           </h3>
-          <Table>
+          <Table className="min-w-[20rem]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="font-tech text-label-readable uppercase">

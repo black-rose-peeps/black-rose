@@ -313,7 +313,7 @@ function TournamentDetailPage() {
 
       <main className="relative bg-[oklch(0.05_0_0)]">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
-        <div className="relative mx-auto max-w-7xl px-6 py-12">
+        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
           {activeTab === "overview" && (
             <div role="tabpanel" id="tab-panel-overview" aria-labelledby="tab-overview">
               <OverviewTab
