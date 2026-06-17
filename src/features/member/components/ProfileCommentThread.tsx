@@ -6,6 +6,7 @@ import {
   Loader2,
   MessageSquare,
   MoreHorizontal,
+  Pencil,
   Reply,
   Shield,
   Send,
@@ -48,6 +49,57 @@ function formatCommentDate(value: string): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+function EditComposer({
+  draft,
+  posting,
+  onDraftChange,
+  onCancel,
+  onSubmit,
+}: {
+  draft: string;
+  posting: boolean;
+  onDraftChange: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="mt-3 space-y-3">
+      <Textarea
+        value={draft}
+        onChange={(e) => onDraftChange(e.target.value.slice(0, MAX_LENGTH))}
+        rows={3}
+        autoFocus
+        className="min-h-[88px] resize-none rounded-none border-white/12 bg-white/[0.03] shadow-none focus-visible:ring-white/20"
+      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <span className="font-tech text-label-readable uppercase text-muted-foreground/60">
+          {draft.length}/{MAX_LENGTH}
+        </span>
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={onCancel}
+            className="rounded-none font-tech text-ui-readable uppercase"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={posting || !draft.trim()}
+            onClick={onSubmit}
+            className="clip-cta inline-flex h-9 items-center gap-1.5 rounded-none bg-white px-4 font-tech text-ui-readable uppercase text-black hover:bg-white/90 disabled:opacity-50"
+          >
+            {posting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ReplyComposer({
@@ -114,15 +166,17 @@ function ThreadMoreMenu({
   isHidden,
   loading,
   onHide,
+  onEdit,
   onDelete,
 }: {
   showHide: boolean;
   isHidden: boolean;
   loading: boolean;
   onHide?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 }) {
-  if (!onHide && !onDelete) return null;
+  if (!onHide && !onDelete && !onEdit) return null;
 
   return (
     <DropdownMenu>
@@ -146,6 +200,15 @@ function ThreadMoreMenu({
         align="end"
         className="min-w-[10rem] rounded-none border-white/12 bg-[oklch(0.09_0_0)]"
       >
+        {onEdit && (
+          <DropdownMenuItem
+            onClick={onEdit}
+            className="rounded-none font-tech text-ui-readable uppercase focus:bg-white/8"
+          >
+            <Pencil className="mr-2 h-3.5 w-3.5" />
+            Edit
+          </DropdownMenuItem>
+        )}
         {showHide && onHide && (
           <DropdownMenuItem
             onClick={onHide}
@@ -157,7 +220,7 @@ function ThreadMoreMenu({
         )}
         {onDelete && (
           <>
-            {showHide && onHide && <DropdownMenuSeparator className="bg-white/8" />}
+            {(onEdit || (showHide && onHide)) && <DropdownMenuSeparator className="bg-white/8" />}
             <DropdownMenuItem
               onClick={onDelete}
               className="rounded-none font-tech text-ui-readable uppercase text-red-400 focus:bg-red-400/10 focus:text-red-400"
@@ -181,6 +244,7 @@ function ThreadActionButtons({
   loading,
   onReplyClick,
   onHide,
+  onEdit,
   onDelete,
 }: {
   showReply: boolean;
@@ -191,6 +255,7 @@ function ThreadActionButtons({
   loading: boolean;
   onReplyClick?: () => void;
   onHide?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 }) {
   if (!showReply && !showMore) return null;
@@ -218,6 +283,7 @@ function ThreadActionButtons({
           isHidden={isHidden}
           loading={loading}
           onHide={onHide}
+          onEdit={onEdit}
           onDelete={onDelete}
         />
       )}
@@ -233,9 +299,16 @@ function ThreadReplyMessage({
   showHide,
   isThreadHidden,
   loading,
+  isEditing,
+  editDraft,
+  editPosting,
   onReplyClick,
   onHide,
+  onEdit,
   onDelete,
+  onEditDraftChange,
+  onCancelEdit,
+  onSaveEdit,
 }: {
   reply: ProfileCommentReply;
   showReply: boolean;
@@ -244,9 +317,16 @@ function ThreadReplyMessage({
   showHide: boolean;
   isThreadHidden: boolean;
   loading: boolean;
+  isEditing: boolean;
+  editDraft: string;
+  editPosting: boolean;
   onReplyClick?: () => void;
   onHide?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
+  onEditDraftChange?: (value: string) => void;
+  onCancelEdit?: () => void;
+  onSaveEdit?: () => void;
 }) {
   return (
     <article className="relative flex items-start gap-3 pl-4 sm:gap-4">
@@ -298,12 +378,23 @@ function ThreadReplyMessage({
             loading={loading}
             onReplyClick={onReplyClick}
             onHide={onHide}
+            onEdit={onEdit}
             onDelete={onDelete}
           />
         </div>
-        <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-          {reply.body}
-        </p>
+        {isEditing ? (
+          <EditComposer
+            draft={editDraft}
+            posting={editPosting}
+            onDraftChange={(value) => onEditDraftChange?.(value)}
+            onCancel={() => onCancelEdit?.()}
+            onSubmit={() => onSaveEdit?.()}
+          />
+        ) : (
+          <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+            {reply.body}
+          </p>
+        )}
       </div>
     </article>
   );
@@ -314,11 +405,15 @@ export interface ProfileCommentThreadProps {
   profileMemberId: string;
   profileOwner?: ProfileOwnerInfo;
   viewerMemberId?: string;
+  viewerIsVerified?: boolean;
   showModeration?: boolean;
   showAdminActions?: boolean;
   replyingId?: string | null;
   replyDraft?: string;
   replyPosting?: boolean;
+  editingId?: string | null;
+  editDraft?: string;
+  editPosting?: boolean;
   actionId?: string | null;
   onHide?: (commentId: string, hidden: boolean) => void;
   onDelete?: (commentId: string) => void;
@@ -326,6 +421,10 @@ export interface ProfileCommentThreadProps {
   onReplyDraftChange?: (value: string) => void;
   onReply?: (commentId: string) => void;
   onCancelReply?: () => void;
+  onStartEdit?: (commentId: string, body: string) => void;
+  onEditDraftChange?: (value: string) => void;
+  onSaveEdit?: (commentId: string) => void;
+  onCancelEdit?: () => void;
 }
 
 export function ProfileCommentThread({
@@ -333,11 +432,15 @@ export function ProfileCommentThread({
   profileMemberId,
   profileOwner,
   viewerMemberId,
+  viewerIsVerified = false,
   showModeration = false,
   showAdminActions = false,
   replyingId = null,
   replyDraft = "",
   replyPosting = false,
+  editingId = null,
+  editDraft = "",
+  editPosting = false,
   actionId = null,
   onHide,
   onDelete,
@@ -345,6 +448,10 @@ export function ProfileCommentThread({
   onReplyDraftChange,
   onReply,
   onCancelReply,
+  onStartEdit,
+  onEditDraftChange,
+  onSaveEdit,
+  onCancelEdit,
 }: ProfileCommentThreadProps) {
   const replyCount = comment.replies.length;
   const isReplying = replyingId === comment.id;
@@ -352,8 +459,12 @@ export function ProfileCommentThread({
   const viewerIsOwner = Boolean(viewerMemberId && viewerMemberId === profileMemberId);
   const viewerIsAuthor = Boolean(viewerMemberId && viewerMemberId === comment.author.memberId);
   const canReply = Boolean(
-    viewerMemberId && (viewerIsOwner || viewerIsAuthor) && !showAdminActions,
+    viewerMemberId &&
+      viewerIsVerified &&
+      !showAdminActions &&
+      (viewerIsOwner || viewerMemberId !== profileMemberId),
   );
+  const isEditingRoot = editingId === comment.id;
   const [expanded, setExpanded] = useState(false);
   const [hasViewedReplies, setHasViewedReplies] = useState(false);
   const prevReplyCount = useRef(replyCount);
@@ -377,9 +488,24 @@ export function ProfileCommentThread({
     ? `Reply as ${profileOwner?.displayName ?? "profile owner"}…`
     : "Write a reply…";
 
-  const showMoreOnRoot = showModeration || showAdminActions;
+  const showMoreOnRoot = showModeration || showAdminActions || viewerIsAuthor;
   const showHideOnRoot = showModeration;
   const showReplyOnRoot = canReply && (replyCount === 0 || hasViewedReplies);
+
+  const authorEditHandler = viewerIsAuthor
+    ? () => onStartEdit?.(comment.id, comment.body)
+    : undefined;
+
+  const authorDeleteHandler = viewerIsAuthor ? () => onDelete?.(comment.id) : undefined;
+  const ownerDeleteHandler =
+    showModeration && !viewerIsAuthor ? () => onDelete?.(comment.id) : undefined;
+  const adminDeleteHandler = showAdminActions ? () => onDelete?.(comment.id) : undefined;
+  const rootDeleteHandler = authorDeleteHandler ?? ownerDeleteHandler ?? adminDeleteHandler;
+
+  const moderationHandlers = {
+    onHide: showModeration ? () => onHide?.(comment.id, !comment.isHidden) : undefined,
+    onDelete: rootDeleteHandler,
+  };
 
   function handleExpandMore(open: boolean) {
     setExpanded(open);
@@ -389,11 +515,6 @@ export function ProfileCommentThread({
   function handleReplyClick() {
     onToggleReply?.(comment.id);
   }
-
-  const moderationHandlers = {
-    onHide: showModeration ? () => onHide?.(comment.id, !comment.isHidden) : undefined,
-    onDelete: showModeration || showAdminActions ? () => onDelete?.(comment.id) : undefined,
-  };
 
   return (
     <li
@@ -443,9 +564,10 @@ export function ProfileCommentThread({
                 showMore={showMoreOnRoot}
                 showHide={showHideOnRoot}
                 isHidden={comment.isHidden}
-                loading={isLoading}
+                loading={isLoading || editPosting}
                 onReplyClick={handleReplyClick}
                 onHide={moderationHandlers.onHide}
+                onEdit={authorEditHandler}
                 onDelete={moderationHandlers.onDelete}
               />
             </div>
@@ -457,9 +579,19 @@ export function ProfileCommentThread({
               </span>
             )}
 
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-              {comment.body}
-            </p>
+            {isEditingRoot ? (
+              <EditComposer
+                draft={editDraft}
+                posting={editPosting}
+                onDraftChange={(value) => onEditDraftChange?.(value)}
+                onCancel={() => onCancelEdit?.()}
+                onSubmit={() => onSaveEdit?.(comment.id)}
+              />
+            ) : (
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                {comment.body}
+              </p>
+            )}
           </div>
         </div>
       </article>
@@ -480,20 +612,44 @@ export function ProfileCommentThread({
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-4 space-y-4 border-t border-white/8 pt-4">
-              {comment.replies.map((reply) => (
-                <ThreadReplyMessage
-                  key={reply.id}
-                  reply={reply}
-                  showReply={false}
-                  isReplying={isReplying}
-                  showMore={showMoreOnRoot}
-                  showHide={false}
-                  isThreadHidden={comment.isHidden}
-                  loading={isLoading}
-                  onReplyClick={handleReplyClick}
-                  onDelete={moderationHandlers.onDelete}
-                />
-              ))}
+              {comment.replies.map((reply) => {
+                const viewerIsReplyAuthor = Boolean(
+                  viewerMemberId && viewerMemberId === reply.author.memberId,
+                );
+                const showMoreOnReply = showAdminActions || viewerIsReplyAuthor;
+
+                return (
+                  <ThreadReplyMessage
+                    key={reply.id}
+                    reply={reply}
+                    showReply={false}
+                    isReplying={isReplying}
+                    showMore={showMoreOnReply}
+                    showHide={false}
+                    isThreadHidden={comment.isHidden}
+                    loading={actionId === reply.id || editPosting}
+                    isEditing={editingId === reply.id}
+                    editDraft={editDraft}
+                    editPosting={editPosting}
+                    onReplyClick={handleReplyClick}
+                    onEdit={
+                      viewerIsReplyAuthor
+                        ? () => onStartEdit?.(reply.id, reply.body)
+                        : undefined
+                    }
+                    onDelete={
+                      viewerIsReplyAuthor
+                        ? () => onDelete?.(reply.id)
+                        : showAdminActions
+                          ? () => onDelete?.(comment.id)
+                          : undefined
+                    }
+                    onEditDraftChange={onEditDraftChange}
+                    onCancelEdit={onCancelEdit}
+                    onSaveEdit={() => onSaveEdit?.(reply.id)}
+                  />
+                );
+              })}
             </CollapsibleContent>
           </Collapsible>
         </section>

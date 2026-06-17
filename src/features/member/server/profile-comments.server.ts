@@ -340,16 +340,11 @@ export async function replyToProfileComment(input: {
     throw new Error("You can only reply to top-level comments.");
   }
 
-  const isOwner = input.authorMemberId === input.profileMemberId;
-  const isCommentAuthor = input.authorMemberId === parent.author_member_id;
-
-  if (!isOwner && !isCommentAuthor) {
-    throw new Error("Only the profile owner or the original commenter can reply in this thread.");
-  }
-
-  if (parent.is_hidden && !isOwner) {
+  if (parent.is_hidden && input.authorMemberId !== input.profileMemberId) {
     throw new Error("Cannot reply to a hidden comment.");
   }
+
+  const isOwner = input.authorMemberId === input.profileMemberId;
 
   const { data, error } = await supabase
     .from("profile_comments")
@@ -374,6 +369,51 @@ export async function replyToProfileComment(input: {
     createdAt: data.created_at as string,
     author,
     isProfileOwnerReply: isOwner,
+  };
+}
+
+export async function updateProfileComment(input: {
+  profileMemberId: string;
+  commentId: string;
+  authorMemberId: string;
+  body: string;
+}): Promise<{ id: string; body: string }> {
+  const body = normalizeBody(input.body);
+  if (!body) throw new Error("Comment cannot be empty.");
+
+  await requireVerifiedMember(input.authorMemberId);
+
+  const supabase = getSupabaseAdmin();
+  const { data: row, error: rowError } = await supabase
+    .from("profile_comments")
+    .select("id, profile_member_id, author_member_id")
+    .eq("id", input.commentId)
+    .maybeSingle();
+
+  if (rowError) throw new Error(rowError.message);
+  if (!row) throw new Error("Comment not found.");
+  if (row.profile_member_id !== input.profileMemberId) {
+    throw new Error("Comment does not belong to this profile.");
+  }
+  if (row.author_member_id !== input.authorMemberId) {
+    throw new Error("Only the author can edit this comment.");
+  }
+
+  const { data, error } = await supabase
+    .from("profile_comments")
+    .update({
+      body,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.commentId)
+    .select("id, body")
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  return {
+    id: data.id as string,
+    body: data.body as string,
   };
 }
 
@@ -438,6 +478,33 @@ async function deleteCommentThread(profileMemberId: string, commentId: string): 
     .eq("id", threadRootId);
 
   if (rootError) throw new Error(rootError.message);
+}
+
+export async function deleteProfileCommentByAuthor(input: {
+  profileMemberId: string;
+  commentId: string;
+  authorMemberId: string;
+}): Promise<void> {
+  await requireVerifiedMember(input.authorMemberId);
+
+  const supabase = getSupabaseAdmin();
+  const { data: row, error: rowError } = await supabase
+    .from("profile_comments")
+    .select("id, profile_member_id, author_member_id")
+    .eq("id", input.commentId)
+    .maybeSingle();
+
+  if (rowError) throw new Error(rowError.message);
+  if (!row) throw new Error("Comment not found.");
+  if (row.profile_member_id !== input.profileMemberId) {
+    throw new Error("Comment does not belong to this profile.");
+  }
+  if (row.author_member_id !== input.authorMemberId) {
+    throw new Error("Only the author can delete this comment.");
+  }
+
+  const { error } = await supabase.from("profile_comments").delete().eq("id", input.commentId);
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteProfileCommentByOwner(input: {

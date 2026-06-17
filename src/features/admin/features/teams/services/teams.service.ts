@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { deleteTeamAdminFn } from "../functions/delete-team.functions";
+import { deleteTeamCaptainFn } from "../functions/delete-team-captain.functions";
 import { MAX_TEAM_SIZE, resolveRoleForGame } from "@/features/teams/constants";
 import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
@@ -709,6 +710,10 @@ export async function updateTeamMemberRole(
 
 export async function deleteTeam(teamId: string): Promise<void> {
   await deleteTeamAdminFn({ data: { teamId } });
+}
+
+export async function deleteTeamAsCaptain(teamId: string, captainUserId: string): Promise<void> {
+  await deleteTeamCaptainFn({ data: { teamId, captainUserId } });
 }
 
 export async function assignTeamActiveTournament(

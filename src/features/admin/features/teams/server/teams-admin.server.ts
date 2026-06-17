@@ -31,3 +31,25 @@ export async function deleteTeamAsAdmin(teamId: string): Promise<void> {
   const { error: teamError } = await supabase.from("teams").delete().eq("id", teamId);
   if (teamError) throw new Error(teamError.message);
 }
+
+/** Delete a team when the acting user is the roster captain. */
+export async function deleteTeamAsCaptain(teamId: string, captainUserId: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+
+  const { data: team, error: teamError } = await supabase
+    .from("teams")
+    .select("id, captain_user_id, active_tournament_id")
+    .eq("id", teamId)
+    .maybeSingle();
+
+  if (teamError) throw new Error(teamError.message);
+  if (!team) throw new Error("Team not found.");
+  if (team.captain_user_id !== captainUserId) {
+    throw new Error("Only the team captain can delete this team.");
+  }
+  if (team.active_tournament_id) {
+    throw new Error("Withdraw from the active tournament before deleting this team.");
+  }
+
+  await deleteTeamAsAdmin(teamId);
+}
