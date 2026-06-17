@@ -26,6 +26,19 @@ export function playInMatchCount(teamCount: number): number {
   return teamCount - mainBracketSize(teamCount);
 }
 
+/** Teams that start directly in the main upper bracket (not opening play-in). */
+export function directSeedCount(teamCount: number): number {
+  return teamCount - playInMatchCount(teamCount) * 2;
+}
+
+/** Preserve seed-slot order when building bracket team lists. */
+export function orderedTeamNamesFromAssignments(
+  assignments: Array<{ name: string } | null>,
+  size: number,
+): string[] {
+  return assignments.slice(0, size).map((team) => team!.name);
+}
+
 /** Match counts per single-elimination round for a power-of-2 field. */
 export function powerOfTwoElimRoundMatchCounts(teamCount: number): number[] {
   if (!isPowerOfTwo(teamCount)) {

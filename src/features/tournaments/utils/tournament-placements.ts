@@ -1,5 +1,9 @@
 import { isDoubleEliminationFormat, isSwissFormat } from "../constants/formats";
 import type { BracketRound, PrizeTier } from "../types";
+import {
+  inferPublicBracketSide,
+  inferRoundIdFromMatchId,
+} from "./bracket-display";
 import type { ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import type { SwissBracketState } from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
 import {
@@ -56,6 +60,78 @@ function isThirdPlaceRound(match: ManagedMatch): boolean {
     /\b(third|3rd)\s*place\b/i.test(normalized) ||
     /\bbro(nze)?\b/i.test(normalized)
   );
+}
+
+function isLowerFinalRoundId(match: ManagedMatch): boolean {
+  return match.roundId === "lb-f" || /^lb-f-m\d+$/i.test(match.id);
+}
+
+/** Lower bracket elimination match before Grand Final (excludes Lower Semifinals). */
+function isLowerFinalEliminationRound(match: ManagedMatch): boolean {
+  if (isLowerFinalRoundId(match)) return true;
+  const normalized = normalizeRoundLabel(match.roundLabel);
+  if (/\breset\b/.test(normalized) && /\blower\b/.test(normalized)) return true;
+  return (
+    /\blower\b/.test(normalized) &&
+    /\bfinals?\b/.test(normalized) &&
+    !/\bsemifinals?\b/.test(normalized)
+  );
+}
+
+function lowerFinalRoundRank(match: ManagedMatch): number {
+  if (isLowerFinalRoundId(match)) return 1_000;
+  const normalized = normalizeRoundLabel(match.roundLabel);
+  if (/\breset\b/.test(normalized) && /\blower\b/.test(normalized)) return 900;
+  if (isLowerFinalEliminationRound(match)) return 800;
+  return 0;
+}
+
+function pickLatestLowerFinalCandidate(matches: ManagedMatch[]): ManagedMatch | undefined {
+  if (matches.length === 0) return undefined;
+  return matches.reduce((best, match) =>
+    lowerFinalRoundRank(match) > lowerFinalRoundRank(best) ? match : best,
+  );
+}
+
+function findLowerFinalMatch(
+  matches: ManagedMatch[],
+  grandFinal: ManagedMatch,
+): ManagedMatch | undefined {
+  const wiredFeeders = findMatches(
+    matches,
+    (match) =>
+      match.bracketSide === "lower" &&
+      match.confirmed &&
+      !!match.winner &&
+      match.winnerNext?.matchId === grandFinal.id &&
+      match.winnerNext?.slot === "teamB",
+  );
+  const wiredFinal = pickLatestLowerFinalCandidate(wiredFeeders);
+  if (wiredFinal) return wiredFinal;
+
+  const lowerFinalist = grandFinal.teamB;
+  if (lowerFinalist) {
+    const winsByFinalist = findMatches(
+      matches,
+      (match) =>
+        match.bracketSide === "lower" &&
+        match.confirmed &&
+        !!match.winner &&
+        match.winner === lowerFinalist,
+    );
+    const winFinal = pickLatestLowerFinalCandidate(winsByFinalist);
+    if (winFinal) return winFinal;
+  }
+
+  const labelMatches = findMatches(
+    matches,
+    (match) =>
+      match.bracketSide === "lower" &&
+      isLowerFinalEliminationRound(match) &&
+      match.confirmed &&
+      !!match.winner,
+  );
+  return pickLatestLowerFinalCandidate(labelMatches);
 }
 
 export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentPlacement[] {
@@ -125,14 +201,7 @@ export function deriveDoubleElimPlacements(matches: ManagedMatch[]): TournamentP
   const runnerUp = loserOf(grandFinal);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
 
-  const lowerFinal = findMatch(
-    matches,
-    (match) =>
-      match.bracketSide === "lower" &&
-      /lower.*final/i.test(match.roundLabel) &&
-      match.confirmed &&
-      !!match.winner,
-  );
+  const lowerFinal = findLowerFinalMatch(matches, grandFinal);
   const lowerFinalLoser = lowerFinal ? loserOf(lowerFinal) : null;
   if (lowerFinalLoser) {
     placements.push({ rank: 3, label: "3rd Place", team: lowerFinalLoser });
@@ -168,17 +237,14 @@ export function derivePublicPlacements(
   format: string,
   rounds: BracketRound[],
 ): TournamentPlacement[] {
-  const matches = rounds.flatMap((round) =>
+  const rows = rounds.flatMap((round) =>
     round.matches
       .filter((match) => match.winner && match.teamA && match.teamB)
       .map((match) => ({
+        matchId: match.id,
         roundLabel: round.label,
-        bracketSide: /grand/i.test(round.label)
-          ? ("grand" as const)
-          : /lower/i.test(round.label)
-            ? ("lower" as const)
-            : ("main" as const),
-        confirmed: true,
+        bracketSide: inferPublicBracketSide(round.label),
+        confirmed: true as const,
         winner: match.winner!,
         teamA: match.teamA,
         teamB: match.teamB,
@@ -193,9 +259,10 @@ export function derivePublicPlacements(
       round.matches
         .filter((match) => match.winner && match.teamA && match.teamB)
         .map((match) => ({
+          matchId: match.id,
           roundLabel: round.label,
           bracketSide: "playoff" as const,
-          confirmed: true,
+          confirmed: true as const,
           winner: match.winner!,
           teamA: match.teamA,
           teamB: match.teamB,
@@ -203,8 +270,8 @@ export function derivePublicPlacements(
     );
 
     const pseudoMatches: ManagedMatch[] = playoffMatches.map((match, index) => ({
-      id: `pub-po-${index}`,
-      roundId: match.roundLabel,
+      id: match.matchId || `pub-po-${index}`,
+      roundId: inferRoundIdFromMatchId(match.matchId) ?? match.roundLabel,
       roundLabel: match.roundLabel,
       label: match.roundLabel,
       bracketSide: match.bracketSide,
@@ -221,9 +288,9 @@ export function derivePublicPlacements(
     return deriveSingleElimPlacements(pseudoMatches);
   }
 
-  const pseudoMatches: ManagedMatch[] = matches.map((match, index) => ({
-    id: `pub-${index}`,
-    roundId: match.roundLabel,
+  const pseudoMatches: ManagedMatch[] = rows.map((match, index) => ({
+    id: match.matchId || `pub-${index}`,
+    roundId: inferRoundIdFromMatchId(match.matchId) ?? match.roundLabel,
     roundLabel: match.roundLabel,
     label: match.roundLabel,
     bracketSide: match.bracketSide,

@@ -10,15 +10,16 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
+import {
+  BRACKET_CARD_W,
+  BRACKET_COL_GAP,
+  bracketCanvasSize,
+  bracketMatchTop,
+} from "@/features/tournaments/utils/bracket-layout";
+import { sortBracketRoundsByFlow } from "@/features/tournaments/utils/bracket-round-order";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import { winsRequired } from "../utils/managed-bracket";
 import { mainBracketSize } from "../utils/bracket-field";
-
-const CARD_W = 220;
-const CARD_H = 100;
-const MATCH_GAP = 16;
-const COL_GAP = 56;
-const PAD_V = 24;
 
 interface ManagedBracketViewProps {
   matches: ManagedMatch[];
@@ -55,9 +56,11 @@ export function ManagedBracketView({
   const championship = findChampionship(matches);
 
   if (isDoubleElim) {
-    const playInRounds = roundMetas.filter((r) => r.id === "pi-r1");
-    const upperRounds = roundMetas.filter((r) => r.side === "upper" || r.side === "grand");
-    const lowerRounds = roundMetas.filter((r) => r.side === "lower");
+    const playInRounds = sortBracketRoundsByFlow(roundMetas.filter((r) => r.id === "pi-r1"));
+    const upperRounds = sortBracketRoundsByFlow(
+      roundMetas.filter((r) => r.side === "upper" || r.side === "grand"),
+    );
+    const lowerRounds = sortBracketRoundsByFlow(roundMetas.filter((r) => r.side === "lower"));
 
     return (
       <div className="space-y-8">
@@ -107,8 +110,7 @@ export function ManagedBracketView({
           {playInRounds.length > 0
             ? `Play-in winners join the top seeds in a standard ${mainBracketSize(teams.length)}-team double-elimination bracket. `
             : ""}
-          Winners advance up; losers drop to the lower bracket. Grand Final: upper-bracket winner vs
-          lower-bracket winner.
+          Grand Final: upper-bracket winner vs lower-bracket winner.
         </p>
       </div>
     );
@@ -124,7 +126,7 @@ export function ManagedBracketView({
         />
       )}
       <BracketSection
-        roundMetas={roundMetas}
+        roundMetas={sortBracketRoundsByFlow(roundMetas)}
         matches={matches}
         roundFormats={roundFormats}
         teamByName={teamByName}
@@ -167,15 +169,7 @@ function BracketSection({
   if (roundMetas.length === 0) return null;
 
   const maxMatches = Math.max(...roundMetas.map((r) => r.matchIds.length), 1);
-  const canvasHeight = maxMatches * CARD_H + (maxMatches - 1) * MATCH_GAP + PAD_V * 2 + 36;
-  const totalW = roundMetas.length * (CARD_W + COL_GAP) + 40;
-
-  function matchTop(index: number, count: number): number {
-    if (count <= 1) return PAD_V + 36 + (canvasHeight - PAD_V * 2 - 36 - CARD_H) / 2;
-    const contentH = canvasHeight - PAD_V * 2 - 36;
-    const spacing = (contentH - CARD_H) / (count - 1);
-    return PAD_V + 36 + index * spacing;
-  }
+  const { width: totalW, height: canvasHeight } = bracketCanvasSize(roundMetas.length, maxMatches);
 
   return (
     <div>
@@ -193,7 +187,7 @@ function BracketSection({
           style={{ width: `${totalW}px`, height: `${canvasHeight}px`, minHeight: 280 }}
         >
           {roundMetas.map((round, colIndex) => {
-            const x = colIndex * (CARD_W + COL_GAP) + 20;
+            const x = colIndex * (BRACKET_CARD_W + BRACKET_COL_GAP) + 20;
             const roundMatches = round.matchIds
               .map((id) => matches.find((m) => m.id === id))
               .filter((m): m is ManagedMatch => !!m);
@@ -209,7 +203,7 @@ function BracketSection({
               <div key={round.id}>
                 <div
                   className="absolute top-0 flex flex-col gap-1"
-                  style={{ left: `${x}px`, width: `${CARD_W}px` }}
+                  style={{ left: `${x}px`, width: `${BRACKET_CARD_W}px` }}
                 >
                   <span
                     className={cn(
@@ -238,7 +232,7 @@ function BracketSection({
                 </div>
 
                 {roundMatches.map((match, mi) => {
-                  const y = matchTop(mi, roundMatches.length);
+                  const y = bracketMatchTop(mi, roundMatches.length, canvasHeight);
                   const matchFormat = roundFormats[round.id] ?? "BO3";
                   const required = winsRequired(matchFormat);
                   const matchDecided = match.confirmed && match.winner !== null;
@@ -258,7 +252,7 @@ function BracketSection({
                         championCrowned &&
                           "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
                       )}
-                      style={{ left: `${x}px`, top: `${y}px`, width: CARD_W }}
+                      style={{ left: `${x}px`, top: `${y}px`, width: BRACKET_CARD_W }}
                     >
                       <div
                         className={cn(

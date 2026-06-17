@@ -2,10 +2,7 @@
  * Public read-only bracket viewer.
  *
  * Mirrors the visual layout of the admin ManagedBracketView (canvas-positioned
- * columns, card-per-match, winner highlights, scores) but strips all interactive
- * controls — no score editing, no format selectors, no winner buttons.
- *
- * Data shape: BracketRound[] → BracketMatch[] from @/features/tournaments/types.
+ * columns, card-per-match, winner highlights) but strips all interactive controls.
  */
 
 import { Crown } from "lucide-react";
@@ -17,19 +14,16 @@ import {
   isOpeningPlayInRound,
   partitionDoubleElimRounds,
 } from "../../utils/bracket-display";
+import {
+  BRACKET_CARD_W,
+  BRACKET_COL_GAP,
+  bracketCanvasSize,
+  bracketMatchTop,
+} from "../../utils/bracket-layout";
+import { sortPublicBracketRounds } from "../../utils/bracket-round-order";
 import type { BracketRound, BracketMatch } from "../../types";
 import { PublicBracketTeamSlot } from "./PublicBracketTeamSlot";
 import { SwissBracketTab } from "./SwissBracketTab";
-
-// ── Layout constants (match admin ManagedBracketView) ──────────────────────
-
-const CARD_W = 220;
-const CARD_H = 96;
-const MATCH_GAP = 16;
-const COL_GAP = 56;
-const PAD_V = 24;
-
-// ── Public types ───────────────────────────────────────────────────────────
 
 interface BracketTabProps {
   bracket: BracketRound[];
@@ -38,8 +32,6 @@ interface BracketTabProps {
   teamTags?: Map<string, string>;
   tournamentStatus?: string;
 }
-
-// ── Root component ─────────────────────────────────────────────────────────
 
 export function BracketTab({
   bracket,
@@ -99,17 +91,14 @@ export function BracketTab({
     );
   }
 
-  // Single elimination — one canvas; play-in (if any) is the first column, same as admin
   return (
     <div className="flex flex-col gap-10">
       <BracketHeader format={format} />
-      <BracketSection rounds={bracket} teamTags={teamTags} />
+      <BracketSection rounds={sortPublicBracketRounds(bracket)} teamTags={teamTags} />
       <BracketFooter hasPlayIn={bracket.some((r) => isOpeningPlayInRound(r.label))} />
     </div>
   );
 }
-
-// ── Section header / footer ────────────────────────────────────────────────
 
 function BracketHeader({ format }: { format: string }) {
   return (
@@ -131,9 +120,8 @@ function BracketFooter({
   if (isDoubleElim && hasPlayIn) {
     return (
       <p className="text-[10px] font-tech font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
-        Play-in winners join the top seeds in the main double-elimination bracket. Winners advance
-        up; losers drop to the lower bracket. Grand Final: upper-bracket winner vs lower-bracket
-        winner.
+        Play-in winners join the main upper bracket. Lower bracket columns run left to right in
+        match order. Grand Final: upper-bracket winner vs lower-bracket winner.
       </p>
     );
   }
@@ -156,8 +144,6 @@ function BracketFooter({
   );
 }
 
-// ── Canvas section ─────────────────────────────────────────────────────────
-
 function BracketSection({
   title,
   rounds,
@@ -170,15 +156,7 @@ function BracketSection({
   if (rounds.length === 0) return null;
 
   const maxMatches = Math.max(...rounds.map((r) => r.matches.length), 1);
-  const canvasHeight = maxMatches * CARD_H + (maxMatches - 1) * MATCH_GAP + PAD_V * 2 + 36;
-  const totalW = rounds.length * (CARD_W + COL_GAP) + 40;
-
-  function matchTop(index: number, count: number): number {
-    if (count <= 1) return PAD_V + 36 + (canvasHeight - PAD_V * 2 - 36 - CARD_H) / 2;
-    const contentH = canvasHeight - PAD_V * 2 - 36;
-    const spacing = (contentH - CARD_H) / (count - 1);
-    return PAD_V + 36 + index * spacing;
-  }
+  const { width: totalW, height: canvasHeight } = bracketCanvasSize(rounds.length, maxMatches);
 
   const isGrand = (label: string) => isChampionshipRoundLabel(label);
   const isLower = (label: string) => /lower/i.test(label) && !isChampionshipRoundLabel(label);
@@ -197,10 +175,10 @@ function BracketSection({
       <div className="custom-scrollbar overflow-auto pb-2">
         <div
           className="relative min-w-full"
-          style={{ width: `${totalW}px`, height: `${canvasHeight}px`, minHeight: 280 }}
+          style={{ width: `${totalW}px`, height: `${canvasHeight}px`, minHeight: 300 }}
         >
           {rounds.map((round, colIndex) => {
-            const x = colIndex * (CARD_W + COL_GAP) + 20;
+            const x = colIndex * (BRACKET_CARD_W + BRACKET_COL_GAP) + 20;
             const grand = isGrand(round.label);
             const lower = isLower(round.label);
 
@@ -215,9 +193,8 @@ function BracketSection({
               : "text-muted-foreground border-border";
 
             return (
-              <div key={round.label}>
-                {/* Round column header */}
-                <div className="absolute top-0" style={{ left: `${x}px`, width: `${CARD_W}px` }}>
+              <div key={round.id ?? round.label}>
+                <div className="absolute top-0" style={{ left: `${x}px`, width: `${BRACKET_CARD_W}px` }}>
                   <span
                     className={cn(
                       "block border-b pb-1 font-display text-[10px] font-bold uppercase tracking-wider",
@@ -228,9 +205,8 @@ function BracketSection({
                   </span>
                 </div>
 
-                {/* Match cards */}
                 {round.matches.map((match, mi) => {
-                  const y = matchTop(mi, round.matches.length);
+                  const y = bracketMatchTop(mi, round.matches.length, canvasHeight);
                   const isChampionship = isChampionshipMatch(match, round.label);
 
                   return (
@@ -254,8 +230,6 @@ function BracketSection({
   );
 }
 
-// ── Read-only match card ───────────────────────────────────────────────────
-
 function PublicMatchCard({
   match,
   x,
@@ -274,6 +248,7 @@ function PublicMatchCard({
   const hasScores = match.scoreA !== undefined && match.scoreB !== undefined;
   const decided = !!match.winner;
   const championCrowned = isChampionship && decided && !!match.winner;
+  const matchTitle = match.label ?? match.round;
 
   return (
     <div
@@ -283,9 +258,8 @@ function PublicMatchCard({
         decided && !isChampionship && "ring-1 ring-emerald-400/30",
         championCrowned && "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
       )}
-      style={{ left: `${x}px`, top: `${y}px`, width: CARD_W }}
+      style={{ left: `${x}px`, top: `${y}px`, width: BRACKET_CARD_W }}
     >
-      {/* Match label bar */}
       <div
         className={cn(
           "flex items-center justify-between border-b px-2 py-1",
@@ -299,7 +273,7 @@ function PublicMatchCard({
           )}
         >
           {championCrowned && <Crown className="h-3 w-3" strokeWidth={1.25} />}
-          {match.round}
+          {matchTitle}
         </span>
         {decided && (
           <span
@@ -313,7 +287,6 @@ function PublicMatchCard({
         )}
       </div>
 
-      {/* Team A */}
       <PublicBracketTeamSlot
         name={match.teamA}
         tag={match.teamA ? teamTags?.get(match.teamA) : undefined}
@@ -324,7 +297,6 @@ function PublicMatchCard({
         isChampionRow={championCrowned && match.winner === match.teamA}
       />
 
-      {/* Team B */}
       <PublicBracketTeamSlot
         name={match.teamB}
         tag={match.teamB ? teamTags?.get(match.teamB) : undefined}
@@ -334,35 +306,31 @@ function PublicMatchCard({
         hasScores={hasScores}
         isChampionRow={championCrowned && match.winner === match.teamB}
       />
+
     </div>
   );
 }
 
-// ── Loading skeleton ───────────────────────────────────────────────────────
-
 function BracketSkeleton() {
-  // Simulate 4 rounds × 2 cards each at fixed positions
-  const cols = [0, CARD_W + COL_GAP, (CARD_W + COL_GAP) * 2, (CARD_W + COL_GAP) * 3];
-  const totalW = cols.length * (CARD_W + COL_GAP) + 40;
-  const canvasH = 3 * CARD_H + 2 * MATCH_GAP + PAD_V * 2 + 36;
+  const cols = [0, BRACKET_CARD_W + BRACKET_COL_GAP, (BRACKET_CARD_W + BRACKET_COL_GAP) * 2];
+  const { width: totalW, height: canvasH } = bracketCanvasSize(3, 3);
 
   return (
     <div className="overflow-auto pb-2">
       <div
         className="relative animate-pulse"
-        style={{ width: `${totalW}px`, height: `${canvasH}px`, minHeight: 280 }}
+        style={{ width: `${totalW}px`, height: `${canvasH}px`, minHeight: 300 }}
       >
         {cols.map((x, ci) => {
-          const matchCount = Math.max(1, 4 >> ci); // 4,2,1,1
+          const matchCount = Math.max(1, 4 >> ci);
           return (
             <div key={ci}>
-              {/* Round label skeleton */}
               <div
                 className="absolute top-0 h-4 rounded bg-primary/10"
-                style={{ left: `${x + 20}px`, width: CARD_W - 20 }}
+                style={{ left: `${x + 20}px`, width: BRACKET_CARD_W - 20 }}
               />
               {Array.from({ length: matchCount }).map((_, mi) => {
-                const y = matchTop(mi, matchCount, canvasH);
+                const y = bracketMatchTop(mi, matchCount, canvasH);
                 return (
                   <div
                     key={mi}
@@ -370,8 +338,8 @@ function BracketSkeleton() {
                     style={{
                       left: `${x + 20}px`,
                       top: `${y}px`,
-                      width: CARD_W - 20,
-                      height: CARD_H,
+                      width: BRACKET_CARD_W - 20,
+                      height: 120,
                     }}
                   />
                 );
@@ -382,11 +350,4 @@ function BracketSkeleton() {
       </div>
     </div>
   );
-}
-
-function matchTop(index: number, count: number, canvasHeight: number): number {
-  if (count <= 1) return PAD_V + 36 + (canvasHeight - PAD_V * 2 - 36 - CARD_H) / 2;
-  const contentH = canvasHeight - PAD_V * 2 - 36;
-  const spacing = (contentH - CARD_H) / (count - 1);
-  return PAD_V + 36 + index * spacing;
 }
