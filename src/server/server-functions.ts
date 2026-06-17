@@ -8,3 +8,4 @@ import "@/features/auth/functions/refresh-member-session";
 import "@/features/member/functions/member-profile.functions";
 import "@/features/member/functions/profile-comments.functions";
 import "@/features/admin/features/teams/functions/delete-team.functions";
+import "@/features/admin/features/members/functions/discord-sync.functions";

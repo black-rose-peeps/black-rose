@@ -51,15 +51,23 @@ export interface RuleSection {
 
 export interface BracketMatch {
   id: string;
+  /** Per-match label shown on the card (e.g. "Match 1", "Lower Final"). */
+  label?: string;
+  /** Round column label (legacy field used as fallback). */
   round: string;
   teamA: string | null; // null = TBD
   teamB: string | null;
   scoreA?: number;
   scoreB?: number;
   winner?: string; // team name of winner
+  /** Precomputed at publish time for public read-only view. */
+  winnerAdvancesTo?: string;
+  loserAdvancesTo?: string;
 }
 
 export interface BracketRound {
+  /** Managed round id (e.g. `lb-r2`, `pi-r1`) for ordering. */
+  id?: string;
   label: string;
   matches: BracketMatch[];
 }
