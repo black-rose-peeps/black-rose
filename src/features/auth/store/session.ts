@@ -9,6 +9,17 @@ import type { AppUser } from "../types";
 
 const SESSION_KEY = "br_session";
 const SESSION_CHANGED = "br-session-changed";
+const MEMBER_SESSION_COOKIE = "br_member_id";
+const MEMBER_SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+
+function syncMemberSessionCookie(memberId: string): void {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${MEMBER_SESSION_COOKIE}=${encodeURIComponent(memberId)}; Path=/; Max-Age=${MEMBER_SESSION_MAX_AGE}; SameSite=Lax${secure}`;
+}
+
+function clearMemberSessionCookie(): void {
+  document.cookie = `${MEMBER_SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
 
 function notifySessionChanged(): void {
   if (typeof window === "undefined") return;
@@ -51,6 +62,7 @@ export function getSession(): AppUser | null {
     const raw = readStoredSession();
     if (!raw) return null;
     const user = JSON.parse(raw) as AppUser;
+    syncMemberSessionCookie(user.id);
     return {
       ...user,
       discordUsername: user.discordUsername ?? user.username,
@@ -65,6 +77,7 @@ export function setSession(user: AppUser): void {
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
     sessionStorage.removeItem(SESSION_KEY);
+    syncMemberSessionCookie(user.id);
     notifySessionChanged();
   } catch {
     // Storage may be unavailable (private mode, quota, SSR edge cases).
@@ -76,6 +89,7 @@ export function clearSession(): void {
   try {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
+    clearMemberSessionCookie();
     notifySessionChanged();
   } catch {
     // Storage may be unavailable (private mode, quota, SSR edge cases).

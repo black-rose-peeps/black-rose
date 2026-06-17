@@ -1,6 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Trophy, ChevronRight, Crown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Trophy,
+  ChevronRight,
+  Crown,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -214,7 +222,7 @@ function TeamDetailPage() {
     setDeleting(true);
     setActionError(null);
     try {
-      await deleteTeamAsCaptain(team.id, memberId);
+      await deleteTeamAsCaptain(team.id);
       setDeleteOpen(false);
       navigate({ to: "/teams", search: { create: false } });
     } catch (err) {

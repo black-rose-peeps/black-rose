@@ -524,7 +524,21 @@ export async function deleteProfileCommentAsAdmin(input: {
   profileMemberId: string;
   commentId: string;
 }): Promise<void> {
-  await deleteCommentThread(input.profileMemberId, input.commentId);
+  const supabase = getSupabaseAdmin();
+  const { data: comment, error: commentError } = await supabase
+    .from("profile_comments")
+    .select("id, profile_member_id")
+    .eq("id", input.commentId)
+    .maybeSingle();
+
+  if (commentError) throw new Error(commentError.message);
+  if (!comment) throw new Error("Comment not found.");
+  if (comment.profile_member_id !== input.profileMemberId) {
+    throw new Error("Comment does not belong to this profile.");
+  }
+
+  const { error } = await supabase.from("profile_comments").delete().eq("id", input.commentId);
+  if (error) throw new Error(error.message);
 }
 
 export interface ProfileCommentAlert {

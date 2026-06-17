@@ -712,8 +712,8 @@ export async function deleteTeam(teamId: string): Promise<void> {
   await deleteTeamAdminFn({ data: { teamId } });
 }
 
-export async function deleteTeamAsCaptain(teamId: string, captainUserId: string): Promise<void> {
-  await deleteTeamCaptainFn({ data: { teamId, captainUserId } });
+export async function deleteTeamAsCaptain(teamId: string): Promise<void> {
+  await deleteTeamCaptainFn({ data: { teamId } });
 }
 
 export async function assignTeamActiveTournament(

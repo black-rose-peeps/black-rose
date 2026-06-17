@@ -641,7 +641,7 @@ export function ProfileCommentThread({
                       viewerIsReplyAuthor
                         ? () => onDelete?.(reply.id)
                         : showAdminActions
-                          ? () => onDelete?.(comment.id)
+                          ? () => onDelete?.(reply.id)
                           : undefined
                     }
                     onEditDraftChange={onEditDraftChange}
