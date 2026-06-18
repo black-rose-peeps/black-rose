@@ -1,17 +1,43 @@
 import { createServerFn } from "@tanstack/react-start";
 
-interface BoostResponse {
-  boosted: boolean;
-  alreadyActive?: boolean;
-  boostMinutes?: number;
-  boostActive: boolean;
-  boostUntil: string | null;
-  summary?: Record<string, number>;
+interface DiscordSyncResponse {
+  checked?: number;
+  updated?: number;
+  verified?: number;
+  unverified?: number;
+  deferred?: number;
 }
 
-interface BoostStatusResponse {
-  boostActive: boolean;
-  boostUntil: string | null;
+export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
+  const checked = summary.checked ?? 0;
+  const verified = summary.verified ?? 0;
+  const unverified = summary.unverified ?? 0;
+  const updated = summary.updated ?? 0;
+  const deferred = summary.deferred ?? 0;
+
+  const parts: string[] = ["Discord sync completed."];
+
+  if (checked > 0) {
+    parts.push(`Checked ${checked} member${checked === 1 ? "" : "s"}.`);
+  }
+
+  if (verified > 0) {
+    parts.push(`${verified} newly verified.`);
+  }
+
+  if (unverified > 0) {
+    parts.push(`${unverified} marked not verified.`);
+  }
+
+  if (updated === 0 && checked > 0) {
+    parts.push("No status changes.");
+  }
+
+  if (deferred > 0) {
+    parts.push(`${deferred} member${deferred === 1 ? "" : "s"} deferred — run sync again to continue.`);
+  }
+
+  return parts.join(" ");
 }
 
 const WORKER_REQUEST_TIMEOUT_MS = 15000;
@@ -45,12 +71,12 @@ async function fetchWithTimeout(input: string, init: RequestInit): Promise<Respo
   }
 }
 
-export const triggerDiscordSyncBoost = createServerFn({ method: "POST" })
+export const triggerDiscordSync = createServerFn({ method: "POST" })
   .validator(() => ({}))
-  .handler(async (): Promise<BoostResponse> => {
+  .handler(async (): Promise<DiscordSyncResponse> => {
     const { workerUrl, syncSecret } = getRequiredSyncConfig();
 
-    const response = await fetchWithTimeout(`${workerUrl}/sync/boost`, {
+    const response = await fetchWithTimeout(`${workerUrl}/sync`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${syncSecret}`,
@@ -59,28 +85,8 @@ export const triggerDiscordSyncBoost = createServerFn({ method: "POST" })
 
     if (!response.ok) {
       const detail = await response.text();
-      throw new Error(`Boost request failed (${response.status}): ${detail}`);
+      throw new Error(`Sync request failed (${response.status}): ${detail}`);
     }
 
-    return (await response.json()) as BoostResponse;
-  });
-
-export const fetchDiscordSyncBoostStatus = createServerFn({ method: "POST" })
-  .validator(() => ({}))
-  .handler(async (): Promise<BoostStatusResponse> => {
-    const { workerUrl, syncSecret } = getRequiredSyncConfig();
-
-    const response = await fetchWithTimeout(`${workerUrl}/sync/status`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${syncSecret}`,
-      },
-    });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Boost status request failed (${response.status}): ${detail}`);
-    }
-
-    return (await response.json()) as BoostStatusResponse;
+    return (await response.json()) as DiscordSyncResponse;
   });

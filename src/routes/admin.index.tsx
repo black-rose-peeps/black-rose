@@ -14,6 +14,7 @@ import { AdminEmptyTitle, AdminEmptyTitleAllClear } from "@/features/admin/const
 import { Panel, PanelHeader, StatCard, StatusPill } from "@/features/admin/components/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSupabaseClient } from "@/lib/supabase";
+import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import {
   fetchAdminDashboard,
   type AdminDashboardData,
@@ -49,21 +50,23 @@ function useAdminDashboard() {
 
   useEffect(() => {
     void refetch();
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
 
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel("admin-dashboard-tournaments")
       .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
-        void refetch({ silent: true });
+        debouncedRefetch({ silent: true });
       })
       .subscribe();
 
     function handleFocus() {
-      void refetch({ silent: true });
+      debouncedRefetch({ silent: true });
     }
     window.addEventListener("focus", handleFocus);
 
     return () => {
+      debouncedRefetch.cancel();
       void supabase.removeChannel(channel);
       window.removeEventListener("focus", handleFocus);
     };

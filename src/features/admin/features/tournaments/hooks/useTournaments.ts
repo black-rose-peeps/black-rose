@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { withResolvedTournamentStatus } from "@/features/tournaments/utils/tournament-status";
 import { fetchTournaments } from "../services/tournaments.service";
 import type { AdminTournament } from "../types";
@@ -29,26 +30,32 @@ export function useTournaments() {
 
   useEffect(() => {
     void refetch();
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
 
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel("admin-tournaments-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
-        void refetch({ silent: true });
+        debouncedRefetch({ silent: true });
       })
       .subscribe();
 
     return () => {
+      debouncedRefetch.cancel();
       void supabase.removeChannel(channel);
     };
   }, [refetch]);
 
   useEffect(() => {
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
     function handleFocus() {
-      void refetch({ silent: true });
+      debouncedRefetch({ silent: true });
     }
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    return () => {
+      debouncedRefetch.cancel();
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [refetch]);
 
   const prependTournament = useCallback((tournament: AdminTournament) => {

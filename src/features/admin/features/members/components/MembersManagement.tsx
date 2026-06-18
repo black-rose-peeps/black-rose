@@ -40,10 +40,7 @@ import { memberStatusBadgeVariant, initialsFromName } from "../utils";
 import { CreateMemberModal } from "./CreateMemberModal";
 import { EditMemberModal } from "./EditMemberModal";
 import { useDeleteMember } from "../hooks/useDeleteMember";
-import {
-  fetchDiscordSyncBoostStatus,
-  triggerDiscordSyncBoost,
-} from "../functions/discord-sync.functions";
+import { formatDiscordSyncMessage, triggerDiscordSync } from "../functions/discord-sync.functions";
 
 export function MembersManagement() {
   const navigate = useNavigate();
@@ -55,11 +52,9 @@ export function MembersManagement() {
     resetError: resetVerificationError,
   } = useUpdateMemberVerification();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isBoostConfirmOpen, setIsBoostConfirmOpen] = useState(false);
-  const [isBoostingSync, setIsBoostingSync] = useState(false);
-  const [isBoostActive, setIsBoostActive] = useState(false);
-  const [boostUntil, setBoostUntil] = useState<string | null>(null);
-  const [syncBoostMessage, setSyncBoostMessage] = useState<string | null>(null);
+  const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
   const {
@@ -95,80 +90,19 @@ export function MembersManagement() {
     pagination.setPage(1);
   }
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function refreshBoostStatus() {
-      try {
-        const status = await fetchDiscordSyncBoostStatus({});
-        if (cancelled) return;
-        setIsBoostActive(status.boostActive);
-        setBoostUntil(status.boostUntil);
-        return status.boostActive;
-      } catch {
-        // Keep UI non-blocking if status check fails.
-        return false;
-      }
-    }
-
-    // One check on load (e.g. page refresh during an active boost window).
-    void refreshBoostStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isBoostActive) return;
-
-    let cancelled = false;
-
-    async function pollWhileBoosted() {
-      try {
-        const status = await fetchDiscordSyncBoostStatus({});
-        if (cancelled) return;
-        setIsBoostActive(status.boostActive);
-        setBoostUntil(status.boostUntil);
-      } catch {
-        // Keep UI non-blocking if status check fails.
-      }
-    }
-
-    const interval = window.setInterval(() => {
-      void pollWhileBoosted();
-    }, 30000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [isBoostActive]);
-
-  async function handleBoostSyncConfirm() {
-    setIsBoostingSync(true);
-    setSyncBoostMessage(null);
+  async function handleSyncConfirm() {
+    setIsSyncing(true);
+    setSyncMessage(null);
     try {
-      const response = await triggerDiscordSyncBoost({});
-      setIsBoostActive(response.boostActive);
-      setBoostUntil(response.boostUntil);
-      const until = response.boostUntil
-        ? new Date(response.boostUntil).toLocaleTimeString()
-        : "soon";
-      if (response.alreadyActive) {
-        setSyncBoostMessage(`Boost already active until ${until}.`);
-      } else {
-        setSyncBoostMessage(
-          `1-minute boost active for ${response.boostMinutes ?? 10} minutes (until ${until}).`,
-        );
-      }
-      setIsBoostConfirmOpen(false);
+      const summary = await triggerDiscordSync({});
+      setSyncMessage(formatDiscordSyncMessage(summary));
+      setIsSyncConfirmOpen(false);
     } catch (err) {
-      setSyncBoostMessage(
-        err instanceof Error ? err.message : "Failed to activate sync boost.",
+      setSyncMessage(
+        err instanceof Error ? err.message : "Failed to run Discord sync.",
       );
     } finally {
-      setIsBoostingSync(false);
+      setIsSyncing(false);
     }
   }
 
@@ -184,19 +118,16 @@ export function MembersManagement() {
               type="button"
               variant="outline"
               size="sm"
-              disabled={isBoostingSync || isBoostActive}
+              disabled={isSyncing}
               className="gap-2 font-tech uppercase tracking-wider"
-              onClick={() => {
-                if (isBoostActive) return;
-                setIsBoostConfirmOpen(true);
-              }}
+              onClick={() => setIsSyncConfirmOpen(true)}
             >
-              {isBoostingSync || isBoostActive ? (
+              {isSyncing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Zap className="h-4 w-4" />
               )}
-              {isBoostActive ? "Live Syncing..." : "Boost Sync (10m)"}
+              {isSyncing ? "Syncing..." : "Sync Discord now"}
             </Button>
             <Button
               onClick={() => setIsCreateOpen(true)}
@@ -209,24 +140,16 @@ export function MembersManagement() {
           </div>
         }
       >
-        {(error || verificationError || syncBoostMessage || (isBoostActive && boostUntil)) && (
+        {(error || verificationError || syncMessage) && (
           <div className="px-6 pt-4">
             {error || verificationError ? (
               <Alert variant="destructive">
                 <AlertDescription>{error ?? verificationError}</AlertDescription>
               </Alert>
             ) : null}
-            {syncBoostMessage ? (
+            {syncMessage ? (
               <Alert className="mt-2 border-white/10 bg-white/2">
-                <AlertDescription>{syncBoostMessage}</AlertDescription>
-              </Alert>
-            ) : null}
-            {isBoostActive && boostUntil ? (
-              <Alert className="mt-2 border-white/10 bg-white/2">
-                <AlertDescription>
-                  Boost is active until {new Date(boostUntil).toLocaleTimeString()}. Boost button is
-                  temporarily locked to prevent duplicate runs.
-                </AlertDescription>
+                <AlertDescription>{syncMessage}</AlertDescription>
               </Alert>
             ) : null}
           </div>
@@ -490,30 +413,29 @@ export function MembersManagement() {
       />
 
       <AlertDialog
-        open={isBoostConfirmOpen}
+        open={isSyncConfirmOpen}
         onOpenChange={(next) => {
-          if (!isBoostingSync) setIsBoostConfirmOpen(next);
+          if (!isSyncing) setIsSyncConfirmOpen(next);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Activate Discord Sync Boost?</AlertDialogTitle>
+            <AlertDialogTitle>Run Discord sync now?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will trigger an immediate ROSE sync against the official Black Rose Discord
-              server, then temporarily check every 1 minute for 10 minutes. Members who already
-              have the ROSE role can be marked as Verified faster during this window.
+              Checks ROSE roles on the official Black Rose Discord server and updates member
+              verification status. You can run this again anytime.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBoostingSync}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSyncing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={isBoostingSync}
+              disabled={isSyncing}
               onClick={(event) => {
                 event.preventDefault();
-                void handleBoostSyncConfirm();
+                void handleSyncConfirm();
               }}
             >
-              {isBoostingSync ? "Activating..." : "Activate Boost"}
+              {isSyncing ? "Syncing..." : "Run sync now"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

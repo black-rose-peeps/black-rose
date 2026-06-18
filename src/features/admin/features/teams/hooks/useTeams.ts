@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { fetchTeams } from "../services/teams.service";
 import type { Team } from "../types";
 
@@ -28,26 +29,32 @@ export function useTeams() {
 
   useEffect(() => {
     void refetch();
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
 
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel("admin-teams-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, () => {
-        void refetch({ silent: true });
+        debouncedRefetch({ silent: true });
       })
       .subscribe();
 
     return () => {
+      debouncedRefetch.cancel();
       void supabase.removeChannel(channel);
     };
   }, [refetch]);
 
   useEffect(() => {
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
     function handleFocus() {
-      void refetch({ silent: true });
+      debouncedRefetch({ silent: true });
     }
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    return () => {
+      debouncedRefetch.cancel();
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [refetch]);
 
   const prependTeam = useCallback((team: Team) => {
