@@ -16,11 +16,12 @@ const TABS: { id: Tab; label: string }[] = [
 export function TournamentTabs({ active, onChange, teamCount }: TournamentTabsProps) {
   return (
     <div className="sticky top-16 z-20 border-b border-white/8 bg-background/90 backdrop-blur-md">
-      <div
-        role="tablist"
-        aria-label="Tournament sections"
-        className="mx-auto flex max-w-7xl items-center gap-0 px-6"
-      >
+      <div className="mx-auto max-w-7xl overflow-x-auto">
+        <div
+          role="tablist"
+          aria-label="Tournament sections"
+          className="flex min-w-max items-center gap-0 px-4 sm:px-6"
+        >
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -48,6 +49,7 @@ export function TournamentTabs({ active, onChange, teamCount }: TournamentTabsPr
             )}
           </button>
         ))}
+        </div>
       </div>
     </div>
   );

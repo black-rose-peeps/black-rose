@@ -106,7 +106,7 @@ export function BracketManagerHeader({
               <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                 {game} · {region}
               </p>
-              <h2 className="mt-1 font-display text-2xl font-bold tracking-wider-2 lg:text-3xl">
+              <h2 className="mt-1 font-title tracking-display text-2xl lg:text-3xl">
                 {tournamentName}
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">

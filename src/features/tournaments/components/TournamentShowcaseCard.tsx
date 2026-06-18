@@ -180,7 +180,7 @@ export function TournamentShowcaseCard({
           <Link
             to="/tournaments/$id"
             params={{ id: t.id }}
-            className="mt-2 block font-display text-[1.65rem] leading-[1.05] tracking-[0.04em] text-white transition duration-300 group-hover:text-white"
+            className="mt-2 block font-title tracking-display text-[1.65rem] leading-[1.05] text-white transition duration-300 group-hover:text-white"
           >
             {t.name}
           </Link>

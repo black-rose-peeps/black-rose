@@ -37,10 +37,12 @@ import { CornerAccents, TechPanel } from "@/features/member/components/MemberShe
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import {
   createProfileComment,
+  deleteProfileCommentByAuthor,
   deleteProfileCommentByOwner,
   fetchProfileComments,
   replyToProfileComment,
   setProfileCommentHidden,
+  updateProfileComment,
 } from "@/features/member/services/profile-comments.service";
 import type { ProfileComment } from "@/features/member/types/profile-comments";
 import { clampPage, pageNumbers } from "@/lib/pagination";
@@ -126,8 +128,8 @@ function OwnerModerationHint() {
         <div>
           <p className="text-sm font-medium text-foreground">Your comment wall</p>
           <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
-            Verified members can leave notes here. You and the commenter can keep a threaded
-            conversation — hide or delete entries from your public profile anytime.
+            Verified members can leave notes here. Anyone verified can join the thread — hide or
+            delete entries from your public profile anytime.
           </p>
         </div>
       </div>
@@ -348,6 +350,9 @@ export function ProfileCommentsPanel({
   const [replyPosting, setReplyPosting] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [editPosting, setEditPosting] = useState(false);
 
   const isLoggedIn = Boolean(viewerMemberId);
   const canComment = viewerIsVerified && isLoggedIn && !isOwnProfile;
@@ -476,22 +481,86 @@ export function ProfileCommentsPanel({
   async function handleDelete(commentId: string) {
     if (!viewerMemberId) return;
 
+    const asRoot = comments.find((c) => c.id === commentId);
+    let itemAuthorId: string | undefined;
+
+    if (asRoot) {
+      itemAuthorId = asRoot.author.memberId;
+    } else {
+      for (const comment of comments) {
+        const reply = comment.replies.find((r) => r.id === commentId);
+        if (reply) {
+          itemAuthorId = reply.author.memberId;
+          break;
+        }
+      }
+    }
+
+    const isAuthor = itemAuthorId === viewerMemberId;
+    const isOwnerThreadDelete =
+      isOwnProfile &&
+      viewerMemberId === profileMemberId &&
+      Boolean(asRoot && asRoot.author.memberId !== viewerMemberId);
+
     setActionId(commentId);
     setError(null);
     try {
-      await deleteProfileCommentByOwner({
-        profileMemberId,
-        commentId,
-        authorMemberId: viewerMemberId,
-      });
+      if (isAuthor) {
+        await deleteProfileCommentByAuthor({
+          profileMemberId,
+          commentId,
+          authorMemberId: viewerMemberId,
+        });
+        if (asRoot) {
+          setComments((prev) => prev.filter((c) => c.id !== commentId));
+          setTotal((prev) => Math.max(0, prev - 1));
+        } else {
+          setComments((prev) =>
+            prev.map((comment) => ({
+              ...comment,
+              replies: comment.replies.filter((reply) => reply.id !== commentId),
+            })),
+          );
+        }
+      } else if (isOwnerThreadDelete) {
+        await deleteProfileCommentByOwner({
+          profileMemberId,
+          commentId,
+          authorMemberId: viewerMemberId,
+        });
+        await loadPage(page);
+      } else {
+        throw new Error("You do not have permission to delete this comment.");
+      }
+
       setDeleteTargetId(null);
+      setEditingId((current) => (current === commentId ? null : current));
       setReplyingId((current) => (current === commentId ? null : current));
-      await loadPage(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete comment.");
     } finally {
       setActionId(null);
     }
+  }
+
+  function deleteDialogDescription(): string {
+    if (!deleteTargetId) {
+      return "This permanently removes the comment. This cannot be undone.";
+    }
+
+    const asRoot = comments.find((c) => c.id === deleteTargetId);
+    if (asRoot) {
+      const isAuthor = asRoot.author.memberId === viewerMemberId;
+      if (isAuthor && asRoot.replies.length > 0) {
+        return "This permanently removes your comment and all replies in this thread. This cannot be undone.";
+      }
+      if (isAuthor) {
+        return "This permanently removes your comment. This cannot be undone.";
+      }
+      return "This permanently removes the comment and any reply in the thread. This cannot be undone.";
+    }
+
+    return "This permanently removes your reply. This cannot be undone.";
   }
 
   function handleToggleReply(commentId: string) {
@@ -500,8 +569,58 @@ export function ProfileCommentsPanel({
       setReplyDraft("");
       return;
     }
+    setEditingId(null);
+    setEditDraft("");
     setReplyingId(commentId);
     setReplyDraft("");
+  }
+
+  function handleStartEdit(commentId: string, body: string) {
+    setReplyingId(null);
+    setReplyDraft("");
+    setEditingId(commentId);
+    setEditDraft(body);
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null);
+    setEditDraft("");
+  }
+
+  async function handleSaveEdit(commentId: string) {
+    if (!viewerMemberId || !editDraft.trim()) return;
+
+    setEditPosting(true);
+    setActionId(commentId);
+    setError(null);
+    try {
+      const updated = await updateProfileComment({
+        profileMemberId,
+        commentId,
+        authorMemberId: viewerMemberId,
+        body: editDraft,
+      });
+      setComments((prev) =>
+        prev.map((comment) => {
+          if (comment.id === commentId) {
+            return { ...comment, body: updated.body };
+          }
+          return {
+            ...comment,
+            replies: comment.replies.map((reply) =>
+              reply.id === commentId ? { ...reply, body: updated.body } : reply,
+            ),
+          };
+        }),
+      );
+      setEditingId(null);
+      setEditDraft("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update comment.");
+    } finally {
+      setEditPosting(false);
+      setActionId(null);
+    }
   }
 
   return (
@@ -584,10 +703,14 @@ export function ProfileCommentsPanel({
                   profileMemberId={profileMemberId}
                   profileOwner={profileOwner}
                   viewerMemberId={viewerMemberId}
+                  viewerIsVerified={viewerIsVerified}
                   showModeration={isOwnProfile}
                   replyingId={replyingId}
                   replyDraft={replyDraft}
                   replyPosting={replyPosting}
+                  editingId={editingId}
+                  editDraft={editDraft}
+                  editPosting={editPosting}
                   actionId={actionId}
                   onHide={(id, hidden) => void handleHide(id, hidden)}
                   onDelete={(id) => setDeleteTargetId(id)}
@@ -598,6 +721,10 @@ export function ProfileCommentsPanel({
                     setReplyingId(null);
                     setReplyDraft("");
                   }}
+                  onStartEdit={handleStartEdit}
+                  onEditDraftChange={setEditDraft}
+                  onSaveEdit={(id) => void handleSaveEdit(id)}
+                  onCancelEdit={handleCancelEdit}
                 />
               ))}
             </ul>
@@ -624,8 +751,7 @@ export function ProfileCommentsPanel({
                 Delete comment?
               </AlertDialogTitle>
               <AlertDialogDescription className="text-sm text-muted-foreground">
-                This permanently removes the comment and any reply in the thread. This cannot be
-                undone.
+                {deleteDialogDescription()}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

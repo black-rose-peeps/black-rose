@@ -6,7 +6,9 @@ import {
   replyToProfileComment as replyFn,
   setProfileCommentHidden as hideFn,
   deleteProfileCommentByOwner as deleteOwnerFn,
+  deleteProfileCommentByAuthor as deleteAuthorFn,
   deleteProfileCommentAsAdmin as deleteAdminFn,
+  updateProfileComment as updateFn,
 } from "../functions/profile-comments.functions";
 import type {
   ProfileComment,
@@ -46,6 +48,15 @@ export async function replyToProfileComment(input: {
   return replyFn({ data: input });
 }
 
+export async function updateProfileComment(input: {
+  profileMemberId: string;
+  commentId: string;
+  authorMemberId: string;
+  body: string;
+}): Promise<{ id: string; body: string }> {
+  return updateFn({ data: input });
+}
+
 export async function setProfileCommentHidden(input: {
   profileMemberId: string;
   commentId: string;
@@ -60,6 +71,14 @@ export async function fetchProfileCommentsAsAdmin(
   options?: { page?: number; pageSize?: number },
 ): Promise<ProfileCommentsPage> {
   return fetchAdminFn({ data: { profileMemberId, ...options } });
+}
+
+export async function deleteProfileCommentByAuthor(input: {
+  profileMemberId: string;
+  commentId: string;
+  authorMemberId: string;
+}): Promise<void> {
+  return deleteAuthorFn({ data: input });
 }
 
 export async function deleteProfileCommentByOwner(input: {

@@ -1,11 +1,19 @@
-import { createCsrfMiddleware, createStart, createMiddleware } from "@tanstack/react-start";
+import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/react-start";
 
 import "./server/server-functions";
+import { parseMemberSessionCookie } from "@/features/auth/server/member-session-cookie";
 import { renderErrorPage } from "./lib/error-page";
 
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
 });
+
+const memberSessionMiddleware = createMiddleware({ type: "request" }).server(
+  async ({ request, next }) => {
+    const memberId = parseMemberSessionCookie(request.headers.get("cookie"));
+    return next({ context: { memberId } });
+  },
+);
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -23,5 +31,5 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 });
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [csrfMiddleware, errorMiddleware],
+  requestMiddleware: [csrfMiddleware, errorMiddleware, memberSessionMiddleware],
 }));

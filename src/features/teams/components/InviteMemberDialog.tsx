@@ -147,7 +147,7 @@ export function InviteMemberDialog({
                 Invite Member
               </DialogTitle>
               <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
-                Search verified {team.game} players. Invites stay pending until accepted.
+                Search verified members. Profile main game does not restrict who you can invite.
               </DialogDescription>
             </div>
             <span
@@ -185,7 +185,7 @@ export function InviteMemberDialog({
               <p className="text-sm text-muted-foreground">
                 {search
                   ? "No eligible members match your search."
-                  : "No verified members available to invite for this game."}
+                  : "No verified members available to invite right now."}
               </p>
             </div>
           ) : (
