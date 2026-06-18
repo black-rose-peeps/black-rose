@@ -7,14 +7,11 @@ import { WhyBlackRose } from "@/features/landing/components/WhyBlackRose";
 import { HallOfChampions } from "@/features/landing/components/HallOfChampions";
 import { CtaBand } from "@/features/landing/components/CtaBand";
 import { Footer } from "@/features/landing/components/Footer";
-import { absoluteUrl, defaultOgMeta } from "@/lib/site-meta";
+import { DEFAULT_OG_TITLE, defaultOgMeta } from "@/lib/site-meta";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      ...defaultOgMeta({ title: "Black Rose — FIGHT AS ONE" }),
-      { property: "og:url", content: absoluteUrl("/") },
-    ],
+    meta: [...defaultOgMeta({ title: DEFAULT_OG_TITLE, path: "/" })],
   }),
   component: Index,
 });

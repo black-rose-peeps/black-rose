@@ -1,7 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
 import { Emblem } from "@/features/shared/components/Emblem";
 
 export function CtaBand() {
+  const session = useMemberSession();
+
   return (
     <section className="relative overflow-hidden border-y border-white/6 bg-[oklch(0.07_0_0)] py-24 md:py-32">
       {/* Grid texture */}
@@ -40,10 +43,10 @@ export function CtaBand() {
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            to="/login"
+            to={session ? "/dashboard" : "/login"}
             className="clip-cta font-semibold inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
           >
-            Join Black Rose
+            {session ? "Go to Dashboard" : "Join Black Rose"}
             <span aria-hidden>→</span>
           </Link>
           <Link

@@ -405,7 +405,7 @@ function ProfileEditPage() {
                   className={cn(techFieldClass, "custom-scrollbar max-h-48 resize-y overflow-y-auto")}
                 />
                 <p className="text-xs text-muted-foreground">
-                  At least 20 characters count toward profile completion.
+                  Any bio text counts toward profile completion.
                 </p>
               </div>
             </div>

@@ -14,7 +14,7 @@ export function calculateProfileCompletion(profile: {
 
   if (profile.avatarUrl?.trim()) score += 18;
   if (profile.displayName.trim()) score += 12;
-  if (profile.bio.trim().length >= 20) score += 24;
+  if (profile.bio.trim()) score += 24;
   if (profile.mainGame.trim()) score += 24;
   if (profile.mainRole.trim()) score += 12;
   if (profile.region.trim()) score += 10;
@@ -31,8 +31,8 @@ export function profileCompletionHint(completion: number): string {
     return "Your profile is fully set up — you're ready for invites, rosters, and your public page.";
   }
   if (completion >= 75) {
-    return "Add a bio of at least 20 characters, or finish your remaining game details.";
+    return "Add a bio, or finish your remaining game details.";
   }
   if (completion >= 50) return "Set your main game, role, and region to boost your profile.";
-  return "Add your avatar, a 20+ character bio, and game info to get started.";
+  return "Add your avatar, bio, and game info to get started.";
 }
