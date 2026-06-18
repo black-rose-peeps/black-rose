@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { withResolvedTournamentStatus } from "@/features/tournaments/utils/tournament-status";
@@ -28,9 +28,13 @@ export function useTournaments() {
     }
   }, []);
 
+  const debouncedRefetch = useMemo(
+    () => createDebouncedRefetch(refetch, 3000),
+    [refetch],
+  );
+
   useEffect(() => {
     void refetch();
-    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
 
     const supabase = getSupabaseClient();
     const channel = supabase
@@ -40,23 +44,17 @@ export function useTournaments() {
       })
       .subscribe();
 
-    return () => {
-      debouncedRefetch.cancel();
-      void supabase.removeChannel(channel);
-    };
-  }, [refetch]);
-
-  useEffect(() => {
-    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
     function handleFocus() {
       debouncedRefetch({ silent: true });
     }
     window.addEventListener("focus", handleFocus);
+
     return () => {
       debouncedRefetch.cancel();
+      void supabase.removeChannel(channel);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [refetch]);
+  }, [refetch, debouncedRefetch]);
 
   const prependTournament = useCallback((tournament: AdminTournament) => {
     setTournaments((prev) => [tournament, ...prev]);

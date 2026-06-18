@@ -55,6 +55,7 @@ export function MembersManagement() {
   const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [isSyncError, setIsSyncError] = useState(false);
   const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
   const {
@@ -93,11 +94,13 @@ export function MembersManagement() {
   async function handleSyncConfirm() {
     setIsSyncing(true);
     setSyncMessage(null);
+    setIsSyncError(false);
     try {
       const summary = await triggerDiscordSync({});
       setSyncMessage(formatDiscordSyncMessage(summary));
       setIsSyncConfirmOpen(false);
     } catch (err) {
+      setIsSyncError(true);
       setSyncMessage(
         err instanceof Error ? err.message : "Failed to run Discord sync.",
       );
@@ -148,7 +151,10 @@ export function MembersManagement() {
               </Alert>
             ) : null}
             {syncMessage ? (
-              <Alert className="mt-2 border-white/10 bg-white/2">
+              <Alert
+                variant={isSyncError ? "destructive" : undefined}
+                className={isSyncError ? "mt-2" : "mt-2 border-white/10 bg-white/2"}
+              >
                 <AlertDescription>{syncMessage}</AlertDescription>
               </Alert>
             ) : null}
