@@ -33,10 +33,15 @@ export function useProfileCompleteCelebration(memberId: string | undefined) {
     setOpen(false);
   }, [memberId]);
 
+  const openCelebration = useCallback(() => {
+    setOpen(true);
+  }, []);
+
   return {
     celebrationOpen: open,
     maybeCelebrate,
     celebrateIfUnseen,
+    openCelebration,
     dismissCelebration,
   };
 }

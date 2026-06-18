@@ -11,9 +11,13 @@ import { cn } from "@/lib/utils";
 
 interface ProfileCompletionPanelProps {
   completion: number;
+  onViewComplete?: () => void;
 }
 
-export function ProfileCompletionPanel({ completion }: ProfileCompletionPanelProps) {
+export function ProfileCompletionPanel({
+  completion,
+  onViewComplete,
+}: ProfileCompletionPanelProps) {
   const complete = isProfileComplete(completion);
 
   return (
@@ -22,16 +26,28 @@ export function ProfileCompletionPanel({ completion }: ProfileCompletionPanelPro
       title={complete ? "Arena Ready" : "Completion"}
       action={
         complete ? (
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-emerald-400/90 hover:bg-transparent hover:text-emerald-300"
-          >
-            <Link to="/dashboard/profile" search={{ tab: "identity" }}>
+          onViewComplete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-emerald-400/90 hover:bg-transparent hover:text-emerald-300"
+              onClick={onViewComplete}
+            >
               View →
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-emerald-400/90 hover:bg-transparent hover:text-emerald-300"
+            >
+              <Link to="/dashboard/profile" search={{ tab: "identity" }}>
+                View →
+              </Link>
+            </Button>
+          )
         ) : (
           <Button
             asChild
