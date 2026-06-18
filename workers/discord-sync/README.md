@@ -114,6 +114,7 @@ curl http://localhost:8787/health
 - **Cron schedule:** every minute (`* * * * *` in `wrangler.toml`), but baseline runs execute every `SYNC_BASELINE_INTERVAL_MINUTES` (default 15).
 - **Workers Paid** is recommended for production cron (Free tier cron CPU is 10 ms; network `fetch` time does not count toward CPU).
 - **Rate limits:** Workers Free allows **50 subrequests per cron run**. Default batch is **22** members per page (Discord fetch + possible DB update = up to 2 subrequests each).
+- **Member priority:** each run selects a `Not Verified` page via `rotationTick % notVerifiedPages`, orders members within that page by `created_at desc`, then fills remaining batch slots (after reserving capacity for verified checks) with `Verified` members for ROSE-removal checks.
 - **Guild scope:** the Worker only inspects `DISCORD_GUILD_ID`. Members **not in that server** are treated as **Not Verified** (no ROSE possible).
 - **Boost mode:** `/sync/boost` enables 1-minute checks for `SYNC_BOOST_WINDOW_MINUTES` (default 10), useful during active admin verification waves.
 - **Gateway bot (`npm run discord-bot`)** is optional — use the Worker instead for Cloudflare hosting. The Gateway bot gives ~instant updates; the cron Worker follows the configured baseline cadence (default ~15 min) unless boosted.

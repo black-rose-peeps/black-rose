@@ -8,12 +8,16 @@ import {
   declineTeamInvite,
   fetchTeamsForUser,
 } from "@/features/admin/features/teams/services/teams.service";
-import { MemberHeroBanner, MemberPageLayout, TechPanel } from "@/features/member/components/MemberShell";
-import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
+import {
+  MemberHeroBanner,
+  MemberPageLayout,
+  TechPanel,
+} from "@/features/member/components/MemberShell";
 import { getSession } from "@/features/auth/store/session";
 import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
 import { markTeamInviteRead } from "@/features/notifications/store";
 import { CreateTeamDialog } from "@/features/teams/components/CreateTeamDialog";
+import { TeamsEmptyState } from "@/features/teams/components/TeamsEmptyState";
 import { TeamInviteCard } from "@/features/teams/components/TeamInviteCard";
 import { GAME_COLOR, GAME_ACCENT } from "@/features/teams/constants";
 import { useMemberTeamMembershipRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
@@ -72,9 +76,7 @@ function TeamSummaryCard({
                 <Crown className="h-4 w-4 text-white/40" aria-label="You are the captain" />
               )}
             </div>
-            <span
-              className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}
-            >
+            <span className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}>
               {team.game}
             </span>
             <div className="mt-1 text-xs text-muted-foreground">
@@ -132,9 +134,9 @@ function TeamsIndexPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [respondingTeamId, setRespondingTeamId] = useState<string | null>(null);
-  const [championshipsByTeam, setChampionshipsByTeam] = useState<
-    Map<string, ChampionshipTitle[]>
-  >(new Map());
+  const [championshipsByTeam, setChampionshipsByTeam] = useState<Map<string, ChampionshipTitle[]>>(
+    new Map(),
+  );
 
   const invitedTeams = teams.filter((team) => memberId && isPendingInvite(team, memberId));
   const activeTeams = teams.filter((team) => memberId && isActiveMember(team, memberId));
@@ -324,35 +326,7 @@ function TeamsIndexPage() {
           ))}
         </div>
       ) : (
-        <ArenaEmptyState
-          compact
-          eyebrow="No Roster"
-          title={
-            <>
-              No teams <span className="text-stroke">yet.</span>
-            </>
-          }
-          description="Create a team for each game you compete in, or ask a captain to invite you."
-          actions={
-            <>
-              <Button
-                type="button"
-                onClick={() => setCreateOpen(true)}
-                className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
-              >
-                <Plus className="h-4 w-4" />
-                Create a Team
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
-              >
-                <Link to="/tournaments">Browse Tournaments</Link>
-              </Button>
-            </>
-          }
-        />
+        <TeamsEmptyState onCreateTeam={() => setCreateOpen(true)} />
       )}
 
       <CreateTeamDialog

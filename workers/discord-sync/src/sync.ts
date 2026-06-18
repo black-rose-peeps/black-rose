@@ -1,14 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Env } from "./env";
 import {
+  getBaselineIntervalMinutes,
   getMaxMembersPerRun,
   SUBREQUEST_MARGIN,
-  SUBREQUEST_STARTUP_COST,
   WORKERS_FREE_SUBREQUEST_BUDGET,
 } from "./env";
 import { fetchGuildMemberRoleIds, resolveRoseRoleId } from "./discord";
 
 type MemberStatus = "Verified" | "Not Verified";
+
+/** Minimum batch slots reserved for verified ROSE-removal checks each run. */
+function verifiedReservedSlots(batchSize: number): number {
+  return Math.max(1, Math.min(4, Math.floor(batchSize / 5)));
+}
 
 interface MemberRow {
   id: string;
@@ -29,9 +34,8 @@ export interface SyncSummary {
   page: number;
   totalPages: number;
   batchSize: number;
+  notVerifiedQueued: number;
 }
-
-const CRON_INTERVAL_MS = 2 * 60 * 1000;
 
 export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
   const batchSize = getMaxMembersPerRun(env);
@@ -44,10 +48,11 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
     skipped: 0,
     errors: 0,
     deferred: 0,
-    subrequestsUsed: SUBREQUEST_STARTUP_COST,
+    subrequestsUsed: 0,
     page: 0,
     totalPages: 1,
     batchSize,
+    notVerifiedQueued: 0,
   };
 
   const roseRoleId = await resolveRoseRoleId(env);
@@ -55,37 +60,87 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { count, error: countError } = await supabase
+  const rotationMs = getBaselineIntervalMinutes(env) * 60 * 1000;
+  const rotationTick = Math.floor(Date.now() / rotationMs);
+
+  const { count: notVerifiedCount, error: notVerifiedCountError } = await supabase
     .from("members")
     .select("id", { count: "exact", head: true })
+    .eq("status", "Not Verified")
     .not("discord_id", "is", null);
 
-  if (countError) {
-    throw new Error(`Supabase members count failed: ${countError.message}`);
+  if (notVerifiedCountError) {
+    throw new Error(`Supabase not-verified count failed: ${notVerifiedCountError.message}`);
   }
+  summary.subrequestsUsed += 1;
 
-  const totalMembers = count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalMembers / batchSize));
-  const page = Math.floor(Date.now() / CRON_INTERVAL_MS) % totalPages;
-  const from = page * batchSize;
-  const to = from + batchSize - 1;
+  summary.notVerifiedQueued = notVerifiedCount ?? 0;
+  const notVerifiedPages = Math.max(1, Math.ceil(summary.notVerifiedQueued / batchSize));
+  const notVerifiedPage = rotationTick % notVerifiedPages;
+  const notVerifiedFrom = notVerifiedPage * batchSize;
+  const notVerifiedTo = notVerifiedFrom + batchSize - 1;
 
-  summary.page = page;
-  summary.totalPages = totalPages;
+  summary.page = notVerifiedPage;
+  summary.totalPages = notVerifiedPages;
 
-  const { data, error } = await supabase
+  const { data: notVerifiedRows, error: notVerifiedError } = await supabase
     .from("members")
     .select("id, discord_id, status")
+    .eq("status", "Not Verified")
     .not("discord_id", "is", null)
-    .order("status", { ascending: true })
+    .order("created_at", { ascending: false })
     .order("id", { ascending: true })
-    .range(from, to);
+    .range(notVerifiedFrom, notVerifiedTo);
 
-  if (error) {
-    throw new Error(`Supabase members query failed: ${error.message}`);
+  if (notVerifiedError) {
+    throw new Error(`Supabase not-verified query failed: ${notVerifiedError.message}`);
+  }
+  summary.subrequestsUsed += 1;
+
+  const reservedForVerified = verifiedReservedSlots(batchSize);
+  const notVerifiedLimit = batchSize - reservedForVerified;
+  const members: MemberRow[] = [
+    ...((notVerifiedRows ?? []) as MemberRow[]).slice(0, notVerifiedLimit),
+  ];
+  const remainingSlots = batchSize - members.length;
+
+  if (remainingSlots > 0) {
+    const { count: verifiedCount, error: verifiedCountError } = await supabase
+      .from("members")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "Verified")
+      .not("discord_id", "is", null);
+
+    if (verifiedCountError) {
+      throw new Error(`Supabase verified count failed: ${verifiedCountError.message}`);
+    }
+    summary.subrequestsUsed += 1;
+
+    const verifiedTotal = verifiedCount ?? 0;
+    if (verifiedTotal > 0) {
+      const verifiedPages = Math.max(1, Math.ceil(verifiedTotal / remainingSlots));
+      const verifiedPage = rotationTick % verifiedPages;
+      const verifiedFrom = verifiedPage * remainingSlots;
+      const verifiedTo = verifiedFrom + remainingSlots - 1;
+
+      const { data: verifiedRows, error: verifiedError } = await supabase
+        .from("members")
+        .select("id, discord_id, status")
+        .eq("status", "Verified")
+        .not("discord_id", "is", null)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(verifiedFrom, verifiedTo);
+
+      if (verifiedError) {
+        throw new Error(`Supabase verified query failed: ${verifiedError.message}`);
+      }
+      summary.subrequestsUsed += 1;
+
+      members.push(...((verifiedRows ?? []) as MemberRow[]));
+    }
   }
 
-  const members = (data ?? []) as MemberRow[];
   const subrequestLimit = WORKERS_FREE_SUBREQUEST_BUDGET - SUBREQUEST_MARGIN;
 
   for (const member of members) {
@@ -95,7 +150,6 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
       continue;
     }
 
-    // Reserve room for Discord fetch + possible Supabase update.
     if (summary.subrequestsUsed + 2 > subrequestLimit) {
       summary.deferred += 1;
       continue;

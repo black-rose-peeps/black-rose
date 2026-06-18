@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { IdCard, LayoutDashboard, LogOut } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
@@ -6,10 +6,12 @@ import {
   HeaderMobileMenu,
   type MobileNavSection,
 } from "@/features/shared/components/HeaderMobileMenu";
-import { clearSession, getSession } from "@/features/auth/store/session";
+import { clearSession } from "@/features/auth/store/session";
+import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
 import { useMemberAccessSync } from "@/features/auth/hooks/useMemberAccessSync";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { MemberSearchButton } from "@/features/member/components/MemberSearchButton";
 import { setNotificationMemberId } from "@/features/notifications/store";
 import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
 
@@ -26,22 +28,28 @@ const PUBLIC_NAV = [
 
 export function MemberNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  // Re-read session on navigation so avatar / profile slug stay in sync after edits.
-  const session = getSession();
-  const isVerifiedMember = session ? hasFullMemberAccess(session.role) : false;
-  const profileSlug = session?.profileSlug ?? session?.username ?? "";
-  const avatarUrl = session?.avatarUrl ?? null;
+  const [hydrated, setHydrated] = useState(false);
+  const session = useMemberSession();
+  // Avoid SSR/client mismatch: localStorage session is unavailable during server render.
+  const clientSession = hydrated ? session : null;
+  const isVerifiedMember = clientSession ? hasFullMemberAccess(clientSession.role) : false;
 
   useEffect(() => {
-    setNotificationMemberId(isVerifiedMember && session?.id ? session.id : null);
-  }, [isVerifiedMember, session?.id]);
+    setHydrated(true);
+  }, []);
+  const profileSlug = clientSession?.profileSlug ?? clientSession?.username ?? "";
+  const avatarUrl = clientSession?.avatarUrl ?? null;
 
-  useNotificationSync(isVerifiedMember ? session?.id : undefined);
+  useEffect(() => {
+    setNotificationMemberId(isVerifiedMember && clientSession?.id ? clientSession.id : null);
+  }, [isVerifiedMember, clientSession?.id]);
+
+  useNotificationSync(isVerifiedMember ? clientSession?.id : undefined);
   useMemberAccessSync();
 
   const accountHref = isVerifiedMember
     ? { to: "/members/$slug" as const, params: { slug: profileSlug } }
-    : { to: getPostAuthPath(session?.role ?? "not_verified") };
+    : { to: getPostAuthPath(clientSession?.role ?? "not_verified") };
 
   function handleSignOut() {
     setNotificationMemberId(null);
@@ -74,7 +82,7 @@ export function MemberNav() {
       })),
     });
 
-    if (session) {
+    if (clientSession) {
       const accountActive =
         accountHref.to === "/waitlist"
           ? pathname === "/waitlist"
@@ -97,7 +105,7 @@ export function MemberNav() {
     }
 
     return sections;
-  }, [accountHref, isVerifiedMember, pathname, session]);
+  }, [accountHref, clientSession, isVerifiedMember, pathname]);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
@@ -146,9 +154,14 @@ export function MemberNav() {
         {/* User area */}
         <div className="flex items-center gap-2 sm:gap-3">
           <HeaderMobileMenu sections={mobileSections} />
-          {session ? (
+          {clientSession ? (
             <>
-              {isVerifiedMember && <NotificationBell />}
+              {isVerifiedMember && (
+                <>
+                  <MemberSearchButton />
+                  <NotificationBell />
+                </>
+              )}
               <Link
                 {...accountHref}
                 className="group hidden min-h-11 items-center gap-2 px-4 font-tech text-label-readable uppercase text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
@@ -158,11 +171,11 @@ export function MemberNav() {
                     <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center font-display text-label-readable tracking-display">
-                      {session.displayName.slice(0, 2).toUpperCase()}
+                      {clientSession.displayName.slice(0, 2).toUpperCase()}
                     </span>
                   )}
                 </div>
-                {isVerifiedMember ? session.displayName : "Waitlist"}
+                {isVerifiedMember ? clientSession.displayName : "Waitlist"}
                 <IdCard
                   className="h-3.5 w-3.5 shrink-0 opacity-70 transition group-hover:opacity-100"
                   strokeWidth={1.5}

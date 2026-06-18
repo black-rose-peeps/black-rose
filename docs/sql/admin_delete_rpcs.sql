@@ -8,14 +8,15 @@ security definer
 set search_path = public
 as $$
 begin
-  if exists (
-    select 1 from tournament_registrations where roster_team_id = p_team_id
-  ) then
-    raise exception 'Remove this team from all tournaments before deleting.';
-  end if;
+  delete from public.tournament_registration_players
+  where registration_id in (
+    select id from public.tournament_registrations where roster_team_id = p_team_id
+  );
 
-  delete from team_members where team_id = p_team_id;
-  delete from teams where id = p_team_id;
+  delete from public.tournament_registrations where roster_team_id = p_team_id;
+
+  delete from public.team_members where team_id = p_team_id;
+  delete from public.teams where id = p_team_id;
 end;
 $$;
 
