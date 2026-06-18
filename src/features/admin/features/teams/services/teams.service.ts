@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { deleteTeamAdminFn } from "../functions/delete-team.functions";
 import { deleteTeamCaptainFn } from "../functions/delete-team-captain.functions";
+import { transferTeamCaptainFn } from "../functions/transfer-team-captain.functions";
+import { leaveTeamFn } from "../functions/leave-team.functions";
 import { MAX_TEAM_SIZE, resolveRoleForGame } from "@/features/teams/constants";
 import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
@@ -706,6 +708,42 @@ export async function updateTeamMemberRole(
 
   if (error) throw new Error(error.message);
   return fetchTeamWithMembers(teamId);
+}
+
+export async function transferTeamCaptain(
+  teamId: string,
+  newCaptainUserId: string,
+  actingUserId: string,
+): Promise<Team> {
+  const team = await fetchTeamWithMembers(teamId);
+  if (team.captainUserId !== actingUserId) {
+    throw new Error("Only the team captain can transfer captaincy.");
+  }
+  if (newCaptainUserId === actingUserId) {
+    throw new Error("Select a different member to transfer captaincy.");
+  }
+
+  const target = team.members.find((m) => m.userId === newCaptainUserId);
+  if (!target || target.status !== "active") {
+    throw new Error("Captaincy can only be transferred to an active roster member.");
+  }
+
+  await transferTeamCaptainFn({ data: { teamId, newCaptainUserId } });
+  return fetchTeamWithMembers(teamId);
+}
+
+export async function leaveTeam(teamId: string, actingUserId: string): Promise<void> {
+  const team = await fetchTeamWithMembers(teamId);
+  if (team.captainUserId === actingUserId) {
+    throw new Error("Captains must transfer captaincy before leaving the team.");
+  }
+
+  const membership = team.members.find((m) => m.userId === actingUserId);
+  if (!membership || membership.status !== "active") {
+    throw new Error("Only active roster members can leave the team.");
+  }
+
+  await leaveTeamFn({ data: { teamId } });
 }
 
 export async function deleteTeam(teamId: string): Promise<void> {

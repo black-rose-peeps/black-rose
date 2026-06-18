@@ -11,6 +11,7 @@ import {
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import {
+  MEMBER_DIRECTORY_PAGE_SIZE,
   searchVerifiedMembersDirectory,
   type MemberDirectoryEntry,
 } from "@/features/member/services/member-search.service";
@@ -31,8 +32,8 @@ export function MemberSearchDialog({ open, onOpenChange }: MemberSearchDialogPro
   const [results, setResults] = useState<MemberDirectoryEntry[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(MEMBER_DIRECTORY_PAGE_SIZE);
 
-  const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const hasQuery = search.trim().length > 0;
   const showInitialSkeleton = searching && results.length === 0 && hasQuery;
@@ -44,6 +45,7 @@ export function MemberSearchDialog({ open, onOpenChange }: MemberSearchDialogPro
       setError(null);
       setResults([]);
       setTotal(0);
+      setPageSize(MEMBER_DIRECTORY_PAGE_SIZE);
     }
   }, [open]);
 
@@ -71,6 +73,7 @@ export function MemberSearchDialog({ open, onOpenChange }: MemberSearchDialogPro
           if (cancelled) return;
           setResults(result.members);
           setTotal(result.total);
+          setPageSize(result.pageSize);
         })
         .catch((err) => {
           if (cancelled) return;

@@ -5,6 +5,7 @@ import {
   Trophy,
   ChevronRight,
   Crown,
+  LogOut,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -24,7 +25,9 @@ import {
   declineTeamInvite,
   deleteTeamAsCaptain,
   fetchTeamById,
+  leaveTeam,
   removeMemberFromTeam,
+  transferTeamCaptain,
   updateTeamMemberRole,
 } from "@/features/admin/features/teams/services/teams.service";
 import { syncTeamMembershipNotifications } from "@/features/notifications/services/team-membership-notifications";
@@ -47,6 +50,7 @@ import { RoseStarMark } from "@/features/championships/components/RoseStarMark";
 import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
 import type { ChampionshipTitle } from "@/features/championships/types";
 import { TeamRosterPanel } from "@/features/teams/components/TeamRosterPanel";
+import { TransferCaptainDialog } from "@/features/teams/components/TransferCaptainDialog";
 import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { MockTeam } from "@/lib/mock-data";
@@ -69,6 +73,10 @@ function TeamDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<TeamMember | null>(null);
+  const [transferring, setTransferring] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [respondingInvite, setRespondingInvite] = useState(false);
   const [registrations, setRegistrations] = useState<MockTeam[]>([]);
@@ -186,6 +194,14 @@ function TeamDetailPage() {
     memberId && team.members.some((m) => m.userId === memberId && m.status !== "removed"),
   );
   const isPublicView = !isMember;
+  const isActiveMember = Boolean(
+    memberId &&
+      team.members.some(
+        (m) => m.userId === memberId && (m.status === "captain" || m.status === "active"),
+      ),
+  );
+  const canLeaveTeam = isActiveMember && !isCaptain;
+  const showBannerActions = !isPublicView && !isInvited && (isCaptain || canLeaveTeam);
 
   const activeCount = team.members.filter(
     (m) => m.status === "captain" || m.status === "active",
@@ -217,13 +233,56 @@ function TeamDetailPage() {
     }
   }
 
+  async function handleTransferCaptain() {
+    if (!memberId || !team || !transferTarget) return;
+    setTransferring(true);
+    setActionError(null);
+    try {
+      const updated = await transferTeamCaptain(team.id, transferTarget.userId, memberId);
+      setTeam(updated);
+      setTransferTarget(null);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to transfer captaincy.");
+    } finally {
+      setTransferring(false);
+    }
+  }
+
+  async function handleLeaveTeam() {
+    if (!memberId || !team) return;
+    setLeaving(true);
+    setActionError(null);
+    try {
+      await leaveTeam(team.id, memberId);
+      setLeaveOpen(false);
+      void syncTeamMembershipNotifications(memberId).catch((err) => {
+        console.warn("[teams] Failed to sync membership notifications:", err);
+      });
+      navigate({ to: "/teams", search: { create: false } });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to leave team.");
+    } finally {
+      setLeaving(false);
+    }
+  }
+
   async function handleDeleteTeam() {
     if (!memberId || !team) return;
     setDeleting(true);
     setActionError(null);
     try {
+      const memberIds = team.members
+        .filter((m) => m.status !== "removed")
+        .map((m) => m.userId);
       await deleteTeamAsCaptain(team.id);
       setDeleteOpen(false);
+      await Promise.all(
+        memberIds.map((id) =>
+          syncTeamMembershipNotifications(id).catch((err) => {
+            console.warn("[teams] Failed to sync membership notifications:", err);
+          }),
+        ),
+      );
       navigate({ to: "/teams", search: { create: false } });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to delete team.");
@@ -324,34 +383,35 @@ function TeamDetailPage() {
             </div>
           </div>
 
-          {!isPublicView && isCaptain && !isInvited && (
+          {showBannerActions && (
             <div className="flex flex-wrap items-center gap-2">
-              {approvedReg || team.activeTournamentId ? (
-                <Button
-                  asChild
-                  variant="outline"
-                  className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
-                >
-                  <Link
-                    to="/tournaments/$id"
-                    params={{ id: approvedReg?.tournamentId ?? team.activeTournamentId! }}
+              {isCaptain &&
+                (approvedReg || team.activeTournamentId ? (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="rounded-none border-white/15 font-tech text-ui-readable uppercase"
                   >
-                    <Trophy className="h-3.5 w-3.5" />
-                    View Tournament
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              ) : !hasBlockingRegistration ? (
-                <Button
-                  asChild
-                  className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
-                >
-                  <Link to="/tournaments">
-                    <Trophy className="h-3.5 w-3.5" />
-                    Register for Tournament
-                  </Link>
-                </Button>
-              ) : null}
+                    <Link
+                      to="/tournaments/$id"
+                      params={{ id: approvedReg?.tournamentId ?? team.activeTournamentId! }}
+                    >
+                      <Trophy className="h-3.5 w-3.5" />
+                      View Tournament
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                ) : !hasBlockingRegistration ? (
+                  <Button
+                    asChild
+                    className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
+                  >
+                    <Link to="/tournaments">
+                      <Trophy className="h-3.5 w-3.5" />
+                      Register for Tournament
+                    </Link>
+                  </Button>
+                ) : null)}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -366,23 +426,36 @@ function TeamDetailPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="min-w-[10rem] rounded-none border-white/12 bg-[oklch(0.09_0_0)]"
+                  className="min-w-40 rounded-none border-white/12 bg-[oklch(0.09_0_0)]"
                 >
-                  <DropdownMenuItem
-                    onClick={() => setEditOpen(true)}
-                    className="rounded-none font-tech text-ui-readable uppercase focus:bg-white/8"
-                  >
-                    <Pencil className="mr-2 h-3.5 w-3.5" />
-                    Edit Team
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-white/8" />
-                  <DropdownMenuItem
-                    onClick={() => setDeleteOpen(true)}
-                    className="rounded-none font-tech text-ui-readable uppercase text-red-400 focus:bg-red-400/10 focus:text-red-400"
-                  >
-                    <Trash2 className="mr-2 h-3.5 w-3.5" />
-                    Delete Team
-                  </DropdownMenuItem>
+                  {isCaptain ? (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => setEditOpen(true)}
+                        className="rounded-none font-tech text-ui-readable uppercase focus:bg-white/8"
+                      >
+                        <Pencil className="mr-2 h-3.5 w-3.5" />
+                        Edit Team
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-white/8" />
+                      <DropdownMenuItem
+                        onClick={() => setDeleteOpen(true)}
+                        className="rounded-none font-tech text-ui-readable uppercase text-red-400 focus:bg-red-400/10 focus:text-red-400"
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        Delete Team
+                      </DropdownMenuItem>
+                    </>
+                  ) : null}
+                  {canLeaveTeam ? (
+                    <DropdownMenuItem
+                      onClick={() => setLeaveOpen(true)}
+                      className="rounded-none font-tech text-ui-readable uppercase text-red-400 focus:bg-red-400/10 focus:text-red-400"
+                    >
+                      <LogOut className="mr-2 h-3.5 w-3.5" />
+                      Leave Team
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -415,7 +488,8 @@ function TeamDetailPage() {
         isEditable={!isPublicView && isCaptain && !isInvited}
         canInvite={canInvite}
         onInvite={() => setInviteOpen(true)}
-        onRemove={handleRemove}
+        onRemove={isCaptain ? handleRemove : undefined}
+        onTransferCaptain={isCaptain ? setTransferTarget : undefined}
         onRoleChange={
           !isPublicView && isMember && !isInvited ? handleRoleChange : undefined
         }
@@ -481,6 +555,18 @@ function TeamDetailPage() {
         </TechPanel>
       )}
 
+      {!isPublicView && canLeaveTeam && !isInvited && (
+        <ConfirmDeleteDialog
+          open={leaveOpen}
+          title="Leave team?"
+          description={`You will be removed from ${team.name} [${team.tag}]. You can rejoin only if the captain invites you again.`}
+          confirmLabel="Leave team"
+          isDeleting={leaving}
+          onClose={() => setLeaveOpen(false)}
+          onConfirm={() => void handleLeaveTeam()}
+        />
+      )}
+
       {!isPublicView && isCaptain && !isInvited && (
         <>
           <InviteMemberDialog
@@ -498,11 +584,22 @@ function TeamDetailPage() {
           <ConfirmDeleteDialog
             open={deleteOpen}
             title="Delete team?"
-            description={`This permanently removes ${team.name} and its roster. This cannot be undone.`}
+            description={`This permanently deletes ${team.name} [${team.tag}], withdraws any tournament registration, and removes every roster member from the team. This cannot be undone.`}
             confirmLabel="Delete team"
             isDeleting={deleting}
             onClose={() => setDeleteOpen(false)}
             onConfirm={() => void handleDeleteTeam()}
+          />
+          <TransferCaptainDialog
+            open={transferTarget !== null}
+            member={transferTarget}
+            teamName={team.name}
+            teamTag={team.tag}
+            transferring={transferring}
+            onClose={() => {
+              if (!transferring) setTransferTarget(null);
+            }}
+            onConfirm={() => void handleTransferCaptain()}
           />
         </>
       )}

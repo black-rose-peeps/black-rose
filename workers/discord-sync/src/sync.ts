@@ -10,6 +10,11 @@ import { fetchGuildMemberRoleIds, resolveRoseRoleId } from "./discord";
 
 type MemberStatus = "Verified" | "Not Verified";
 
+/** Minimum batch slots reserved for verified ROSE-removal checks each run. */
+function verifiedReservedSlots(batchSize: number): number {
+  return Math.max(1, Math.min(4, Math.floor(batchSize / 5)));
+}
+
 interface MemberRow {
   id: string;
   discord_id: string;
@@ -84,6 +89,7 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
     .eq("status", "Not Verified")
     .not("discord_id", "is", null)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
     .range(notVerifiedFrom, notVerifiedTo);
 
   if (notVerifiedError) {
@@ -91,7 +97,11 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
   }
   summary.subrequestsUsed += 1;
 
-  const members: MemberRow[] = [...((notVerifiedRows ?? []) as MemberRow[])];
+  const reservedForVerified = verifiedReservedSlots(batchSize);
+  const notVerifiedLimit = batchSize - reservedForVerified;
+  const members: MemberRow[] = [
+    ...((notVerifiedRows ?? []) as MemberRow[]).slice(0, notVerifiedLimit),
+  ];
   const remainingSlots = batchSize - members.length;
 
   if (remainingSlots > 0) {
@@ -119,6 +129,7 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
         .eq("status", "Verified")
         .not("discord_id", "is", null)
         .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
         .range(verifiedFrom, verifiedTo);
 
       if (verifiedError) {

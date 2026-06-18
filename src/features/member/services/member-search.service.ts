@@ -17,7 +17,7 @@ export interface MemberDirectorySearchResult {
   pageSize: number;
 }
 
-const PAGE_SIZE = 10;
+export const MEMBER_DIRECTORY_PAGE_SIZE = 10;
 
 function escapeIlikePattern(value: string): string {
   return value.replace(/[%_\\]/g, "\\$&");
@@ -88,35 +88,44 @@ export async function searchVerifiedMembersDirectory(
 ): Promise<MemberDirectorySearchResult> {
   const trimmed = query.trim();
   const safePage = Math.max(1, page);
-  const from = (safePage - 1) * PAGE_SIZE;
+  const from = (safePage - 1) * MEMBER_DIRECTORY_PAGE_SIZE;
+  const to = from + MEMBER_DIRECTORY_PAGE_SIZE - 1;
 
   if (!trimmed) {
-    return { members: [], total: 0, page: safePage, pageSize: PAGE_SIZE };
+    return {
+      members: [],
+      total: 0,
+      page: safePage,
+      pageSize: MEMBER_DIRECTORY_PAGE_SIZE,
+    };
   }
 
   const matchingIds = await collectVerifiedMemberIds(trimmed);
-  if (matchingIds.length === 0) {
-    return { members: [], total: 0, page: safePage, pageSize: PAGE_SIZE };
+  const total = matchingIds.length;
+  if (total === 0) {
+    return {
+      members: [],
+      total: 0,
+      page: safePage,
+      pageSize: MEMBER_DIRECTORY_PAGE_SIZE,
+    };
   }
 
   const { data, error } = await supabase
     .from("members")
     .select("id, username, discord_username, member_profiles(display_name, avatar_url, slug)")
     .in("id", matchingIds)
-    .eq("status", "Verified");
+    .eq("status", "Verified")
+    .order("display_name", { ascending: true, foreignTable: "member_profiles" })
+    .order("username", { ascending: true })
+    .range(from, to);
 
   if (error) throw new Error(error.message);
 
-  const sorted = (data ?? [])
-    .map((row) => rowToDirectoryEntry(row as Record<string, unknown>))
-    .sort((a, b) =>
-      a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }),
-    );
-
   return {
-    members: sorted.slice(from, from + PAGE_SIZE),
-    total: sorted.length,
+    members: (data ?? []).map((row) => rowToDirectoryEntry(row as Record<string, unknown>)),
+    total,
     page: safePage,
-    pageSize: PAGE_SIZE,
+    pageSize: MEMBER_DIRECTORY_PAGE_SIZE,
   };
 }
