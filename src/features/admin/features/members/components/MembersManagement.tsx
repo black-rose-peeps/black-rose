@@ -104,21 +104,46 @@ export function MembersManagement() {
         if (cancelled) return;
         setIsBoostActive(status.boostActive);
         setBoostUntil(status.boostUntil);
+        return status.boostActive;
+      } catch {
+        // Keep UI non-blocking if status check fails.
+        return false;
+      }
+    }
+
+    // One check on load (e.g. page refresh during an active boost window).
+    void refreshBoostStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isBoostActive) return;
+
+    let cancelled = false;
+
+    async function pollWhileBoosted() {
+      try {
+        const status = await fetchDiscordSyncBoostStatus({});
+        if (cancelled) return;
+        setIsBoostActive(status.boostActive);
+        setBoostUntil(status.boostUntil);
       } catch {
         // Keep UI non-blocking if status check fails.
       }
     }
 
-    void refreshBoostStatus();
     const interval = window.setInterval(() => {
-      void refreshBoostStatus();
+      void pollWhileBoosted();
     }, 30000);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [isBoostActive]);
 
   async function handleBoostSyncConfirm() {
     setIsBoostingSync(true);

@@ -12,6 +12,7 @@ interface TeamRosterPanelProps {
   canInvite?: boolean;
   onInvite?: () => void;
   onRemove?: (member: TeamMember) => void;
+  onTransferCaptain?: (member: TeamMember) => void;
   onRoleChange?: (member: TeamMember, role: TeamMemberRole) => void;
   /** Public pages show active roster only — no pending invites or management chrome. */
   variant?: "manage" | "public";
@@ -32,6 +33,7 @@ export function TeamRosterPanel({
   canInvite = false,
   onInvite,
   onRemove,
+  onTransferCaptain,
   onRoleChange,
   variant = "manage",
 }: TeamRosterPanelProps) {
@@ -120,6 +122,7 @@ export function TeamRosterPanel({
             currentUserId={currentUserId}
             isEditable={isEditable}
             onRemove={onRemove}
+            onTransferCaptain={onTransferCaptain}
             onRoleChange={onRoleChange}
             emptyMessage="No active members yet."
           />

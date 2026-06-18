@@ -79,12 +79,8 @@ function DashboardPage() {
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [isSyncing, setIsSyncing] = useState(true);
   const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
-  const {
-    celebrationOpen,
-    celebrateIfUnseen,
-    openCelebration,
-    dismissCelebration,
-  } = useProfileCompleteCelebration(session?.id);
+  const { celebrationOpen, celebrateIfUnseen, openCelebration, dismissCelebration } =
+    useProfileCompleteCelebration(session?.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -315,9 +311,7 @@ function DashboardPage() {
           icon={<Calendar className="h-4 w-4" />}
           label="Matches"
           value={
-            p.upcomingMatches.length > 0
-              ? `${p.upcomingMatches.length} upcoming`
-              : "None scheduled"
+            p.upcomingMatches.length > 0 ? `${p.upcomingMatches.length} upcoming` : "None scheduled"
           }
         />
       </div>
@@ -325,9 +319,7 @@ function DashboardPage() {
       <div className="mb-6 grid gap-5 lg:grid-cols-3">
         <ProfileCompletionPanel
           completion={p.profileCompletion}
-          onViewComplete={
-            isProfileComplete(p.profileCompletion) ? openCelebration : undefined
-          }
+          onViewComplete={isProfileComplete(p.profileCompletion) ? openCelebration : undefined}
         />
 
         <DashboardSection label="Accounts" title="Valorant ID">

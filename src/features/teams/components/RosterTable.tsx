@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { Crown, UserMinus, Mail } from "lucide-react";
+import { Crown, Mail, MoreHorizontal, UserMinus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -19,6 +27,7 @@ interface RosterTableProps {
   currentUserId: string;
   isEditable?: boolean;
   onRemove?: (member: TeamMember) => void;
+  onTransferCaptain?: (member: TeamMember) => void;
   onRoleChange?: (member: TeamMember, role: TeamMemberRole) => void;
   emptyMessage?: string;
   showStatusColumn?: boolean;
@@ -31,12 +40,24 @@ const STATUS_BADGE: Record<TeamMember["status"], { label: string; className: str
   removed: { label: "Removed", className: "text-muted-foreground border-white/8 bg-white/2" },
 };
 
+function memberHasCaptainActions(
+  member: TeamMember,
+  onRemove?: (member: TeamMember) => void,
+  onTransferCaptain?: (member: TeamMember) => void,
+): boolean {
+  if (member.status === "captain") return false;
+  if (member.status === "active") return Boolean(onTransferCaptain || onRemove);
+  if (member.status === "invited") return Boolean(onRemove);
+  return false;
+}
+
 export function RosterTable({
   team,
   members,
   currentUserId,
   isEditable = false,
   onRemove,
+  onTransferCaptain,
   onRoleChange,
   emptyMessage = "No members in this section.",
   showStatusColumn = true,
@@ -46,6 +67,8 @@ export function RosterTable({
   const showIgnColumn = !isValorantGame(team.game);
   const visible =
     members ?? team.members.filter((m) => m.status !== "removed");
+
+  const showActionsColumn = isEditable && isCaptain;
 
   if (!visible.length) {
     return (
@@ -92,7 +115,7 @@ export function RosterTable({
             <th className="px-4 py-3 text-left font-normal">Main Role</th>
             {showStatusColumn && (
               <th className="px-4 py-3 text-right font-normal">
-                {isEditable && isCaptain ? "Actions" : "Status"}
+                {showActionsColumn ? "Actions" : "Status"}
               </th>
             )}
           </tr>
@@ -180,15 +203,50 @@ export function RosterTable({
 
                 {showStatusColumn && (
                   <td className="px-4 py-3 text-right">
-                    {isEditable && isCaptain && onRemove && m.status !== "captain" ? (
-                      <button
-                        type="button"
-                        onClick={() => onRemove(m)}
-                        className="inline-flex cursor-pointer items-center gap-1.5 font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-red-400"
-                      >
-                        <UserMinus className="h-3 w-3" />
-                        {m.status === "invited" ? "Cancel" : "Remove"}
-                      </button>
+                    {isEditable &&
+                    isCaptain &&
+                    memberHasCaptainActions(m, onRemove, onTransferCaptain) ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="ml-auto h-8 w-8 rounded-none text-muted-foreground hover:bg-white/8 hover:text-foreground"
+                            aria-label={`Actions for ${m.displayName}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="min-w-40 rounded-none border-white/12 bg-[oklch(0.09_0_0)]"
+                        >
+                          {m.status === "active" && onTransferCaptain ? (
+                            <DropdownMenuItem
+                              onClick={() => onTransferCaptain(m)}
+                              className="rounded-none font-tech text-ui-readable uppercase focus:bg-white/8"
+                            >
+                              <Crown className="mr-2 h-3.5 w-3.5 text-amber-300/80" />
+                              Make Captain
+                            </DropdownMenuItem>
+                          ) : null}
+                          {onRemove ? (
+                            <>
+                              {m.status === "active" && onTransferCaptain ? (
+                                <DropdownMenuSeparator className="bg-white/8" />
+                              ) : null}
+                              <DropdownMenuItem
+                                onClick={() => onRemove(m)}
+                                className="rounded-none font-tech text-ui-readable uppercase text-red-400 focus:bg-red-400/10 focus:text-red-400"
+                              >
+                                <UserMinus className="mr-2 h-3.5 w-3.5" />
+                                {m.status === "invited" ? "Cancel Invite" : "Remove"}
+                              </DropdownMenuItem>
+                            </>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     ) : (
                       <span
                         className={`inline-flex items-center gap-1.5 border px-2 py-0.5 font-tech text-label-readable uppercase ${badge.className}`}
