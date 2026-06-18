@@ -76,7 +76,7 @@ function LoginPage() {
   return (
     <>
       <AuthShell
-        headline="FIGHT AS ONE"
+        headline="RISE AS ONE"
         subheadline="One Discord sign-in for new and returning members — build teams, register for tournaments, and track your competitive journey."
       >
         <div className="mb-10">

@@ -82,6 +82,7 @@ function DashboardPage() {
   const {
     celebrationOpen,
     celebrateIfUnseen,
+    openCelebration,
     dismissCelebration,
   } = useProfileCompleteCelebration(session?.id);
 
@@ -322,7 +323,12 @@ function DashboardPage() {
       </div>
 
       <div className="mb-6 grid gap-5 lg:grid-cols-3">
-        <ProfileCompletionPanel completion={p.profileCompletion} />
+        <ProfileCompletionPanel
+          completion={p.profileCompletion}
+          onViewComplete={
+            isProfileComplete(p.profileCompletion) ? openCelebration : undefined
+          }
+        />
 
         <DashboardSection label="Accounts" title="Valorant ID">
           {(() => {

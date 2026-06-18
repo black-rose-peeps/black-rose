@@ -3,10 +3,19 @@ import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/r
 import "./server/server-functions";
 import { parseMemberSessionCookie } from "@/features/auth/server/member-session-cookie";
 import { renderErrorPage } from "./lib/error-page";
+import { resolveSiteOriginFromRequest } from "./lib/site-meta";
+import { runWithRequestSiteOrigin } from "./lib/site-meta-request.server";
 
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
 });
+
+const siteOriginMiddleware = createMiddleware({ type: "request" }).server(
+  async ({ request, next }) => {
+    const origin = resolveSiteOriginFromRequest(request);
+    return runWithRequestSiteOrigin(origin, () => next());
+  },
+);
 
 const memberSessionMiddleware = createMiddleware({ type: "request" }).server(
   async ({ request, next }) => {
@@ -31,5 +40,5 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 });
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [csrfMiddleware, errorMiddleware, memberSessionMiddleware],
+  requestMiddleware: [csrfMiddleware, errorMiddleware, siteOriginMiddleware, memberSessionMiddleware],
 }));

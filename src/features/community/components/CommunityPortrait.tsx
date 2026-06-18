@@ -65,7 +65,7 @@ export function CommunityPortrait() {
                 Black Rose Guild
               </p>
               <p className="mt-1 font-display text-2xl tracking-[0.06em] text-white">
-                Fight as One
+                Rise as One
               </p>
             </div>
             <p className="max-w-sm text-right text-[10px] font-tech uppercase tracking-[0.18em] text-white/40 md:text-xs">
