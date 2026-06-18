@@ -104,15 +104,16 @@
   }
 }
 
+@utility font-title {
+  font-family: var(--font-title);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
-  }
-  .font-title {
-    font-family: var(--font-title);
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: none;
   }
   .font-tech {
     font-family: var(--font-tech);
