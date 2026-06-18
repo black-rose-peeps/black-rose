@@ -1,8 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import heroBg from "@/assets/landing-hero-bg2.png";
+import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
 import { Emblem } from "@/features/shared/components/Emblem";
 
 export function Hero() {
+  const session = useMemberSession();
+
   return (
     <section
       id="landing-hero"
@@ -39,7 +42,7 @@ export function Hero() {
         </div>
 
         <h1 className="font-display text-6xl leading-[0.9] tracking-display sm:text-7xl md:text-[7.5rem] animate-rise">
-          FIGHT <span className="text-stroke">AS</span> ONE
+          RISE <span className="text-stroke">AS</span> ONE
         </h1>
 
         <p className="mt-8 max-w-2xl text-balance text-base text-muted-foreground md:text-lg animate-rise">
@@ -49,10 +52,10 @@ export function Hero() {
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row animate-rise">
           <Link
-            to="/login"
+            to={session ? "/dashboard" : "/login"}
             className="clip-cta font-semibold inline-flex h-12 items-center gap-3 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background hover:bg-foreground/90 transition"
           >
-            Get Started
+            {session ? "Go to Dashboard" : "Get Started"}
             <span aria-hidden>→</span>
           </Link>
           <Link

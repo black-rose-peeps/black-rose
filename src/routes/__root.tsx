@@ -6,7 +6,7 @@ import appCss from "../styles.css?url";
 import favicon from "@/assets/black-rose-emblem-black.png";
 import { NotFoundPage } from "@/features/shared/components/NotFoundPage";
 import { ErrorPage } from "@/features/shared/components/ErrorPage";
-import { defaultOgMeta } from "@/lib/site-meta";
+import { DEFAULT_OG_TITLE, defaultOgMeta } from "@/lib/site-meta";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -14,13 +14,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "author", content: "Black Rose Esports" },
-      ...defaultOgMeta({ title: "Black Rose — FIGHT AS ONE" }),
+      ...defaultOgMeta({ title: DEFAULT_OG_TITLE }),
     ],
     links: [
       {
         rel: "icon",
         type: "image/png",
         href: favicon,
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/og-hero.png",
       },
       {
         rel: "preconnect",

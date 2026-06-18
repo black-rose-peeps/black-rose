@@ -158,7 +158,7 @@ export function TournamentShowcaseCard({
           aria-hidden="true"
           className="pointer-events-none absolute bottom-4 right-4 hidden font-tech text-label-readable uppercase tracking-[0.12em] text-white/35 [writing-mode:vertical-rl] rotate-180 sm:block"
         >
-          Black Rose · {t.region}
+          Blackrose · Asia
         </p>
       </Link>
 
