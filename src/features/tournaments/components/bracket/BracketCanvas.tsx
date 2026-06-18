@@ -24,20 +24,6 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
   const isInteractiveTarget = (target: EventTarget | null) =>
     target instanceof Element && !!target.closest(INTERACTIVE_SELECTOR);
 
-  const onWheel = (event: React.WheelEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (event.ctrlKey || event.metaKey) {
-      const delta = -event.deltaY * 0.0015;
-      setScale((current) => clamp(parseFloat((current + delta).toFixed(2)), 0.35, 1.8));
-      return;
-    }
-
-    setTy((current) => current - event.deltaY);
-    setTx((current) => current - event.deltaX);
-  };
-
   const onPointerDown = (event: React.PointerEvent) => {
     if (isInteractiveTarget(event.target)) return;
     if (event.button !== 0) return;
@@ -77,7 +63,8 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
 
     const handler = (event: WheelEvent) => {
       event.preventDefault();
-      event.stopPropagation();
+      const delta = -event.deltaY * 0.0015;
+      setScale((current) => clamp(parseFloat((current + delta).toFixed(2)), 0.35, 1.8));
     };
 
     element.addEventListener("wheel", handler, { passive: false });
@@ -91,7 +78,6 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
         className,
       )}
       style={{ minHeight }}
-      onWheel={onWheel}
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.28]"
@@ -156,7 +142,7 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
       </div>
 
       <div className="pointer-events-none absolute left-3 top-3 z-10 border border-border bg-popover/85 px-3 py-1.5 font-tech text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur">
-        Drag to pan · Scroll to move · Ctrl + scroll to zoom
+        Drag to pan · Scroll to zoom
       </div>
     </div>
   );

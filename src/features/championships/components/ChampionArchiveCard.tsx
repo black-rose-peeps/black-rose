@@ -51,7 +51,7 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
             <p className="font-display text-2xl leading-[1.05] tracking-[0.04em] text-white transition group-hover:text-white">
               {champion.teamName}
             </p>
-            <p className="mt-1 truncate font-semibold text-[11px] font-tech uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="mt-1 truncate font-title text-[11px] text-muted-foreground">
               {champion.tournamentName}
             </p>
           </div>

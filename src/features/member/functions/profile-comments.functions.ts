@@ -69,6 +69,30 @@ export const replyToProfileComment = createServerFn({ method: "POST" })
     return replyToProfileComment(data);
   });
 
+export const updateProfileComment = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      profileMemberId: string;
+      commentId: string;
+      authorMemberId: string;
+      body: string;
+    }) => {
+      if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
+      if (!data?.commentId?.trim()) throw new Error("Missing comment id.");
+      if (!data?.authorMemberId?.trim()) throw new Error("Missing author member id.");
+      return {
+        profileMemberId: data.profileMemberId.trim(),
+        commentId: data.commentId.trim(),
+        authorMemberId: data.authorMemberId.trim(),
+        body: data.body ?? "",
+      };
+    },
+  )
+  .handler(async ({ data }): Promise<{ id: string; body: string }> => {
+    const { updateProfileComment } = await import("../server/profile-comments.server");
+    return updateProfileComment(data);
+  });
+
 export const setProfileCommentHidden = createServerFn({ method: "POST" })
   .validator(
     (data: {
@@ -119,6 +143,22 @@ export const fetchProfileCommentsAsAdmin = createServerFn({ method: "POST" })
       page: data.page,
       pageSize: data.pageSize,
     });
+  });
+
+export const deleteProfileCommentByAuthor = createServerFn({ method: "POST" })
+  .validator((data: { profileMemberId: string; commentId: string; authorMemberId: string }) => {
+    if (!data?.profileMemberId?.trim()) throw new Error("Missing profile member id.");
+    if (!data?.commentId?.trim()) throw new Error("Missing comment id.");
+    if (!data?.authorMemberId?.trim()) throw new Error("Missing author member id.");
+    return {
+      profileMemberId: data.profileMemberId.trim(),
+      commentId: data.commentId.trim(),
+      authorMemberId: data.authorMemberId.trim(),
+    };
+  })
+  .handler(async ({ data }): Promise<void> => {
+    const { deleteProfileCommentByAuthor } = await import("../server/profile-comments.server");
+    return deleteProfileCommentByAuthor(data);
   });
 
 export const deleteProfileCommentByOwner = createServerFn({ method: "POST" })

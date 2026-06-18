@@ -1,11 +1,28 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Trophy, ChevronRight, Crown, Pencil } from "lucide-react";
+import {
+  ArrowLeft,
+  Trophy,
+  ChevronRight,
+  Crown,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   acceptTeamInvite,
   declineTeamInvite,
+  deleteTeamAsCaptain,
   fetchTeamById,
   removeMemberFromTeam,
   updateTeamMemberRole,
@@ -50,6 +67,8 @@ function TeamDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [respondingInvite, setRespondingInvite] = useState(false);
   const [registrations, setRegistrations] = useState<MockTeam[]>([]);
@@ -198,6 +217,21 @@ function TeamDetailPage() {
     }
   }
 
+  async function handleDeleteTeam() {
+    if (!memberId || !team) return;
+    setDeleting(true);
+    setActionError(null);
+    try {
+      await deleteTeamAsCaptain(team.id);
+      setDeleteOpen(false);
+      navigate({ to: "/teams", search: { create: false } });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to delete team.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleAcceptInvite() {
     if (!memberId) return;
     setActionError(null);
@@ -291,16 +325,7 @@ function TeamDetailPage() {
           </div>
 
           {!isPublicView && isCaptain && !isInvited && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditOpen(true)}
-                className="rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit Team
-              </Button>
+            <div className="flex flex-wrap items-center gap-2">
               {approvedReg || team.activeTournamentId ? (
                 <Button
                   asChild
@@ -327,6 +352,39 @@ function TeamDetailPage() {
                   </Link>
                 </Button>
               ) : null}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 rounded-none border-white/15 bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                    aria-label="Team actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="min-w-[10rem] rounded-none border-white/12 bg-[oklch(0.09_0_0)]"
+                >
+                  <DropdownMenuItem
+                    onClick={() => setEditOpen(true)}
+                    className="rounded-none font-tech text-ui-readable uppercase focus:bg-white/8"
+                  >
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                    Edit Team
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-white/8" />
+                  <DropdownMenuItem
+                    onClick={() => setDeleteOpen(true)}
+                    className="rounded-none font-tech text-ui-readable uppercase text-red-400 focus:bg-red-400/10 focus:text-red-400"
+                  >
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                    Delete Team
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>
@@ -436,6 +494,15 @@ function TeamDetailPage() {
             onOpenChange={setEditOpen}
             team={team}
             onUpdated={setTeam}
+          />
+          <ConfirmDeleteDialog
+            open={deleteOpen}
+            title="Delete team?"
+            description={`This permanently removes ${team.name} and its roster. This cannot be undone.`}
+            confirmLabel="Delete team"
+            isDeleting={deleting}
+            onClose={() => setDeleteOpen(false)}
+            onConfirm={() => void handleDeleteTeam()}
           />
         </>
       )}
