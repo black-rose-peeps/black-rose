@@ -63,7 +63,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
               </span>
             </div>
 
-            <h1 className="mt-3 font-display text-3xl tracking-display sm:text-5xl md:text-6xl">
+            <h1 className="mt-3 font-title tracking-display text-3xl sm:text-5xl md:text-6xl">
               {t.name}
             </h1>
 

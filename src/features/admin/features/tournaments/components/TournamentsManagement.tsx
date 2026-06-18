@@ -232,7 +232,7 @@ export function TournamentsManagement() {
                   >
                     <TableCell className={adminTableCellClip}>
                       <div>
-                        <div className={cn("font-display text-base tracking-wider", adminTableTextTruncate)}>
+                        <div className={cn("font-title text-base", adminTableTextTruncate)}>
                           {t.name}
                         </div>
                         <div className={cn("text-xs text-muted-foreground", adminTableTextTruncate)}>

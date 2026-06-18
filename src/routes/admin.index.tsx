@@ -184,7 +184,7 @@ function AdminDashboard() {
                         <Trophy className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
                       </div>
                       <div className="min-w-0 flex flex-col leading-tight">
-                        <span className="truncate font-display text-lg tracking-wider-2">
+                        <span className="truncate font-title text-lg">
                           {t.name}
                         </span>
                         <span className="mt-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">

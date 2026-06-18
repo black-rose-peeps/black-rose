@@ -32,7 +32,7 @@ export function ChampionshipTitlesCard({
               className="group flex items-center justify-between gap-3 rounded-sm border border-transparent px-1 py-1 transition hover:border-white/8 hover:bg-white/[0.03]"
             >
               <div className="min-w-0">
-                <p className="truncate font-display text-sm tracking-display text-foreground group-hover:text-white">
+                <p className="truncate font-title text-sm text-foreground group-hover:text-white">
                   {title.tournamentName}
                 </p>
                 <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
