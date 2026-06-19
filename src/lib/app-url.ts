@@ -21,7 +21,7 @@ function isPrivateDevHost(hostname: string): boolean {
   }
 
   const parts = host.split(".").map((part) => Number(part));
-  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) {
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
     return false;
   }
 
@@ -50,7 +50,9 @@ export function isAllowedDiscordRedirectUri(uri: string): boolean {
 
   const configured = readEnvDiscordRedirectUri();
   if (configured && uri === configured) {
-    return url.protocol === "https:" || (url.protocol === "http:" && isPrivateDevHost(url.hostname));
+    return (
+      url.protocol === "https:" || (url.protocol === "http:" && isPrivateDevHost(url.hostname))
+    );
   }
 
   if (url.protocol === "http:" && isPrivateDevHost(url.hostname)) {

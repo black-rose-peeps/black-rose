@@ -5,7 +5,6 @@ import { getDiscordRedirectUri } from "@/lib/app-url";
 import {
   clearDiscordLinked,
   clearStoredOAuthState,
-  markDiscordLinked,
   readStoredOAuthRedirectUri,
   retryDiscordOAuthAfterConsentRequired,
   shouldRetryDiscordWithConsent,
@@ -108,7 +107,6 @@ function AuthCallbackPage() {
 
         clearStoredOAuthState();
         setSession(user);
-        markDiscordLinked(user.discordId);
         navigate({ to: getPostAuthPath(user.role), replace: true });
       } catch (err) {
         if (cancelled) return;

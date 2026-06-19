@@ -10,10 +10,7 @@
  * API base: https://discord.com/api/v10
  */
 
-import {
-  getDiscordRedirectUri,
-  isAllowedDiscordRedirectUri,
-} from "@/lib/app-url";
+import { getDiscordRedirectUri, isAllowedDiscordRedirectUri } from "@/lib/app-url";
 import { isDiscordPhoneOrTablet } from "@/lib/device";
 import { openDiscordAppFromUserGesture } from "@/lib/discord-url";
 import { createRandomUuid } from "@/lib/random-id";
@@ -115,8 +112,12 @@ export function getDiscordOAuthUrl(state: string, options?: PrepareDiscordOAuthO
 
 export function clearDiscordLinked(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(DISCORD_LINKED_KEY);
-  localStorage.removeItem(DISCORD_AUTHORIZED_USER_KEY);
+  try {
+    localStorage.removeItem(DISCORD_LINKED_KEY);
+    localStorage.removeItem(DISCORD_AUTHORIZED_USER_KEY);
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 function persistOAuthRequest(state: string, redirectUri: string): void {
@@ -143,9 +144,9 @@ function persistOAuthRequest(state: string, redirectUri: string): void {
 }
 
 /** Store OAuth CSRF state and return the authorize URL (does not open Discord yet). */
-export function prepareDiscordOAuth(
-  options?: PrepareDiscordOAuthOptions,
-): { browserFallbackUrl: string } {
+export function prepareDiscordOAuth(options?: PrepareDiscordOAuthOptions): {
+  browserFallbackUrl: string;
+} {
   const state = createRandomUuid();
   const redirectUri = getDiscordRedirectUri();
   persistOAuthRequest(state, redirectUri);
@@ -183,8 +184,7 @@ export function continueDiscordOAuthInBrowser(options?: PrepareDiscordOAuthOptio
 export function readStoredOAuthState(): string | null {
   if (typeof window === "undefined") return null;
   return (
-    localStorage.getItem(DISCORD_OAUTH_STATE_KEY) ??
-    sessionStorage.getItem(DISCORD_OAUTH_STATE_KEY)
+    localStorage.getItem(DISCORD_OAUTH_STATE_KEY) ?? sessionStorage.getItem(DISCORD_OAUTH_STATE_KEY)
   );
 }
 

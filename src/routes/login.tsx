@@ -34,7 +34,8 @@ export const Route = createFileRoute("/login")({
       { title: "Join — Black Rose" },
       {
         name: "description",
-        content: "Continue with Discord to join Black Rose — new accounts are created automatically.",
+        content:
+          "Continue with Discord to join Black Rose — new accounts are created automatically.",
       },
     ],
   }),
@@ -82,7 +83,7 @@ function LoginPage() {
         `Discord would redirect to ${configured ?? "http://localhost:…"} after authorize, but ` +
           `"localhost" on your phone is the phone itself — not your PC. Remove ` +
           "VITE_DISCORD_REDIRECT_URI from .env.local when testing on mobile, open the site at " +
-          "http://YOUR-PC-LAN-IP:5173 on your phone, and register that exact callback URL in " +
+          "http://YOUR-PC-LAN-IP:3000 on your phone, and register that exact callback URL in " +
           "Discord → OAuth2 → Redirects. For reliable mobile dev, use an HTTPS tunnel instead " +
           "(see .env.example).",
       );
@@ -108,8 +109,7 @@ function LoginPage() {
       }
       requestDiscordAppLink(browserFallbackUrl, "Discord sign-in", "oauth");
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Could not start Discord sign-in.";
+      const message = err instanceof Error ? err.message : "Could not start Discord sign-in.";
       setError(message);
     }
   }
@@ -175,7 +175,9 @@ function LoginPage() {
             </p>
           )}
           {lanRedirectWarning && (
-            <p className="text-center text-xs leading-relaxed text-amber-200/80">{lanRedirectWarning}</p>
+            <p className="text-center text-xs leading-relaxed text-amber-200/80">
+              {lanRedirectWarning}
+            </p>
           )}
           {error && <p className="text-center text-xs text-destructive">{error}</p>}
           <p className="text-center text-xs leading-relaxed text-muted-foreground">
