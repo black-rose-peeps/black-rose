@@ -18,11 +18,13 @@ export const refreshVerificationFromDiscord = createServerFn({ method: "POST" })
     return { memberId: data.memberId.trim() };
   })
   .handler(async ({ data }): Promise<RefreshVerificationFromDiscordResult> => {
+    const { assertRequestMemberId } = await import("../server/member-session-request.server");
+    assertRequestMemberId(data.memberId);
+
     const { findMemberById } = await import("../server/member-auth.server");
     const { isDiscordRoleSyncConfigured } = await import("../server/discord-config.server");
-    const { syncMemberVerificationFromDiscordRole } = await import(
-      "../server/discord-guild.server"
-    );
+    const { syncMemberVerificationFromDiscordRole } =
+      await import("../server/discord-guild.server");
 
     if (!isDiscordRoleSyncConfigured()) {
       throw new Error(

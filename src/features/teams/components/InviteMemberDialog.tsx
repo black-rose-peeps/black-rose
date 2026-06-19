@@ -88,6 +88,8 @@ export function InviteMemberDialog({
       setPage(1);
       setSearchError(null);
       setInviteError(null);
+      setSearching(false);
+      setInvitingId(null);
       setRecentlyInvitedIds(new Set());
       setResults([]);
       setTotal(0);
