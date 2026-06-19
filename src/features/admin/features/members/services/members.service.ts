@@ -52,6 +52,9 @@ export async function fetchMemberById(id: string): Promise<AdminMember | null> {
   return data ? rowToAdminMember(data) : null;
 }
 
+const ADMIN_MEMBER_MUTATION_COLUMNS =
+  "id, username, discord_username, discord_id, status, registered_at, created_at";
+
 export async function createMember(input: CreateMemberInput): Promise<AdminMember> {
   const { data, error } = await supabase
     .from("members")
@@ -61,7 +64,7 @@ export async function createMember(input: CreateMemberInput): Promise<AdminMembe
       discord_id: input.discordId ?? null,
       status: input.status,
     })
-    .select()
+    .select(ADMIN_MEMBER_MUTATION_COLUMNS)
     .single();
 
   if (error) {
@@ -80,7 +83,7 @@ export async function updateMemberVerificationStatus(
     .from("members")
     .update({ status })
     .eq("id", id)
-    .select()
+    .select(ADMIN_MEMBER_MUTATION_COLUMNS)
     .single();
 
   if (error) throw new Error(error.message);
@@ -100,7 +103,7 @@ export async function updateMember(
       status: input.status,
     })
     .eq("id", id)
-    .select()
+    .select(ADMIN_MEMBER_MUTATION_COLUMNS)
     .single();
 
   if (error) {

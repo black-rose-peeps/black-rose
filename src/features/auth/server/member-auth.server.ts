@@ -9,7 +9,7 @@ const MEMBER_AUTH_CACHE_TTL_MS = 30_000;
 const memberAuthCache = createTtlCache<AdminMember>(MEMBER_AUTH_CACHE_TTL_MS);
 const memberAuthLoadDeduper = createInflightDeduper<AdminMember | null>();
 
-function invalidateMemberAuthCache(memberId: string): void {
+export function invalidateMemberAuthCache(memberId: string): void {
   memberAuthCache.delete(memberId);
 }
 
@@ -104,7 +104,7 @@ export async function upsertMemberFromDiscord(
       .from("members")
       .update(updates)
       .eq("id", existing.id)
-      .select()
+      .select(MEMBER_READ_COLUMNS)
       .single();
 
     if (error) throw new Error(error.message);
@@ -121,7 +121,7 @@ export async function upsertMemberFromDiscord(
       discord_id: discordId,
       status: targetStatus,
     })
-    .select()
+    .select(MEMBER_READ_COLUMNS)
     .single();
 
   if (error) {
@@ -142,7 +142,7 @@ export async function upsertMemberFromDiscord(
           .from("members")
           .update(raceUpdates)
           .eq("id", raced.id)
-          .select()
+          .select(MEMBER_READ_COLUMNS)
           .single();
         if (updateError) throw new Error(updateError.message);
         invalidateMemberAuthCache(raced.id);

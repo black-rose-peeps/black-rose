@@ -17,6 +17,9 @@ export interface TournamentRegistrationRequest {
   createdAt: string;
 }
 
+const REGISTRATION_REQUEST_COLUMNS =
+  "id, tournament_id, roster_team_id, requester_user_id, captain_user_id, status, created_at";
+
 function rowToRequest(row: Record<string, unknown>): TournamentRegistrationRequest {
   return {
     id: row.id as string,
@@ -66,7 +69,7 @@ export async function fetchPendingRegistrationRequest(
 ): Promise<TournamentRegistrationRequest | null> {
   const { data, error } = await supabase
     .from("tournament_registration_requests")
-    .select("*")
+    .select(REGISTRATION_REQUEST_COLUMNS)
     .eq("tournament_id", tournamentId)
     .eq("roster_team_id", rosterTeamId)
     .eq("requester_user_id", requesterUserId)
@@ -90,7 +93,7 @@ export async function fetchPendingRegistrationRequestsForCaptain(
 ): Promise<TournamentRegistrationRequest[]> {
   const { data, error } = await supabase
     .from("tournament_registration_requests")
-    .select("*")
+    .select(REGISTRATION_REQUEST_COLUMNS)
     .eq("captain_user_id", captainUserId)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
@@ -145,7 +148,7 @@ export async function createTournamentRegistrationRequest(input: {
       captain_user_id: team.captainUserId,
       status: "pending",
     })
-    .select()
+    .select(REGISTRATION_REQUEST_COLUMNS)
     .single();
 
   if (error) {

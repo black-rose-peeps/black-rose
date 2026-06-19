@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshVerificationFromDiscord } from "../functions/refresh-verification-from-discord";
-import { syncSessionFromDatabase } from "../services/sync-session";
+import { syncMemberAccessFromDatabase } from "../services/sync-session";
 import { getSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
 import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
@@ -28,7 +28,7 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
     const session = getSession();
     if (!session) return false;
 
-    const updated = await syncSessionFromDatabase();
+    const updated = await syncMemberAccessFromDatabase();
     if (!updated) return false;
 
     if (hasFullMemberAccess(updated.role)) {

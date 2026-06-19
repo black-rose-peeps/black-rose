@@ -290,10 +290,15 @@ async function validateTeamForTournamentRegistration(
   return tournament;
 }
 
+const REGISTRATION_READ_COLUMNS =
+  "id, roster_team_id, member_user_id, name, tag, captain, registration_date, status, tournament_id, history";
+
+const REGISTRATION_PLAYER_COLUMNS = "registration_id, ign, role, discord";
+
 async function fetchRegistrationWithPlayers(registrationId: string): Promise<MockTeam> {
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
-    .select("*")
+    .select(REGISTRATION_READ_COLUMNS)
     .eq("id", registrationId)
     .single();
 
@@ -301,7 +306,7 @@ async function fetchRegistrationWithPlayers(registrationId: string): Promise<Moc
 
   const { data: players, error: playersErr } = await supabase
     .from("tournament_registration_players")
-    .select("*")
+    .select(REGISTRATION_PLAYER_COLUMNS)
     .eq("registration_id", registrationId);
 
   if (playersErr) throw new Error(playersErr.message);
@@ -349,7 +354,7 @@ function rowToMockTeam(reg: Record<string, unknown>, players: Record<string, unk
 export async function fetchTournamentRegistrations(tournamentId: string): Promise<MockTeam[]> {
   const { data: regs, error: regsErr } = await supabase
     .from("tournament_registrations")
-    .select("*")
+    .select(REGISTRATION_READ_COLUMNS)
     .eq("tournament_id", tournamentId)
     .order("registration_date", { ascending: false });
 
@@ -360,7 +365,7 @@ export async function fetchTournamentRegistrations(tournamentId: string): Promis
 
   const { data: players, error: playersErr } = await supabase
     .from("tournament_registration_players")
-    .select("*")
+    .select(REGISTRATION_PLAYER_COLUMNS)
     .in("registration_id", regIds);
 
   if (playersErr) throw new Error(playersErr.message);
@@ -383,7 +388,7 @@ export async function fetchTournamentRegistrations(tournamentId: string): Promis
 export async function fetchAllRegistrations(): Promise<MockTeam[]> {
   const { data: regs, error: regsErr } = await supabase
     .from("tournament_registrations")
-    .select("*")
+    .select(REGISTRATION_READ_COLUMNS)
     .order("registration_date", { ascending: false });
 
   if (regsErr) throw new Error(regsErr.message);
@@ -393,7 +398,7 @@ export async function fetchAllRegistrations(): Promise<MockTeam[]> {
 
   const { data: players, error: playersErr } = await supabase
     .from("tournament_registration_players")
-    .select("*")
+    .select(REGISTRATION_PLAYER_COLUMNS)
     .in("registration_id", regIds);
 
   if (playersErr) throw new Error(playersErr.message);
@@ -793,7 +798,7 @@ export async function addTeamsToTournament(
 async function resyncRegistrationRoster(registrationId: string): Promise<MockTeam> {
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
-    .select("*")
+    .select(REGISTRATION_READ_COLUMNS)
     .eq("id", registrationId)
     .single();
 

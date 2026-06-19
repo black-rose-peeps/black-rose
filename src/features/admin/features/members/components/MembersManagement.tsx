@@ -31,8 +31,10 @@ import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { MEMBERS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import { AdminTableSearch } from "@/features/admin/components/AdminTableSearch";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import { useTableSort } from "@/features/admin/hooks/useTableSort";
+import { matchesAdminMemberDirectorySearch } from "@/features/admin/utils/search";
 import { useMembers, useUpdateMemberVerification } from "../hooks";
 import type { AdminMember } from "../types";
 import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
@@ -58,12 +60,18 @@ export function MembersManagement() {
   const [isSyncError, setIsSyncError] = useState(false);
   const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const {
     submit: deleteMemberSubmit,
     isDeleting,
     error: deleteError,
     resetError: resetDeleteError,
   } = useDeleteMember();
+  const filteredMembers = useMemo(() => {
+    if (!searchQuery.trim()) return members;
+    return members.filter((member) => matchesAdminMemberDirectorySearch(searchQuery, member));
+  }, [members, searchQuery]);
+
   const verificationOrder = useMemo(() => ["Not Verified", "Verified"] as const, []);
   const sortComparators = useMemo(
     () => ({
@@ -75,7 +83,7 @@ export function MembersManagement() {
     [verificationOrder],
   );
   const { sortedItems, sortKey, direction, toggleSort } = useTableSort(
-    members,
+    filteredMembers,
     sortComparators,
     "registered",
     "desc",
@@ -84,7 +92,7 @@ export function MembersManagement() {
 
   useEffect(() => {
     pagination.setPage(1);
-  }, [sortKey, direction, pagination.setPage]);
+  }, [sortKey, direction, searchQuery, pagination.setPage]);
 
   function handleCreated(member: AdminMember) {
     prependMember(member);
@@ -238,6 +246,35 @@ export function MembersManagement() {
             />
           ) : (
             <>
+              <AdminTableSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search by display name or Discord username…"
+              />
+              {filteredMembers.length === 0 ? (
+                <AdminEmptyState
+                  embedded
+                  eyebrow="No Matches"
+                  title={
+                    <>
+                      Nobody on the <span className="text-stroke">roster.</span>
+                    </>
+                  }
+                  description={`No members match "${searchQuery.trim()}". Try display name or Discord username.`}
+                  actions={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="font-tech uppercase tracking-wider"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      Clear search
+                    </Button>
+                  }
+                />
+              ) : (
+                <>
               <AdminManagementTable columnWidths={MEMBERS_TABLE_COLUMNS}>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -375,6 +412,8 @@ export function MembersManagement() {
                 rangeEnd={pagination.rangeEnd}
                 onPageChange={pagination.setPage}
               />
+                </>
+              )}
             </>
           )}
         </div>

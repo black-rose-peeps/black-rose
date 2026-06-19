@@ -139,10 +139,13 @@ function rowToRecord(
   };
 }
 
+const CHAMPION_ARCHIVE_COLUMNS =
+  "id, tournament_id, tournament_name, team_name, team_tag, mvp, completed_at, created_at, portrait_url, story";
+
 async function fetchArchiveRows(): Promise<TournamentChampionRow[]> {
   const { data, error } = await supabase
     .from("tournament_champions")
-    .select("*")
+    .select(CHAMPION_ARCHIVE_COLUMNS)
     .order("completed_at", { ascending: false });
 
   if (error) {
