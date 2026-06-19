@@ -2,7 +2,7 @@ import { refreshMemberSession } from "../functions/refresh-member-session";
 import type { RefreshMemberSessionResult } from "../functions/refresh-member-session";
 import { getSession, setSession } from "../store/session";
 import type { AppUser } from "../types";
-import { applyVerificationToSession } from "../utils/session";
+import { applyMemberAccessToSession, applyVerificationToSession } from "../utils/session";
 
 function isDevServerFnRaceError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
@@ -46,6 +46,28 @@ export async function syncSessionFromDatabase(): Promise<AppUser | null> {
     displayName: result.displayName,
     profileSlug: result.profileSlug,
     avatarUrl: result.avatarUrl,
+    discordId: result.discordId,
+    status: result.status,
+    registeredAt: result.registeredAt,
+  });
+
+  setSession(updated);
+  return updated;
+}
+
+/** Refresh verification/access fields only — does not overwrite profile display fields. */
+export async function syncMemberAccessFromDatabase(): Promise<AppUser | null> {
+  if (typeof window === "undefined") {
+    return getSession();
+  }
+
+  const session = getSession();
+  if (!session) return null;
+
+  const result = await fetchMemberSession(session.id);
+  const updated = applyMemberAccessToSession(session, {
+    username: result.username,
+    discordUsername: result.discordUsername,
     discordId: result.discordId,
     status: result.status,
     registeredAt: result.registeredAt,

@@ -56,11 +56,13 @@ function baseEligibility(options: TournamentRulesOptions): RuleSection {
   }
 
   const rosterSize =
-    game === "League of Legends"
-      ? "5 starters and up to 2 substitutes (7 total)"
-      : game === "Where Winds Meet" && wwmMode === "group_strategy"
+    game === "Valorant"
+      ? "5 active members minimum to register (5 starters and up to 2 substitutes, 7 total)"
+      : game === "League of Legends"
         ? "5 starters and up to 2 substitutes (7 total)"
-        : "5 starters and up to 2 substitutes (7 total)";
+        : game === "Where Winds Meet" && wwmMode === "group_strategy"
+          ? "5 starters and up to 2 substitutes (7 total)"
+          : "5 starters and up to 2 substitutes (7 total)";
 
   const modeNote =
     game === "Where Winds Meet" && wwmMode === "group_strategy"

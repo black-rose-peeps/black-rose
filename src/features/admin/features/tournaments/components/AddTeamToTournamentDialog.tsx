@@ -19,7 +19,11 @@ import { matchesAdminSearch } from "@/features/admin/utils/search";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchTeams } from "@/features/admin/features/teams/services/teams.service";
 import type { Team } from "@/features/teams/types";
-import { canTeamRegisterForTournament } from "@/features/tournaments/utils/team-tournament-eligibility";
+import {
+  canTeamRegisterForTournament,
+  getRequiredRosterSizeForTournament,
+  meetsTournamentRosterRequirement,
+} from "@/features/tournaments/utils/team-tournament-eligibility";
 import { countSlotFilledRegistrations } from "@/features/admin/features/participants/constants/registration-status";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import { fetchTournaments } from "../services/tournaments.service";
@@ -64,6 +68,7 @@ export function AddTeamToTournamentDialog({
       if (registeredRosterIds.has(team.id)) return false;
       if (team.game !== "Multi" && team.game !== tournament.game) return false;
       if (!canTeamRegisterForTournament(team, tournament.id, tournamentStatusById)) return false;
+      if (!meetsTournamentRosterRequirement(team, tournament.game)) return false;
       return matchesAdminSearch(searchQuery, team.name, team.tag, team.game);
     });
   }, [
@@ -78,6 +83,7 @@ export function AddTeamToTournamentDialog({
   const approvedCount = countSlotFilledRegistrations(registeredTeams);
   const slotsRemaining = Math.max(0, tournament.teamCap - approvedCount);
   const atCap = slotsRemaining === 0;
+  const requiredRosterSize = getRequiredRosterSizeForTournament(tournament.game);
   const selectedCount = selectedTeamIds.size;
   const teamById = useMemo(
     () => new Map(eligibleTeams.map((team) => [team.id, team])),
@@ -171,8 +177,11 @@ export function AddTeamToTournamentDialog({
           <DialogDescription>
             Select one or more rosters from Teams to register in {tournament.name}. Teams may only
             be active in one live or upcoming event at a time — they become eligible again once
-            their current tournament is completed. {approvedCount}/{tournament.teamCap}{" "}
-            slots used
+            their current tournament is completed.
+            {requiredRosterSize ? (
+              <> {tournament.game} rosters need at least {requiredRosterSize} active members.</>
+            ) : null}{" "}
+            {approvedCount}/{tournament.teamCap} slots used
             {!atCap && ` · ${slotsRemaining} slot${slotsRemaining === 1 ? "" : "s"} left`}.
           </DialogDescription>
         </DialogHeader>

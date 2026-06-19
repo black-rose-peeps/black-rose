@@ -10,19 +10,19 @@
         }
       ],
       "destination": "https://discord.gg/blackrosehq",
-      "permanent": false
+      "permanent": true
     }
   ],
   "rewrites": [
     {
-      "source": "/:path*",
+      "source": "/",
       "has": [
         {
           "type": "host",
           "value": "admin.blackrose.asia"
         }
       ],
-      "destination": "/admin/:path*"
+      "destination": "/admin"
     }
   ]
 }
