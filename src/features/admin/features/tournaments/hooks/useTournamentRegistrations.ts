@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { MockTeam } from "@/lib/mock-data";
 import { getSupabaseClient } from "@/lib/supabase";
+import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { fetchTournamentRegistrations } from "../services/tournament-registrations.service";
 
 export function useTournamentRegistrations(tournamentId: string) {
@@ -59,6 +60,7 @@ export function useTournamentRegistrations(tournamentId: string) {
 
   // Keep in sync when registrations are approved/updated elsewhere (e.g. Participants page).
   useEffect(() => {
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel(`tournament-regs:${tournamentId}`)
@@ -71,12 +73,13 @@ export function useTournamentRegistrations(tournamentId: string) {
           filter: `tournament_id=eq.${tournamentId}`,
         },
         () => {
-          void refetch({ silent: true });
+          debouncedRefetch({ silent: true });
         },
       )
       .subscribe();
 
     return () => {
+      debouncedRefetch.cancel();
       void supabase.removeChannel(channel);
     };
   }, [tournamentId, refetch]);

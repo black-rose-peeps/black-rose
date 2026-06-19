@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { fetchMembers } from "../services/members.service";
 import type { AdminMember } from "../types";
 
@@ -26,16 +27,18 @@ export function useMembers() {
 
   useEffect(() => {
     void refetch();
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
 
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel("admin-members-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "members" }, () => {
-        void refetch({ silent: true });
+        debouncedRefetch({ silent: true });
       })
       .subscribe();
 
     return () => {
+      debouncedRefetch.cancel();
       supabase.removeChannel(channel);
     };
   }, [refetch]);

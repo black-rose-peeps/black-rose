@@ -1,15 +1,11 @@
 # BlackRose Discord sync (Cloudflare Worker)
 
-Scheduled Worker that syncs the Discord **ROSE** role to `members.status` in Supabase. Baseline cadence is every 15 minutes, with optional temporary 1-minute boost mode for 10 minutes.
+Scheduled Worker that syncs the Discord **ROSE** role to `members.status` in Supabase. Runs every 15 minutes; use `POST /sync/boost` for an immediate sync during active verification waves.
 
 ## Architecture
 
 ```text
-Cloudflare Cron (every 1 min)
-        ↓
-Check boost flag (worker_runtime_flags)
-        ↓
-Run now if boosted, else run every SYNC_BASELINE_INTERVAL_MINUTES
+Cloudflare Cron (every 15 min)
         ↓
 Query Supabase members with discord_id
         ↓
@@ -97,7 +93,7 @@ Trigger a manual sync (if `SYNC_SECRET` is set):
 curl -X POST http://localhost:8787/sync -H "Authorization: Bearer YOUR_SYNC_SECRET"
 ```
 
-Trigger a 10-minute 1-minute-cadence boost + immediate sync:
+Trigger an immediate sync + record boost window (for `/sync/status`):
 
 ```bash
 curl -X POST http://localhost:8787/sync/boost -H "Authorization: Bearer YOUR_SYNC_SECRET"
@@ -111,13 +107,13 @@ curl http://localhost:8787/health
 
 ## Production notes
 
-- **Cron schedule:** every minute (`* * * * *` in `wrangler.toml`), but baseline runs execute every `SYNC_BASELINE_INTERVAL_MINUTES` (default 15).
+- **Cron schedule:** every 15 minutes (`*/15 * * * *` in `wrangler.toml`).
 - **Workers Paid** is recommended for production cron (Free tier cron CPU is 10 ms; network `fetch` time does not count toward CPU).
 - **Rate limits:** Workers Free allows **50 subrequests per cron run**. Default batch is **22** members per page (Discord fetch + possible DB update = up to 2 subrequests each).
 - **Member priority:** each run selects a `Not Verified` page via `rotationTick % notVerifiedPages`, orders members within that page by `created_at desc`, then fills remaining batch slots (after reserving capacity for verified checks) with `Verified` members for ROSE-removal checks.
 - **Guild scope:** the Worker only inspects `DISCORD_GUILD_ID`. Members **not in that server** are treated as **Not Verified** (no ROSE possible).
-- **Boost mode:** `/sync/boost` enables 1-minute checks for `SYNC_BOOST_WINDOW_MINUTES` (default 10), useful during active admin verification waves.
-- **Gateway bot (`npm run discord-bot`)** is optional — use the Worker instead for Cloudflare hosting. The Gateway bot gives ~instant updates; the cron Worker follows the configured baseline cadence (default ~15 min) unless boosted.
+- **Boost endpoint:** `/sync/boost` runs an immediate sync and records a boost window in `worker_runtime_flags` (visible via `/sync/status`). Cron cadence stays every 15 minutes.
+- **Gateway bot (`npm run discord-bot`)** is optional — use the Worker instead for Cloudflare hosting. The Gateway bot gives ~instant updates; the cron Worker runs every 15 minutes.
 
 ## Endpoints
 
@@ -126,7 +122,7 @@ curl http://localhost:8787/health
 | GET | `/health` | Liveness check |
 | GET | `/sync/status` | Current boost status (`boostActive`, `boostUntil`) |
 | POST | `/sync` | Manual sync run (optional `Authorization: Bearer SYNC_SECRET`) |
-| POST | `/sync/boost` | Activate temporary 1-minute mode + run an immediate sync |
+| POST | `/sync/boost` | Immediate sync + record boost window (optional `Authorization: Bearer SYNC_SECRET`) |
 
 Cron runs automatically — no HTTP call needed in production.
 
@@ -137,4 +133,4 @@ Cron runs automatically — no HTTP call needed in production.
 | No status updates | Check Worker logs (`npm run tail`); verify secrets and guild/role IDs |
 | `ROSE role not found` | Set `DISCORD_ROSE_ROLE_ID` explicitly |
 | 404 for all members | Bot not in guild or user not in server |
-| Waitlist slow to redirect | Normal — up to baseline cadence (default 15 min); use `/sync/boost` during active verifications |
+| Waitlist slow to redirect | Normal — up to 15 min; call `/sync/boost` or `POST /sync` during active verifications |

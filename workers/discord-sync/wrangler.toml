@@ -2,9 +2,9 @@ name = "blackrose-discord-sync"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 
-# Sync ROSE role → Supabase (cron fires every minute; runtime applies baseline/boost cadence).
+# Sync ROSE role → Supabase (every 15 minutes; POST /sync for immediate runs, POST /sync/boost optional).
 [triggers]
-crons = ["* * * * *"]
+crons = ["*/15 * * * *"]
 
 [vars]
 DISCORD_GUILD_ID = "1193921905795792906"
