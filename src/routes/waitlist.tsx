@@ -2,9 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { useVerificationSync } from "@/features/auth/hooks/useVerificationSync";
-import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
 import { getSession, clearSession } from "@/features/auth/store/session";
-import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
+import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
   DISCORD_SERVER_INVITE,
   DISCORD_TOURNA_ROLES_CHANNEL_LABEL,
@@ -49,42 +48,19 @@ function WaitlistPage() {
   });
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadWaitlist() {
-      const session = getSession();
-      if (!session) {
-        navigate({ to: "/login" });
-        return;
-      }
-
-      try {
-        const updated = await syncSessionFromDatabase();
-        if (cancelled) return;
-
-        const active = updated ?? session;
-        if (hasFullMemberAccess(active.role)) {
-          navigate({ to: getPostAuthPath(active.role), replace: true });
-          return;
-        }
-
-        setUsername(active.displayName || active.username);
-      } catch {
-        if (cancelled) return;
-        if (hasFullMemberAccess(session.role)) {
-          navigate({ to: getPostAuthPath(session.role), replace: true });
-          return;
-        }
-        setUsername(session.displayName || session.username);
-      }
+    const session = getSession();
+    if (!session) {
+      navigate({ to: "/login" });
+      return;
     }
 
-    void loadWaitlist();
+    if (hasFullMemberAccess(session.role)) {
+      goToDashboard();
+      return;
+    }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate]);
+    setUsername(session.displayName || session.username);
+  }, [navigate, goToDashboard]);
 
   useEffect(() => {
     return () => {
