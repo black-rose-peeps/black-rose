@@ -189,6 +189,7 @@ async function collectInviteSearchMemberIds(query: string, game?: string): Promi
 
   const runs = [
     supabase.from("members").select("id").eq("status", "Verified").ilike("discord_username", pattern),
+    supabase.from("members").select("id").eq("status", "Verified").ilike("username", pattern),
     supabase
       .from("member_profiles")
       .select("member_id, members!inner(status)")
