@@ -44,7 +44,7 @@ cp .env.example .env
 | `VITE_SITE_URL` | Public site URL for Open Graph previews (production: `https://blackrose.asia`) |
 | `VITE_DISCORD_SERVER_INVITE` | Invite link shown on waitlist / onboarding |
 
-Register each deployment callback in Discord → OAuth2 → Redirects, e.g. `http://localhost:5173/auth/callback`.
+Register each deployment callback in Discord → OAuth2 → Redirects, e.g. `http://localhost:3000/auth/callback`.
 
 **3. Set up the database**
 
@@ -56,7 +56,7 @@ Run the SQL scripts in Supabase SQL Editor. Start with [docs/README.md](./docs/R
 npm run dev
 ```
 
-Open **http://localhost:5173**
+Open **http://localhost:3000**
 
 - **Members:** `/login` → Discord OAuth
 - **Admin console:** `/login?console=1` → username/password from `admin_accounts` (see [docs/sql/create_admin_account.sql](./docs/sql/create_admin_account.sql))
@@ -210,6 +210,7 @@ The platform is **production-capable** with Supabase as the backend. Shared doma
 | Doc | Contents |
 | --- | -------- |
 | [docs/README.md](./docs/README.md) | Supabase tables, admin flow, env checklist |
+| [docs/SUPABASE_STAGING_CLONE.md](./docs/SUPABASE_STAGING_CLONE.md) | Clone prod DB to a staging project (local + preview) |
 | [docs/ADMIN_DATABASE.md](./docs/ADMIN_DATABASE.md) | Schema detail, TypeScript mappings, RLS notes |
 | [docs/ADMIN_TOURNAMENTS.md](./docs/ADMIN_TOURNAMENTS.md) | Tournament & bracket setup step-by-step |
 | [docs/sql/](./docs/sql/) | SQL migration scripts |
