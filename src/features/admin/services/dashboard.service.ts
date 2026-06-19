@@ -9,7 +9,7 @@ export interface AdminDashboardStats {
   totalTeams: number;
   activeTournaments: number;
   pendingRegistrations: number;
-  completedTournaments: number;
+  verifiedMembers: number;
 }
 
 export interface AdminDashboardData {
@@ -33,9 +33,7 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
   const pendingRegistrations = registrations.filter((r) =>
     registrationNeedsReview(r.status, tournamentStatusById.get(r.tournamentId) ?? "Draft"),
   );
-  const completedTournaments = tournaments.filter(
-    (t) => t.status === "Completed" || t.status === "Archived",
-  );
+  const verifiedMembers = members.filter((m) => m.status === "Verified").length;
 
   return {
     stats: {
@@ -43,7 +41,7 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
       totalTeams: teams.length,
       activeTournaments: activeTournaments.length,
       pendingRegistrations: pendingRegistrations.length,
-      completedTournaments: completedTournaments.length,
+      verifiedMembers,
     },
     activeTournaments,
     pendingRegistrations,

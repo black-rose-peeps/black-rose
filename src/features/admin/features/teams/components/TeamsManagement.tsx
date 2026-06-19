@@ -150,7 +150,7 @@ export function TeamsManagement() {
               title={<AdminEmptyTitle noun="teams" />}
               description={
                 members.length === 0
-                  ? "Teams show up here when verified members create them under Teams on the site, or when you build rosters from this console. Members must sign in with Discord first — verify them and assign the ROSE role on the Black Rose Discord server before rosters can form."
+                  ? "Teams show up here when verified members create them under Teams on the site, or when you build rosters from this console. Members must sign in with Discord and react for ROSE in #tourna-roles (or be verified another way) before rosters can form."
                   : "Teams appear here when verified members create them on the user-side Teams page, or when you create one from this console. Pick a captain, fill the roster, then register for tournaments once entries open."
               }
               actions={

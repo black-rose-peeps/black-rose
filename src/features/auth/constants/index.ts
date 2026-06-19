@@ -13,6 +13,14 @@ export const DISCORD_VERIFICATION_CHANNEL_URL =
 export const DISCORD_VERIFICATION_CHANNEL_LABEL =
   import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_LABEL ?? "✅ㆍverification";
 
+/** #tourna-roles — react-to-get ROSE / tournament / Valorant roles. */
+export const DISCORD_TOURNA_ROLES_CHANNEL_URL =
+  import.meta.env.VITE_DISCORD_TOURNA_ROLES_CHANNEL_URL ??
+  "https://discord.com/channels/1193921905795792906/1517262068615614545";
+
+export const DISCORD_TOURNA_ROLES_CHANNEL_LABEL =
+  import.meta.env.VITE_DISCORD_TOURNA_ROLES_CHANNEL_LABEL ?? "tourna-roles";
+
 /** OAuth2 CSRF state — stored in localStorage and sessionStorage for cross-tab OAuth. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";
 

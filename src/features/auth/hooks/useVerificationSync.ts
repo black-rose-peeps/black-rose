@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { refreshVerificationFromDiscord } from "../functions/refresh-verification-from-discord";
 import { syncSessionFromDatabase } from "../services/sync-session";
 import { getSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
@@ -6,6 +7,9 @@ import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
 
 /** DB-only fallback if Realtime is unavailable. */
 const FALLBACK_POLL_INTERVAL_MS = 60_000;
+
+const NOT_VERIFIED_YET_MESSAGE =
+  "ROSE role not detected yet. React in #tourna-roles on Discord, wait a few seconds, then try again.";
 
 interface UseVerificationSyncOptions {
   /** Called when DB status becomes Verified. */
@@ -20,7 +24,7 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
   const onVerifiedRef = useRef(onVerified);
   onVerifiedRef.current = onVerified;
 
-  const applySessionUpdate = useCallback(async () => {
+  const applySessionUpdate = useCallback(async (): Promise<boolean> => {
     const session = getSession();
     if (!session) return false;
 
@@ -35,12 +39,31 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
     return false;
   }, []);
 
+  const syncVerificationFromDatabase = useCallback(async () => {
+    try {
+      await applySessionUpdate();
+    } catch {
+      // Background refresh — avoid noisy errors on poll/realtime.
+    }
+  }, [applySessionUpdate]);
+
   const syncVerification = useCallback(async () => {
+    const session = getSession();
+    if (!session) {
+      setCheckError("Please sign in again.");
+      return false;
+    }
+
     setIsChecking(true);
     setCheckError(null);
 
     try {
-      return await applySessionUpdate();
+      await refreshVerificationFromDiscord({ data: { memberId: session.id } });
+      const verified = await applySessionUpdate();
+      if (!verified) {
+        setCheckError(NOT_VERIFIED_YET_MESSAGE);
+      }
+      return verified;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not refresh verification status.";
@@ -53,22 +76,22 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
 
   const session = getSession();
   useMemberVerificationRealtime(session?.id ?? null, () => {
-    void applySessionUpdate();
+    void syncVerificationFromDatabase();
   });
 
   useEffect(() => {
-    void syncVerification();
-  }, [syncVerification]);
+    void syncVerificationFromDatabase();
+  }, [syncVerificationFromDatabase]);
 
   useEffect(() => {
     if (!poll) return;
 
     const intervalId = window.setInterval(() => {
-      void syncVerification();
+      void syncVerificationFromDatabase();
     }, FALLBACK_POLL_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [poll, syncVerification]);
+  }, [poll, syncVerificationFromDatabase]);
 
   return { syncVerification, isChecking, checkError };
 }

@@ -5,6 +5,7 @@
  */
 import "@/features/auth/functions/complete-discord-auth";
 import "@/features/auth/functions/refresh-member-session";
+import "@/features/auth/functions/refresh-verification-from-discord";
 import "@/features/member/functions/member-profile.functions";
 import "@/features/member/functions/profile-comments.functions";
 import "@/features/admin/features/teams/functions/delete-team.functions";

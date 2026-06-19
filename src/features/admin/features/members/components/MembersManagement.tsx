@@ -224,7 +224,7 @@ export function MembersManagement() {
             <AdminEmptyState
               eyebrow="Roster Pipeline"
               title={<AdminEmptyTitle noun="members" />}
-              description="Members appear here when they sign in with Discord on Black Rose. New accounts land on the waitlist as Not Verified. Assign the ROSE role on the Discord server after briefing — the site picks that up automatically and unlocks the dashboard, teams, and tournament registration."
+              description="Members appear here when they sign in with Discord on Black Rose. New accounts land on the waitlist as Not Verified. Most members self-verify by reacting for ROSE in #tourna-roles on Discord — the site picks that up automatically and unlocks the dashboard, teams, and tournament registration."
               actions={
                 <Button
                   onClick={() => setIsCreateOpen(true)}
