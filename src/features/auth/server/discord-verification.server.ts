@@ -45,6 +45,9 @@ export async function applyVerificationByDiscordId(
     throw new Error(updateError.message);
   }
 
+  const { invalidateMemberAuthCache } = await import("./member-auth.server");
+  invalidateMemberAuthCache(existing.id);
+
   const roleHint = roseRoleId ?? getConfiguredRoseRoleId() ?? "ROSE";
   console.info(
     `[discord] ${discordUserId} verification -> ${targetStatus} (role ${roleHint})`,

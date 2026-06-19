@@ -291,7 +291,10 @@ async function findMemberBySlug(slug: string): Promise<AdminMember | null> {
   return member ? rowToAdminMember(member) : null;
 }
 
-export async function fetchMemberProfileByMemberId(memberId: string): Promise<MemberProfile | null> {
+export async function fetchMemberProfileByMemberId(
+  memberId: string,
+  knownMember?: AdminMember,
+): Promise<MemberProfile | null> {
   const cached = memberProfileCache.get(memberId);
   if (cached) return cached;
 
@@ -301,7 +304,7 @@ export async function fetchMemberProfileByMemberId(memberId: string): Promise<Me
     const freshCached = memberProfileCache.get(memberId);
     if (freshCached) return freshCached;
 
-    const profile = await loadMemberProfileUncached(memberId);
+    const profile = await loadMemberProfileUncached(memberId, knownMember);
     if (profile && (profileCacheGeneration.get(memberId) ?? 0) === generationAtStart) {
       memberProfileCache.set(memberId, profile);
     }
@@ -309,18 +312,24 @@ export async function fetchMemberProfileByMemberId(memberId: string): Promise<Me
   });
 }
 
-async function loadMemberProfileUncached(memberId: string): Promise<MemberProfile | null> {
-  const supabase = getSupabaseAdmin();
-  const { data: memberRow, error } = await supabase
-    .from("members")
-    .select(MEMBER_READ_COLUMNS)
-    .eq("id", memberId)
-    .maybeSingle();
+async function loadMemberProfileUncached(
+  memberId: string,
+  knownMember?: AdminMember,
+): Promise<MemberProfile | null> {
+  let member = knownMember;
+  if (!member) {
+    const supabase = getSupabaseAdmin();
+    const { data: memberRow, error } = await supabase
+      .from("members")
+      .select(MEMBER_READ_COLUMNS)
+      .eq("id", memberId)
+      .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  if (!memberRow) return null;
+    if (error) throw new Error(error.message);
+    if (!memberRow) return null;
 
-  const member = rowToAdminMember(memberRow);
+    member = rowToAdminMember(memberRow);
+  }
   let bundle = await loadProfileBundle(member);
 
   if (!bundle) {

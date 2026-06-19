@@ -38,7 +38,7 @@ export const refreshMemberSession = createServerFn({ method: "POST" })
     const { fetchMemberProfileByMemberId } = await import(
       "@/features/member/server/profile.server"
     );
-    const profile = await fetchMemberProfileByMemberId(member.id);
+    const profile = await fetchMemberProfileByMemberId(member.id, member);
 
     return {
       memberId: member.id,

@@ -140,7 +140,11 @@ export async function fetchTournaments(): Promise<MockTournament[]> {
 }
 
 export async function fetchTournamentById(id: string): Promise<MockTournament | null> {
-  const { data, error } = await supabase.from("tournaments").select("*").eq("id", id).single();
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select(TOURNAMENT_LIST_COLUMNS)
+    .eq("id", id)
+    .single();
 
   if (error) {
     if (error.code === "PGRST116") return null;
