@@ -11,10 +11,12 @@ import { BracketTab } from "@/features/tournaments/$id/components/BracketTab";
 import { RulesTab } from "@/features/tournaments/$id/components/RulesTab";
 import { useTournamentRegistrations } from "@/features/tournaments/hooks";
 import {
+  applyRegistrationSeeds,
   bracketFieldSize,
   buildTeamTagMap,
   mockTeamToTournamentTeam,
   resolveTournamentRules,
+  seedByRegistrationId,
   isRegistrationOpen,
   resolveTournamentStatus,
   toPublicTournamentStatus,
@@ -170,17 +172,24 @@ function TournamentDetailPage() {
 
   // Convert approved registrations → TournamentTeam for the public TeamsTab.
   // Fall back to the static detail teams if live registrations haven't loaded yet.
-  const liveTeams = registrations.map(mockTeamToTournamentTeam);
+  const {
+    bracket: liveBracket,
+    prizeBreakdown: livePrizeBreakdown,
+    assignmentTeamIds,
+    isLoading: bracketLoading,
+  } = useLiveBracket(tournament.id);
+
+  const liveTeams = useMemo(() => {
+    const base = registrations.map(mockTeamToTournamentTeam);
+    if (!assignmentTeamIds?.length) return base;
+    return applyRegistrationSeeds(base, seedByRegistrationId(assignmentTeamIds));
+  }, [registrations, assignmentTeamIds]);
+
   const displayTeams = liveTeams.length > 0 ? liveTeams : tournament.teams;
   const teamTagMap = useMemo(() => buildTeamTagMap(displayTeams), [displayTeams]);
 
   // Bracket: subscribe to the live bracket store so the public page re-renders
   // whenever the admin publishes, updates scores/winners, or resets.
-  const {
-    bracket: liveBracket,
-    prizeBreakdown: livePrizeBreakdown,
-    isLoading: bracketLoading,
-  } = useLiveBracket(tournament.id);
   const displayBracket = liveBracket ?? tournament.bracket;
 
   // Keep status, prize breakdown, and metadata in sync when admin updates the tournament.

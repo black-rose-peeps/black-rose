@@ -40,15 +40,14 @@ export function getPublicTournaments(
 
 /**
  * Convert an approved MockTeam (admin registration shape) to a TournamentTeam
- * (public detail shape). Seed is derived from registration order (1-indexed).
+ * (public detail shape). Seed is applied separately from admin bracket seeding.
  */
-export function mockTeamToTournamentTeam(team: MockTeam, index: number): TournamentTeam {
+export function mockTeamToTournamentTeam(team: MockTeam): TournamentTeam {
   return {
     id: team.id,
     name: team.name,
     tag: team.tag,
     captain: team.captain,
-    seed: index + 1,
     players: team.members.map((m) => ({
       ign: m.ign,
       role: m.role,
@@ -57,6 +56,12 @@ export function mockTeamToTournamentTeam(team: MockTeam, index: number): Tournam
     })),
   };
 }
+
+export {
+  applyRegistrationSeeds,
+  seedByRegistrationId,
+  tournamentTeamsHaveSeeds,
+} from "./tournament-team-seeds";
 
 export {
   bracketFieldSize,
