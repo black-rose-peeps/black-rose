@@ -14,6 +14,24 @@ export interface PositionedLayoutMatch extends LayoutInputMatch {
   y: number;
 }
 
+function matchSlotIndex(matchId: string): number {
+  const parsed = Number.parseInt(matchId.match(/-m(\d+)$/)?.[1] ?? "0", 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sortRoundMatches(roundMatches: LayoutInputMatch[]): LayoutInputMatch[] {
+  return [...roundMatches].sort((a, b) => matchSlotIndex(a.id) - matchSlotIndex(b.id));
+}
+
+function evenlySpacedY(index: number, count: number, span: number): number {
+  if (count <= 1) return span / 2;
+  return (index * span) / (count - 1);
+}
+
+function verticalSpan(matchCount: number): number {
+  return Math.max(0, (matchCount - 1) * (BRACKET_CARD_H + BRACKET_ROW_GAP));
+}
+
 export function buildLayout(matches: LayoutInputMatch[]): {
   positioned: PositionedLayoutMatch[];
   width: number;
@@ -31,36 +49,46 @@ export function buildLayout(matches: LayoutInputMatch[]): {
   roundIndices.forEach((roundIndex) => {
     byRound.set(
       roundIndex,
-      matches.filter((match) => match.roundIndex === roundIndex),
+      sortRoundMatches(matches.filter((match) => match.roundIndex === roundIndex)),
     );
   });
+
+  const maxRoundSize = Math.max(...[...byRound.values()].map((round) => round.length));
+  const refSpan = verticalSpan(maxRoundSize);
 
   const positions = new Map<string, { x: number; y: number }>();
   const firstRound = roundIndices[0];
   const firstRoundMatches = byRound.get(firstRound)!;
 
   firstRoundMatches.forEach((match, index) => {
-    positions.set(match.id, { x: 0, y: index * (BRACKET_CARD_H + BRACKET_ROW_GAP) });
+    positions.set(match.id, {
+      x: 0,
+      y: evenlySpacedY(index, firstRoundMatches.length, refSpan),
+    });
   });
 
   for (let roundOffset = 1; roundOffset < roundIndices.length; roundOffset++) {
     const roundIndex = roundIndices[roundOffset];
+    const prevRoundIndex = roundIndices[roundOffset - 1];
     const roundMatches = byRound.get(roundIndex)!;
+    const prevRoundMatches = byRound.get(prevRoundIndex)!;
     const x = roundOffset * (BRACKET_CARD_W + BRACKET_COL_GAP);
 
-    roundMatches.forEach((match) => {
-      const feeders = matches.filter((candidate) => candidate.nextWinnerMatchId === match.id);
+    roundMatches.forEach((match, index) => {
+      let y: number;
 
-      if (feeders.length === 2) {
-        const yA = positions.get(feeders[0].id)?.y ?? 0;
-        const yB = positions.get(feeders[1].id)?.y ?? 0;
-        positions.set(match.id, { x, y: (yA + yB) / 2 });
-      } else if (feeders.length === 1) {
-        positions.set(match.id, { x, y: positions.get(feeders[0].id)?.y ?? 0 });
+      if (prevRoundMatches.length === roundMatches.length * 2) {
+        const parentA = prevRoundMatches[index * 2];
+        const parentB = prevRoundMatches[index * 2 + 1];
+        const yA = positions.get(parentA.id)?.y ?? 0;
+        const yB = positions.get(parentB.id)?.y ?? 0;
+        y = (yA + yB) / 2;
       } else {
-        const index = roundMatches.indexOf(match);
-        positions.set(match.id, { x, y: index * (BRACKET_CARD_H + BRACKET_ROW_GAP) });
+        // Play-in → main, wide play-in → narrow main, or uneven drops: index on full span.
+        y = evenlySpacedY(index, roundMatches.length, refSpan);
       }
+
+      positions.set(match.id, { x, y });
     });
   }
 

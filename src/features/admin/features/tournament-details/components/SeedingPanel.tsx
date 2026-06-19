@@ -1,13 +1,15 @@
 import { useMemo } from "react";
 import { Swords, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { TournamentTeam } from "@/features/tournaments/types";
-import { isPowerOfTwo } from "../utils/bracket-field";
+import type { SeedingMode } from "../services/bracket.service";
+import { isPowerOfTwo, mainBracketSize } from "../utils/bracket-field";
 import {
-  firstRoundSeedPairings,
   formatSeedLabel,
   playInSeedPairings,
   projectedUpperRoundOnePairings,
+  roundOneSeedingPairings,
 } from "@/features/tournaments/utils/tournament-seeding";
 import { SeedingTeamPicker } from "./SeedingTeamPicker";
 
@@ -17,10 +19,14 @@ interface SeedingPanelProps {
   bracketSize: number;
   seedingMatchCount: number;
   hasSwissByeSlot: boolean;
-  /** Double-elim play-in: teams that start directly in upper bracket. */
+  isSwiss?: boolean;
+  isDoubleElim?: boolean;
+  /** Play-in: teams that start directly in the main bracket. */
   directSeedCount?: number;
-  /** Double-elim play-in: opening play-in match count. */
+  /** Play-in: opening play-in match count. */
   playInMatchCount?: number;
+  seedingMode: SeedingMode;
+  onSeedingModeChange: (mode: SeedingMode) => void;
   disabled?: boolean;
   onTeamSelect: (slotIdx: number, teamId: string | null) => void;
 }
@@ -150,13 +156,14 @@ function ProtectedSeedSlot({
   );
 }
 
-function UpperRoundOnePreviewCard({
+function RoundOnePreviewCard({
   matchIndex,
   seedA,
   seedB,
   playInMatchIndexA,
   playInMatchIndexB,
   assignments,
+  roundLabel,
 }: {
   matchIndex: number;
   seedA: number | "play-in";
@@ -164,6 +171,7 @@ function UpperRoundOnePreviewCard({
   playInMatchIndexA?: number;
   playInMatchIndexB?: number;
   assignments: Array<TournamentTeam | null>;
+  roundLabel: string;
 }) {
   const nameFor = (seed: number | "play-in", playInIdx?: number) => {
     if (seed === "play-in") return formatSeedLabel(seed, playInIdx);
@@ -173,7 +181,7 @@ function UpperRoundOnePreviewCard({
   return (
     <div className="border border-border/70 bg-secondary/10 px-4 py-3">
       <p className="mb-2 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-        Upper R1 · Match {matchIndex + 1}
+        {roundLabel} · Match {matchIndex + 1}
       </p>
       <p className="font-display text-sm tracking-wider text-foreground/90">
         {nameFor(seedA, playInMatchIndexA)}
@@ -190,12 +198,22 @@ export function SeedingPanel({
   bracketSize,
   seedingMatchCount,
   hasSwissByeSlot,
+  isSwiss = false,
+  isDoubleElim = false,
   directSeedCount = 0,
   playInMatchCount = 0,
+  seedingMode,
+  onSeedingModeChange,
   disabled = false,
   onTeamSelect,
 }: SeedingPanelProps) {
-  const hasPlayInSeeding = playInMatchCount > 0 && directSeedCount > 0;
+  const isManualSeeding = seedingMode === "manual";
+  const hasPlayInSeeding =
+    !isManualSeeding && !isSwiss && playInMatchCount > 0 && directSeedCount > 0;
+  const protectedBracketLabel = isDoubleElim ? "upper bracket" : "main bracket";
+  const roundOnePreviewLabel = isDoubleElim
+    ? "Upper bracket round 1 preview"
+    : "Main bracket round 1 preview";
 
   const usedTeamIds = useMemo(() => {
     const ids = new Set<string>();
@@ -232,7 +250,16 @@ export function SeedingPanel({
     [bracketSize, hasPlayInSeeding],
   );
 
+  const roundOnePairings = useMemo(() => {
+    if (hasPlayInSeeding || isManualSeeding) return [];
+    return roundOneSeedingPairings(bracketSize, { swissTraditional: isSwiss });
+  }, [bracketSize, hasPlayInSeeding, isManualSeeding, isSwiss]);
+
   const readyMatches = useMemo(() => {
+    if (isManualSeeding) {
+      return assignments.slice(0, bracketSize).filter(Boolean).length;
+    }
+
     if (hasPlayInSeeding) {
       let ready = 0;
       for (let seed = 1; seed <= directSeedCount; seed++) {
@@ -247,7 +274,8 @@ export function SeedingPanel({
     let ready = 0;
     for (let i = 0; i < seedingMatchCount; i++) {
       const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
-      const pairing = firstRoundSeedPairings(bracketSize)[i];
+      const pairing = roundOnePairings[i];
+      if (!pairing) continue;
       const teamAIdx = isByeSlot ? bracketSize - 1 : pairing.seedA - 1;
       const teamBIdx = pairing.seedB - 1;
       const teamA = assignments[teamAIdx];
@@ -261,17 +289,21 @@ export function SeedingPanel({
     directSeedCount,
     hasPlayInSeeding,
     hasSwissByeSlot,
+    isManualSeeding,
     playInMatches,
+    roundOnePairings,
     seedingMatchCount,
   ]);
 
-  const totalMatchCount = hasPlayInSeeding
-    ? directSeedCount + playInMatchCount
-    : seedingMatchCount;
+  const totalMatchCount = isManualSeeding
+    ? bracketSize
+    : hasPlayInSeeding
+      ? directSeedCount + playInMatchCount
+      : seedingMatchCount;
 
   const standardMatches = hasPlayInSeeding
     ? []
-    : firstRoundSeedPairings(bracketSize).map((pairing, index) => {
+    : roundOnePairings.map((pairing, index) => {
         const isByeSlot = hasSwissByeSlot && index === seedingMatchCount - 1;
         return {
           key: `match-${index}`,
@@ -281,7 +313,9 @@ export function SeedingPanel({
           isByeSlot,
           seedLabel: isByeSlot
             ? `Seed ${pairing.seedA} — BYE`
-            : `Seeds ${pairing.seedA} – ${pairing.seedB}`,
+            : isSwiss && !isPowerOfTwo(bracketSize)
+              ? `Seeds ${pairing.seedA} – ${pairing.seedB}`
+              : `Seeds ${pairing.seedA} – ${pairing.seedB}`,
         };
       });
 
@@ -292,11 +326,33 @@ export function SeedingPanel({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
-                Traditional seeding
+                {isManualSeeding ? "Manual seeding" : "Traditional seeding"}
               </p>
               <h3 className="mt-1 font-display text-lg tracking-wider">Seed assignments</h3>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex border border-border bg-secondary/30 p-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={seedingMode === "traditional" ? "default" : "ghost"}
+                  disabled={disabled}
+                  onClick={() => onSeedingModeChange("traditional")}
+                  className="h-7 px-2.5 font-tech text-[10px] uppercase tracking-wider"
+                >
+                  Traditional
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={seedingMode === "manual" ? "default" : "ghost"}
+                  disabled={disabled}
+                  onClick={() => onSeedingModeChange("manual")}
+                  className="h-7 px-2.5 font-tech text-[10px] uppercase tracking-wider"
+                >
+                  Manual
+                </Button>
+              </div>
               <span className="inline-flex items-center gap-1.5 border border-border bg-secondary/30 px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
                 <Users2 className="h-3.5 w-3.5" />
                 {assignedCount}/{teams.length} teams
@@ -325,17 +381,44 @@ export function SeedingPanel({
           </div>
         </div>
 
-        {hasPlayInSeeding && (
+        {isManualSeeding && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            Seeds 1–{directSeedCount} skip opening play-in and enter upper bracket with protection.
-            Seeds {directSeedCount + 1}–{bracketSize} play in traditional high-vs-low play-in pairings;
-            winners join upper round 1 at the correct bracket positions.
+            Assign teams to seed numbers in order. Round 1 pairings are built from seed order when you
+            generate the bracket.
           </div>
         )}
 
-        {!hasPlayInSeeding && isPowerOfTwo(bracketSize) && (
+        {hasPlayInSeeding && (
+          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            Seeds 1–{directSeedCount} skip opening play-in and enter the {protectedBracketLabel} with
+            protection. Seeds {directSeedCount + 1}–{bracketSize} play in traditional high-vs-low
+            play-in pairings; winners join round 1 at the correct bracket positions.
+          </div>
+        )}
+
+        {!isManualSeeding && !hasPlayInSeeding && isSwiss && isPowerOfTwo(bracketSize) && (
+          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            Swiss round 1 uses standard bracket seeding (1 vs {bracketSize}, 2 vs {bracketSize - 1}, …).
+          </div>
+        )}
+
+        {!isManualSeeding && !hasPlayInSeeding && isSwiss && !isPowerOfTwo(bracketSize) && (
+          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            Swiss round 1 uses sequential pairings (1 vs 2, 3 vs 4, …) for this field size.
+          </div>
+        )}
+
+        {!isManualSeeding && !hasPlayInSeeding && !isSwiss && isPowerOfTwo(bracketSize) && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
             Round 1 uses standard bracket seeding (1 vs {bracketSize}, 2 vs {bracketSize - 1}, …).
+          </div>
+        )}
+
+        {!isManualSeeding && hasPlayInSeeding && !isSwiss && (
+          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            {bracketSize} teams → {mainBracketSize(bracketSize)}-slot main bracket with{" "}
+            {playInMatchCount} opening play-in{" "}
+            {playInMatchCount === 1 ? "match" : "matches"}.
           </div>
         )}
 
@@ -368,12 +451,34 @@ export function SeedingPanel({
         )}
       </div>
 
-      {hasPlayInSeeding ? (
+      {isManualSeeding ? (
+        <div>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
+              Seed order
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: bracketSize }, (_, index) => (
+              <ProtectedSeedSlot
+                key={`manual-seed-${index + 1}`}
+                seed={index + 1}
+                team={assignments[index]}
+                teams={teams}
+                usedTeamIds={usedTeamIds}
+                disabled={disabled}
+                onTeamSelect={onTeamSelect}
+              />
+            ))}
+          </div>
+        </div>
+      ) : hasPlayInSeeding ? (
         <div className="space-y-8">
           <div>
             <div className="mb-4 flex items-center gap-3">
               <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-                Protected seeds — upper bracket
+                Protected seeds — {protectedBracketLabel}
               </span>
               <span className="h-px flex-1 bg-border" />
             </div>
@@ -423,20 +528,21 @@ export function SeedingPanel({
             <div>
               <div className="mb-4 flex items-center gap-3">
                 <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-                  Upper bracket round 1 preview
+                  {roundOnePreviewLabel}
                 </span>
                 <span className="h-px flex-1 bg-border" />
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {upperPreview.map((preview) => (
-                  <UpperRoundOnePreviewCard
-                    key={`ub-preview-${preview.matchIndex}`}
+                  <RoundOnePreviewCard
+                    key={`r1-preview-${preview.matchIndex}`}
                     matchIndex={preview.matchIndex}
                     seedA={preview.seedA}
                     seedB={preview.seedB}
                     playInMatchIndexA={preview.playInMatchIndexA}
                     playInMatchIndexB={preview.playInMatchIndexB}
                     assignments={assignments}
+                    roundLabel={isDoubleElim ? "Upper R1" : "Main R1"}
                   />
                 ))}
               </div>

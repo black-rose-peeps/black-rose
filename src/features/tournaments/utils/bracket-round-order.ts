@@ -5,13 +5,14 @@ import type { BracketRound } from "../types";
 export function roundFlowRank(roundId: string): number {
   if (roundId === "gf") return 1_000_000;
   if (roundId === "gf-reset") return 1_000_001;
+  // Opening play-in must precede the main / upper opening round (e.g. se-r0, ub-r1).
   if (roundId === "pi-r1") return 5;
 
   const poMatch = roundId.match(/^po-r(\d+)$/);
   if (poMatch) return 10_000 + parseInt(poMatch[1], 10) * 10;
 
   const seMatch = roundId.match(/^se-r(\d+)$/);
-  if (seMatch) return parseInt(seMatch[1], 10) * 10;
+  if (seMatch) return (parseInt(seMatch[1], 10) + 1) * 10;
 
   const ubSpecial: Record<string, number> = {
     "ub-r1": 100,

@@ -3,12 +3,14 @@
  */
 
 import {
+  directSeedCount,
+  eliminationRoundLabel,
   isEvenBracketFieldSize,
   isPowerOfTwo,
   mainBracketSize,
   playInMatchCount,
   powerOfTwoElimRoundMatchCounts,
-  directSeedCount,
+  prefixedEliminationRoundLabel,
 } from "./bracket-field";
 import { roundFlowRank } from "@/features/tournaments/utils/bracket-round-order";
 import {
@@ -442,12 +444,7 @@ export function buildSingleElimMatches(teamNames: string[]): {
   const roundMetas: BracketRoundMeta[] = [];
 
   const roundLabels = (ri: number): string => {
-    const remaining = totalRounds - ri;
-    if (remaining === 1) return "Final";
-    if (remaining === 2) return "Semifinals";
-    if (remaining === 3) return "Quarterfinals";
-    if (remaining === 4) return "Round of 16";
-    return `Round ${ri + 1}`;
+    return eliminationRoundLabel(roundCounts[ri] * 2);
   };
 
   for (let ri = 0; ri < totalRounds; ri++) {
@@ -827,15 +824,9 @@ function buildDoubleElimPowerOfTwo(teamNames: string[]): {
               ? "ub-qf"
               : `ub-r${r + 1}`;
     const label =
-      r === 0
-        ? "Upper — Round 1"
-        : r === ubRounds - 1
-          ? "Upper — Final"
-          : r === ubRounds - 2
-            ? "Upper — Semifinals"
-            : r === ubRounds - 3
-              ? "Upper — Quarterfinals"
-              : `Upper — Round ${r + 1}`;
+      r === ubRounds - 1
+        ? "Upper — Final"
+        : prefixedEliminationRoundLabel(count * 2, "Upper");
     addRound(id, label, "upper", count, r === ubRounds - 1 ? () => "Upper Final" : undefined);
   }
 
