@@ -1,6 +1,8 @@
 /**
  * Auth-related constants — Black Rose official Discord server.
  */
+import { formatDiscordChannelLabel } from "@/lib/discord-channel-label";
+
 export const DISCORD_SERVER_INVITE =
   import.meta.env.VITE_DISCORD_SERVER_INVITE ?? "https://discord.com/invite/blackrosehq";
 
@@ -10,16 +12,18 @@ export const DISCORD_VERIFICATION_CHANNEL_URL =
   "https://discord.com/channels/1193921905795792906/1196472627439599716";
 
 /** Label shown on the waitlist for the verification channel. */
-export const DISCORD_VERIFICATION_CHANNEL_LABEL =
-  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_LABEL ?? "✅ㆍverification";
+export const DISCORD_VERIFICATION_CHANNEL_LABEL = formatDiscordChannelLabel(
+  import.meta.env.VITE_DISCORD_VERIFICATION_CHANNEL_LABEL ?? "✅ㆍverification",
+);
 
 /** #tourna-roles — react-to-get ROSE / tournament / Valorant roles. */
 export const DISCORD_TOURNA_ROLES_CHANNEL_URL =
   import.meta.env.VITE_DISCORD_TOURNA_ROLES_CHANNEL_URL ??
   "https://discord.com/channels/1193921905795792906/1517262068615614545";
 
-export const DISCORD_TOURNA_ROLES_CHANNEL_LABEL =
-  import.meta.env.VITE_DISCORD_TOURNA_ROLES_CHANNEL_LABEL ?? "tourna-roles";
+export const DISCORD_TOURNA_ROLES_CHANNEL_LABEL = formatDiscordChannelLabel(
+  import.meta.env.VITE_DISCORD_TOURNA_ROLES_CHANNEL_LABEL ?? "tourna-roles",
+);
 
 /** OAuth2 CSRF state — stored in localStorage and sessionStorage for cross-tab OAuth. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";
