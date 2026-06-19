@@ -188,13 +188,14 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
 
     if (error) throw new Error(error.message);
 
-    invalidateMemberProfileCache(input.member.id);
     await ensureDefaultSocialLinks(input.member.id);
     if (input.connections?.length) {
       await applyDiscordConnections(input.member.id, input.connections, input.discordUserId);
     } else {
       await applyDiscordConnections(input.member.id, [], input.discordUserId);
     }
+
+    invalidateMemberProfileCache(input.member.id);
 
     return data as MemberProfileRow;
   }
@@ -218,13 +219,14 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
 
   if (error) throw new Error(error.message);
 
-  invalidateMemberProfileCache(input.member.id);
   await ensureDefaultSocialLinks(input.member.id);
   await applyDiscordConnections(
     input.member.id,
     input.connections ?? [],
     input.discordUserId,
   );
+
+  invalidateMemberProfileCache(input.member.id);
 
   return data as MemberProfileRow;
 }
@@ -415,7 +417,6 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
 
   if (updateError) throw new Error(updateError.message);
 
-  invalidateMemberProfileCache(input.memberId);
   await ensureDefaultSocialLinks(input.memberId);
 
   for (const link of input.socialLinks) {
@@ -443,6 +444,8 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
       if (insertError) throw new Error(insertError.message);
     }
   }
+
+  invalidateMemberProfileCache(input.memberId);
 
   const updated = await loadMemberProfileUncached(input.memberId);
   if (!updated) throw new Error("Failed to load updated profile.");

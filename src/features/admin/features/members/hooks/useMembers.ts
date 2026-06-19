@@ -46,9 +46,14 @@ export function useMembers() {
             debouncedRefetch({ silent: true });
             return;
           }
-          setMembers((prev) =>
-            prev.map((member) =>
-              member.id === row.id
+          const memberId = row.id as string;
+          setMembers((prev) => {
+            if (!prev.some((member) => member.id === memberId)) {
+              debouncedRefetch({ silent: true });
+              return prev;
+            }
+            return prev.map((member) =>
+              member.id === memberId
                 ? {
                     ...member,
                     username: (row.username as string) ?? member.username,
@@ -57,8 +62,8 @@ export function useMembers() {
                     status: normalizeMemberStatus(String(row.status ?? member.status)),
                   }
                 : member,
-            ),
-          );
+            );
+          });
         },
       )
       .on(
@@ -67,7 +72,13 @@ export function useMembers() {
         (payload) => {
           const id = (payload.old as Record<string, unknown> | undefined)?.id as string | undefined;
           if (id) {
-            setMembers((prev) => prev.filter((member) => member.id !== id));
+            setMembers((prev) => {
+              if (!prev.some((member) => member.id === id)) {
+                debouncedRefetch({ silent: true });
+                return prev;
+              }
+              return prev.filter((member) => member.id !== id);
+            });
             return;
           }
           debouncedRefetch({ silent: true });
