@@ -203,14 +203,14 @@ function WaitlistPage() {
             <div className="min-w-0 w-full">
               <p className="text-sm font-medium">Post your application</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                In the{" "}
+                In{" "}
                 <DiscordAppAnchor
                   discordUrl={DISCORD_VERIFICATION_CHANNEL_URL}
                   className="cursor-pointer text-foreground underline-offset-2 hover:underline"
                 >
-                  {DISCORD_VERIFICATION_CHANNEL_LABEL}
-                </DiscordAppAnchor>{" "}
-                channel, copy the format for your game, fill it out, and post it.
+                  #{DISCORD_VERIFICATION_CHANNEL_LABEL}
+                </DiscordAppAnchor>
+                , copy the format for your game, fill it out, and post it.
               </p>
               <button
                 id={templatesToggleId}
