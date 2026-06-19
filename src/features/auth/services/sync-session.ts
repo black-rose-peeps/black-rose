@@ -1,5 +1,7 @@
 import { refreshMemberSession } from "../functions/refresh-member-session";
 import type { RefreshMemberSessionResult } from "../functions/refresh-member-session";
+import { refreshMemberAccess } from "../functions/refresh-member-access";
+import type { RefreshMemberAccessResult } from "../functions/refresh-member-access";
 import { getSession, setSession } from "../store/session";
 import type { AppUser } from "../types";
 import { applyMemberAccessToSession, applyVerificationToSession } from "../utils/session";
@@ -26,8 +28,27 @@ async function fetchMemberSession(memberId: string): Promise<RefreshMemberSessio
     }
   }
 
-  // maxAttempts is always >= 1; loop returns or throws above — this satisfies TypeScript.
   throw new Error("Could not refresh member session.");
+}
+
+async function fetchMemberAccess(memberId: string): Promise<RefreshMemberAccessResult> {
+  const maxAttempts = import.meta.env.DEV ? 3 : 1;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await refreshMemberAccess({ data: { memberId } });
+    } catch (err) {
+      const canRetry =
+        import.meta.env.DEV && isDevServerFnRaceError(err) && attempt < maxAttempts - 1;
+      if (canRetry) {
+        await new Promise((resolve) => window.setTimeout(resolve, 400 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("Could not refresh member access.");
 }
 
 /** Refresh the browser session from the members table (verification status, username). */
@@ -64,7 +85,7 @@ export async function syncMemberAccessFromDatabase(): Promise<AppUser | null> {
   const session = getSession();
   if (!session) return null;
 
-  const result = await fetchMemberSession(session.id);
+  const result = await fetchMemberAccess(session.id);
   const updated = applyMemberAccessToSession(session, {
     username: result.username,
     discordUsername: result.discordUsername,

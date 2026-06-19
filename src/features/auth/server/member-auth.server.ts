@@ -1,21 +1,47 @@
 import { rowToAdminMember } from "@/features/admin/features/members/utils";
 import type { AdminMember, MemberVerificationStatus } from "@/features/admin/features/members/types";
+import { MEMBER_READ_COLUMNS } from "@/features/member/server/profile-select-columns";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { createInflightDeduper, createTtlCache } from "@/lib/server-ttl-cache";
 import type { DiscordOAuthUser } from "./discord-api.server";
 
-export async function findMemberById(id: string): Promise<AdminMember | null> {
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.from("members").select("*").eq("id", id).maybeSingle();
+const MEMBER_AUTH_CACHE_TTL_MS = 30_000;
+const memberAuthCache = createTtlCache<AdminMember>(MEMBER_AUTH_CACHE_TTL_MS);
+const memberAuthLoadDeduper = createInflightDeduper<AdminMember | null>();
 
-  if (error) throw new Error(error.message);
-  return data ? rowToAdminMember(data) : null;
+function invalidateMemberAuthCache(memberId: string): void {
+  memberAuthCache.delete(memberId);
+}
+
+export async function findMemberById(id: string): Promise<AdminMember | null> {
+  const cached = memberAuthCache.get(id);
+  if (cached) return cached;
+
+  return memberAuthLoadDeduper.run(id, async () => {
+    const freshCached = memberAuthCache.get(id);
+    if (freshCached) return freshCached;
+
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("members")
+      .select(MEMBER_READ_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+
+    const member = rowToAdminMember(data);
+    memberAuthCache.set(id, member);
+    return member;
+  });
 }
 
 async function findMemberByDiscordId(discordId: string): Promise<AdminMember | null> {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("members")
-    .select("*")
+    .select(MEMBER_READ_COLUMNS)
     .eq("discord_id", discordId)
     .maybeSingle();
 
@@ -27,7 +53,7 @@ async function findMemberByUsername(username: string): Promise<AdminMember | nul
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("members")
-    .select("*")
+    .select(MEMBER_READ_COLUMNS)
     .ilike("username", username)
     .maybeSingle();
 
@@ -82,6 +108,7 @@ export async function upsertMemberFromDiscord(
       .single();
 
     if (error) throw new Error(error.message);
+    invalidateMemberAuthCache(existing.id);
     return rowToAdminMember(data);
   }
 
@@ -118,6 +145,7 @@ export async function upsertMemberFromDiscord(
           .select()
           .single();
         if (updateError) throw new Error(updateError.message);
+        invalidateMemberAuthCache(raced.id);
         return rowToAdminMember(updated);
       }
     }
