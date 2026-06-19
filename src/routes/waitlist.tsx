@@ -282,8 +282,8 @@ function WaitlistPage() {
               </p>
               <ul className="mt-2.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
                 <li>
-                  <span className="font-medium text-foreground">ROSE</span> — unlocks website
-                  access and member channels.
+                  <span className="font-medium text-foreground">ROSE</span> — unlocks website access
+                  and member channels.
                 </li>
               </ul>
               <p className="mt-2 text-[11px] text-muted-foreground">
