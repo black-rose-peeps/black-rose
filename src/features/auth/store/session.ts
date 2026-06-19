@@ -75,7 +75,11 @@ export function getSession(): AppUser | null {
 export function setSession(user: AppUser): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    const next = JSON.stringify(user);
+    const current = localStorage.getItem(SESSION_KEY);
+    if (current === next) return;
+
+    localStorage.setItem(SESSION_KEY, next);
     sessionStorage.removeItem(SESSION_KEY);
     syncMemberSessionCookie(user.id);
     notifySessionChanged();

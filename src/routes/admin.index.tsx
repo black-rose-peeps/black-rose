@@ -83,7 +83,7 @@ function AdminDashboard() {
     totalTeams: 0,
     activeTournaments: 0,
     pendingRegistrations: 0,
-    completedTournaments: 0,
+    verifiedMembers: 0,
   };
   const activeTournaments = data?.activeTournaments ?? [];
   const pendingRegistrations = data?.pendingRegistrations ?? [];
@@ -124,6 +124,12 @@ function AdminDashboard() {
             icon={<Users className="h-4 w-4" />}
           />
           <StatCard
+            title="Verified Members"
+            value={isLoading ? "—" : stats.verifiedMembers.toLocaleString()}
+            change="ROSE role confirmed"
+            icon={<CheckCircle2 className="h-4 w-4" />}
+          />
+          <StatCard
             title="Total Teams"
             value={isLoading ? "—" : stats.totalTeams}
             change="Active rosters"
@@ -140,12 +146,6 @@ function AdminDashboard() {
             value={isLoading ? "—" : stats.pendingRegistrations}
             change="Awaiting approval"
             icon={<CalendarClock className="h-4 w-4" />}
-          />
-          <StatCard
-            title="Completed"
-            value={isLoading ? "—" : stats.completedTournaments}
-            change="Finished tournaments"
-            icon={<CheckCircle2 className="h-4 w-4" />}
           />
         </section>
 

@@ -7,6 +7,8 @@ import { getSession, clearSession } from "@/features/auth/store/session";
 import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
   DISCORD_SERVER_INVITE,
+  DISCORD_TOURNA_ROLES_CHANNEL_LABEL,
+  DISCORD_TOURNA_ROLES_CHANNEL_URL,
   DISCORD_VERIFICATION_CHANNEL_URL,
   DISCORD_VERIFICATION_CHANNEL_LABEL,
 } from "@/features/auth/constants";
@@ -267,11 +269,43 @@ function WaitlistPage() {
           <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
             <StepNum n="3" />
             <div className="min-w-0">
-              <p className="text-sm font-medium">Wait for briefing</p>
+              <p className="text-sm font-medium">Get your ROSE role</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                An officer will brief you on Discord and assign the{" "}
-                <span className="font-medium text-foreground">ROSE</span> role. You'll be redirected
-                automatically once it's assigned.
+                Once your application is approved, head to{" "}
+                <DiscordAppAnchor
+                  discordUrl={DISCORD_TOURNA_ROLES_CHANNEL_URL}
+                  className="cursor-pointer text-foreground underline-offset-2 hover:underline"
+                >
+                  #{DISCORD_TOURNA_ROLES_CHANNEL_LABEL}
+                </DiscordAppAnchor>{" "}
+                and react for the ROSE role.
+              </p>
+              <ul className="mt-2.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
+                <li>
+                  <span className="font-medium text-foreground">ROSE</span> — unlocks website access
+                  and member channels.
+                </li>
+              </ul>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Staff may still schedule a briefing later if needed.
+              </p>
+              <DiscordAppAnchor
+                discordUrl={DISCORD_TOURNA_ROLES_CHANNEL_URL}
+                className="mt-3 font-medium inline-flex h-11 items-center gap-2 border border-white/10 px-4 font-tech text-label-readable uppercase text-muted-foreground transition hover:border-white/25 hover:text-foreground"
+              >
+                Open #{DISCORD_TOURNA_ROLES_CHANNEL_LABEL}
+              </DiscordAppAnchor>
+            </div>
+          </div>
+
+          {/* Step 4 */}
+          <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
+            <StepNum n="4" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Check your verification status</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                After receiving the ROSE role, return here and click{" "}
+                <span className="font-medium text-foreground">Check verification status</span>.
               </p>
               <button
                 type="button"

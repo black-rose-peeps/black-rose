@@ -41,7 +41,7 @@ cp .env.example .env
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side writes (OAuth, profiles) — **never expose in the client** |
 | `VITE_DISCORD_CLIENT_ID` | Discord OAuth app client ID |
 | `DISCORD_CLIENT_SECRET` | Discord OAuth secret (server only) |
-| `VITE_SITE_URL` | Public site URL for Open Graph previews |
+| `VITE_SITE_URL` | Public site URL for Open Graph previews (production: `https://blackrose.asia`) |
 | `VITE_DISCORD_SERVER_INVITE` | Invite link shown on waitlist / onboarding |
 
 Register each deployment callback in Discord → OAuth2 → Redirects, e.g. `http://localhost:5173/auth/callback`.

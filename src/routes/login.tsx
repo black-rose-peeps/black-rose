@@ -108,8 +108,8 @@ function LoginPage() {
           <DiscordButton onClick={handleDiscordAuth} label="Continue with Discord" />
           {error && <p className="text-center text-xs text-destructive">{error}</p>}
           <p className="text-center text-xs leading-relaxed text-muted-foreground">
-            New members land on the waitlist until verified. Verified members go straight to the
-            dashboard after sign-in.
+            New members land on the waitlist until they react for ROSE in Discord. Verified members
+            go straight to the dashboard after sign-in.
           </p>
         </div>
 

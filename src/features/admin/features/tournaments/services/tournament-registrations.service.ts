@@ -11,7 +11,10 @@ import type { Team } from "@/features/teams/types";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
 import { isRegistrationOpen } from "@/features/tournaments/utils/tournament-status";
 import { assertMemberAvailableForTournament } from "@/features/tournaments/utils/member-tournament-eligibility";
-import { isBlockingTournamentStatus } from "@/features/tournaments/utils/team-tournament-eligibility";
+import {
+  isBlockingTournamentStatus,
+  tournamentRosterRequirementError,
+} from "@/features/tournaments/utils/team-tournament-eligibility";
 import {
   formatValorantRiotId,
   isValorantGame,
@@ -280,6 +283,9 @@ async function validateTeamForTournamentRegistration(
       );
     }
   }
+
+  const rosterError = tournamentRosterRequirementError(rosterTeam, tournament.game);
+  if (rosterError) throw new Error(rosterError);
 
   return tournament;
 }

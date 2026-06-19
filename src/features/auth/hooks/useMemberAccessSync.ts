@@ -1,22 +1,26 @@
 import { useCallback, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { syncSessionFromDatabase } from "../services/sync-session";
+import { syncMemberAccessFromDatabase } from "../services/sync-session";
 import { getSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
 import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
+import { useMemberSession } from "./useMemberSession";
 
 const FALLBACK_POLL_INTERVAL_MS = 120_000;
 
 /** Redirect verified members to the waitlist if the Discord bot revokes their ROSE role. */
 export function useMemberAccessSync() {
   const navigate = useNavigate();
+  const session = useMemberSession();
+  const memberId = session?.id ?? null;
+  const memberRole = session?.role ?? null;
 
   const checkAccess = useCallback(async () => {
-    const session = getSession();
-    if (!session || !hasFullMemberAccess(session.role)) return;
+    const current = getSession();
+    if (!current || !hasFullMemberAccess(current.role)) return;
 
     try {
-      const updated = await syncSessionFromDatabase();
+      const updated = await syncMemberAccessFromDatabase();
       if (!updated) return;
       if (!hasFullMemberAccess(updated.role)) {
         navigate({ to: "/waitlist", replace: true });
@@ -26,13 +30,12 @@ export function useMemberAccessSync() {
     }
   }, [navigate]);
 
-  const session = getSession();
-  useMemberVerificationRealtime(session?.id ?? null, () => {
+  useMemberVerificationRealtime(memberId, () => {
     void checkAccess();
   });
 
   useEffect(() => {
-    if (!session || !hasFullMemberAccess(session.role)) return;
+    if (!memberId || !memberRole || !hasFullMemberAccess(memberRole)) return;
 
     void checkAccess();
     const intervalId = window.setInterval(() => {
@@ -44,5 +47,5 @@ export function useMemberAccessSync() {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", checkAccess);
     };
-  }, [checkAccess, session]);
+  }, [checkAccess, memberId, memberRole]);
 }

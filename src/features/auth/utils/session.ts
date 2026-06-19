@@ -31,3 +31,21 @@ export function applyVerificationToSession(
     registeredAt: snapshot.registeredAt,
   };
 }
+
+/** Background access checks — keep profile display fields from the local session. */
+export function applyMemberAccessToSession(
+  session: AppUser,
+  snapshot: Pick<
+    MemberVerificationSnapshot,
+    "username" | "discordUsername" | "discordId" | "status" | "registeredAt"
+  >,
+): AppUser {
+  return {
+    ...session,
+    username: snapshot.username,
+    discordUsername: snapshot.discordUsername,
+    discordId: snapshot.discordId ?? session.discordId,
+    role: session.role === "admin" ? "admin" : memberStatusToUserRole(snapshot.status),
+    registeredAt: snapshot.registeredAt,
+  };
+}

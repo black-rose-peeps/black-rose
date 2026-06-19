@@ -17,7 +17,7 @@ function isTrustedHost(host: string): boolean {
   const normalized = host.split(":")[0].toLowerCase();
   if (normalized === "localhost" || normalized === "127.0.0.1") return true;
   if (normalized === "blackrose.asia" || normalized === "www.blackrose.asia") return true;
-  if (normalized === "black-rose-six.vercel.app") return true;
+  if (normalized.endsWith(".blackrose.asia")) return true;
   if (normalized.endsWith(".vercel.app")) return true;
   return false;
 }
