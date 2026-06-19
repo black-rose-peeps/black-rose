@@ -31,10 +31,12 @@ const profileBundleCache = createTtlCache<{
   socials: MemberSocialLinkRow[];
 }>(PROFILE_CACHE_TTL_MS);
 const profileLoadDeduper = createInflightDeduper<MemberProfile | null>();
+const profileCacheGeneration = new Map<string, number>();
 
 function invalidateMemberProfileCache(memberId: string): void {
   memberProfileCache.delete(memberId);
   profileBundleCache.delete(memberId);
+  profileCacheGeneration.set(memberId, (profileCacheGeneration.get(memberId) ?? 0) + 1);
 }
 
 const DISCORD_CONNECTION_PLATFORMS: Record<string, SocialPlatform> = {
@@ -237,6 +239,7 @@ async function loadProfileBundle(
   const cached = profileBundleCache.get(member.id);
   if (cached) return cached;
 
+  const generationAtStart = profileCacheGeneration.get(member.id) ?? 0;
   const supabase = getSupabaseAdmin();
 
   const { data: profile, error: profileError } = await supabase
@@ -259,7 +262,10 @@ async function loadProfileBundle(
     profile: profile as MemberProfileRow,
     socials: (socials ?? []) as MemberSocialLinkRow[],
   };
-  profileBundleCache.set(member.id, bundle);
+
+  if ((profileCacheGeneration.get(member.id) ?? 0) === generationAtStart) {
+    profileBundleCache.set(member.id, bundle);
+  }
   return bundle;
 }
 
@@ -289,12 +295,16 @@ export async function fetchMemberProfileByMemberId(memberId: string): Promise<Me
   const cached = memberProfileCache.get(memberId);
   if (cached) return cached;
 
+  const generationAtStart = profileCacheGeneration.get(memberId) ?? 0;
+
   return profileLoadDeduper.run(memberId, async () => {
     const freshCached = memberProfileCache.get(memberId);
     if (freshCached) return freshCached;
 
     const profile = await loadMemberProfileUncached(memberId);
-    if (profile) memberProfileCache.set(memberId, profile);
+    if (profile && (profileCacheGeneration.get(memberId) ?? 0) === generationAtStart) {
+      memberProfileCache.set(memberId, profile);
+    }
     return profile;
   });
 }

@@ -11,6 +11,12 @@ import {
 } from "@/components/ui/dialog";
 import { GAME_COLOR } from "@/features/teams/constants";
 import {
+  countActiveRosterMembers,
+  getRequiredRosterSizeForTournament,
+  meetsTournamentRosterRequirement,
+  tournamentRosterRequirementError,
+} from "@/features/tournaments/utils/team-tournament-eligibility";
+import {
   fetchCaptainTeamsForTournament,
   requestCaptainTeamRegistration,
 } from "@/features/tournaments/services/team-registration.service";
@@ -66,7 +72,10 @@ export function SelectTeamRegistrationDialog({
           (team) => team.game === "Multi" || team.game === tournamentGame,
         );
         setTeams(compatible);
-        setSelectedTeamId(compatible[0]?.id ?? "");
+        const firstEligible = compatible.find((team) =>
+          meetsTournamentRosterRequirement(team, tournamentGame),
+        );
+        setSelectedTeamId(firstEligible?.id ?? compatible[0]?.id ?? "");
         hasLoadedTeams.current = true;
       })
       .catch((err) => {
@@ -99,6 +108,13 @@ export function SelectTeamRegistrationDialog({
   }
 
   const selectedTeam = teams.find((t) => t.id === selectedTeamId);
+  const requiredRosterSize = getRequiredRosterSizeForTournament(tournamentGame);
+  const selectedTeamRosterError = selectedTeam
+    ? tournamentRosterRequirementError(selectedTeam, tournamentGame)
+    : null;
+  const eligibleTeams = teams.filter((team) =>
+    meetsTournamentRosterRequirement(team, tournamentGame),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,8 +126,15 @@ export function SelectTeamRegistrationDialog({
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
             Choose which team to submit for{" "}
-            <span className="text-foreground">{tournamentName}</span>. An admin will review your
-            registration before your team is confirmed.
+            <span className="text-foreground">{tournamentName}</span>.
+            {requiredRosterSize ? (
+              <>
+                {" "}
+                {tournamentGame} tournaments require at least {requiredRosterSize} active roster
+                members.
+              </>
+            ) : null}{" "}
+            An admin will review your registration before your team is confirmed.
           </DialogDescription>
         </DialogHeader>
 
@@ -130,23 +153,39 @@ export function SelectTeamRegistrationDialog({
                 <Link to="/teams/create">Create a Team</Link>
               </Button>
             </div>
+          ) : eligibleTeams.length === 0 && requiredRosterSize ? (
+            <div className="flex flex-col items-center gap-4 py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                {tournamentGame} tournaments require at least {requiredRosterSize} active roster
+                members. Invite your teammates on the team page before registering.
+              </p>
+              <Button
+                asChild
+                variant="outline"
+                className="rounded-none border-white/15 bg-transparent font-tech text-ui-readable uppercase"
+              >
+                <Link to="/teams">Manage Teams</Link>
+              </Button>
+            </div>
           ) : (
             <>
               <ul className="space-y-2">
                 {teams.map((team) => {
-                  const activeCount = team.members.filter(
-                    (m) => m.status === "captain" || m.status === "active",
-                  ).length;
+                  const activeCount = countActiveRosterMembers(team);
                   const isSelected = team.id === selectedTeamId;
+                  const rosterError = tournamentRosterRequirementError(team, tournamentGame);
+                  const rosterEligible = !rosterError;
 
                   return (
                     <li key={team.id}>
                       <button
                         type="button"
-                        onClick={() => setSelectedTeamId(team.id)}
+                        onClick={() => rosterEligible && setSelectedTeamId(team.id)}
+                        disabled={!rosterEligible}
                         className={cn(
                           "flex w-full items-center gap-4 border px-4 py-4 text-left transition",
-                          isSelected
+                          !rosterEligible && "cursor-not-allowed opacity-60",
+                          isSelected && rosterEligible
                             ? "border-white/25 bg-white/8"
                             : "border-white/8 bg-white/2 hover:border-white/15 hover:bg-white/5",
                         )}
@@ -167,9 +206,13 @@ export function SelectTeamRegistrationDialog({
                           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <Users className="h-3 w-3" />
                             {activeCount} active member{activeCount === 1 ? "" : "s"}
+                            {requiredRosterSize ? ` · ${requiredRosterSize} required` : ""}
                           </p>
+                          {rosterError && (
+                            <p className="mt-1 text-xs text-amber-400/90">{rosterError}</p>
+                          )}
                         </div>
-                        {isSelected && (
+                        {isSelected && rosterEligible && (
                           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
                         )}
                       </button>
@@ -178,7 +221,11 @@ export function SelectTeamRegistrationDialog({
                 })}
               </ul>
 
-              {selectedTeam && (
+              {selectedTeam && selectedTeamRosterError && (
+                <p className="text-xs text-amber-400/90">{selectedTeamRosterError}</p>
+              )}
+
+              {selectedTeam && !selectedTeamRosterError && (
                 <p className="text-xs text-muted-foreground">
                   Submitting <span className="text-foreground">{selectedTeam.name}</span> [
                   {selectedTeam.tag}] for admin approval.
@@ -187,7 +234,7 @@ export function SelectTeamRegistrationDialog({
 
               <Button
                 type="button"
-                disabled={!selectedTeamId || submitting}
+                disabled={!selectedTeamId || submitting || Boolean(selectedTeamRosterError)}
                 onClick={() => void handleRegister()}
                 className="clip-cta h-11 w-full rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90 disabled:opacity-70"
               >

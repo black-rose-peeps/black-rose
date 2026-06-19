@@ -5,7 +5,7 @@ import {
 } from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
-import { escapePostgrestFilterValue, isUuid } from "../utils/postgrest-filter";
+import { isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
 
 const ADMIN_MEMBER_LIST_COLUMNS =
@@ -173,6 +173,81 @@ function initialsFromName(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+function escapeIlikePattern(value: string): string {
+  return value.replace(/[%_\\]/g, "\\$&");
+}
+
+const INVITE_MEMBER_SELECT =
+  "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline, avatar_url, slug)";
+
+async function collectInviteSearchMemberIds(query: string, game?: string): Promise<string[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const pattern = `%${escapeIlikePattern(trimmed)}%`;
+  const ids = new Set<string>();
+
+  const runs = [
+    supabase.from("members").select("id").eq("status", "Verified").ilike("discord_username", pattern),
+    supabase
+      .from("member_profiles")
+      .select("member_id, members!inner(status)")
+      .ilike("display_name", pattern)
+      .eq("members.status", "Verified"),
+  ];
+
+  if (game && isValorantGame(game)) {
+    runs.push(
+      supabase
+        .from("member_profiles")
+        .select("member_id, members!inner(status)")
+        .ilike("valorant_game_name", pattern)
+        .eq("members.status", "Verified"),
+      supabase
+        .from("member_profiles")
+        .select("member_id, members!inner(status)")
+        .ilike("valorant_tagline", pattern)
+        .eq("members.status", "Verified"),
+    );
+
+    const hashIdx = trimmed.indexOf("#");
+    if (hashIdx > 0) {
+      const gameName = trimmed.slice(0, hashIdx).trim();
+      const tag = trimmed.slice(hashIdx + 1).trim();
+      if (gameName) {
+        runs.push(
+          supabase
+            .from("member_profiles")
+            .select("member_id, members!inner(status)")
+            .ilike("valorant_game_name", `%${escapeIlikePattern(gameName)}%`)
+            .eq("members.status", "Verified"),
+        );
+      }
+      if (tag) {
+        runs.push(
+          supabase
+            .from("member_profiles")
+            .select("member_id, members!inner(status)")
+            .ilike("valorant_tagline", `%${escapeIlikePattern(tag)}%`)
+            .eq("members.status", "Verified"),
+        );
+      }
+    }
+  }
+
+  const results = await Promise.all(runs);
+  for (const result of results) {
+    if (result.error) throw new Error(result.error.message);
+    for (const row of result.data ?? []) {
+      const record = row as { id?: string; member_id?: string };
+      if (record.id) ids.add(record.id);
+      if (record.member_id) ids.add(record.member_id);
+    }
+  }
+
+  return [...ids];
+}
+
 function rowToInviteSearchMember(
   row: Record<string, unknown>,
   game?: string,
@@ -232,40 +307,76 @@ export async function searchVerifiedMembersForInvite(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let builder = supabase
-    .from("members")
-    .select(
-      "id, username, discord_username, member_profiles(display_name, valorant_game_name, valorant_tagline, avatar_url, slug)",
-      { count: "exact" },
-    )
-    .eq("status", "Verified")
-    .order("username", { ascending: true });
-
-  const trimmed = query.trim();
-  if (trimmed) {
-    const token = escapePostgrestFilterValue(trimmed);
-    builder = builder.or(`username.ilike."%${token}%",discord_username.ilike."%${token}%"`);
-  }
-
   const rosterExclude = excludeIds.filter(isUuid);
   const gameBusy =
     options?.game != null
       ? await fetchMemberIdsOnActiveGame(options.game, options.excludeTeamId)
       : [];
-  const allExclude = [...new Set([...rosterExclude, ...gameBusy.filter(isUuid)])];
+  const allExclude = new Set([...rosterExclude, ...gameBusy.filter(isUuid)]);
 
-  if (allExclude.length > 0) {
-    builder = builder.not("id", "in", `(${allExclude.map((id) => `"${id}"`).join(",")})`);
+  const trimmed = query.trim();
+
+  if (!trimmed) {
+    let builder = supabase
+      .from("members")
+      .select(INVITE_MEMBER_SELECT, { count: "exact" })
+      .eq("status", "Verified")
+      .order("username", { ascending: true });
+
+    if (allExclude.size > 0) {
+      builder = builder.not("id", "in", `(${[...allExclude].map((id) => `"${id}"`).join(",")})`);
+    }
+
+    const { data, error, count } = await builder.range(from, to);
+    if (error) throw new Error(error.message);
+
+    return {
+      members: (data ?? []).map((row) =>
+        rowToInviteSearchMember(row as Record<string, unknown>, options?.game),
+      ),
+      total: count ?? 0,
+      page,
+      pageSize,
+    };
   }
 
-  const { data, error, count } = await builder.range(from, to);
+  const matchingIds = (await collectInviteSearchMemberIds(trimmed, options?.game)).filter(
+    (id) => !allExclude.has(id),
+  );
+  const total = matchingIds.length;
+  if (total === 0) {
+    return { members: [], total: 0, page, pageSize };
+  }
+
+  const { data: orderedRows, error: orderError } = await supabase
+    .from("members")
+    .select("id")
+    .in("id", matchingIds)
+    .eq("status", "Verified")
+    .order("username", { ascending: true });
+
+  if (orderError) throw new Error(orderError.message);
+
+  const orderedIds = (orderedRows ?? []).map((row) => row.id as string);
+  const pageIds = orderedIds.slice(from, to + 1);
+  if (pageIds.length === 0) {
+    return { members: [], total, page, pageSize };
+  }
+
+  const { data, error } = await supabase
+    .from("members")
+    .select(INVITE_MEMBER_SELECT)
+    .in("id", pageIds)
+    .eq("status", "Verified")
+    .order("username", { ascending: true });
+
   if (error) throw new Error(error.message);
 
   return {
     members: (data ?? []).map((row) =>
       rowToInviteSearchMember(row as Record<string, unknown>, options?.game),
     ),
-    total: count ?? 0,
+    total,
     page,
     pageSize,
   };
