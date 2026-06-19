@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { fetchActiveMemberTeams } from "@/features/tournaments/services/team-registration.service";
 import { setNotificationMemberId } from "../store";
 import { syncTeamMembershipNotifications } from "../services/team-membership-notifications";
@@ -27,20 +28,6 @@ export function useNotificationSync(memberId: string | undefined) {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let subscribedTeamIds: string[] = [];
 
-    function syncTournamentNotifications() {
-      syncTail = syncTail.then(async () => {
-        if (cancelled) return;
-        try {
-          await syncTournamentLiveNotifications(userId);
-        } catch (err) {
-          if (!cancelled) {
-            console.warn("[notifications] tournament live sync failed:", err);
-          }
-        }
-      });
-      return syncTail;
-    }
-
     function syncAll() {
       syncTail = syncTail.then(async () => {
         if (cancelled) return;
@@ -60,6 +47,8 @@ export function useNotificationSync(memberId: string | undefined) {
       });
       return syncTail;
     }
+
+    const debouncedSyncAll = createDebouncedRefetch(() => syncAll(), 3000);
 
     async function teardownChannel() {
       if (!channel) return;
@@ -110,7 +99,7 @@ export function useNotificationSync(memberId: string | undefined) {
             filter: `user_id=eq.${userId}`,
           },
           () => {
-            void syncAll();
+            debouncedSyncAll();
             void refreshSubscriptionIfTeamsChanged();
           },
         );
@@ -125,7 +114,7 @@ export function useNotificationSync(memberId: string | undefined) {
             filter: `roster_team_id=in.(${teamIds.join(",")})`,
           },
           () => {
-            void syncAll();
+            debouncedSyncAll();
           },
         );
       }
@@ -139,19 +128,7 @@ export function useNotificationSync(memberId: string | undefined) {
           filter: `profile_member_id=eq.${userId}`,
         },
         () => {
-          void syncAll();
-        },
-      );
-
-      nextChannel = nextChannel.on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "tournaments",
-        },
-        () => {
-          void syncTournamentNotifications();
+          debouncedSyncAll();
         },
       );
 
@@ -162,13 +139,14 @@ export function useNotificationSync(memberId: string | undefined) {
     void subscribe();
 
     function handleFocus() {
-      void syncAll();
+      debouncedSyncAll();
     }
 
     window.addEventListener("focus", handleFocus);
 
     return () => {
       cancelled = true;
+      debouncedSyncAll.cancel();
       window.removeEventListener("focus", handleFocus);
       void teardownChannel();
       setNotificationMemberId(null);

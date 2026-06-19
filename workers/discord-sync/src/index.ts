@@ -1,5 +1,5 @@
 import type { Env } from "./env";
-import { getBaselineIntervalMinutes, getBoostWindowMinutes } from "./env";
+import { getBoostWindowMinutes } from "./env";
 import { getBoostUntilMs, setBoostUntilMs } from "./boost";
 import { syncRoseRoles, type SyncSummary } from "./sync";
 
@@ -86,21 +86,6 @@ function buildBoostStatus(boostUntilMs: number | null) {
 
 async function runScheduledSync(event: ScheduledEvent, env: Env): Promise<void> {
   validateEnv(env);
-
-  const nowMs = Number.isFinite(event.scheduledTime) ? event.scheduledTime : Date.now();
-  const boostUntilMs = await getBoostUntilMs(env);
-  const isBoosted = Boolean(boostUntilMs && boostUntilMs > nowMs);
-  const baselineMinutes = getBaselineIntervalMinutes(env);
-  const minute = new Date(nowMs).getUTCMinutes();
-  const onBaselineMinute = minute % baselineMinutes === 0;
-
-  if (!isBoosted && !onBaselineMinute) {
-    console.info(
-      `[discord-sync] Skip minute (baseline every ${baselineMinutes} minutes)`,
-    );
-    return;
-  }
-
   await runSync(env);
 }
 

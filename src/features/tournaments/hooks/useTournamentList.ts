@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { fetchTournaments } from "../services";
 import { getPublicTournaments } from "../utils";
 import type { TournamentStatus } from "../types";
@@ -30,16 +31,18 @@ export function useTournamentList() {
 
   useEffect(() => {
     void refetch();
+    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
 
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel("tournaments-public-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
-        void refetch({ silent: true });
+        debouncedRefetch({ silent: true });
       })
       .subscribe();
 
     return () => {
+      debouncedRefetch.cancel();
       supabase.removeChannel(channel);
     };
   }, [refetch]);

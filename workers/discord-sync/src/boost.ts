@@ -4,7 +4,24 @@ import type { Env } from "./env";
 const FLAG_KEY = "discord_sync_boost_until";
 const FLAGS_TABLE = "worker_runtime_flags";
 
+let cachedBoost: { untilMs: number | null; fetchedAt: number } | null = null;
+
+function cacheTtlMs(untilMs: number | null): number {
+  const now = Date.now();
+  if (untilMs && untilMs > now) return 30_000;
+  return 14 * 60_000;
+}
+
+function invalidateBoostCache(): void {
+  cachedBoost = null;
+}
+
 export async function getBoostUntilMs(env: Env): Promise<number | null> {
+  const now = Date.now();
+  if (cachedBoost && now - cachedBoost.fetchedAt < cacheTtlMs(cachedBoost.untilMs)) {
+    return cachedBoost.untilMs;
+  }
+
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -22,10 +39,15 @@ export async function getBoostUntilMs(env: Env): Promise<number | null> {
   }
 
   const value = (data as { value?: string } | null)?.value?.trim();
-  if (!value) return null;
+  if (!value) {
+    cachedBoost = { untilMs: null, fetchedAt: now };
+    return null;
+  }
 
   const boostUntilMs = Date.parse(value);
-  return Number.isNaN(boostUntilMs) ? null : boostUntilMs;
+  const untilMs = Number.isNaN(boostUntilMs) ? null : boostUntilMs;
+  cachedBoost = { untilMs, fetchedAt: now };
+  return untilMs;
 }
 
 export async function setBoostUntilMs(env: Env, boostUntilMs: number): Promise<void> {
@@ -48,4 +70,6 @@ export async function setBoostUntilMs(env: Env, boostUntilMs: number): Promise<v
       `Failed to set boost window. Did you run docs/sql/worker_runtime_flags.sql? (${error.message})`,
     );
   }
+
+  invalidateBoostCache();
 }
