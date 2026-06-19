@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MockTeam } from "@/lib/mock-data";
 import { getSupabaseClient } from "@/lib/supabase";
-import { createDebouncedRefetch } from "@/lib/debounce-refetch";
+import { createAdminSilentRefetch } from "@/lib/admin-realtime-refetch";
 import { fetchTournamentRegistrations } from "../services/tournament-registrations.service";
 
 export function useTournamentRegistrations(tournamentId: string) {
@@ -58,9 +58,13 @@ export function useTournamentRegistrations(tournamentId: string) {
     };
   }, [tournamentId]);
 
+  const debouncedRefetch = useMemo(
+    () => createAdminSilentRefetch(refetch),
+    [refetch],
+  );
+
   // Keep in sync when registrations are approved/updated elsewhere (e.g. Participants page).
   useEffect(() => {
-    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel(`tournament-regs:${tournamentId}`)
@@ -82,7 +86,7 @@ export function useTournamentRegistrations(tournamentId: string) {
       debouncedRefetch.cancel();
       void supabase.removeChannel(channel);
     };
-  }, [tournamentId, refetch]);
+  }, [tournamentId, refetch, debouncedRefetch]);
 
   const prependRegistration = useCallback((registration: MockTeam) => {
     setRegistrations((prev) => [registration, ...prev]);

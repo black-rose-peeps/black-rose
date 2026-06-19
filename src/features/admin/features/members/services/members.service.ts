@@ -8,6 +8,12 @@ import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { escapePostgrestFilterValue, isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
 
+const ADMIN_MEMBER_LIST_COLUMNS =
+  "id, username, discord_username, discord_id, status, registered_at, created_at, member_profiles(avatar_url, slug, display_name)";
+
+const ADMIN_MEMBER_DETAIL_COLUMNS =
+  "id, username, discord_username, discord_id, status, registered_at, created_at, member_profiles(avatar_url, slug, display_name)";
+
 function throwMemberUniqueViolation(error: { message: string }): never {
   const msg = error.message;
   if (msg.includes("discord_username")) {
@@ -25,7 +31,7 @@ function throwMemberUniqueViolation(error: { message: string }): never {
 export async function fetchMembers(): Promise<AdminMember[]> {
   const { data, error } = await supabase
     .from("members")
-    .select("*, member_profiles(avatar_url, slug, display_name)")
+    .select(ADMIN_MEMBER_LIST_COLUMNS)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -35,7 +41,7 @@ export async function fetchMembers(): Promise<AdminMember[]> {
 export async function fetchMemberById(id: string): Promise<AdminMember | null> {
   const { data, error } = await supabase
     .from("members")
-    .select("*, member_profiles(avatar_url, slug, display_name)")
+    .select(ADMIN_MEMBER_DETAIL_COLUMNS)
     .eq("id", id)
     .single();
 

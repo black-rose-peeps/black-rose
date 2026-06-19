@@ -1,6 +1,7 @@
 import type { AdminMember } from "@/features/admin/features/members/types";
 import { rowToAdminMember } from "@/features/admin/features/members/utils";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { MEMBER_READ_COLUMNS } from "@/features/member/server/profile-select-columns";
 import type {
   ProfileComment,
   ProfileCommentAuthor,
@@ -32,7 +33,7 @@ function normalizeBody(body: string): string {
 
 async function requireVerifiedMember(memberId: string): Promise<AdminMember> {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.from("members").select("*").eq("id", memberId).maybeSingle();
+  const { data, error } = await supabase.from("members").select(MEMBER_READ_COLUMNS).eq("id", memberId).maybeSingle();
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Member not found.");
