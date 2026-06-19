@@ -3,6 +3,7 @@ import { rowToAdminMember } from "@/features/admin/features/members/utils";
 import type { DiscordConnection } from "@/features/auth/server/discord-api.server";
 import { buildDiscordAvatarUrl } from "@/features/auth/utils/discord";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { createInflightDeduper, createTtlCache } from "@/lib/server-ttl-cache";
 import { SOCIAL_PLATFORM_ORDER } from "../constants";
 import type { SocialPlatform } from "../types";
 import {
@@ -17,6 +18,24 @@ import {
   validateValorantIdentityInput,
 } from "../utils/valorant-identity";
 import type { MemberProfile } from "../types";
+import {
+  MEMBER_READ_COLUMNS,
+  PROFILE_READ_COLUMNS,
+  SOCIAL_READ_COLUMNS,
+} from "./profile-select-columns";
+
+const PROFILE_CACHE_TTL_MS = 30_000;
+const memberProfileCache = createTtlCache<MemberProfile>(PROFILE_CACHE_TTL_MS);
+const profileBundleCache = createTtlCache<{
+  profile: MemberProfileRow;
+  socials: MemberSocialLinkRow[];
+}>(PROFILE_CACHE_TTL_MS);
+const profileLoadDeduper = createInflightDeduper<MemberProfile | null>();
+
+function invalidateMemberProfileCache(memberId: string): void {
+  memberProfileCache.delete(memberId);
+  profileBundleCache.delete(memberId);
+}
 
 const DISCORD_CONNECTION_PLATFORMS: Record<string, SocialPlatform> = {
   twitch: "twitch",
@@ -146,7 +165,7 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
 
   const { data: existing, error: fetchError } = await supabase
     .from("member_profiles")
-    .select("*")
+    .select(PROFILE_READ_COLUMNS)
     .eq("member_id", input.member.id)
     .maybeSingle();
 
@@ -175,6 +194,8 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
     } else {
       await applyDiscordConnections(input.member.id, [], input.discordUserId);
     }
+
+    invalidateMemberProfileCache(input.member.id);
 
     return data as MemberProfileRow;
   }
@@ -205,17 +226,22 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
     input.discordUserId,
   );
 
+  invalidateMemberProfileCache(input.member.id);
+
   return data as MemberProfileRow;
 }
 
 async function loadProfileBundle(
   member: AdminMember,
 ): Promise<{ profile: MemberProfileRow; socials: MemberSocialLinkRow[] } | null> {
+  const cached = profileBundleCache.get(member.id);
+  if (cached) return cached;
+
   const supabase = getSupabaseAdmin();
 
   const { data: profile, error: profileError } = await supabase
     .from("member_profiles")
-    .select("*")
+    .select(PROFILE_READ_COLUMNS)
     .eq("member_id", member.id)
     .maybeSingle();
 
@@ -224,15 +250,17 @@ async function loadProfileBundle(
 
   const { data: socials, error: socialError } = await supabase
     .from("member_social_links")
-    .select("*")
+    .select(SOCIAL_READ_COLUMNS)
     .eq("member_id", member.id);
 
   if (socialError) throw new Error(socialError.message);
 
-  return {
+  const bundle = {
     profile: profile as MemberProfileRow,
     socials: (socials ?? []) as MemberSocialLinkRow[],
   };
+  profileBundleCache.set(member.id, bundle);
+  return bundle;
 }
 
 async function findMemberBySlug(slug: string): Promise<AdminMember | null> {
@@ -249,7 +277,7 @@ async function findMemberBySlug(slug: string): Promise<AdminMember | null> {
 
   const { data: member, error: memberError } = await supabase
     .from("members")
-    .select("*")
+    .select(MEMBER_READ_COLUMNS)
     .eq("id", profile.member_id)
     .maybeSingle();
 
@@ -258,10 +286,24 @@ async function findMemberBySlug(slug: string): Promise<AdminMember | null> {
 }
 
 export async function fetchMemberProfileByMemberId(memberId: string): Promise<MemberProfile | null> {
+  const cached = memberProfileCache.get(memberId);
+  if (cached) return cached;
+
+  return profileLoadDeduper.run(memberId, async () => {
+    const freshCached = memberProfileCache.get(memberId);
+    if (freshCached) return freshCached;
+
+    const profile = await loadMemberProfileUncached(memberId);
+    if (profile) memberProfileCache.set(memberId, profile);
+    return profile;
+  });
+}
+
+async function loadMemberProfileUncached(memberId: string): Promise<MemberProfile | null> {
   const supabase = getSupabaseAdmin();
   const { data: memberRow, error } = await supabase
     .from("members")
-    .select("*")
+    .select(MEMBER_READ_COLUMNS)
     .eq("id", memberId)
     .maybeSingle();
 
@@ -330,7 +372,7 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
 
   const { data: memberRow, error: memberError } = await supabase
     .from("members")
-    .select("*")
+    .select(MEMBER_READ_COLUMNS)
     .eq("id", input.memberId)
     .maybeSingle();
 
@@ -341,7 +383,7 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
 
   const { data: profile, error: profileError } = await supabase
     .from("member_profiles")
-    .select("*")
+    .select(PROFILE_READ_COLUMNS)
     .eq("member_id", input.memberId)
     .maybeSingle();
 
@@ -403,7 +445,10 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
     }
   }
 
-  const updated = await fetchMemberProfileByMemberId(input.memberId);
+  invalidateMemberProfileCache(input.memberId);
+
+  const updated = await loadMemberProfileUncached(input.memberId);
   if (!updated) throw new Error("Failed to load updated profile.");
+  memberProfileCache.set(input.memberId, updated);
   return updated;
 }

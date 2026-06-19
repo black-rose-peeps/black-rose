@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { createDebouncedRefetch } from "@/lib/debounce-refetch";
+import { createAdminSilentRefetch } from "@/lib/admin-realtime-refetch";
 import { fetchTeams } from "../services/teams.service";
 import type { Team } from "../types";
 
@@ -28,7 +28,7 @@ export function useTeams() {
   }, []);
 
   const debouncedRefetch = useMemo(
-    () => createDebouncedRefetch(refetch, 3000),
+    () => createAdminSilentRefetch(refetch),
     [refetch],
   );
 

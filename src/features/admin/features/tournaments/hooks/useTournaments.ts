@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { createDebouncedRefetch } from "@/lib/debounce-refetch";
+import { createAdminSilentRefetch } from "@/lib/admin-realtime-refetch";
 import { withResolvedTournamentStatus } from "@/features/tournaments/utils/tournament-status";
 import { fetchTournaments } from "../services/tournaments.service";
 import type { AdminTournament } from "../types";
@@ -29,7 +29,7 @@ export function useTournaments() {
   }, []);
 
   const debouncedRefetch = useMemo(
-    () => createDebouncedRefetch(refetch, 3000),
+    () => createAdminSilentRefetch(refetch),
     [refetch],
   );
 
