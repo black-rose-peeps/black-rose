@@ -18,8 +18,10 @@ import { AdminEmptyTitle } from "@/features/admin/constants/empty-state-titles";
 import { PARTICIPANTS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import { AdminTableSearch } from "@/features/admin/components/AdminTableSearch";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import { useTableSort } from "@/features/admin/hooks/useTableSort";
+import { matchesAdminParticipantDirectorySearch } from "@/features/admin/utils/search";
 import { useParticipants } from "../hooks";
 import type { ParticipantRow } from "../types";
 import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
@@ -44,10 +46,18 @@ export function ParticipantsManagement() {
   } = useParticipants();
 
   const [openTeam, setOpenTeam] = useState<ParticipantRow | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const registrationStatusOrder = useMemo(() => REGISTRATION_STATUS_SORT_ORDER, []);
+
+  const filteredParticipants = useMemo(() => {
+    if (!searchQuery.trim()) return participants;
+    return participants.filter((participant) =>
+      matchesAdminParticipantDirectorySearch(searchQuery, participant),
+    );
+  }, [participants, searchQuery]);
 
   const sortComparators = useMemo(
     () => ({
@@ -69,7 +79,7 @@ export function ParticipantsManagement() {
   );
 
   const { sortedItems, sortKey, direction, toggleSort } = useTableSort(
-    participants,
+    filteredParticipants,
 
     sortComparators,
   );
@@ -78,7 +88,7 @@ export function ParticipantsManagement() {
 
   useEffect(() => {
     pagination.setPage(1);
-  }, [sortKey, direction, pagination.setPage]);
+  }, [sortKey, direction, searchQuery, pagination.setPage]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -275,6 +285,35 @@ export function ParticipantsManagement() {
           />
         ) : (
           <>
+            <AdminTableSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by team, tournament, captain, or Discord username…"
+            />
+            {filteredParticipants.length === 0 ? (
+              <AdminEmptyState
+                embedded
+                eyebrow="No Matches"
+                title={
+                  <>
+                    No entries <span className="text-stroke">found.</span>
+                  </>
+                }
+                description={`No participants match "${searchQuery.trim()}". Try team name, tournament, captain, or a roster member's Discord handle.`}
+                actions={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="font-tech uppercase tracking-wider"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Clear search
+                  </Button>
+                }
+              />
+            ) : (
+              <>
             <AdminManagementTable columnWidths={PARTICIPANTS_TABLE_COLUMNS}>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -455,6 +494,8 @@ export function ParticipantsManagement() {
               rangeEnd={pagination.rangeEnd}
               onPageChange={pagination.setPage}
             />
+              </>
+            )}
           </>
         )}
       </div>

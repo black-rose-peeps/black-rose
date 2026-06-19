@@ -19,10 +19,12 @@ import { AdminEmptyTitle } from "@/features/admin/constants/empty-state-titles";
 import { TEAMS_TABLE_COLUMNS } from "@/features/admin/constants/table-columns";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
+import { AdminTableSearch } from "@/features/admin/components/AdminTableSearch";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { useMembers } from "@/features/admin/features/members/hooks";
 import { compareByOrder } from "@/features/admin/utils/sort-comparators";
+import { matchesAdminTeamDirectorySearch } from "@/features/admin/utils/search";
 import { GAME_COLOR, GAME_OPTIONS } from "@/features/teams/constants";
 import { useTeams } from "../hooks";
 import type { Team } from "../types";
@@ -41,12 +43,18 @@ export function TeamsManagement() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [rosterTeam, setRosterTeam] = useState<Team | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const {
     submit: deleteTeamSubmit,
     isDeleting,
     error: deleteError,
     resetError: resetDeleteError,
   } = useDeleteTeam();
+  const filteredTeams = useMemo(() => {
+    if (!searchQuery.trim()) return teams;
+    return teams.filter((team) => matchesAdminTeamDirectorySearch(searchQuery, team));
+  }, [teams, searchQuery]);
+
   const teamGameOrder = useMemo(() => GAME_OPTIONS.map((game) => game.value), []);
   const sortComparators = useMemo(
     () => ({
@@ -55,12 +63,12 @@ export function TeamsManagement() {
     }),
     [teamGameOrder],
   );
-  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(teams, sortComparators);
+  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(filteredTeams, sortComparators);
   const pagination = usePagination(sortedItems);
 
   useEffect(() => {
     pagination.setPage(1);
-  }, [sortKey, direction, pagination.setPage]);
+  }, [sortKey, direction, searchQuery, pagination.setPage]);
 
   return (
     <>
@@ -177,6 +185,35 @@ export function TeamsManagement() {
             />
           ) : (
             <>
+              <AdminTableSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search by team name, display name, or Discord username…"
+              />
+              {filteredTeams.length === 0 ? (
+                <AdminEmptyState
+                  embedded
+                  eyebrow="No Matches"
+                  title={
+                    <>
+                      No teams <span className="text-stroke">found.</span>
+                    </>
+                  }
+                  description={`No teams match "${searchQuery.trim()}". Try team name, or a member's display name or Discord username.`}
+                  actions={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="font-tech uppercase tracking-wider"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      Clear search
+                    </Button>
+                  }
+                />
+              ) : (
+                <>
               <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -279,6 +316,8 @@ export function TeamsManagement() {
                 rangeEnd={pagination.rangeEnd}
                 onPageChange={pagination.setPage}
               />
+                </>
+              )}
             </>
           )}
         </div>

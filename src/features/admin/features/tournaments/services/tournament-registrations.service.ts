@@ -291,7 +291,7 @@ async function validateTeamForTournamentRegistration(
 }
 
 const REGISTRATION_READ_COLUMNS =
-  "id, roster_team_id, member_user_id, name, tag, captain, registration_date, status, tournament_id, history, reviewed_at, approved_at, updated_at";
+  "id, roster_team_id, member_user_id, name, tag, captain, registration_date, status, tournament_id, history";
 
 const REGISTRATION_PLAYER_COLUMNS = "registration_id, ign, role, discord";
 
