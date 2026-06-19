@@ -14,7 +14,7 @@ import { AdminEmptyTitle, AdminEmptyTitleAllClear } from "@/features/admin/const
 import { Panel, PanelHeader, StatCard, StatusPill } from "@/features/admin/components/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSupabaseClient } from "@/lib/supabase";
-import { createDebouncedRefetch } from "@/lib/debounce-refetch";
+import { createAdminSilentRefetch } from "@/lib/admin-realtime-refetch";
 import {
   fetchAdminDashboard,
   type AdminDashboardData,
@@ -50,7 +50,7 @@ function useAdminDashboard() {
 
   useEffect(() => {
     void refetch();
-    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
+    const debouncedRefetch = createAdminSilentRefetch(refetch);
 
     const supabase = getSupabaseClient();
     const channel = supabase

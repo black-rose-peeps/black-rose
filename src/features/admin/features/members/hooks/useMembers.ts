@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { createDebouncedRefetch } from "@/lib/debounce-refetch";
+import { createAdminSilentRefetch } from "@/lib/admin-realtime-refetch";
 import { fetchMembers } from "../services/members.service";
+import { normalizeMemberStatus } from "../utils";
 import type { AdminMember } from "../types";
 
 export function useMembers() {
@@ -25,23 +26,67 @@ export function useMembers() {
     }
   }, []);
 
+  const debouncedRefetch = useMemo(
+    () => createAdminSilentRefetch(refetch),
+    [refetch],
+  );
+
   useEffect(() => {
     void refetch();
-    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
 
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel("admin-members-list")
-      .on("postgres_changes", { event: "*", schema: "public", table: "members" }, () => {
-        debouncedRefetch({ silent: true });
-      })
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "members" },
+        (payload) => {
+          const row = payload.new as Record<string, unknown> | undefined;
+          if (!row?.id) {
+            debouncedRefetch({ silent: true });
+            return;
+          }
+          setMembers((prev) =>
+            prev.map((member) =>
+              member.id === row.id
+                ? {
+                    ...member,
+                    username: (row.username as string) ?? member.username,
+                    discordUsername: (row.discord_username as string) ?? member.discordUsername,
+                    discordId: (row.discord_id as string | null | undefined) ?? member.discordId,
+                    status: normalizeMemberStatus(String(row.status ?? member.status)),
+                  }
+                : member,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "members" },
+        (payload) => {
+          const id = (payload.old as Record<string, unknown> | undefined)?.id as string | undefined;
+          if (id) {
+            setMembers((prev) => prev.filter((member) => member.id !== id));
+            return;
+          }
+          debouncedRefetch({ silent: true });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "members" },
+        () => {
+          debouncedRefetch({ silent: true });
+        },
+      )
       .subscribe();
 
     return () => {
       debouncedRefetch.cancel();
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, debouncedRefetch]);
 
   const prependMember = useCallback((member: AdminMember) => {
     setMembers((prev) => [member, ...prev]);

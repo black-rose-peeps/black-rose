@@ -125,10 +125,13 @@ async function hydrateTournament(tournament: MockTournament): Promise<MockTourna
   return withResolvedTournamentStatus(closed);
 }
 
+const TOURNAMENT_LIST_COLUMNS =
+  "id, name, game, status, prize_pool, prize_breakdown, start_date, registration_deadline, teams_registered, team_cap, format, region, participation_type, wwm_mode";
+
 export async function fetchTournaments(): Promise<MockTournament[]> {
   const { data, error } = await supabase
     .from("tournaments")
-    .select("*")
+    .select(TOURNAMENT_LIST_COLUMNS)
     .order("start_date", { ascending: false });
 
   if (error) throw new Error(error.message);

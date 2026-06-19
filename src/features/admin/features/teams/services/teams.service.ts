@@ -322,10 +322,16 @@ async function fetchTeamWithMembers(teamId: string): Promise<Team> {
 
 // ── Service functions ─────────────────────────────────────────────────────────
 
+const TEAM_LIST_COLUMNS =
+  "id, name, tag, game, captain_user_id, created_at, active_tournament_id, active_tournament_name";
+
+const TEAM_MEMBER_LIST_COLUMNS =
+  "team_id, user_id, username, display_name, avatar_initials, ign, role, status, joined_at";
+
 export async function fetchTeams(): Promise<Team[]> {
   const { data: teamRows, error: teamsErr } = await supabase
     .from("teams")
-    .select("*")
+    .select(TEAM_LIST_COLUMNS)
     .order("created_at", { ascending: false });
 
   if (teamsErr) throw new Error(teamsErr.message);
@@ -335,7 +341,7 @@ export async function fetchTeams(): Promise<Team[]> {
 
   const { data: memberRows, error: membersErr } = await supabase
     .from("team_members")
-    .select("*")
+    .select(TEAM_MEMBER_LIST_COLUMNS)
     .in("team_id", teamIds)
     .neq("status", "removed");
 
