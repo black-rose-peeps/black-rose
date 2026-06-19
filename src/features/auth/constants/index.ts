@@ -33,3 +33,6 @@ export const DISCORD_OAUTH_REDIRECT_KEY = "br_discord_oauth_redirect";
 
 /** Set after first successful Discord OAuth — skips repeat consent screens on login. */
 export const DISCORD_LINKED_KEY = "br_discord_linked";
+
+/** Last Discord user id that completed OAuth in this browser — backup for linked detection. */
+export const DISCORD_AUTHORIZED_USER_KEY = "br_discord_authorized_user";

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CornerAccents } from "@/features/member/components/MemberShell";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
 import type { DiscordAppLinkRequest } from "@/features/shared/hooks/useDiscordAppLink";
-import { isDiscordAppUrl, toDiscordAppUrl } from "@/lib/discord-url";
+import { getDiscordDesktopHandoffUrl, isDiscordAppUrl } from "@/lib/discord-url";
 
 interface DiscordAppLinkDialogProps {
   pending: DiscordAppLinkRequest | null;
@@ -29,8 +29,8 @@ export function DiscordAppLinkDialog({
 }: DiscordAppLinkDialogProps) {
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const isOAuth = pending?.kind === "oauth";
-  const appUrl = pending ? toDiscordAppUrl(pending.url) : null;
-  const openHref = appUrl && isDiscordAppUrl(appUrl) ? appUrl : pending?.url;
+  const handoffUrl = pending ? getDiscordDesktopHandoffUrl(pending.url) : null;
+  const canHandoffToApp = Boolean(handoffUrl && isDiscordAppUrl(handoffUrl));
 
   function handleOpenChange(open: boolean) {
     if (!open) {
@@ -39,8 +39,9 @@ export function DiscordAppLinkDialog({
     }
   }
 
-  function handleConfirmClick() {
-    onConfirm(dontAskAgain);
+  function handleAnchorClick() {
+    const skipNextTime = dontAskAgain;
+    window.setTimeout(() => onConfirm(skipNextTime), 300);
     setDontAskAgain(false);
   }
 
@@ -58,8 +59,8 @@ export function DiscordAppLinkDialog({
             <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
               {isOAuth ? (
                 <>
-                  Sign in using the account already logged into your Discord app — not your browser.
-                  After you approve, your browser will finish sign-in in a new tab.
+                  Sign in using the account already logged into your Discord desktop app — not your
+                  browser. After you approve, return to this browser tab to finish sign-in.
                 </>
               ) : pending ? (
                 `This opens ${pending.label} in your Discord desktop app — the account you're already signed into there.`
@@ -104,12 +105,23 @@ export function DiscordAppLinkDialog({
           >
             Cancel
           </Button>
-          {openHref ? (
+          {canHandoffToApp && handoffUrl ? (
             <a
-              href={openHref}
+              href={handoffUrl}
+              target={isOAuth ? "_blank" : undefined}
+              rel={isOAuth ? "noopener noreferrer" : undefined}
+              onClick={handleAnchorClick}
+              className="clip-cta inline-flex h-11 items-center gap-2 rounded-none bg-[#5865F2] px-5 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
+            >
+              <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
+              {isOAuth ? "Open Discord" : "Open App"}
+            </a>
+          ) : pending ? (
+            <a
+              href={pending.url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={handleConfirmClick}
+              onClick={handleAnchorClick}
               className="clip-cta inline-flex h-11 items-center gap-2 rounded-none bg-[#5865F2] px-5 font-tech text-ui-readable uppercase text-white transition hover:bg-[#4752c4]"
             >
               <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
@@ -118,11 +130,11 @@ export function DiscordAppLinkDialog({
           ) : (
             <Button
               type="button"
-              onClick={handleConfirmClick}
+              onClick={() => onConfirm(dontAskAgain)}
               className="clip-cta inline-flex h-11 items-center gap-2 rounded-none bg-[#5865F2] px-5 font-tech text-ui-readable uppercase text-white hover:bg-[#4752c4]"
             >
               <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
-              {isOAuth ? "Open Discord" : "Open App"}
+              Open Discord
             </Button>
           )}
         </DialogFooter>
