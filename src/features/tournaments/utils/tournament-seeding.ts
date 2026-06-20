@@ -65,7 +65,9 @@ export function teamForRegisteredSeed(
 /** First-round high-vs-low pairings for any even field (1 vs N, 2 vs N-1, …). */
 export function firstRoundHighLowPairings(teamCount: number): SeedPairing[] {
   if (!Number.isInteger(teamCount) || teamCount < 2 || teamCount % 2 !== 0) {
-    throw new Error(`firstRoundHighLowPairings requires an even team count ≥ 2; received ${teamCount}.`);
+    throw new Error(
+      `firstRoundHighLowPairings requires an even team count ≥ 2; received ${teamCount}.`,
+    );
   }
   const pairings: SeedPairing[] = [];
   for (let i = 0; i < teamCount / 2; i++) {
@@ -136,7 +138,10 @@ export function projectedUpperRoundOnePairings(teamCount: number): UpperRoundOne
   }));
 }
 
-export function formatSeedLabel(seed: number | "bye" | "play-in", playInMatchIndex?: number): string {
+export function formatSeedLabel(
+  seed: number | "bye" | "play-in",
+  playInMatchIndex?: number,
+): string {
   if (seed === "bye") return "BYE";
   if (seed === "play-in") {
     return playInMatchIndex !== undefined

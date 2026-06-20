@@ -27,7 +27,7 @@ import {
 import { sortBracketRoundsByFlow } from "@/features/tournaments/utils/bracket-round-order";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import { winsRequired } from "../utils/managed-bracket";
-import { bracketCapacity, byeCount } from "../utils/bracket-field";
+import { bracketCapacity, byeCount, isEvenBracketFieldSize } from "../utils/bracket-field";
 import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket-bye-markers";
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
@@ -77,8 +77,9 @@ export function ManagedBracketView({
   const matchById = new Map(matches.map((match) => [match.id, match]));
   const slotHints = buildMatchSlotHints(matches, roundMetas);
   const byeMarkers = buildByeAdvancementMarkers(matches, roundMetas);
-  const elimByes = byeCount(teams.length);
-  const elimCapacity = bracketCapacity(teams.length);
+  const hasValidFieldSize = isEvenBracketFieldSize(teams.length);
+  const elimByes = hasValidFieldSize ? byeCount(teams.length) : 0;
+  const elimCapacity = hasValidFieldSize ? bracketCapacity(teams.length) : teams.length;
   const showLowerGuide = isDoubleElim && roundMetas.some((round) => round.id === "pi-r1");
   const showByeGuide = elimByes > 0;
   const lockedFormatRoundIds = getLockedFormatRoundIds(matches);

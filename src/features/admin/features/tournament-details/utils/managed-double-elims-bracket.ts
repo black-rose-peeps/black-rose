@@ -5,11 +5,8 @@
 import {
   bracketCapacity,
   byeCount,
-  evenFieldElimRoundMatchCounts,
   isEvenBracketFieldSize,
   isPowerOfTwo,
-  mainBracketSize,
-  playInMatchCount,
   powerOfTwoElimRoundMatchCounts,
 } from "./bracket-field";
 import {
@@ -26,14 +23,8 @@ import {
   link,
   linkWinnerAdvancementPath,
   placeBracketRoundOne,
-  placeRoundOneTeams,
   placeStandardFirstRound,
-  buildPlayInRound,
-  wirePlayInLosersToLowerRoundOne,
-  wirePlayInToMainBracket,
   wireOpeningPlayableLosersToLowerRoundOne,
-  roundOnePairingsForBuild,
-  placeUpperOrMainFirstRound,
 } from "./managed-bracket-build-helpers";
 
 function upperRoundLabel(
@@ -78,7 +69,10 @@ function upperRoundMeta(
   };
 }
 
-function lowerRoundMeta(roundIndex: number, totalLowerRounds: number): { id: string; label: string } {
+function lowerRoundMeta(
+  roundIndex: number,
+  totalLowerRounds: number,
+): { id: string; label: string } {
   if (roundIndex === totalLowerRounds - 1) {
     return { id: "lb-f", label: "Lower — Final" };
   }
@@ -278,10 +272,7 @@ function buildDoubleElimPowerOfTwo(
 
   addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
 
-  const { lbRoundCount, lbRoundIds, lbMatchCounts } = buildLowerBracketSchedule(
-    ubRounds,
-    capacity,
-  );
+  const { lbRoundCount, lbRoundIds, lbMatchCounts } = buildLowerBracketSchedule(ubRounds, capacity);
 
   for (let r = 0; r < lbRoundCount; r++) {
     const id = lbRoundIds[r];
@@ -404,151 +395,6 @@ function buildFourTeamDoubleElim(
   return { matches, roundMetas };
 }
 
-function buildDoubleElimEvenField(
-  teamNames: string[],
-  options?: BuildBracketOptions,
-): {
-  matches: ManagedMatch[];
-  roundMetas: BracketRoundMeta[];
-} {
-  const n = teamNames.length;
-  const ubMatchCounts = evenFieldElimRoundMatchCounts(n);
-  const ubRounds = ubMatchCounts.length;
-
-  const matches: ManagedMatch[] = [];
-  const roundMetas: BracketRoundMeta[] = [];
-
-  const addRound = (
-    id: string,
-    label: string,
-    side: ManagedMatch["bracketSide"],
-    count: number,
-    labelFn?: (i: number) => string,
-  ): void => {
-    const matchIds: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const mid = `${id}-m${i}`;
-      matchIds.push(mid);
-      matches.push({
-        id: mid,
-        roundId: id,
-        roundLabel: label,
-        label: labelFn ? labelFn(i) : count > 1 ? `Match ${i + 1}` : label,
-        bracketSide: side,
-        teamA: null,
-        teamB: null,
-        scoreA: 0,
-        scoreB: 0,
-        winner: null,
-        confirmed: false,
-        winnerNext: null,
-        loserNext: null,
-      });
-    }
-    roundMetas.push({ id, label, side, matchIds });
-  };
-
-  for (let r = 0; r < ubRounds; r++) {
-    const count = ubMatchCounts[r];
-    const { id, label } = upperRoundMeta(r, ubRounds, count);
-    addRound(id, label, "upper", count, id === "ub-f" ? () => "Upper Final" : undefined);
-  }
-
-  addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
-
-  const capacity = bracketCapacity(n);
-  const { lbRoundCount, lbRoundIds, lbMatchCounts } = buildLowerBracketSchedule(
-    ubRounds,
-    capacity,
-  );
-
-  for (let r = 0; r < lbRoundCount; r++) {
-    const id = lbRoundIds[r];
-    const { label } = lowerRoundMeta(r, lbRoundCount);
-    addRound(id, label, "lower", lbMatchCounts[r], id === "lb-f" ? () => "Lower Final" : undefined);
-  }
-
-  const ubRoundIds = competitionUpperRoundIds(roundMetas);
-  linkWinnerAdvancementPath(matches, ubRoundIds, ubMatchCounts);
-
-  const ubFinalId = ubRoundIds[ubRounds - 1];
-  const lbFinalId = lbRoundIds[lbRoundCount - 1];
-  link(matches, `${ubFinalId}-m0`, "gf-m0", "teamA");
-  link(matches, `${ubFinalId}-m0`, `${lbFinalId}-m0`, "teamB", true);
-
-  wireUpperLosersToLower(matches, lbRoundIds, ubRoundIds, ubMatchCounts, n, roundMetas);
-
-  wireLowerBracketWinners(matches, lbRoundIds, lbMatchCounts);
-
-  link(matches, `${lbFinalId}-m0`, "gf-m0", "teamB");
-
-  const ubR1 = matches.filter((match) => match.roundId === "ub-r1");
-  placeRoundOneTeams(ubR1, teamNames, roundOnePairingsForBuild(n));
-  applyOpeningRoundMatchLabels(matches, roundMetas, n);
-  applySequentialMatchLabels(matches, roundMetas);
-
-  return { matches: recomputeAdvancements(matches), roundMetas };
-}
-
-function buildDoubleElimWithPlayIn(
-  teamNames: string[],
-  options?: BuildBracketOptions,
-): {
-  matches: ManagedMatch[];
-  roundMetas: BracketRoundMeta[];
-} {
-  const n = teamNames.length;
-  const playInMatches = playInMatchCount(n);
-  const playInTeamCount = playInMatches * 2;
-  const playInTeams = teamNames.slice(n - playInTeamCount);
-  const mainSize = mainBracketSize(n);
-
-  const playInBuilt = buildPlayInRound(playInTeams, playInMatches, n);
-
-  const hasPlayIn = playInMatches > 0;
-  const deOptions: BuildBracketOptions = {
-    ...options,
-    openingPlayIn: hasPlayIn,
-    playInMatchCount: playInMatches,
-  };
-
-  const mainBuilt =
-    mainSize === 4
-      ? buildFourTeamDoubleElim(teamNames, { hasPlayInLosersPool: hasPlayIn, teamCount: n })
-      : buildDoubleElimPowerOfTwo(Array.from({ length: mainSize }, () => ""), deOptions);
-
-  if (mainSize !== 4) {
-    placeUpperOrMainFirstRound(
-      mainBuilt.matches.filter((match) => match.roundId === "ub-r1"),
-      teamNames,
-      n,
-      mainSize,
-    );
-  }
-
-  wirePlayInToMainBracket(
-    playInBuilt.matches,
-    mainBuilt.matches,
-    n,
-    playInMatches,
-    "ub-r1",
-    mainSize,
-  );
-
-  const combinedMatches = [...playInBuilt.matches, ...mainBuilt.matches];
-  if (hasPlayIn && mainSize !== 4) {
-    wirePlayInLosersToLowerRoundOne(combinedMatches, playInMatches);
-  }
-
-  const matches = recomputeAdvancements(combinedMatches);
-  const roundMetas = [...playInBuilt.roundMetas, ...mainBuilt.roundMetas];
-  applyOpeningRoundMatchLabels(matches, roundMetas, n);
-  applySequentialMatchLabels(matches, roundMetas);
-
-  assertUniqueFeederSlots(matches);
-  return { matches, roundMetas };
-}
-
 export function buildDoubleElimMatches(
   teamNames: string[],
   options?: BuildBracketOptions,
@@ -573,9 +419,7 @@ export function buildDoubleElimMatches(
 
   const capacity = bracketCapacity(n);
   if (capacity < 8) {
-    throw new Error(
-      `Double elimination requires at least 4 teams; received ${n}.`,
-    );
+    throw new Error(`Double elimination requires at least 4 teams; received ${n}.`);
   }
 
   return buildDoubleElimPowerOfTwo(teamNames, options);

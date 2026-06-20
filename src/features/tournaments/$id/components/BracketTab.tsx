@@ -31,7 +31,10 @@ import {
   hasLegacyOpeningPlayIn,
   partitionDoubleElimRounds,
 } from "../../utils/bracket-display";
-import { bracketCapacity, isEvenBracketFieldSize } from "@/features/admin/features/tournament-details/utils/bracket-field";
+import {
+  bracketCapacity,
+  isEvenBracketFieldSize,
+} from "@/features/admin/features/tournament-details/utils/bracket-field";
 import {
   BRACKET_CARD_W,
   BRACKET_COL_GAP,
@@ -110,8 +113,7 @@ export function BracketTab({
   const bracketCapacitySize = isEvenBracketFieldSize(bracketTeamCount)
     ? bracketCapacity(bracketTeamCount)
     : 0;
-  const hasRoundOneByes =
-    bracketCapacitySize > 0 && bracketCapacitySize > bracketTeamCount;
+  const hasRoundOneByes = bracketCapacitySize > 0 && bracketCapacitySize > bracketTeamCount;
   const matchById = new Map(
     bracket.flatMap((round) => round.matches.map((match) => [match.id, match] as const)),
   );
@@ -123,10 +125,9 @@ export function BracketTab({
     options?: { splitChampionship?: boolean },
   ) => {
     const splitChampionship = options?.splitChampionship ?? !isDoubleElim;
-    const { bracketRounds: flowRounds, championshipRounds: stagedChampionship } =
-      splitChampionship
-        ? partitionPublicChampionshipRounds(rounds)
-        : { bracketRounds: rounds, championshipRounds: [] as BracketRound[] };
+    const { bracketRounds: flowRounds, championshipRounds: stagedChampionship } = splitChampionship
+      ? partitionPublicChampionshipRounds(rounds)
+      : { bracketRounds: rounds, championshipRounds: [] as BracketRound[] };
 
     const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, (round) =>
       isGrandFinalRound(round.label),
@@ -135,7 +136,9 @@ export function BracketTab({
     const sectionLayoutMatches = publicToLayoutMatches(flowRounds);
     const sectionByeMarkers = buildByeAdvancementMarkersFromRounds(flowRounds);
     const sectionHasLowerPlayIn =
-      isDoubleElim && legacyOpeningPlayIn && rounds.some((round) => isLowerBracketRound(round.label));
+      isDoubleElim &&
+      legacyOpeningPlayIn &&
+      rounds.some((round) => isLowerBracketRound(round.label));
     const sectionHasByeGuide =
       !legacyOpeningPlayIn &&
       hasRoundOneByes &&
@@ -155,9 +158,7 @@ export function BracketTab({
             bracketCapacity={bracketCapacitySize}
           />
         )}
-        {sectionHasLegacyPlayIn && (
-          <OpeningPlayInGuide teamCount={teamCount} variant="single" />
-        )}
+        {sectionHasLegacyPlayIn && <OpeningPlayInGuide teamCount={teamCount} variant="single" />}
         {columns.length > 0 && (
           <EliminationBracketCanvas
             rounds={columns}
@@ -165,7 +166,9 @@ export function BracketTab({
             renderMatch={(matchId, context) => {
               const match = matchById.get(matchId);
               if (!match) return null;
-              const round = bracket.find((item) => item.matches.some((entry) => entry.id === matchId));
+              const round = bracket.find((item) =>
+                item.matches.some((entry) => entry.id === matchId),
+              );
               return (
                 <PublicMatchCard
                   match={match}
@@ -178,73 +181,72 @@ export function BracketTab({
             }}
           />
         )}
-        {isDoubleElim && grandRounds.length > 0 ? (
-          (() => {
-            const gfRound = grandRounds.find((round) =>
-              /grand final/i.test(round.label) && !/reset/i.test(round.label),
-            ) ?? grandRounds[0];
-            const resetRound = grandRounds.find((round) => /reset/i.test(round.label));
-            const primaryMatch = gfRound?.matches[0];
-            if (!primaryMatch) return null;
+        {isDoubleElim && grandRounds.length > 0
+          ? (() => {
+              const gfRound =
+                grandRounds.find(
+                  (round) => /grand final/i.test(round.label) && !/reset/i.test(round.label),
+                ) ?? grandRounds[0];
+              const resetRound = grandRounds.find((round) => /reset/i.test(round.label));
+              const primaryMatch = gfRound?.matches[0];
+              if (!primaryMatch) return null;
 
-            return (
-              <GrandFinalStage
-                primaryMatch={{
-                  id: primaryMatch.id,
-                  teamA: primaryMatch.teamA ?? null,
-                  teamB: primaryMatch.teamB ?? null,
-                  winner: primaryMatch.winner ?? null,
-                  confirmed: !!primaryMatch.winner,
-                  label: primaryMatch.label,
-                }}
-                resetMatch={
-                  resetRound?.matches[0]
-                    ? {
-                        id: resetRound.matches[0].id,
-                        teamA: resetRound.matches[0].teamA ?? null,
-                        teamB: resetRound.matches[0].teamB ?? null,
-                        winner: resetRound.matches[0].winner ?? null,
-                        confirmed: !!resetRound.matches[0].winner,
-                        label: resetRound.matches[0].label,
-                      }
-                    : null
-                }
-                formatLabel={format}
-                renderMatch={(match) => {
-                  const publicMatch = matchById.get(match.id);
-                  if (!publicMatch) return null;
-                  const round = bracket.find((item) =>
-                    item.matches.some((entry) => entry.id === match.id),
-                  );
-                  return (
-                    <PublicMatchCard
-                      match={publicMatch}
-                      roundLabel={round?.label}
-                      teamTags={teamTags}
-                      isGrand
-                    />
-                  );
-                }}
-              />
-            );
-          })()
-        ) : (
-          grandRounds.map((round) => {
-            const grandMatch = round.matches[0];
-            if (!grandMatch) return null;
-
-            return (
-              <div key={round.id ?? round.label} className="mx-auto w-full max-w-md">
-                <PublicMatchCard
-                  match={grandMatch}
-                  roundLabel={round.label}
-                  teamTags={teamTags}
-                  isGrand
+              return (
+                <GrandFinalStage
+                  primaryMatch={{
+                    id: primaryMatch.id,
+                    teamA: primaryMatch.teamA ?? null,
+                    teamB: primaryMatch.teamB ?? null,
+                    winner: primaryMatch.winner ?? null,
+                    confirmed: !!primaryMatch.winner,
+                    label: primaryMatch.label,
+                  }}
+                  resetMatch={
+                    resetRound?.matches[0]
+                      ? {
+                          id: resetRound.matches[0].id,
+                          teamA: resetRound.matches[0].teamA ?? null,
+                          teamB: resetRound.matches[0].teamB ?? null,
+                          winner: resetRound.matches[0].winner ?? null,
+                          confirmed: !!resetRound.matches[0].winner,
+                          label: resetRound.matches[0].label,
+                        }
+                      : null
+                  }
+                  formatLabel={format}
+                  renderMatch={(match, variant) => {
+                    const publicMatch = matchById.get(match.id);
+                    if (!publicMatch) return null;
+                    const round = bracket.find((item) =>
+                      item.matches.some((entry) => entry.id === match.id),
+                    );
+                    return (
+                      <PublicMatchCard
+                        match={publicMatch}
+                        roundLabel={round?.label}
+                        teamTags={teamTags}
+                        isGrand={variant === "primary"}
+                      />
+                    );
+                  }}
                 />
-              </div>
-            );
-          })
-        )}
+              );
+            })()
+          : grandRounds.map((round) => {
+              const grandMatch = round.matches[0];
+              if (!grandMatch) return null;
+
+              return (
+                <div key={round.id ?? round.label} className="mx-auto w-full max-w-md">
+                  <PublicMatchCard
+                    match={grandMatch}
+                    roundLabel={round.label}
+                    teamTags={teamTags}
+                    isGrand={grandMatch.id === "gf-m0"}
+                  />
+                </div>
+              );
+            })}
         {!isDoubleElim && stagedChampionship.length > 0 && (
           <EliminationChampionshipStage
             rounds={stagedChampionship.map((round) => ({
@@ -254,8 +256,7 @@ export function BracketTab({
                 publicChampionshipRoundVariant(round) === "third"
                   ? "Semifinal losers"
                   : "Winner takes the title",
-              variant:
-                publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
+              variant: publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
               match: {
                 id: round.matches[0]?.id ?? "",
                 teamA: round.matches[0]?.teamA ?? null,
@@ -274,7 +275,7 @@ export function BracketTab({
                   match={publicMatch}
                   roundLabel={round.title}
                   teamTags={teamTags}
-                  isGrand
+                  isGrand={round.variant !== "third"}
                 />
               );
             }}
@@ -331,8 +332,7 @@ export function BracketTab({
               publicChampionshipRoundVariant(round) === "third"
                 ? "Semifinal losers"
                 : "Winner takes the title",
-            variant:
-              publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
+            variant: publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
             match: {
               id: round.matches[0]?.id ?? "",
               teamA: round.matches[0]?.teamA ?? null,
@@ -351,16 +351,13 @@ export function BracketTab({
                 match={publicMatch}
                 roundLabel={round.title}
                 teamTags={teamTags}
-                isGrand
+                isGrand={round.variant !== "third"}
               />
             );
           }}
         />
       )}
-      <BracketFooter
-        hasLegacyPlayIn={legacyOpeningPlayIn}
-        hasRoundOneByes={hasRoundOneByes}
-      />
+      <BracketFooter hasLegacyPlayIn={legacyOpeningPlayIn} hasRoundOneByes={hasRoundOneByes} />
     </div>
   );
 }
@@ -461,7 +458,9 @@ function PublicMatchCard({
   const isChampionship = isGrand || isChampionshipMatch(match, roundLabel);
   const championCrowned = isChampionship && decided && !!match.winner;
   const matchTitle = displayLabel ?? match.label ?? match.round;
-  const isLower = roundLabel ? /lower/i.test(roundLabel) && !isChampionshipRoundLabel(roundLabel) : false;
+  const isLower = roundLabel
+    ? /lower/i.test(roundLabel) && !isChampionshipRoundLabel(roundLabel)
+    : false;
 
   const sideBorder = isChampionship
     ? "border-amber-400/55"

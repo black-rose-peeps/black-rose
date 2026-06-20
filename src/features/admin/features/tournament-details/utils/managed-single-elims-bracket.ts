@@ -10,8 +10,6 @@ import {
   bracketCapacity,
   eliminationRoundLabel,
   isEvenBracketFieldSize,
-  mainBracketSize,
-  playInMatchCount,
   powerOfTwoElimRoundMatchCounts,
 } from "./bracket-field";
 import {
@@ -24,12 +22,9 @@ import {
   applyOpeningRoundMatchLabels,
   applySequentialMatchLabels,
   attachThirdPlaceMatchFromSemifinals,
-  buildPlayInRound,
   link,
   linkWinnerAdvancementPath,
   placeBracketRoundOne,
-  placeUpperOrMainFirstRound,
-  wirePlayInToMainBracket,
 } from "./managed-bracket-build-helpers";
 
 /** True when the main bracket has semifinals (≥4 teams in the main field). */
@@ -108,40 +103,6 @@ export function buildSingleElimMatches(
   return { matches: recomputeAdvancements(matches), roundMetas };
 }
 
-function buildSingleElimWithPlayIn(
-  teamNames: string[],
-  options?: BuildBracketOptions,
-): {
-  matches: ManagedMatch[];
-  roundMetas: BracketRoundMeta[];
-} {
-  const n = teamNames.length;
-  const playInMatches = playInMatchCount(n);
-  const playInTeamCount = playInMatches * 2;
-  const playInTeams = teamNames.slice(n - playInTeamCount);
-  const mainSize = mainBracketSize(n);
-
-  const playInBuilt = buildPlayInRound(playInTeams, playInMatches, n, { singleElim: true });
-  const mainBuilt = buildSingleElimMatches(Array.from({ length: mainSize }, () => ""), options);
-
-  const r1 = mainBuilt.matches.filter((m) => m.roundId === "se-r0");
-  placeUpperOrMainFirstRound(r1, teamNames, n, mainSize);
-
-  wirePlayInToMainBracket(
-    playInBuilt.matches,
-    mainBuilt.matches,
-    n,
-    playInMatches,
-    "se-r0",
-    mainSize,
-  );
-
-  return {
-    matches: recomputeAdvancements([...playInBuilt.matches, ...mainBuilt.matches]),
-    roundMetas: [...playInBuilt.roundMetas, ...mainBuilt.roundMetas],
-  };
-}
-
 export interface PlayoffRound1Pairing {
   teamA: string | null;
   teamB: string | null;
@@ -206,7 +167,7 @@ export function buildPlayoffBracket(
     throw new Error("Playoffs require at least 2 qualified teams.");
   }
 
-  const size = Math.max(round1Pairings.length * 2, playoffBracketSize(assignedCount));
+  const size = playoffBracketSize(Math.max(assignedCount, round1Pairings.length * 2));
   const totalRounds = Math.log2(size);
   const matches: ManagedMatch[] = [];
   const roundMetas: BracketRoundMeta[] = [];

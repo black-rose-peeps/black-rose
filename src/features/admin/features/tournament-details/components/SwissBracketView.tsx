@@ -104,9 +104,7 @@ export function SwissBracketView({
       });
   const lockedFormatRoundIds = getLockedFormatRoundIds(matches);
   const qualifiedCount = getQualifiedTeams(teamNames, swiss, matches, seedByTeam).length;
-  const tournamentCompleted = tournamentStatus
-    ? isTournamentConcluded(tournamentStatus)
-    : false;
+  const tournamentCompleted = tournamentStatus ? isTournamentConcluded(tournamentStatus) : false;
 
   const format = roundMeta ? (roundFormats[roundMeta.id] ?? "BO3") : "BO3";
 
@@ -179,7 +177,8 @@ export function SwissBracketView({
                         className={cn(
                           "transition-colors hover:bg-muted/40",
                           entry.status === "advanced" && "border-l-2 border-l-emerald-400/50",
-                          entry.status === "eliminated" && "border-l-2 border-l-red-400/40 opacity-75",
+                          entry.status === "eliminated" &&
+                            "border-l-2 border-l-red-400/40 opacity-75",
                         )}
                       >
                         <td className="px-3 py-2.5 text-center">
@@ -441,11 +440,7 @@ function SwissTeamRow({
         onClick={onSelectWinner}
         disabled={controlsDisabled}
         aria-label={
-          isTbd
-            ? "Set winner"
-            : isWinner
-              ? `Clear winner (${display})`
-              : `Set ${display} as winner`
+          isTbd ? "Set winner" : isWinner ? `Clear winner (${display})` : `Set ${display} as winner`
         }
         className={cn(
           "h-2 w-2 shrink-0 rounded-full border",

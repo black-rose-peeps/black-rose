@@ -57,8 +57,7 @@ export function buildSeedByTeam(
   const map = new Map<string, number>();
 
   if (seeds instanceof Map) {
-    for (const team of participants) {
-      const index = participants.indexOf(team);
+    for (const [index, team] of participants.entries()) {
       map.set(team, seeds.get(team) ?? index + 1);
     }
     return map;
@@ -87,10 +86,7 @@ export function computeSwissTiebreakRows(input: SwissTiebreakInput): SwissTiebre
   const seeds = seedByTeam ?? buildSeedByTeam(participants);
 
   const mpByTeam = Object.fromEntries(
-    participants.map((team) => [
-      team,
-      (records[team]?.wins ?? 0) * SWISS_MATCH_POINTS_PER_WIN,
-    ]),
+    participants.map((team) => [team, (records[team]?.wins ?? 0) * SWISS_MATCH_POINTS_PER_WIN]),
   );
 
   return participants.map((team) => {

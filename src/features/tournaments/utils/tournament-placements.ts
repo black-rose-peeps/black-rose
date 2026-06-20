@@ -1,10 +1,9 @@
 import { isDoubleEliminationFormat, isSwissFormat } from "../constants/formats";
 import type { BracketRound, PrizeTier } from "../types";
+import { inferPublicBracketSide, inferRoundIdFromMatchId } from "./bracket-display";
 import {
-  inferPublicBracketSide,
-  inferRoundIdFromMatchId,
-} from "./bracket-display";
-import {
+  GRAND_FINAL_MATCH_ID,
+  GRAND_FINAL_RESET_MATCH_ID,
   resolveGrandFinalChampion,
   resolveGrandFinalRunnerUp,
 } from "@/features/admin/features/tournament-details/utils/grand-final";
@@ -57,10 +56,7 @@ function isSemifinalRound(match: ManagedMatch): boolean {
 
 function isThirdPlaceRound(match: ManagedMatch): boolean {
   const normalized = normalizeRoundLabel(match.roundLabel);
-  return (
-    /\b(third|3rd)\s*place\b/i.test(normalized) ||
-    /\bbro(nze)?\b/i.test(normalized)
-  );
+  return /\b(third|3rd)\s*place\b/i.test(normalized) || /\bbro(nze)?\b/i.test(normalized);
 }
 
 function isLowerFinalRoundId(match: ManagedMatch): boolean {
@@ -142,9 +138,7 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
   );
   if (!final?.winner) return [];
 
-  const placements: TournamentPlacement[] = [
-    { rank: 1, label: "Champion", team: final.winner },
-  ];
+  const placements: TournamentPlacement[] = [{ rank: 1, label: "Champion", team: final.winner }];
 
   const runnerUp = loserOf(final);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
@@ -192,15 +186,16 @@ export function deriveDoubleElimPlacements(matches: ManagedMatch[]): TournamentP
   const champion = resolveGrandFinalChampion(matches);
   if (!champion) return [];
 
-  const placements: TournamentPlacement[] = [
-    { rank: 1, label: "Champion", team: champion },
-  ];
+  const placements: TournamentPlacement[] = [{ rank: 1, label: "Champion", team: champion }];
 
   const runnerUp = resolveGrandFinalRunnerUp(matches);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
 
   const grandFinal = matches.find(
-    (match) => match.id === "gf-m0" && match.confirmed && !!match.winner,
+    (match) =>
+      (match.id === GRAND_FINAL_MATCH_ID || match.id === GRAND_FINAL_RESET_MATCH_ID) &&
+      match.confirmed &&
+      !!match.winner,
   );
   if (!grandFinal) return placements;
 

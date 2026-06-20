@@ -51,9 +51,7 @@ function PathBadge({
         {isUpper ? <Shield className="h-3 w-3" /> : <Swords className="h-3 w-3" />}
         {isUpper ? "Upper Bracket" : "Lower Bracket"}
       </div>
-      <p className="font-display text-sm font-semibold text-foreground">
-        {teamName ?? "TBD"}
-      </p>
+      <p className="font-display text-sm font-semibold text-foreground">{teamName ?? "TBD"}</p>
       {decided && isWinner && (
         <span className="inline-flex items-center gap-1 font-tech text-[9px] uppercase tracking-wider text-emerald-400">
           <Crown className="h-3 w-3" />
@@ -74,9 +72,7 @@ export function GrandFinalStage({
 }: GrandFinalStageProps) {
   const primaryDecided = primaryMatch.confirmed && !!primaryMatch.winner;
   const lowerWonPrimary =
-    primaryDecided &&
-    !!primaryMatch.teamB &&
-    primaryMatch.winner === primaryMatch.teamB;
+    primaryDecided && !!primaryMatch.teamB && primaryMatch.winner === primaryMatch.teamB;
   const showReset = !!resetMatch || lowerWonPrimary;
 
   return (
@@ -136,9 +132,7 @@ export function GrandFinalStage({
             />
           </div>
 
-          <div className="mx-auto w-full max-w-md">
-            {renderMatch(primaryMatch, "primary")}
-          </div>
+          <div className="mx-auto w-full max-w-md">{renderMatch(primaryMatch, "primary")}</div>
 
           {showReset && (
             <div className="space-y-4 border-t border-amber-400/15 pt-5">
@@ -154,9 +148,7 @@ export function GrandFinalStage({
                 </p>
               </div>
               {resetMatch && (
-                <div className="mx-auto w-full max-w-md">
-                  {renderMatch(resetMatch, "reset")}
-                </div>
+                <div className="mx-auto w-full max-w-md">{renderMatch(resetMatch, "reset")}</div>
               )}
             </div>
           )}

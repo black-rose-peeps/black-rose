@@ -70,7 +70,11 @@ function SeedingMatchCard({
 }) {
   const isByeMatch = byeSide !== "none";
   const isComplete =
-    byeSide === "none" ? Boolean(teamA && teamB) : byeSide === "teamA" ? Boolean(teamB) : Boolean(teamA);
+    byeSide === "none"
+      ? Boolean(teamA && teamB)
+      : byeSide === "teamA"
+        ? Boolean(teamB)
+        : Boolean(teamA);
 
   return (
     <div
@@ -116,11 +120,7 @@ function SeedingMatchCard({
         )}
 
         <div className="place-self-center py-1 font-display text-lg tracking-wider text-muted-foreground/40 md:pb-2">
-          {isByeMatch ? (
-            <Shield className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-          ) : (
-            "vs"
-          )}
+          {isByeMatch ? <Shield className="h-4 w-4" strokeWidth={1.5} aria-hidden /> : "vs"}
         </div>
 
         {byeSide === "teamB" ? (
@@ -239,22 +239,13 @@ export function SeedingPanel({
       }
 
       if (!pairing) continue;
-      const teamA =
-        pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
-      const teamB =
-        pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
+      const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
+      const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
       if (teamA && teamB) ready++;
       else if (teamA || teamB) ready++;
     }
     return ready;
-  }, [
-    assignments,
-    bracketSize,
-    hasSwissByeSlot,
-    isSwiss,
-    roundOnePairings,
-    seedingMatchCount,
-  ]);
+  }, [assignments, bracketSize, hasSwissByeSlot, isSwiss, roundOnePairings, seedingMatchCount]);
 
   const standardMatches = useMemo(() => {
     return roundOnePairings.map((pairing, index) => {
@@ -289,26 +280,21 @@ export function SeedingPanel({
             : `Seed ${teamARegistered ? pairing.seedA : pairing.seedB} · protected`,
       };
     });
-  }, [
-    bracketSize,
-    hasSwissByeSlot,
-    isElimination,
-    isSwiss,
-    roundOnePairings,
-  ]);
+  }, [bracketSize, hasSwissByeSlot, isElimination, isSwiss, roundOnePairings]);
 
   const useProtectedSeedSection = isElimination && elimByes > 0;
 
   const protectedSeedNumbers = useMemo(
     () =>
-      useProtectedSeedSection
-        ? Array.from({ length: elimByes }, (_, index) => index + 1)
-        : [],
+      useProtectedSeedSection ? Array.from({ length: elimByes }, (_, index) => index + 1) : [],
     [useProtectedSeedSection, elimByes],
   );
 
   const openingMatches = useMemo(
-    () => (useProtectedSeedSection ? standardMatches.filter((m) => m.byeSide === "none") : standardMatches),
+    () =>
+      useProtectedSeedSection
+        ? standardMatches.filter((m) => m.byeSide === "none")
+        : standardMatches,
     [standardMatches, useProtectedSeedSection],
   );
 
@@ -419,12 +405,17 @@ export function SeedingPanel({
           <div>
             <div className="mb-4 flex items-center gap-3">
               <span className="flex items-center gap-2 font-display text-sm uppercase tracking-wider text-foreground/90">
-                <Shield className="h-3.5 w-3.5 text-muted-foreground/60" strokeWidth={1.5} aria-hidden />
+                <Shield
+                  className="h-3.5 w-3.5 text-muted-foreground/60"
+                  strokeWidth={1.5}
+                  aria-hidden
+                />
                 Protected seeds
               </span>
               <span className="h-px flex-1 bg-border" />
               <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-                {protectedSeedNumbers.length} round-one bye{protectedSeedNumbers.length === 1 ? "" : "s"}
+                {protectedSeedNumbers.length} round-one bye
+                {protectedSeedNumbers.length === 1 ? "" : "s"}
               </span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

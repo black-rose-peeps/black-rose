@@ -3,6 +3,7 @@ import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import type { SwissBracketState } from "../utils/managed-swiss-bracket";
+import { resolveGrandFinalChampion } from "../utils/grand-final";
 
 export type BracketStateStatus = "not_generated" | "draft" | "published";
 
@@ -106,19 +107,8 @@ export async function savePublishedBracket(
 function detectChampionFromPayload(payload: PersistedBracketPayload): string | null {
   const matches = payload.admin?.managedMatches ?? [];
 
-  const reset = matches.find(
-    (m) => m.id === "gf-reset-m0" && m.confirmed && m.winner,
-  );
-  if (reset?.winner) return reset.winner;
-
-  const grand = matches.find((m) => m.id === "gf-m0" && m.confirmed && m.winner);
-  if (grand?.winner) {
-    const resetPending =
-      !!grand.teamB &&
-      grand.winner === grand.teamB &&
-      matches.some((m) => m.roundId === "gf-reset" && !m.confirmed);
-    if (!resetPending) return grand.winner;
-  }
+  const fromGrandFinal = resolveGrandFinalChampion(matches);
+  if (fromGrandFinal) return fromGrandFinal;
 
   // Legacy: any confirmed grand-side match
   const legacyGrand = matches.find((m) => m.bracketSide === "grand" && m.confirmed && m.winner);
@@ -169,8 +159,7 @@ async function syncTournamentChampion(
     .eq("tournament_id", tournamentId)
     .maybeSingle();
 
-  const completedAt =
-    existing?.completed_at ?? new Date().toISOString().split("T")[0];
+  const completedAt = existing?.completed_at ?? new Date().toISOString().split("T")[0];
 
   await supabase.from("tournament_champions").upsert(
     {

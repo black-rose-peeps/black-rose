@@ -113,7 +113,7 @@ export function ThirdPlaceMatchOption({
             <Switch
               checked={enabled}
               disabled={disabled}
-              onCheckedChange={onToggle}
+              onCheckedChange={() => onToggle()}
               aria-label="Toggle battle for 3rd place"
               className={cn(
                 "h-6 w-11 cursor-pointer data-[state=checked]:bg-amber-400 data-[state=unchecked]:bg-input",

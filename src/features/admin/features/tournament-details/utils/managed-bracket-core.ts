@@ -156,11 +156,7 @@ export function applyGrandFinalResetState(
   const hasResetMatch = matches.some((match) => match.roundId === "gf-reset");
 
   const lowerWonFirstFinal =
-    !!gf?.confirmed &&
-    !!gf.winner &&
-    !!gf.teamA &&
-    !!gf.teamB &&
-    gf.winner === gf.teamB;
+    !!gf?.confirmed && !!gf.winner && !!gf.teamA && !!gf.teamB && gf.winner === gf.teamB;
 
   if (!lowerWonFirstFinal) {
     if (!hasResetMeta && !hasResetMatch) {
@@ -372,7 +368,16 @@ export function getMatchesByRound(
 ): Map<string, ManagedMatch[]> {
   const map = new Map<string, ManagedMatch[]>();
   for (const meta of roundMetas) {
-    map.set(meta.id, meta.matchIds.map((id) => matches.find((m) => m.id === id)!).filter(Boolean));
+    const roundMatches: ManagedMatch[] = [];
+    for (const id of meta.matchIds) {
+      const match = matches.find((m) => m.id === id);
+      if (!match) {
+        console.warn(`[getMatchesByRound] Missing match "${id}" in round "${meta.id}"`);
+        continue;
+      }
+      roundMatches.push(match);
+    }
+    map.set(meta.id, roundMatches);
   }
   return map;
 }

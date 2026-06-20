@@ -3,6 +3,8 @@ import type { ManagedMatch } from "./managed-bracket";
 const GRAND_FINAL_MATCH_ID = "gf-m0";
 const GRAND_FINAL_RESET_MATCH_ID = "gf-reset-m0";
 
+export { GRAND_FINAL_MATCH_ID, GRAND_FINAL_RESET_MATCH_ID };
+
 export function grandFinalResetPending(matches: ManagedMatch[]): boolean {
   const gf = matches.find((match) => match.id === GRAND_FINAL_MATCH_ID);
   const reset = matches.find((match) => match.id === GRAND_FINAL_RESET_MATCH_ID);

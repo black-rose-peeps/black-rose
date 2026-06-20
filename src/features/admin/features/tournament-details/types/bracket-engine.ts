@@ -3,7 +3,16 @@
  * Handles bracket generation, team validation, and automatic positioning
  */
 
-import { isEvenBracketFieldSize, singleElimRoundMatchCounts, eliminationRoundLabel } from "../utils/bracket-field";
+import {
+  isEvenBracketFieldSize,
+  bracketCapacity,
+  singleElimRoundMatchCounts,
+  eliminationRoundLabel,
+} from "../utils/bracket-field";
+import {
+  firstRoundSeedPairings,
+  teamForRegisteredSeed,
+} from "@/features/tournaments/utils/tournament-seeding";
 
 export interface BracketMatch {
   matchId: string;
@@ -179,11 +188,20 @@ export class BracketEngine {
     this.reset();
 
     const firstRound = this.structure.rounds[0];
+    const capacity = bracketCapacity(this.structure.totalTeams);
+    const pairings = firstRoundSeedPairings(capacity);
+    const registeredCount = teams.length;
 
     for (let i = 0; i < firstRound.matches.length; i++) {
       const match = firstRound.matches[i];
-      match.teamA = teams[i * 2] ?? null;
-      match.teamB = teams[i * 2 + 1] ?? null;
+      const pairing = pairings[i];
+      if (!pairing) {
+        match.teamA = null;
+        match.teamB = null;
+        continue;
+      }
+      match.teamA = teamForRegisteredSeed(pairing.seedA, registeredCount, teams);
+      match.teamB = teamForRegisteredSeed(pairing.seedB, registeredCount, teams);
     }
 
     this.advanceWinners();

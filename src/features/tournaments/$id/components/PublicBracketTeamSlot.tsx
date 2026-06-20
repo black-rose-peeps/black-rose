@@ -76,12 +76,12 @@ export function PublicBracketTeamSlot({
       </span>
 
       {!isTbd && isProtectedSeed && (
-        <span title="Protected seed — round-one bye" className="shrink-0">
-          <Shield
-            className="h-3 w-3 text-muted-foreground/45"
-            strokeWidth={1.5}
-            aria-hidden
-          />
+        <span
+          title="Protected seed — round-one bye"
+          aria-label="Protected seed — round-one bye"
+          className="shrink-0"
+        >
+          <Shield className="h-3 w-3 text-muted-foreground/45" strokeWidth={1.5} aria-hidden />
         </span>
       )}
 

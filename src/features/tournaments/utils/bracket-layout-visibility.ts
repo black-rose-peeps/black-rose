@@ -75,12 +75,14 @@ export function resolveVisibleSuccessor(
 
 /** Structural parent ids for standard Po2 halving (slot index in previous round). */
 export function structuralParentIds(
-  match: LayoutInputMatch,
+  matchIndex: number,
   prevRoundMatches: LayoutInputMatch[],
 ): [string | null, string | null] {
-  const idx = prevRoundMatches.findIndex((entry) => entry.id === match.id);
-  if (idx < 0) return [null, null];
-  return [prevRoundMatches[idx * 2]?.id ?? null, prevRoundMatches[idx * 2 + 1]?.id ?? null];
+  if (matchIndex < 0) return [null, null];
+  return [
+    prevRoundMatches[matchIndex * 2]?.id ?? null,
+    prevRoundMatches[matchIndex * 2 + 1]?.id ?? null,
+  ];
 }
 
 /** Effective Y from a parent that may be hidden (returns null when parent is compressed away). */

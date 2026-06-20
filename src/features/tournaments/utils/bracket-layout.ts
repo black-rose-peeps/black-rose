@@ -173,9 +173,7 @@ export function buildLayout(matches: LayoutInputMatch[]): {
 
   const visibleCountByRound = new Map<number, number>();
   for (const roundIndex of roundIndices) {
-    const visibleCount = byRound
-      .get(roundIndex)!
-      .filter((match) => !hidden.has(match.id)).length;
+    const visibleCount = byRound.get(roundIndex)!.filter((match) => !hidden.has(match.id)).length;
     visibleCountByRound.set(roundIndex, visibleCount);
   }
 
@@ -277,7 +275,10 @@ export function buildLayout(matches: LayoutInputMatch[]): {
         } else if (visibleFeederYs.length === 1) {
           y = visibleFeederYs[0];
         } else if (prevRoundMatches.length > 0) {
-          const [parentAId, parentBId] = structuralParentIds(match, prevRoundMatches);
+          const [parentAId, parentBId] = structuralParentIds(
+            roundMatches.indexOf(match),
+            prevRoundMatches,
+          );
           const yA = effectiveParentY(parentAId, positions, hidden);
           const yB = effectiveParentY(parentBId, positions, hidden);
           if (yA !== null && yB !== null) y = (yA + yB) / 2;
@@ -302,17 +303,13 @@ export function buildLayout(matches: LayoutInputMatch[]): {
   }
 
   for (const sourceRoundIndex of bijectiveSourceRounds) {
-    const visibleSources = byRound
-      .get(sourceRoundIndex)!
-      .filter((match) => !hidden.has(match.id));
+    const visibleSources = byRound.get(sourceRoundIndex)!.filter((match) => !hidden.has(match.id));
     alignSourceRoundToTargets(visibleSources, positions);
   }
 
   for (const roundIndex of visibleRoundIndices) {
     if (bijectiveSourceRounds.has(roundIndex)) continue;
-    const visibleInRound = byRound
-      .get(roundIndex)!
-      .filter((match) => !hidden.has(match.id));
+    const visibleInRound = byRound.get(roundIndex)!.filter((match) => !hidden.has(match.id));
     resolveColumnCollisions(visibleInRound, positions, minGap);
   }
 
@@ -325,29 +322,20 @@ export function buildLayout(matches: LayoutInputMatch[]): {
       ...match,
       ...pos,
       visible: true,
-      visualNextWinnerMatchId: resolveVisibleSuccessor(
-        match.nextWinnerMatchId,
-        matchById,
-        hidden,
-      ),
+      visualNextWinnerMatchId: resolveVisibleSuccessor(match.nextWinnerMatchId, matchById, hidden),
     });
   }
 
   const visualColumnCount = Math.max(1, visibleRoundIndices.length);
-  const width =
-    (visualColumnCount - 1) * (BRACKET_CARD_W + BRACKET_COL_GAP) + BRACKET_CARD_W;
+  const width = (visualColumnCount - 1) * (BRACKET_CARD_W + BRACKET_COL_GAP) + BRACKET_CARD_W;
   const height =
-    positioned.length > 0
-      ? Math.max(...positioned.map((match) => match.y), 0) + BRACKET_CARD_H
-      : 0;
+    positioned.length > 0 ? Math.max(...positioned.map((match) => match.y), 0) + BRACKET_CARD_H : 0;
 
   return { positioned, width, height, roundIndices: visibleRoundIndices };
 }
 
 /** Top-to-bottom Match 1…N labels per column (visible matches only). */
-export function buildColumnDisplayLabels(
-  positioned: PositionedLayoutMatch[],
-): Map<string, string> {
+export function buildColumnDisplayLabels(positioned: PositionedLayoutMatch[]): Map<string, string> {
   const byRound = new Map<number, PositionedLayoutMatch[]>();
 
   for (const match of positioned) {

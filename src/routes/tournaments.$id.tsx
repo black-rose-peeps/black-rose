@@ -38,7 +38,10 @@ import type { Tab } from "@/features/tournaments/$id/components/TournamentTabs";
 import type { BracketRound, TournamentDetail } from "@/features/tournaments/types";
 import type { MockTournament } from "@/lib/mock-data";
 
-function detailFromSummary(summary: MockTournament, bracketRounds: BracketRound[] = []): TournamentDetail {
+function detailFromSummary(
+  summary: MockTournament,
+  bracketRounds: BracketRound[] = [],
+): TournamentDetail {
   const status = toPublicTournamentStatus(resolveTournamentStatus(summary));
   return {
     id: summary.id,
@@ -57,8 +60,7 @@ function detailFromSummary(summary: MockTournament, bracketRounds: BracketRound[
     description: `${summary.name} is a Black Rose community tournament. Follow the bracket and overview for live updates.`,
     organizer: "Black Rose Operations",
     contact: "ops@blackrose.gg",
-    prizeBreakdown:
-      summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
+    prizeBreakdown: summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
     schedule: buildTournamentSchedule({
       registrationDeadline: summary.registrationDeadline,
       startDate: summary.startDate,
@@ -275,8 +277,7 @@ function TournamentDetailPage() {
     placements: displayPlacements,
   };
 
-  const approvedCount =
-    displayTeams.length > 0 ? displayTeams.length : tournament.teamsRegistered;
+  const approvedCount = displayTeams.length > 0 ? displayTeams.length : tournament.teamsRegistered;
   const rulesBracketSize = bracketFieldSize(approvedCount) ?? tournament.teamCap;
 
   const displayRules = resolveTournamentRules(tournament.format, tournament.rules, {
