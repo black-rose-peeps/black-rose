@@ -13,9 +13,10 @@ export function ConnectorLayer({ positioned }: ConnectorLayerProps) {
   const paths: { d: string; completed?: boolean; live?: boolean; skip?: boolean }[] = [];
 
   for (const match of positioned) {
-    if (!match.nextWinnerMatchId) continue;
+    const nextId = match.visualNextWinnerMatchId ?? match.nextWinnerMatchId;
+    if (!nextId) continue;
     const from = map.get(match.id);
-    const to = map.get(match.nextWinnerMatchId);
+    const to = map.get(nextId);
     if (!from || !to) continue;
 
     const x1 = from.x + BRACKET_CARD_W;

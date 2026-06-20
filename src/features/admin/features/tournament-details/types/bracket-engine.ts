@@ -3,7 +3,7 @@
  * Handles bracket generation, team validation, and automatic positioning
  */
 
-import { isEvenBracketFieldSize, playInMatchCount, singleElimRoundMatchCounts, eliminationRoundLabel } from "../utils/bracket-field";
+import { isEvenBracketFieldSize, singleElimRoundMatchCounts, eliminationRoundLabel } from "../utils/bracket-field";
 
 export interface BracketMatch {
   matchId: string;
@@ -169,9 +169,6 @@ export class BracketEngine {
   private getRoundName(roundNum: number, teamCount: number): string {
     const roundCounts = singleElimRoundMatchCounts(teamCount);
     const matchCount = roundCounts[roundNum - 1] ?? 0;
-    if (roundNum === 1 && playInMatchCount(teamCount) > 0) {
-      return "Opening — Play-in";
-    }
     return eliminationRoundLabel(matchCount * 2);
   }
 

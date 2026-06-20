@@ -6,8 +6,6 @@ import type { SwissBracketState } from "../utils/managed-swiss-bracket";
 
 export type BracketStateStatus = "not_generated" | "draft" | "published";
 
-export type SeedingMode = "traditional" | "manual";
-
 export interface PersistedBracketPayload {
   rounds: BracketRound[];
   prizeBreakdown?: PrizeTier[];
@@ -17,8 +15,8 @@ export interface PersistedBracketPayload {
     roundMetas: BracketRoundMeta[];
     roundFormats: Record<string, BestOfFormat>;
     assignmentTeamIds: Array<string | null>;
-    seedingMode?: SeedingMode;
     swiss?: SwissBracketState;
+    includeThirdPlaceMatch?: boolean;
   };
 }
 
@@ -108,9 +106,23 @@ export async function savePublishedBracket(
 function detectChampionFromPayload(payload: PersistedBracketPayload): string | null {
   const matches = payload.admin?.managedMatches ?? [];
 
-  // 1. Grand final (double elimination)
-  const grand = matches.find((m) => m.bracketSide === "grand" && m.confirmed && m.winner);
-  if (grand?.winner) return grand.winner;
+  const reset = matches.find(
+    (m) => m.id === "gf-reset-m0" && m.confirmed && m.winner,
+  );
+  if (reset?.winner) return reset.winner;
+
+  const grand = matches.find((m) => m.id === "gf-m0" && m.confirmed && m.winner);
+  if (grand?.winner) {
+    const resetPending =
+      !!grand.teamB &&
+      grand.winner === grand.teamB &&
+      matches.some((m) => m.roundId === "gf-reset" && !m.confirmed);
+    if (!resetPending) return grand.winner;
+  }
+
+  // Legacy: any confirmed grand-side match
+  const legacyGrand = matches.find((m) => m.bracketSide === "grand" && m.confirmed && m.winner);
+  if (legacyGrand?.winner) return legacyGrand.winner;
 
   // 2. Single-elim or Swiss playoff final
   const final = matches.find(

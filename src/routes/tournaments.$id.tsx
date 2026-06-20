@@ -187,6 +187,10 @@ function TournamentDetailPage() {
 
   const displayTeams = liveTeams.length > 0 ? liveTeams : tournament.teams;
   const teamTagMap = useMemo(() => buildTeamTagMap(displayTeams), [displayTeams]);
+  const seedByTeam = useMemo(
+    () => new Map(displayTeams.map((team, index) => [team.name, team.seed ?? index + 1])),
+    [displayTeams],
+  );
 
   // Bracket: subscribe to the live bracket store so the public page re-renders
   // whenever the admin publishes, updates scores/winners, or resets.
@@ -343,6 +347,8 @@ function TournamentDetailPage() {
                 format={tournament.format}
                 isLoading={bracketLoading}
                 teamTags={teamTagMap}
+                teamNames={displayTeams.map((team) => team.name)}
+                seedByTeam={seedByTeam}
                 tournamentStatus={liveDetail.status}
               />
             </div>

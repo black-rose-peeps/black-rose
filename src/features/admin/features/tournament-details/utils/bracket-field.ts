@@ -1,4 +1,4 @@
-/** Bracket field size helpers — field size follows tournament team cap (even counts). */
+/** Bracket field size helpers — Challonge-style next power-of-two capacity with byes. */
 
 export function isEvenBracketFieldSize(n: number): boolean {
   return Number.isInteger(n) && n >= 2 && n % 2 === 0;
@@ -8,27 +8,46 @@ export function isPowerOfTwo(n: number): boolean {
   return Number.isInteger(n) && n > 0 && (n & (n - 1)) === 0;
 }
 
-/** Largest power-of-2 field that fits within the team count (e.g. 20 → 16). */
-export function mainBracketSize(teamCount: number): number {
+/** Next power-of-two bracket capacity (P = 2^ceil(log2(N))). */
+export function bracketCapacity(teamCount: number): number {
   if (!isEvenBracketFieldSize(teamCount)) {
     throw new Error(`Bracket field size must be an even integer ≥ 2; received ${teamCount}.`);
   }
   let size = 2;
-  while (size * 2 <= teamCount) {
+  while (size < teamCount) {
     size *= 2;
   }
   return size;
 }
 
-/** Opening play-in matches needed before a standard main bracket (e.g. 20 → 4). */
-export function playInMatchCount(teamCount: number): number {
-  if (isPowerOfTwo(teamCount)) return 0;
-  return teamCount - mainBracketSize(teamCount);
+/** Automatic byes for top seeds when N < bracket capacity. */
+export function byeCount(teamCount: number): number {
+  return bracketCapacity(teamCount) - teamCount;
 }
 
-/** Teams that start directly in the main upper bracket (not opening play-in). */
+/** @deprecated Use {@link bracketCapacity}. */
+export function mainBracketSize(teamCount: number): number {
+  return bracketCapacity(teamCount);
+}
+
+/** True when the field fills the bracket exactly (no byes). */
+export function usesFullFieldRoundOne(teamCount: number): boolean {
+  return isEvenBracketFieldSize(teamCount) && byeCount(teamCount) === 0;
+}
+
+/** Opening play-in is no longer used — non-Po2 fields use byes instead. */
+export function needsOpeningPlayIn(_teamCount: number): boolean {
+  return false;
+}
+
+/** @deprecated Always 0 — use {@link byeCount} instead. */
+export function playInMatchCount(_teamCount: number): number {
+  return 0;
+}
+
+/** Top seeds that receive a round-one bye. */
 export function directSeedCount(teamCount: number): number {
-  return teamCount - playInMatchCount(teamCount) * 2;
+  return byeCount(teamCount);
 }
 
 /** Preserve seed-slot order when building bracket team lists. */
@@ -55,18 +74,17 @@ export function powerOfTwoElimRoundMatchCounts(teamCount: number): number[] {
   return rounds;
 }
 
-/** Match counts per single-elimination round for any even field (legacy / display). */
+/** Match counts per elimination round on the bracket capacity (Po2). */
+export function evenFieldElimRoundMatchCounts(teamCount: number): number[] {
+  return powerOfTwoElimRoundMatchCounts(bracketCapacity(teamCount));
+}
+
+/** Match counts per single-elimination round for any even field. */
 export function singleElimRoundMatchCounts(teamCount: number): number[] {
   if (!isEvenBracketFieldSize(teamCount)) {
     throw new Error(`Bracket field size must be an even integer ≥ 2; received ${teamCount}.`);
   }
-  if (isPowerOfTwo(teamCount)) {
-    return powerOfTwoElimRoundMatchCounts(teamCount);
-  }
-  const playIn = playInMatchCount(teamCount);
-  const main = mainBracketSize(teamCount);
-  const playInMeta = playIn > 0 ? [playIn] : [];
-  return [...playInMeta, ...powerOfTwoElimRoundMatchCounts(main)];
+  return powerOfTwoElimRoundMatchCounts(bracketCapacity(teamCount));
 }
 
 export function eliminationRoundCount(teamCount: number): number {
@@ -76,11 +94,11 @@ export function eliminationRoundCount(teamCount: number): number {
 /** Human-readable label from how many teams compete in that round (e.g. 16 → "Round of 16"). */
 export function eliminationRoundLabel(teamsInRound: number): string {
   if (teamsInRound <= 2) return "Final";
-  if (teamsInRound <= 4) return "Semifinals";
-  if (teamsInRound <= 8) return "Quarterfinals";
-  if (teamsInRound <= 16) return "Round of 16";
-  if (teamsInRound <= 32) return "Round of 32";
-  if (teamsInRound <= 64) return "Round of 64";
+  if (teamsInRound === 4) return "Semifinals";
+  if (teamsInRound === 8) return "Quarterfinals";
+  if (teamsInRound === 16) return "Round of 16";
+  if (teamsInRound === 32) return "Round of 32";
+  if (teamsInRound === 64) return "Round of 64";
   return `Round of ${teamsInRound}`;
 }
 
