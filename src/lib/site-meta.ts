@@ -17,9 +17,15 @@ function isTrustedHost(host: string): boolean {
   const normalized = host.split(":")[0].toLowerCase();
   if (normalized === "localhost" || normalized === "127.0.0.1") return true;
   if (normalized === "blackrose.asia" || normalized === "www.blackrose.asia") return true;
+  if (normalized === "dev.blackrose.asia") return true;
   if (normalized.endsWith(".blackrose.asia")) return true;
   if (normalized.endsWith(".vercel.app")) return true;
   return false;
+}
+
+/** Hostnames we deploy the public app on (production, preview, Vercel). */
+export function isTrustedAppHost(host: string): boolean {
+  return isTrustedHost(host);
 }
 
 export function resolveSiteOriginFromRequest(request: Request): string {
