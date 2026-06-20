@@ -7,7 +7,6 @@ import { useRedirectIfAuthenticated } from "@/features/auth/hooks/useRedirectIfA
 import {
   continueDiscordOAuthInBrowser,
   describeDiscordRedirectUri,
-  isDiscordLinked,
   isDiscordOAuthConfigured,
   isDiscordRedirectUnreachableOnDevice,
   isDiscordRejectedLanRedirectUri,
@@ -47,7 +46,6 @@ function LoginPage() {
   const { console: consoleParam } = Route.useSearch();
   const isAdminConsole = consoleParam === "1";
   const [error, setError] = useState<string | null>(null);
-  const [returningMember, setReturningMember] = useState(false);
   const [lanRedirectWarning, setLanRedirectWarning] = useState<string | null>(null);
   const isMobileLogin = isDiscordPhoneOrTablet();
   const {
@@ -60,7 +58,6 @@ function LoginPage() {
   useRedirectIfAuthenticated(!isAdminConsole);
 
   useEffect(() => {
-    setReturningMember(isDiscordLinked());
     if (isDiscordRejectedLanRedirectUri()) {
       setLanRedirectWarning(
         `Using ${describeDiscordRedirectUri()} as the OAuth callback. If sign-in fails after authorize, ` +
@@ -90,9 +87,14 @@ function LoginPage() {
       return;
     }
     if (isDiscordTunnelEnvMismatch()) {
+      const tunnelOrigin =
+        import.meta.env.VITE_DISCORD_REDIRECT_URI?.replace(/\/auth\/callback\/?$/, "") ??
+        "your HTTPS tunnel URL";
       setError(
-        `Open ${import.meta.env.VITE_DISCORD_REDIRECT_URI?.replace(/\/auth\/callback\/?$/, "") ?? "your tunnel URL"} ` +
-          "on this device — VITE_DISCORD_REDIRECT_URI does not match the address in your browser.",
+        `Open ${tunnelOrigin} on this device (not a LAN IP). ` +
+          "VITE_DISCORD_REDIRECT_URI is for mobile dev tunnels — remove it when testing on " +
+          "http://YOUR-LAN-IP or use the tunnel URL in your browser. Production: use " +
+          "https://blackrose.asia or https://dev.blackrose.asia.",
       );
       return;
     }
@@ -162,12 +164,6 @@ function LoginPage() {
 
         <div className="flex flex-col gap-4">
           <DiscordButton onClick={handleDiscordAuth} label="Continue with Discord" />
-          {returningMember && (
-            <p className="text-center text-xs text-muted-foreground">
-              You&apos;ve signed in before — Discord should skip the authorize screen on this
-              browser.
-            </p>
-          )}
           {isMobileLogin && (
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
               On mobile, Discord sign-in opens in your browser. Make sure you&apos;re logged into

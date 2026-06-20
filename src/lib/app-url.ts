@@ -1,3 +1,5 @@
+import { isTrustedAppHost } from "@/lib/site-meta";
+
 const DISCORD_CALLBACK_PATH = "/auth/callback";
 
 function parseUrl(value: string): URL | null {
@@ -39,6 +41,24 @@ function readEnvDiscordRedirectUri(): string | null {
   return value;
 }
 
+function normalizeSiteHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, "");
+}
+
+/** www vs apex on the same registered domain (e.g. blackrose.asia). */
+function areRelatedAppOrigins(originA: string, originB: string): boolean {
+  const a = parseUrl(originA);
+  const b = parseUrl(originB);
+  if (!a || !b || a.protocol !== b.protocol) return false;
+  if (a.origin === b.origin) return true;
+
+  const hostA = normalizeSiteHost(a.hostname);
+  const hostB = normalizeSiteHost(b.hostname);
+  if (hostA !== hostB) return false;
+
+  return hostA === "blackrose.asia" || hostA.endsWith(".blackrose.asia");
+}
+
 /**
  * Discord OAuth redirect URIs we accept from the browser / server function.
  * Uses the live site URL — no env var needed. Discord still requires each URL
@@ -56,6 +76,10 @@ export function isAllowedDiscordRedirectUri(uri: string): boolean {
   }
 
   if (url.protocol === "http:" && isPrivateDevHost(url.hostname)) {
+    return true;
+  }
+
+  if (url.protocol === "https:" && isTrustedAppHost(url.hostname)) {
     return true;
   }
 
@@ -112,7 +136,10 @@ export function isDiscordRejectedLanRedirectUri(): boolean {
   return isPrivateDevHost(host) && !isLoopbackHost(host);
 }
 
-/** Browsing a LAN IP while VITE_DISCORD_REDIRECT_URI points at an HTTPS tunnel. */
+/**
+ * Browsing a LAN HTTP URL while VITE_DISCORD_REDIRECT_URI points at an HTTPS tunnel/production URL.
+ * Does not apply to production hosts (blackrose.asia, dev.blackrose.asia, *.vercel.app).
+ */
 export function isDiscordTunnelEnvMismatch(): boolean {
   if (typeof window === "undefined") return false;
 
@@ -120,7 +147,14 @@ export function isDiscordTunnelEnvMismatch(): boolean {
   if (!configured?.startsWith("https://")) return false;
 
   const configuredOrigin = parseUrl(configured)?.origin;
-  return Boolean(configuredOrigin && window.location.origin !== configuredOrigin);
+  if (!configuredOrigin || window.location.origin === configuredOrigin) return false;
+  if (areRelatedAppOrigins(window.location.origin, configuredOrigin)) return false;
+
+  if (isTrustedAppHost(window.location.hostname)) return false;
+
+  return (
+    window.location.protocol === "http:" && isPrivateDevHost(window.location.hostname)
+  );
 }
 
 /** Human-readable redirect URI registered for the current OAuth request. */
@@ -148,18 +182,26 @@ export function getDiscordRedirectUri(): string {
 
   const originRedirect = `${window.location.origin}${DISCORD_CALLBACK_PATH}`;
   const configured = readEnvDiscordRedirectUri();
+  const configuredUrl = configured ? parseUrl(configured) : null;
+  const configuredOrigin = configuredUrl?.origin ?? "";
+
+  if (
+    isTrustedAppHost(window.location.hostname) &&
+    isAllowedDiscordRedirectUri(originRedirect)
+  ) {
+    return originRedirect;
+  }
 
   if (configured && isAllowedDiscordRedirectUri(configured)) {
-    const configuredUrl = parseUrl(configured);
-    const configuredOrigin = configuredUrl?.origin ?? "";
+    if (
+      window.location.origin === configuredOrigin ||
+      areRelatedAppOrigins(window.location.origin, configuredOrigin)
+    ) {
+      return configured;
+    }
 
-    if (configured.startsWith("https://")) {
-      if (window.location.origin === configuredOrigin) {
-        return configured;
-      }
-      if (isLoopbackHost(window.location.hostname)) {
-        return configured;
-      }
+    if (configured.startsWith("https://") && isLoopbackHost(window.location.hostname)) {
+      return configured;
     }
 
     if (
@@ -167,10 +209,6 @@ export function getDiscordRedirectUri(): string {
       isLoopbackHost(configuredUrl.hostname) &&
       isLoopbackHost(window.location.hostname)
     ) {
-      return configured;
-    }
-
-    if (window.location.origin === configuredOrigin) {
       return configured;
     }
   }
