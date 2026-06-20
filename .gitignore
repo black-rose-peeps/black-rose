@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
 # Environment — never commit secrets
 .env
 .env.*
