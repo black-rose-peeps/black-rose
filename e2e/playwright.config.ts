@@ -54,5 +54,12 @@ export default defineConfig({
         timeout: 120_000,
         stdout: "pipe",
         stderr: "pipe",
+        env: {
+          ...process.env,
+          VITE_SUPABASE_URL:
+            process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:54321",
+          VITE_SUPABASE_ANON_KEY:
+            process.env.VITE_SUPABASE_ANON_KEY ?? "playwright-local-anon-key",
+        },
       },
 });
