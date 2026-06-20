@@ -1,0 +1,16 @@
+{
+  "name": "blackrose-arena-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed --project=desktop-chromium",
+    "test:debug": "playwright test --debug --project=desktop-chromium",
+    "report": "playwright show-report playwright-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.60.0"
+  }
+}
