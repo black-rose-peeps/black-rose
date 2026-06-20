@@ -1,31 +1,23 @@
 import { useCallback, useState } from "react";
-import { openDiscordApp } from "@/lib/discord-url";
-
-const SKIP_PROMPT_KEY = "br_discord_app_prompt_skip";
-
-function readSkipPrompt(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return localStorage.getItem(SKIP_PROMPT_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeSkipPrompt(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(SKIP_PROMPT_KEY, "1");
-  } catch {
-    // Storage may be unavailable (private mode, quota).
-  }
-}
+import {
+  isDiscordLinked,
+  readDiscordAppPromptSkip,
+  writeDiscordAppPromptSkip,
+} from "@/features/auth/services/discord";
+import { openDiscordAppFromUserGesture } from "@/lib/discord-url";
 
 export interface DiscordAppLinkRequest {
   url: string;
   label: string;
   /** OAuth sign-in uses different dialog copy and a browser fallback option. */
   kind?: "link" | "oauth";
+}
+
+function shouldOpenDiscordDirectly(kind: DiscordAppLinkRequest["kind"]): boolean {
+  if (kind !== "oauth") {
+    return readDiscordAppPromptSkip();
+  }
+  return isDiscordLinked() || readDiscordAppPromptSkip();
 }
 
 export function useDiscordAppLink() {
@@ -35,8 +27,8 @@ export function useDiscordAppLink() {
     (url: string, label = "Discord", kind: DiscordAppLinkRequest["kind"] = "link") => {
       if (typeof window === "undefined") return;
 
-      if (readSkipPrompt()) {
-        openDiscordApp(url);
+      if (shouldOpenDiscordDirectly(kind)) {
+        openDiscordAppFromUserGesture(url);
         return;
       }
 
@@ -48,7 +40,7 @@ export function useDiscordAppLink() {
   /** Called when the user confirms — navigation is handled by the dialog anchor. */
   const confirmDiscordAppLink = useCallback((dontAskAgain: boolean) => {
     if (dontAskAgain) {
-      writeSkipPrompt();
+      writeDiscordAppPromptSkip();
     }
     setPending(null);
   }, []);

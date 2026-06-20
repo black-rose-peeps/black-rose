@@ -3,7 +3,7 @@
  * Handles bracket generation, team validation, and automatic positioning
  */
 
-import { isEvenBracketFieldSize, singleElimRoundMatchCounts } from "../utils/bracket-field";
+import { isEvenBracketFieldSize, playInMatchCount, singleElimRoundMatchCounts, eliminationRoundLabel } from "../utils/bracket-field";
 
 export interface BracketMatch {
   matchId: string;
@@ -77,7 +77,7 @@ export class BracketEngine {
     // Generate rounds from first to final
     for (let roundNum = 1; roundNum <= totalRounds; roundNum++) {
       const matchesInRound = roundCounts[roundNum - 1];
-      const roundName = this.getRoundName(roundNum, totalRounds);
+      const roundName = this.getRoundName(roundNum, teamCount);
 
       const matches: BracketMatch[] = [];
 
@@ -166,14 +166,13 @@ export class BracketEngine {
   /**
    * Get round name based on position in bracket
    */
-  private getRoundName(roundNum: number, totalRounds: number): string {
-    const remainingRounds = totalRounds - roundNum + 1;
-
-    if (remainingRounds === 1) return "Grand Final";
-    if (remainingRounds === 2) return "Semifinals";
-    if (remainingRounds === 3) return "Quarterfinals";
-    if (remainingRounds === 4) return "Round of 16";
-    return `Round ${roundNum}`;
+  private getRoundName(roundNum: number, teamCount: number): string {
+    const roundCounts = singleElimRoundMatchCounts(teamCount);
+    const matchCount = roundCounts[roundNum - 1] ?? 0;
+    if (roundNum === 1 && playInMatchCount(teamCount) > 0) {
+      return "Opening — Play-in";
+    }
+    return eliminationRoundLabel(matchCount * 2);
   }
 
   /**

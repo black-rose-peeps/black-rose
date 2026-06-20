@@ -46,6 +46,34 @@ export function playInSeedPairings(teamCount: number): SeedPairing[] {
   return pairings;
 }
 
+/** Sequential 1v2, 3v4, … pairings (Swiss manual / non-bracket fields). */
+export function sequentialSeedPairings(teamCount: number): SeedPairing[] {
+  const pairings: SeedPairing[] = [];
+  for (let i = 0; i < teamCount / 2; i++) {
+    pairings.push({ seedA: i * 2 + 1, seedB: i * 2 + 2 });
+  }
+  return pairings;
+}
+
+/** Round-one pairings for the seeding UI when play-in layout is not used. */
+export function roundOneSeedingPairings(
+  teamCount: number,
+  options: { swissTraditional?: boolean } = {},
+): SeedPairing[] {
+  if (options.swissTraditional) {
+    return isPowerOfTwo(teamCount)
+      ? firstRoundSeedPairings(teamCount)
+      : sequentialSeedPairings(teamCount);
+  }
+
+  if (!isPowerOfTwo(teamCount)) {
+    throw new Error(
+      `roundOneSeedingPairings requires play-in seeding for non-power-of-2 size ${teamCount}.`,
+    );
+  }
+  return firstRoundSeedPairings(teamCount);
+}
+
 /** First-round match pairings for a full power-of-2 field. */
 export function firstRoundSeedPairings(fieldSize: number): SeedPairing[] {
   const order = standardSeedOrder(fieldSize);

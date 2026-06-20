@@ -72,3 +72,20 @@ export function singleElimRoundMatchCounts(teamCount: number): number[] {
 export function eliminationRoundCount(teamCount: number): number {
   return singleElimRoundMatchCounts(teamCount).length;
 }
+
+/** Human-readable label from how many teams compete in that round (e.g. 16 → "Round of 16"). */
+export function eliminationRoundLabel(teamsInRound: number): string {
+  if (teamsInRound <= 2) return "Final";
+  if (teamsInRound <= 4) return "Semifinals";
+  if (teamsInRound <= 8) return "Quarterfinals";
+  if (teamsInRound <= 16) return "Round of 16";
+  if (teamsInRound <= 32) return "Round of 32";
+  if (teamsInRound <= 64) return "Round of 64";
+  return `Round of ${teamsInRound}`;
+}
+
+/** Bracket-side prefix for double-elim labels (e.g. "Upper — Round of 16"). */
+export function prefixedEliminationRoundLabel(teamsInRound: number, prefix: string): string {
+  const base = eliminationRoundLabel(teamsInRound);
+  return `${prefix} — ${base}`;
+}

@@ -9,7 +9,11 @@ import {
   type PlayoffRound1Pairing,
   winsRequired,
 } from "./managed-bracket";
-import { isEvenBracketFieldSize } from "./bracket-field";
+import { isEvenBracketFieldSize, isPowerOfTwo } from "./bracket-field";
+import {
+  firstRoundSeedPairings,
+  sequentialSeedPairings,
+} from "@/features/tournaments/utils/tournament-seeding";
 
 export const SWISS_WINS_TO_ADVANCE = 3;
 export const SWISS_LOSSES_TO_ELIMINATE = 3;
@@ -191,7 +195,10 @@ export function pairSwissRoundTeams(
   return { pairs: allPairs, byes: crossPool };
 }
 
-export function buildSwissRound1(teamNames: string[]): {
+export function buildSwissRound1(
+  teamNames: string[],
+  options?: { useTraditionalRoundOne?: boolean },
+): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
   swiss: SwissBracketState;
@@ -206,7 +213,15 @@ export function buildSwissRound1(teamNames: string[]): {
   const matches: ManagedMatch[] = [];
   const matchIds: string[] = [];
 
-  for (let i = 0; i < n / 2; i++) {
+  const useTraditional = options?.useTraditionalRoundOne === true;
+  const pairings = useTraditional
+    ? isPowerOfTwo(n)
+      ? firstRoundSeedPairings(n)
+      : sequentialSeedPairings(n)
+    : sequentialSeedPairings(n);
+
+  for (let i = 0; i < pairings.length; i++) {
+    const { seedA, seedB } = pairings[i];
     const id = `${roundId}-m${i}`;
     matchIds.push(id);
     matches.push({
@@ -217,8 +232,8 @@ export function buildSwissRound1(teamNames: string[]): {
       bracketSide: "swiss",
       swissPool: "0-0",
       swissRound: 1,
-      teamA: teamNames[i * 2] ?? null,
-      teamB: teamNames[i * 2 + 1] ?? null,
+      teamA: teamNames[seedA - 1] ?? null,
+      teamB: teamNames[seedB - 1] ?? null,
       scoreA: 0,
       scoreB: 0,
       winner: null,

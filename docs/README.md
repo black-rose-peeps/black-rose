@@ -6,6 +6,8 @@ What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and m
 
 **Tournaments & bracket Supabase setup (step-by-step):** [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md)
 
+**Clone prod DB → staging project (local + Vercel preview):** [SUPABASE_STAGING_CLONE.md](./SUPABASE_STAGING_CLONE.md)
+
 ---
 
 ## Admin Console Login
