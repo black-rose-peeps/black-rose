@@ -6,6 +6,9 @@ import { nitro } from "nitro/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
+  server: {
+    port: 3000,
+  },
   plugins: [
     // tsconfigPaths must come first so path aliases resolve for all other plugins
     tsconfigPaths(),

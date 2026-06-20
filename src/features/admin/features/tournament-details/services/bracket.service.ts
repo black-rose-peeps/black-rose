@@ -6,6 +6,8 @@ import type { SwissBracketState } from "../utils/managed-swiss-bracket";
 
 export type BracketStateStatus = "not_generated" | "draft" | "published";
 
+export type SeedingMode = "traditional" | "manual";
+
 export interface PersistedBracketPayload {
   rounds: BracketRound[];
   prizeBreakdown?: PrizeTier[];
@@ -15,6 +17,7 @@ export interface PersistedBracketPayload {
     roundMetas: BracketRoundMeta[];
     roundFormats: Record<string, BestOfFormat>;
     assignmentTeamIds: Array<string | null>;
+    seedingMode?: SeedingMode;
     swiss?: SwissBracketState;
   };
 }

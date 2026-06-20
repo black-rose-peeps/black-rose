@@ -175,11 +175,9 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
 
   if (existing) {
     const updates: Record<string, string | null> = {
-      display_name: input.displayName.trim() || input.member.username,
+      avatar_url: avatarUrl,
       updated_at: new Date().toISOString(),
     };
-
-    updates.avatar_url = avatarUrl;
 
     const { data, error } = await supabase
       .from("member_profiles")

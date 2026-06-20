@@ -1,5 +1,5 @@
 import type { AnchorHTMLAttributes } from "react";
-import { isDiscordAppUrl, openDiscordInBrowser, toDiscordAppUrl } from "@/lib/discord-url";
+import { getDiscordLinkHandoff } from "@/lib/discord-url";
 
 interface DiscordAppAnchorProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "target" | "rel"> {
@@ -8,9 +8,9 @@ interface DiscordAppAnchorProps
 }
 
 /**
- * Native anchor that opens Discord in the desktop/mobile app on click.
- * Prefer this over programmatic navigation — browsers only hand off discord://
- * reliably from a direct user click on an <a href="discord://...">.
+ * Opens Discord invites/channels in the app on click.
+ * Mobile: https + same tab (OS universal links → Discord app).
+ * Desktop: discord:// in a new tab so this page stays open.
  */
 export function DiscordAppAnchor({
   discordUrl,
@@ -19,23 +19,15 @@ export function DiscordAppAnchor({
   onClick,
   ...props
 }: DiscordAppAnchorProps) {
-  const appUrl = toDiscordAppUrl(discordUrl);
-  const href = isDiscordAppUrl(appUrl) ? appUrl : discordUrl;
+  const { href, openInNewTab } = getDiscordLinkHandoff(discordUrl);
 
   return (
     <a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      target={openInNewTab ? "_blank" : undefined}
+      rel={openInNewTab ? "noopener noreferrer" : undefined}
       className={className}
-      onClick={(event) => {
-        onClick?.(event);
-        if (event.defaultPrevented) return;
-        if (!isDiscordAppUrl(appUrl)) {
-          event.preventDefault();
-          openDiscordInBrowser(discordUrl);
-        }
-      }}
+      onClick={onClick}
       {...props}
     >
       {children}

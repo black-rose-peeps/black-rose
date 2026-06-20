@@ -5,9 +5,8 @@ import { getDiscordRedirectUri } from "@/lib/app-url";
 import {
   clearDiscordLinked,
   clearStoredOAuthState,
-  markDiscordLinked,
   readStoredOAuthRedirectUri,
-  retryDiscordOAuthInApp,
+  retryDiscordOAuthAfterConsentRequired,
   shouldRetryDiscordWithConsent,
   validateOAuthState,
 } from "@/features/auth/services/discord";
@@ -79,7 +78,7 @@ function AuthCallbackPage() {
       if (search.error) {
         if (shouldRetryDiscordWithConsent(search.error)) {
           clearDiscordLinked();
-          retryDiscordOAuthInApp();
+          retryDiscordOAuthAfterConsentRequired();
           return;
         }
         clearStoredOAuthState();
@@ -108,7 +107,6 @@ function AuthCallbackPage() {
 
         clearStoredOAuthState();
         setSession(user);
-        markDiscordLinked();
         navigate({ to: getPostAuthPath(user.role), replace: true });
       } catch (err) {
         if (cancelled) return;

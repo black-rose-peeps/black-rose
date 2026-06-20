@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
+import { tournamentTeamsHaveSeeds } from "../../utils";
 import type { TournamentTeam } from "../../types";
 
 // ── Page size ──────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ interface TeamsTabProps {
 export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
   const [page, setPageState] = useState(1);
   const [selected, setSelected] = useState<TournamentTeam | null>(null);
+  const showSeeds = tournamentTeamsHaveSeeds(teams);
 
   const totalPages = Math.max(1, Math.ceil(teams.length / PAGE_SIZE));
   const safePage = clamp(page, totalPages);
@@ -99,8 +101,8 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                {["Team", "Captain", "Players", "Seed", ""].map((h) => (
-                  <TableHead key={h} className="font-tech text-label-readable uppercase">
+                {["Team", "Captain", "Players", ...(showSeeds ? ["Seed"] : []), ""].map((h) => (
+                  <TableHead key={h || "actions"} className="font-tech text-label-readable uppercase">
                     {h}
                   </TableHead>
                 ))}
@@ -124,9 +126,11 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
                   <TableCell>
                     <Skeleton className="h-4 w-12" />
                   </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-8" />
-                  </TableCell>
+                  {showSeeds && (
+                    <TableCell>
+                      <Skeleton className="h-4 w-8" />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Skeleton className="ml-auto h-7 w-14" />
                   </TableCell>
@@ -163,11 +167,11 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
       <div className="rounded-lg border border-border bg-card">
         {/* Mobile — card list */}
         <div className="divide-y divide-border md:hidden">
-          {paged.map((team, i) => (
+          {paged.map((team) => (
             <TeamMobileCard
               key={team.id}
               team={team}
-              seed={team.seed ?? start + i + 1}
+              showSeed={showSeeds}
               onOpen={() => setSelected(team)}
             />
           ))}
@@ -187,16 +191,18 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
                 <TableHead className="font-tech text-label-readable uppercase">
                   Players
                 </TableHead>
-                <TableHead className="font-tech text-label-readable uppercase">
-                  Seed
-                </TableHead>
+                {showSeeds && (
+                  <TableHead className="font-tech text-label-readable uppercase">
+                    Seed
+                  </TableHead>
+                )}
                 <TableHead className="text-right font-tech text-label-readable uppercase">
                   Actions
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paged.map((team, i) => (
+              {paged.map((team) => (
                 <TableRow
                   key={team.id}
                   className="cursor-pointer transition-colors hover:bg-secondary/40"
@@ -209,9 +215,11 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
                   <TableCell className="text-sm text-muted-foreground">
                     {team.players.length} players
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    #{team.seed ?? start + i + 1}
-                  </TableCell>
+                  {showSeeds && (
+                    <TableCell className="text-sm text-muted-foreground">
+                      {team.seed != null ? `#${team.seed}` : "—"}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <Button
                       type="button"
@@ -316,11 +324,11 @@ function TeamIdentity({ team }: { team: TournamentTeam }) {
 
 function TeamMobileCard({
   team,
-  seed,
+  showSeed,
   onOpen,
 }: {
   team: TournamentTeam;
-  seed: number;
+  showSeed: boolean;
   onOpen: () => void;
 }) {
   return (
@@ -352,10 +360,12 @@ function TeamMobileCard({
           <dt className="font-tech uppercase text-muted-foreground">Players</dt>
           <dd className="mt-0.5 text-sm">{team.players.length}</dd>
         </div>
-        <div>
-          <dt className="font-tech uppercase text-muted-foreground">Seed</dt>
-          <dd className="mt-0.5 text-sm">#{seed}</dd>
-        </div>
+        {showSeed && team.seed != null && (
+          <div>
+            <dt className="font-tech uppercase text-muted-foreground">Seed</dt>
+            <dd className="mt-0.5 text-sm">#{team.seed}</dd>
+          </div>
+        )}
       </dl>
     </div>
   );
@@ -402,7 +412,7 @@ function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () 
               <dt className="text-muted-foreground">Roster</dt>
               <dd className="ml-auto font-medium">{team.players.length} players</dd>
             </div>
-            {team.seed !== undefined && (
+            {team.seed != null && (
               <div className="flex items-center gap-2">
                 <span className="flex h-4 w-4 shrink-0 items-center justify-center text-center font-tech text-label-readable text-muted-foreground">
                   #

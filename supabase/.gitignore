@@ -1,6 +1,7 @@
 # Supabase
 .branches
 .temp
+backups-06_20_1am/
 
 # dotenvx
 .env

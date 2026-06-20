@@ -139,8 +139,9 @@ function rowToRecord(
   };
 }
 
+/** Columns present on production `tournament_champions` (portrait_url/story optional — add via migration). */
 const CHAMPION_ARCHIVE_COLUMNS =
-  "id, tournament_id, tournament_name, team_name, team_tag, mvp, completed_at, created_at, portrait_url, story";
+  "id, tournament_id, tournament_name, team_name, team_tag, mvp, completed_at, created_at";
 
 async function fetchArchiveRows(): Promise<TournamentChampionRow[]> {
   const { data, error } = await supabase

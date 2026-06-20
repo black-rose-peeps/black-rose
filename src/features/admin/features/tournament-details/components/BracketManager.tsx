@@ -45,13 +45,18 @@ import {
   updateSwissMatchScores,
   type SwissBracketState,
 } from "../utils/managed-swiss-bracket";
-import { eliminationRoundCount, orderedTeamNamesFromAssignments, playInMatchCount } from "../utils/bracket-field";
+import {
+  directSeedCount,
+  eliminationRoundCount,
+  orderedTeamNamesFromAssignments,
+  playInMatchCount,
+} from "../utils/bracket-field";
 import { assignmentsFromBracketMatches } from "@/features/tournaments/utils/tournament-seeding";
 import { isOpeningPlayInRound } from "@/features/tournaments/utils/bracket-display";
 import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/bracket-store";
 import { fetchBracketState } from "../services/bracket.service";
-import type { PersistedBracketPayload } from "../services/bracket.service";
+import type { PersistedBracketPayload, SeedingMode } from "../services/bracket.service";
 import { updateTournamentStatus } from "@/features/admin/features/tournaments/services/tournaments.service";
 import type { MockTournament } from "@/lib/mock-data";
 
@@ -100,6 +105,7 @@ function buildPersistedPayload(
     prizeBreakdown?: PrizeTier[];
     swiss?: SwissBracketState;
     teamNames: string[];
+    seedingMode?: SeedingMode;
   },
 ): PersistedBracketPayload {
   const placements = buildPodiumPlacements(
@@ -116,14 +122,17 @@ function buildPersistedPayload(
       roundMetas,
       roundFormats,
       assignmentTeamIds: assignments.map((t) => t?.id ?? null),
+      seedingMode: options.seedingMode,
       swiss: options.swiss,
     },
   };
 }
 
-function buildManagedState(teamNames: string[], format: string) {
+function buildManagedState(teamNames: string[], format: string, seedingMode: SeedingMode = "traditional") {
   if (isSwissFormat(format)) {
-    const built = buildSwissRound1(teamNames);
+    const built = buildSwissRound1(teamNames, {
+      useTraditionalRoundOne: seedingMode === "traditional",
+    });
     return {
       matches: built.matches,
       roundMetas: built.roundMetas,
@@ -260,6 +269,7 @@ export function BracketManager({
   const [assignments, setAssignments] = useState<Array<TournamentTeam | null>>(() =>
     Array(bracketSize).fill(null),
   );
+  const [seedingMode, setSeedingMode] = useState<SeedingMode>("traditional");
 
   useEffect(() => {
     const teamIdSet = new Set(teams.map((team) => team.id));
@@ -378,6 +388,7 @@ export function BracketManager({
                 prizeBreakdown,
                 swiss: restoredSwiss,
                 teamNames,
+                seedingMode: admin.seedingMode ?? "traditional",
               },
             );
             void publishBracket(tournamentId, payload).catch((err) => {
@@ -391,6 +402,9 @@ export function BracketManager({
               id ? (teams.find((t) => t.id === id) ?? null) : null,
             ),
           );
+          if (admin.seedingMode) {
+            setSeedingMode(admin.seedingMode);
+          }
           setBracketGenerated(true);
           setBracketLocked(true);
           setStatus("published");
@@ -426,7 +440,7 @@ export function BracketManager({
       const teamNames = orderedTeamNamesFromAssignments(derived.assignments, bracketSize);
       if (teamNames.length > 0) {
         bracketEngine.autoSeed(teamNames);
-        const managed = buildManagedState(teamNames, format);
+        const managed = buildManagedState(teamNames, format, seedingMode);
         setManagedMatches(managed.matches);
         setRoundMetas(managed.roundMetas);
         setRoundFormats(managed.roundFormats);
@@ -451,9 +465,8 @@ export function BracketManager({
     managedMatches.length,
   ]);
 
-  const openingPlayInMatches = isDoubleElim ? playInMatchCount(bracketSize) : 0;
-  const directSeeds =
-    openingPlayInMatches > 0 ? bracketSize - openingPlayInMatches * 2 : undefined;
+  const openingPlayInMatches = isSwiss ? 0 : playInMatchCount(bracketSize);
+  const directSeeds = openingPlayInMatches > 0 ? directSeedCount(bracketSize) : undefined;
 
   const validation = bracketEngine.validateBracketIntegrity();
   const assignedCount = assignments.slice(0, bracketSize).filter(Boolean).length;
@@ -477,7 +490,7 @@ export function BracketManager({
     const teamNames = orderedTeamNamesFromAssignments(assignments, bracketSize);
     bracketEngine.autoSeed(teamNames);
 
-    const managed = buildManagedState(teamNames, format);
+    const managed = buildManagedState(teamNames, format, seedingMode);
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
@@ -497,7 +510,7 @@ export function BracketManager({
 
     const names = orderedTeamNamesFromAssignments(nextAssignments, bracketSize);
     bracketEngine.autoSeed(names);
-    const managed = buildManagedState(names, format);
+    const managed = buildManagedState(names, format, seedingMode);
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
@@ -516,6 +529,26 @@ export function BracketManager({
     const shuffled = [...teams].sort(() => Math.random() - 0.5);
     syncBracketToSeeding(shuffled);
   }
+
+  function handleSeedingModeChange(mode: SeedingMode) {
+    if (seedingShuffleDisabled) return;
+    setSeedingMode(mode);
+    if (!bracketGenerated) return;
+
+    const assignedTeams = assignments.filter(Boolean) as TournamentTeam[];
+    if (assignedTeams.length !== teams.length) return;
+
+    const names = orderedTeamNamesFromAssignments(assignments, bracketSize);
+    bracketEngine.autoSeed(names);
+    const managed = buildManagedState(names, format, mode);
+    setManagedMatches(managed.matches);
+    setRoundMetas(managed.roundMetas);
+    setRoundFormats(managed.roundFormats);
+    setSwissState(managed.swiss ?? null);
+    setBracketGenerated(true);
+    setStatus("draft");
+  }
+
   function requestReset() {
     if (resultsLocked) {
       setBracketDialog({
@@ -632,6 +665,7 @@ export function BracketManager({
       prizeBreakdown,
       swiss: swissState ?? undefined,
       teamNames,
+      seedingMode,
     });
 
     setIsSaving(true);
@@ -679,6 +713,7 @@ export function BracketManager({
           prizeBreakdown,
           swiss: updatedSwiss,
           teamNames,
+          seedingMode,
         },
       );
       void publishBracket(tournamentId, payload, tournamentName).catch((err) => {
@@ -696,6 +731,7 @@ export function BracketManager({
       format,
       prizeBreakdown,
       teamNames,
+      seedingMode,
     ],
   );
 
@@ -973,8 +1009,12 @@ export function BracketManager({
             bracketSize={bracketSize}
             seedingMatchCount={seedingMatchCount}
             hasSwissByeSlot={hasSwissByeSlot}
+            isSwiss={isSwiss}
+            isDoubleElim={isDoubleElim}
             directSeedCount={directSeeds}
             playInMatchCount={openingPlayInMatches > 0 ? openingPlayInMatches : undefined}
+            seedingMode={seedingMode}
+            onSeedingModeChange={handleSeedingModeChange}
             disabled={seedingShuffleDisabled}
             onTeamSelect={onTeamSelect}
           />

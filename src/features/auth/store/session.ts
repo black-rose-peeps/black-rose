@@ -6,6 +6,7 @@
  */
 
 import type { AppUser } from "../types";
+import { markDiscordLinked } from "../services/discord";
 
 const SESSION_KEY = "br_session";
 const SESSION_CHANGED = "br-session-changed";
@@ -83,6 +84,10 @@ export function setSession(user: AppUser): void {
     sessionStorage.removeItem(SESSION_KEY);
     syncMemberSessionCookie(user.id);
     notifySessionChanged();
+
+    if (user.discordId) {
+      markDiscordLinked(user.discordId);
+    }
   } catch {
     // Storage may be unavailable (private mode, quota, SSR edge cases).
   }

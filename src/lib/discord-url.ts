@@ -1,3 +1,5 @@
+import { isAndroidDevice, isDiscordPhoneOrTablet } from "@/lib/device";
+
 /** Convert a https://discord.com (or discord.gg) URL into a discord:// deep link. */
 export function toDiscordAppUrl(httpsUrl: string): string {
   try {
@@ -24,6 +26,16 @@ export function toDiscordAppUrl(httpsUrl: string): string {
   return httpsUrl;
 }
 
+/**
+ * Desktop-only handoff URL for Discord app deep links.
+ * Discord intentionally does not support account OAuth via discord:// on mobile —
+ * see https://github.com/discord/discord-api-docs/discussions/7259
+ */
+export function getDiscordDesktopHandoffUrl(httpsUrl: string): string {
+  const appUrl = toDiscordAppUrl(httpsUrl);
+  return isDiscordAppUrl(appUrl) ? appUrl : httpsUrl;
+}
+
 /** True when the URL points at Discord (https invite, channel, user profile, etc.). */
 export function isDiscordHttpsUrl(url: string): boolean {
   try {
@@ -41,22 +53,31 @@ export function isDiscordAppUrl(url: string): boolean {
   return url.startsWith("discord://");
 }
 
+/** Account OAuth must stay in the mobile browser — Discord does not deep-link these flows. */
+export function shouldUseBrowserOAuthOnMobile(): boolean {
+  return isDiscordPhoneOrTablet();
+}
+
 /**
- * Open a Discord link in the desktop/mobile app.
- * Uses a native anchor click (target=_blank) so the browser keeps this page
- * and reliably hands off discord:// to the OS — works better than location.href.
+ * Open a non-OAuth Discord link in the desktop app from a user gesture.
+ * Do not use for account OAuth on mobile.
  */
-export function openDiscordApp(httpsUrl: string): void {
+export function openDiscordAppFromUserGesture(httpsUrl: string): void {
   if (typeof window === "undefined") return;
 
-  const appUrl = toDiscordAppUrl(httpsUrl);
-  if (!isDiscordAppUrl(appUrl)) {
-    openDiscordInBrowser(httpsUrl);
+  if (shouldUseBrowserOAuthOnMobile()) {
+    window.location.assign(httpsUrl);
+    return;
+  }
+
+  const handoffUrl = getDiscordDesktopHandoffUrl(httpsUrl);
+  if (!isDiscordAppUrl(handoffUrl)) {
+    window.location.assign(httpsUrl);
     return;
   }
 
   const anchor = document.createElement("a");
-  anchor.href = appUrl;
+  anchor.href = handoffUrl;
   anchor.target = "_blank";
   anchor.rel = "noopener noreferrer";
   anchor.style.display = "none";
@@ -65,18 +86,43 @@ export function openDiscordApp(httpsUrl: string): void {
   document.body.removeChild(anchor);
 }
 
+/** @deprecated Prefer openDiscordAppFromUserGesture inside a click handler. */
+export function openDiscordApp(httpsUrl: string): void {
+  openDiscordAppFromUserGesture(httpsUrl);
+}
+
 /** Open the https://discord.com page or invite in the browser. */
 export function openDiscordInBrowser(httpsUrl: string): void {
   if (typeof window === "undefined") return;
-  window.open(httpsUrl, "_blank", "noopener,noreferrer");
+  window.location.assign(httpsUrl);
 }
 
-/** @deprecated Use openDiscordApp */
+/** @deprecated Use openDiscordAppFromUserGesture */
 export function launchDiscordDesktopApp(httpsUrl: string): void {
-  openDiscordApp(httpsUrl);
+  openDiscordAppFromUserGesture(httpsUrl);
 }
 
-/** @deprecated Use openDiscordApp */
+/** @deprecated Use openDiscordAppFromUserGesture */
 export function openDiscordLink(httpsUrl: string): void {
-  openDiscordApp(httpsUrl);
+  openDiscordAppFromUserGesture(httpsUrl);
 }
+
+/** Resolve href for invite/channel links — platform-specific handoff. */
+export function getDiscordLinkHandoff(httpsUrl: string): { href: string; openInNewTab: boolean } {
+  const appUrl = toDiscordAppUrl(httpsUrl);
+
+  // Mobile: https URLs open the Discord app via universal/app links (reliable).
+  // discord:// in a new tab often leaves an empty browser tab.
+  if (isDiscordPhoneOrTablet()) {
+    return { href: httpsUrl, openInNewTab: false };
+  }
+
+  if (isDiscordAppUrl(appUrl)) {
+    return { href: appUrl, openInNewTab: true };
+  }
+
+  return { href: httpsUrl, openInNewTab: true };
+}
+
+/** @deprecated Unused on mobile OAuth */
+export { isAndroidDevice };

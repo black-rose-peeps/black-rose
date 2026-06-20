@@ -13,6 +13,7 @@ import {
 } from "@/features/auth/constants";
 import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
+import { isDiscordPhoneOrTablet } from "@/lib/device";
 import { StepNum } from "@/features/waitlist/components/StepNum";
 import { WAITLIST_TEMPLATES } from "@/features/waitlist/constants";
 import brLogo from "@/assets/BR Text white.png";
@@ -159,17 +160,19 @@ function WaitlistPage() {
                 <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
                 Join Discord
               </DiscordAppAnchor>
-              <p className="mt-2 text-xs text-muted-foreground">
-                No app?{" "}
-                <a
-                  href={DISCORD_SERVER_INVITE}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-foreground underline-offset-2 hover:underline"
-                >
-                  Open invite in browser
-                </a>
-              </p>
+              {!isDiscordPhoneOrTablet() && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  No app?{" "}
+                  <a
+                    href={DISCORD_SERVER_INVITE}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-foreground underline-offset-2 hover:underline"
+                  >
+                    Open invite in browser
+                  </a>
+                </p>
+              )}
             </div>
           </div>
 
