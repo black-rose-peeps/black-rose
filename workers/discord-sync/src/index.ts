@@ -1,5 +1,5 @@
 import type { Env } from "./env";
-import { getBoostWindowMinutes } from "./env";
+import { getBoostWindowMinutes, getSyncQueueConfig } from "./env";
 import { getBoostUntilMs, setBoostUntilMs } from "./boost";
 import { syncRoseRoles, type SyncSummary } from "./sync";
 
@@ -26,13 +26,16 @@ export default {
       const promise = runSync(env, { priorityNotVerified });
       ctx.waitUntil(promise);
       const summary = await promise;
-      return Response.json(summary);
+      return Response.json({ ...summary, queueConfig: getSyncQueueConfig(env) });
     }
 
     if (url.pathname === "/sync/status" && request.method === "GET") {
       if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
       const boostUntilMs = await getBoostUntilMs(env);
-      return Response.json(buildBoostStatus(boostUntilMs));
+      return Response.json({
+        ...buildBoostStatus(boostUntilMs),
+        queueConfig: getSyncQueueConfig(env),
+      });
     }
 
     if (url.pathname === "/sync/boost" && request.method === "POST") {
@@ -61,6 +64,7 @@ export default {
         alreadyActive: false,
         boostMinutes,
         ...buildBoostStatus(boostUntilMs),
+        queueConfig: getSyncQueueConfig(env),
         summary,
       });
     }
