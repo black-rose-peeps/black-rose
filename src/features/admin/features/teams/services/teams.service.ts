@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  logAdminAction,
+} from "@/features/admin/services/audit-log.service";
 import { deleteTeamAdminFn } from "../functions/delete-team.functions";
 import { deleteTeamCaptainFn } from "../functions/delete-team-captain.functions";
 import { transferTeamCaptainFn } from "../functions/transfer-team-captain.functions";
@@ -437,7 +441,15 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
     throw new Error(memberErr.message);
   }
 
-  return fetchTeamWithMembers(teamRow.id as string);
+  const team = await fetchTeamWithMembers(teamRow.id as string);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TEAM_CREATED,
+    entityType: "team",
+    entityId: team.id,
+    metadata: { teamName: team.name, tag: team.tag, game: team.game },
+  });
+
+  return team;
 }
 
 export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> {
@@ -473,6 +485,20 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
     },
     member.username,
   );
+
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TEAM_MEMBER_ADDED,
+    entityType: "team",
+    entityId: input.teamId,
+    metadata: {
+      teamName: team.name,
+      teamTag: team.tag,
+      memberId: member.id,
+      memberName: member.username,
+      role: memberRole,
+      game: team.game,
+    },
+  });
 
   return fetchTeamWithMembers(input.teamId);
 }
@@ -634,7 +660,22 @@ export async function updateTeam(
     throw new Error(error.message);
   }
 
-  return fetchTeamWithMembers(teamId);
+  const updated = await fetchTeamWithMembers(teamId);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TEAM_UPDATED,
+    entityType: "team",
+    entityId: teamId,
+    metadata: {
+      teamName: updated.name,
+      teamTag: updated.tag,
+      game: updated.game,
+      previousName: existing.name,
+      previousTag: existing.tag,
+      previousGame: existing.game,
+    },
+  });
+
+  return updated;
 }
 
 export async function acceptTeamInvite(teamId: string, userId: string): Promise<Team> {
@@ -682,6 +723,21 @@ export async function removeMemberFromTeam(teamId: string, userId: string): Prom
     .eq("user_id", userId);
 
   if (error) throw new Error(error.message);
+
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TEAM_MEMBER_REMOVED,
+    entityType: "team",
+    entityId: teamId,
+    metadata: {
+      teamName: team.name,
+      teamTag: team.tag,
+      memberId: userId,
+      memberName: member.displayName || member.username,
+      role: member.role,
+      game: team.game,
+    },
+  });
+
   return fetchTeamWithMembers(teamId);
 }
 
@@ -753,7 +809,14 @@ export async function leaveTeam(teamId: string, actingUserId: string): Promise<v
 }
 
 export async function deleteTeam(teamId: string): Promise<void> {
+  const team = await fetchTeamById(teamId);
   await deleteTeamAdminFn({ data: { teamId } });
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TEAM_DELETED,
+    entityType: "team",
+    entityId: teamId,
+    metadata: { teamName: team?.name, tag: team?.tag },
+  });
 }
 
 export async function deleteTeamAsCaptain(teamId: string): Promise<void> {

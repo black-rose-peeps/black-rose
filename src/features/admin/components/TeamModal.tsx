@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Crown,
   Hash,
-  Loader2,
   ShieldAlert,
   UserX,
   Users,
@@ -51,6 +50,10 @@ import {
   registrationActionsEnabled,
 } from "@/features/admin/features/participants/constants/registration-status";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
+import {
+  TeamRosterTableSkeleton,
+  TournamentHistoryListSkeleton,
+} from "@/features/admin/components/TeamRosterTableSkeleton";
 import { isValorantGame } from "@/features/member/utils/valorant-identity";
 import { cn } from "@/lib/utils";
 import type { Team, TeamMember } from "@/features/teams/types";
@@ -229,10 +232,7 @@ export function TeamModal({
               Tournament History
             </h3>
             {historyLoading ? (
-              <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Loading history…
-              </div>
+              <TournamentHistoryListSkeleton rows={3} />
             ) : tournamentHistory.length === 0 ? (
               <p className="text-sm text-muted-foreground">No prior tournament entries.</p>
             ) : (
@@ -287,10 +287,11 @@ export function TeamModal({
           </div>
 
           {rosterLoading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Fetching current roster…
-            </div>
+            <TeamRosterTableSkeleton
+              rows={Math.max(team.members.length, 3)}
+              variant="live"
+              showIgnColumn={showIgnColumn}
+            />
           ) : isLive ? (
             <Table>
               <TableHeader>

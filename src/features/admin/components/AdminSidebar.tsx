@@ -7,6 +7,7 @@ import {
   UserCheck,
   Shield,
   LogOut,
+  ScrollText,
 } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { logoutAdminConsole } from "@/features/admin/auth/admin-session";
@@ -37,6 +38,11 @@ const navigation = [
     name: "Participants",
     href: "/admin/participants",
     icon: UserCheck,
+  },
+  {
+    name: "Audit Log",
+    href: "/admin/audit-log",
+    icon: ScrollText,
   },
 
   // {

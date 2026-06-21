@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  logAdminAction,
+} from "@/features/admin/services/audit-log.service";
 import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
@@ -71,7 +75,15 @@ export async function createMember(input: CreateMemberInput): Promise<AdminMembe
     throw new Error(error.message);
   }
 
-  return rowToAdminMember(data);
+  const member = rowToAdminMember(data);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.MEMBER_CREATED,
+    entityType: "member",
+    entityId: member.id,
+    metadata: { username: member.username, discordUsername: member.discordUsername },
+  });
+
+  return member;
 }
 
 export async function updateMemberVerificationStatus(
@@ -86,7 +98,19 @@ export async function updateMemberVerificationStatus(
     .single();
 
   if (error) throw new Error(error.message);
-  return rowToAdminMember(data);
+  const member = rowToAdminMember(data);
+
+  void logAdminAction({
+    action:
+      status === "Verified"
+        ? ADMIN_AUDIT_ACTIONS.MEMBER_VERIFIED
+        : ADMIN_AUDIT_ACTIONS.MEMBER_UNVERIFIED,
+    entityType: "member",
+    entityId: member.id,
+    metadata: { username: member.username, discordUsername: member.discordUsername, status },
+  });
+
+  return member;
 }
 
 export async function resetMemberDiscordSyncQueue(id: string): Promise<AdminMember> {
@@ -101,7 +125,16 @@ export async function resetMemberDiscordSyncQueue(id: string): Promise<AdminMemb
     .single();
 
   if (error) throw new Error(error.message);
-  return rowToAdminMember(data);
+  const member = rowToAdminMember(data);
+
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.MEMBER_DISCORD_SYNC_RESET,
+    entityType: "member",
+    entityId: member.id,
+    metadata: { username: member.username, discordUsername: member.discordUsername },
+  });
+
+  return member;
 }
 
 export async function updateMember(id: string, input: CreateMemberInput): Promise<AdminMember> {
@@ -122,7 +155,15 @@ export async function updateMember(id: string, input: CreateMemberInput): Promis
     throw new Error(error.message);
   }
 
-  return rowToAdminMember(data);
+  const member = rowToAdminMember(data);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.MEMBER_UPDATED,
+    entityType: "member",
+    entityId: member.id,
+    metadata: { username: member.username, discordUsername: member.discordUsername },
+  });
+
+  return member;
 }
 
 export interface InviteSearchMember {
@@ -393,7 +434,9 @@ export async function searchVerifiedMembersForInvite(
   };
 }
 
-export async function deleteMember(id: string): Promise<void> {
+export async function deleteMember(id: string, options?: { stale?: boolean }): Promise<void> {
+  const member = await fetchMemberById(id);
+
   const { data: onTeam, error: teamErr } = await supabase
     .from("team_members")
     .select("id")
@@ -408,4 +451,15 @@ export async function deleteMember(id: string): Promise<void> {
 
   const { error } = await supabase.from("members").delete().eq("id", id);
   if (error) throw new Error(error.message);
+
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.MEMBER_DELETED,
+    entityType: "member",
+    entityId: id,
+    metadata: {
+      username: member?.username,
+      discordUsername: member?.discordUsername,
+      stale: options?.stale ?? false,
+    },
+  });
 }

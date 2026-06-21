@@ -5,11 +5,11 @@ export function useDeleteMember() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = useCallback(async (id: string): Promise<void> => {
+  const submit = useCallback(async (id: string, options?: { stale?: boolean }): Promise<void> => {
     setIsDeleting(true);
     setError(null);
     try {
-      await deleteMember(id);
+      await deleteMember(id, options);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to delete member.";
       setError(message);

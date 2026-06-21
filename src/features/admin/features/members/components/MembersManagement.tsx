@@ -53,6 +53,10 @@ import { useDeleteMember } from "../hooks/useDeleteMember";
 import { DEFAULT_SYNC_HOT_DAYS } from "../constants";
 import { getMemberSyncQueueConfig, triggerDiscordSync } from "../functions/discord-sync.functions";
 import { formatDiscordSyncMessage } from "../utils/discord-sync-config";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  logAdminAction,
+} from "@/features/admin/services/audit-log.service";
 
 export function MembersManagement() {
   const navigate = useNavigate();
@@ -144,6 +148,15 @@ export function MembersManagement() {
     setIsSyncError(false);
     try {
       const summary = await triggerDiscordSync({});
+      void logAdminAction({
+        action: ADMIN_AUDIT_ACTIONS.DISCORD_SYNC_TRIGGERED,
+        entityType: "discord_sync",
+        metadata: {
+          checked: summary.checked,
+          verified: summary.verified,
+          unverified: summary.unverified,
+        },
+      });
       setSyncMessage(formatDiscordSyncMessage(summary, summary.syncQueueConfig ?? syncQueueConfig));
       setIsSyncConfirmOpen(false);
     } catch (err) {
@@ -575,7 +588,9 @@ export function MembersManagement() {
           if (!deletingMember) return;
           resetDeleteError();
           try {
-            await deleteMemberSubmit(deletingMember.id);
+            await deleteMemberSubmit(deletingMember.id, {
+              stale: deleteMode === "stale",
+            });
             removeMember(deletingMember.id);
             resetDeleteError();
             setDeleteMode("default");

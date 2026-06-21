@@ -27,6 +27,10 @@ import {
   deleteProfileCommentAsAdmin,
   fetchProfileCommentsAsAdmin,
 } from "@/features/member/services/profile-comments.service";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  logAdminAction,
+} from "@/features/admin/services/audit-log.service";
 import type { ProfileComment } from "@/features/member/types/profile-comments";
 import { clampPage, pageNumbers } from "@/lib/pagination";
 
@@ -85,8 +89,19 @@ export function AdminMemberCommentsPanel({
   async function handleDelete(commentId: string) {
     setActionId(commentId);
     setError(null);
+    const comment = comments.find((entry) => entry.id === commentId);
     try {
       await deleteProfileCommentAsAdmin({ profileMemberId, commentId });
+      void logAdminAction({
+        action: ADMIN_AUDIT_ACTIONS.PROFILE_COMMENT_DELETED,
+        entityType: "profile_comment",
+        entityId: commentId,
+        metadata: {
+          memberName: profileOwner.displayName,
+          profileSlug: profileOwner.slug,
+          bodyPreview: comment?.body.slice(0, 120),
+        },
+      });
       setDeleteTargetId(null);
       await loadPage(page);
     } catch (err) {
