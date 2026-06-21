@@ -58,10 +58,7 @@ export function useTournamentRegistrations(tournamentId: string) {
     };
   }, [tournamentId]);
 
-  const debouncedRefetch = useMemo(
-    () => createAdminSilentRefetch(refetch),
-    [refetch],
-  );
+  const debouncedRefetch = useMemo(() => createAdminSilentRefetch(refetch), [refetch]);
 
   // Keep in sync when registrations are approved/updated elsewhere (e.g. Participants page).
   useEffect(() => {

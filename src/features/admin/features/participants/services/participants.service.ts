@@ -58,10 +58,7 @@ export async function setParticipantStatuses(
         const row = await setParticipantStatus(registrationId, status);
         updated.push(row);
       } catch (err) {
-        console.error(
-          `[participants] bulk status update failed for ${registrationId}:`,
-          err,
-        );
+        console.error(`[participants] bulk status update failed for ${registrationId}:`, err);
         failed.push(registrationId);
       }
     }),

@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -31,7 +32,13 @@ interface EditTeamModalProps {
   onUpdated: (team: Team) => void;
 }
 
-export function EditTeamModal({ open, team, existingTeams, onClose, onUpdated }: EditTeamModalProps) {
+export function EditTeamModal({
+  open,
+  team,
+  existingTeams,
+  onClose,
+  onUpdated,
+}: EditTeamModalProps) {
   const [values, setValues] = useState<Pick<CreateTeamFormValues, "name" | "tag" | "game">>({
     name: "",
     tag: "",
@@ -84,74 +91,76 @@ export function EditTeamModal({ open, team, existingTeams, onClose, onUpdated }:
   if (!team) return null;
 
   return (
-    <Dialog
+    <AdaptiveModal
       open={open}
       onOpenChange={(next) => {
         if (!next && !isSubmitting) onClose();
       }}
     >
-      <DialogContent className="border-border bg-card sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl tracking-wider">Edit Team</DialogTitle>
-          <DialogDescription>
-            Update [{team.tag}] {team.name}. Captain changes are not supported here yet.
-          </DialogDescription>
-        </DialogHeader>
+      <AdaptiveModalContent className="border-border bg-card sm:max-w-lg" mobileSize="tall">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AdaptiveModalHeader>
+            <AdaptiveModalTitle>Edit Team</AdaptiveModalTitle>
+            <AdaptiveModalDescription>
+              Update [{team.tag}] {team.name}. Captain changes are not supported here yet.
+            </AdaptiveModalDescription>
+          </AdaptiveModalHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="edit-team-name">Team Name</Label>
-              <Input
-                id="edit-team-name"
-                value={values.name}
-                onChange={(e) => updateField("name", e.target.value)}
-                disabled={isSubmitting}
-                className="bg-background/50"
-              />
-              {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+          <AdaptiveModalBody className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="edit-team-name">Team Name</Label>
+                <Input
+                  id="edit-team-name"
+                  value={values.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  disabled={isSubmitting}
+                  className="bg-background/50"
+                />
+                {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-team-tag">Tag</Label>
+                <Input
+                  id="edit-team-tag"
+                  value={values.tag}
+                  onChange={(e) => updateField("tag", e.target.value.toUpperCase())}
+                  disabled={isSubmitting}
+                  className="bg-background/50 uppercase"
+                />
+                {fieldErrors.tag && <p className="text-xs text-destructive">{fieldErrors.tag}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-team-game">Game</Label>
+                <Select
+                  value={values.game}
+                  onValueChange={(game) => updateField("game", game as Team["game"])}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="edit-team-game" className="bg-background/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ADMIN_TEAM_GAMES.map((game) => (
+                      <SelectItem key={game.value} value={game.value}>
+                        {game.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-team-tag">Tag</Label>
-              <Input
-                id="edit-team-tag"
-                value={values.tag}
-                onChange={(e) => updateField("tag", e.target.value.toUpperCase())}
-                disabled={isSubmitting}
-                className="bg-background/50 uppercase"
-              />
-              {fieldErrors.tag && <p className="text-xs text-destructive">{fieldErrors.tag}</p>}
-            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </AdaptiveModalBody>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-team-game">Game</Label>
-              <Select
-                value={values.game}
-                onValueChange={(game) => updateField("game", game as Team["game"])}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger id="edit-team-game" className="bg-background/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ADMIN_TEAM_GAMES.map((game) => (
-                    <SelectItem key={game.value} value={game.value}>
-                      {game.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <DialogFooter className="gap-2 sm:gap-0">
+          <AdaptiveModalFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
@@ -162,9 +171,9 @@ export function EditTeamModal({ open, team, existingTeams, onClose, onUpdated }:
             >
               {isSubmitting ? "Saving…" : "Save Changes"}
             </Button>
-          </DialogFooter>
+          </AdaptiveModalFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

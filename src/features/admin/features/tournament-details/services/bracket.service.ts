@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
@@ -100,7 +101,29 @@ export async function savePublishedBracket(
   });
 
   if (error) throw new Error(error.message);
+
+  const tournamentName = await fetchTournamentNameForAudit(tournamentId);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.BRACKET_PUBLISHED,
+    entityType: "tournament",
+    entityId: tournamentId,
+    metadata: {
+      tournamentName,
+      format: payload.admin?.format ?? null,
+      roundCount: payload.rounds.length,
+    },
+  });
   return rowToState(data as Record<string, unknown>);
+}
+
+async function fetchTournamentNameForAudit(tournamentId: string): Promise<string | undefined> {
+  const { data } = await supabase
+    .from("tournaments")
+    .select("name")
+    .eq("id", tournamentId)
+    .maybeSingle();
+
+  return typeof data?.name === "string" ? data.name : undefined;
 }
 
 // ── Champion detection ─────────────────────────────────────────────────────
@@ -228,6 +251,14 @@ export async function resetBracketState(tournamentId: string): Promise<void> {
   });
 
   if (error) throw new Error(error.message);
+
+  const tournamentName = await fetchTournamentNameForAudit(tournamentId);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.BRACKET_RESET,
+    entityType: "tournament",
+    entityId: tournamentId,
+    metadata: { tournamentName },
+  });
 
   await deleteTournamentChampion(tournamentId);
 }

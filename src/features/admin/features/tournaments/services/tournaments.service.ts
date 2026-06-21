@@ -8,6 +8,7 @@ import {
   syncTournamentChampionArchive,
 } from "@/features/admin/features/tournament-details/services/bracket.service";
 import { supabase } from "@/lib/supabase";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import type { MockTournament } from "@/lib/mock-data";
 import {
   isRegistrationDeadlineExtended,
@@ -70,6 +71,29 @@ function rowToTournament(row: Record<string, unknown>): MockTournament {
 
 function participationColumnsMissing(message: string): boolean {
   return message.includes("participation_type") || message.includes("wwm_mode");
+}
+
+function collectTournamentEditChanges(
+  previous: MockTournament,
+  input: CreateTournamentInput,
+): string[] {
+  const changed: string[] = [];
+  if (previous.name !== input.name) changed.push("name");
+  if (previous.game !== input.game) changed.push("game");
+  if (previous.format !== input.format) changed.push("format");
+  if (previous.prizePool !== input.prizePool) changed.push("prize pool");
+  if (previous.startDate !== input.startDate) changed.push("start date");
+  if (previous.registrationDeadline !== input.registrationDeadline) {
+    changed.push("registration deadline");
+  }
+  if (previous.teamCap !== input.teamCap) changed.push("team cap");
+  if (previous.region !== input.region) changed.push("region");
+  if (previous.participationType !== input.participationType) {
+    changed.push("participation type");
+  }
+  if ((previous.wwmMode ?? null) !== (input.wwmMode ?? null)) changed.push("WWM mode");
+  if (input.status !== undefined && previous.status !== input.status) changed.push("status");
+  return changed;
 }
 
 async function reopenRegistrationIfDeadlineExtended(
@@ -193,7 +217,14 @@ export async function createTournament(input: CreateTournamentInput): Promise<Mo
     }
     throw new Error(error.message);
   }
-  return rowToTournament(data);
+  const tournament = rowToTournament(data);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TOURNAMENT_CREATED,
+    entityType: "tournament",
+    entityId: tournament.id,
+    metadata: { tournamentName: tournament.name, game: tournament.game },
+  });
+  return tournament;
 }
 
 export async function syncTournamentTeamCount(tournamentId: string, count: number): Promise<void> {
@@ -244,7 +275,21 @@ export async function updateTournamentStatus(
     await reconcileTournamentTeamCount(tournamentId, previous.teamsRegistered);
   }
 
-  return rowToTournament(data);
+  const updated = rowToTournament(data);
+  if (previous && previous.status !== status) {
+    void logAdminAction({
+      action: ADMIN_AUDIT_ACTIONS.TOURNAMENT_STATUS_CHANGED,
+      entityType: "tournament",
+      entityId: tournamentId,
+      metadata: {
+        tournamentName: updated.name?.trim() || previous.name?.trim(),
+        previousStatus: previous.status,
+        newStatus: status,
+      },
+    });
+  }
+
+  return updated;
 }
 
 export async function updateTournamentPrizeBreakdown(
@@ -266,7 +311,19 @@ export async function updateTournamentPrizeBreakdown(
     }
     throw new Error(error.message);
   }
-  return rowToTournament(data);
+
+  const tournament = rowToTournament(data);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TOURNAMENT_PRIZE_UPDATED,
+    entityType: "tournament",
+    entityId: id,
+    metadata: {
+      tournamentName: tournament.name,
+      tierCount: prizeBreakdown.length,
+    },
+  });
+
+  return tournament;
 }
 
 export async function updateTournament(
@@ -336,7 +393,27 @@ export async function updateTournament(
   }
 
   updated = await reopenRegistrationIfDeadlineExtended(previous, updated);
-  return hydrateTournament(updated);
+  updated = hydrateTournament(updated);
+
+  if (previous) {
+    const changedFields = collectTournamentEditChanges(previous, input);
+    if (changedFields.length > 0) {
+      void logAdminAction({
+        action: ADMIN_AUDIT_ACTIONS.TOURNAMENT_UPDATED,
+        entityType: "tournament",
+        entityId: id,
+        metadata: {
+          tournamentName: updated.name,
+          changedFields,
+          ...(previous.status !== updated.status
+            ? { previousStatus: previous.status, newStatus: updated.status }
+            : {}),
+        },
+      });
+    }
+  }
+
+  return updated;
 }
 
 /** Unregister all teams from a tournament. Does not delete rows in `teams`. */
@@ -383,6 +460,13 @@ async function unregisterAllTeamsFromTournament(tournamentId: string): Promise<v
 }
 
 export async function deleteTournament(id: string): Promise<void> {
+  let tournament: MockTournament | null = null;
+  try {
+    tournament = await fetchTournamentById(id);
+  } catch {
+    // Audit metadata is optional; deletion must not depend on a pre-read.
+  }
+
   let { data, error } = await supabase.rpc("delete_tournament_cascade", {
     p_tournament_id: id,
   });
@@ -393,13 +477,20 @@ export async function deleteTournament(id: string): Promise<void> {
     }));
   }
 
-  if (!error && data) return;
+  if (!error && data) {
+    void logAdminAction({
+      action: ADMIN_AUDIT_ACTIONS.TOURNAMENT_DELETED,
+      entityType: "tournament",
+      entityId: id,
+      metadata: { tournamentName: tournament?.name },
+    });
+    return;
+  }
 
   if (error && !isMissingRpcError(error.message)) {
     throw new Error(error.message);
   }
 
-  const tournament = await fetchTournamentById(id);
   if (!tournament) {
     throw new Error("Tournament not found or could not be deleted.");
   }
@@ -408,4 +499,11 @@ export async function deleteTournament(id: string): Promise<void> {
 
   const { error: deleteErr } = await supabase.from("tournaments").delete().eq("id", id);
   if (deleteErr) throw new Error(deleteErr.message);
+
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.TOURNAMENT_DELETED,
+    entityType: "tournament",
+    entityId: id,
+    metadata: { tournamentName: tournament?.name },
+  });
 }

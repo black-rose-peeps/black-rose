@@ -1,16 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  CalendarClock,
-  CheckCircle2,
-  Swords,
-  Trophy,
-  Users,
-  UsersRound,
-} from "lucide-react";
+import { CalendarClock, CheckCircle2, Swords, Trophy, Users, UsersRound } from "lucide-react";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import { AdminPageContent } from "@/features/admin/components/AdminPageContent";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
-import { AdminEmptyTitle, AdminEmptyTitleAllClear } from "@/features/admin/constants/empty-state-titles";
+import {
+  AdminEmptyTitle,
+  AdminEmptyTitleAllClear,
+} from "@/features/admin/constants/empty-state-titles";
 import { Panel, PanelHeader, StatCard, StatusPill } from "@/features/admin/components/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -19,6 +16,12 @@ import {
   fetchAdminDashboard,
   type AdminDashboardData,
 } from "@/features/admin/services/dashboard.service";
+import {
+  DashboardMobileHero,
+  DashboardMobileStats,
+  DashboardMobileTournaments,
+  DashboardMobilePendingApprovals,
+} from "@/features/admin/features/dashboard/components/mobile";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
@@ -91,14 +94,16 @@ function AdminDashboard() {
   return (
     <>
       <AdminTopbar title="Dashboard" subtitle="Operations Overview" />
-      <div className="flex flex-1 flex-col gap-8 px-6 py-8 lg:px-10">
+      <AdminPageContent gap="loose">
         {error && (
           <div className="border border-red-400/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
             {error}
           </div>
         )}
 
-        <section className="relative overflow-hidden border border-white/[0.08] bg-[oklch(0.08_0_0)] px-6 py-8 lg:px-8">
+        <DashboardMobileHero />
+
+        <section className="relative hidden overflow-hidden border border-white/[0.08] bg-[oklch(0.08_0_0)] px-6 py-8 md:block lg:px-8">
           <div className="pointer-events-none absolute inset-0 grid-bg opacity-35" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-linear-to-b from-white/[0.04] to-transparent" />
           <div className="relative">
@@ -116,7 +121,9 @@ function AdminDashboard() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <DashboardMobileStats stats={stats} isLoading={isLoading} />
+
+        <section className="hidden grid-cols-1 gap-4 sm:grid-cols-2 md:grid xl:grid-cols-5">
           <StatCard
             title="Total Members"
             value={isLoading ? "—" : stats.totalMembers.toLocaleString()}
@@ -149,7 +156,15 @@ function AdminDashboard() {
           />
         </section>
 
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="flex flex-col gap-4 md:hidden">
+          <DashboardMobileTournaments tournaments={activeTournaments} isLoading={isLoading} />
+          <DashboardMobilePendingApprovals
+            registrations={pendingRegistrations}
+            isLoading={isLoading}
+          />
+        </div>
+
+        <section className="hidden grid-cols-1 gap-6 md:grid xl:grid-cols-3">
           <Panel className="clip-angle overflow-hidden border-white/[0.08] bg-[oklch(0.09_0_0)] xl:col-span-2">
             <PanelHeader
               eyebrow="Live Operations"
@@ -164,41 +179,37 @@ function AdminDashboard() {
               }
             />
             <div className="divide-y divide-white/[0.06]">
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 px-6 py-5">
-                    <Skeleton className="h-10 w-10 shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-5 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                activeTournaments.map((t) => (
-                  <Link
-                    key={t.id}
-                    to="/admin/tournaments/$id"
-                    params={{ id: t.id }}
-                    className="group flex items-center justify-between gap-4 px-6 py-5 transition hover:bg-white/[0.03]"
-                  >
-                    <div className="flex min-w-0 items-center gap-4">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center border border-white/10 bg-white/[0.04] transition group-hover:border-white/20">
-                        <Trophy className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-                      </div>
-                      <div className="min-w-0 flex flex-col leading-tight">
-                        <span className="truncate font-title text-lg">
-                          {t.name}
-                        </span>
-                        <span className="mt-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                          {t.game} · {t.prizePool} · {t.teamsRegistered}/{t.teamCap} slots
-                        </span>
+              {isLoading
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 px-6 py-5">
+                      <Skeleton className="h-10 w-10 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-5 w-48" />
+                        <Skeleton className="h-3 w-32" />
                       </div>
                     </div>
-                    <StatusPill status={t.status} />
-                  </Link>
-                ))
-              )}
+                  ))
+                : activeTournaments.map((t) => (
+                    <Link
+                      key={t.id}
+                      to="/admin/tournaments/$id"
+                      params={{ id: t.id }}
+                      className="group flex items-center justify-between gap-4 px-6 py-5 transition hover:bg-white/[0.03]"
+                    >
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="grid h-10 w-10 shrink-0 place-items-center border border-white/10 bg-white/[0.04] transition group-hover:border-white/20">
+                          <Trophy className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                        </div>
+                        <div className="min-w-0 flex flex-col leading-tight">
+                          <span className="truncate font-title text-lg">{t.name}</span>
+                          <span className="mt-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                            {t.game} · {t.prizePool} · {t.teamsRegistered}/{t.teamCap} slots
+                          </span>
+                        </div>
+                      </div>
+                      <StatusPill status={t.status} />
+                    </Link>
+                  ))}
               {!isLoading && activeTournaments.length === 0 && (
                 <div className="px-6 py-8">
                   <AdminEmptyState
@@ -234,40 +245,38 @@ function AdminDashboard() {
               }
             />
             <div className="divide-y divide-white/[0.06]">
-              {isLoading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between gap-4 px-6 py-5">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-9 w-9 shrink-0" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-28" />
-                        <Skeleton className="h-3 w-20" />
+              {isLoading
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between gap-4 px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-9 w-9 shrink-0" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
                       </div>
+                      <Skeleton className="h-6 w-16 rounded-full" />
                     </div>
-                    <Skeleton className="h-6 w-16 rounded-full" />
-                  </div>
-                ))
-              ) : (
-                pendingRegistrations.slice(0, 5).map((team) => (
-                  <div
-                    key={team.id}
-                    className="flex items-center justify-between gap-4 px-6 py-5"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/[0.03] text-[10px] font-tech">
-                        {team.tag}
+                  ))
+                : pendingRegistrations.slice(0, 5).map((team) => (
+                    <div
+                      key={team.id}
+                      className="flex items-center justify-between gap-4 px-6 py-5"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/[0.03] text-[10px] font-tech">
+                          {team.tag}
+                        </div>
+                        <div className="min-w-0 flex flex-col leading-tight">
+                          <span className="truncate text-sm font-medium">{team.name}</span>
+                          <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                            {team.captain} · {team.registrationDate}
+                          </span>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex flex-col leading-tight">
-                        <span className="truncate text-sm font-medium">{team.name}</span>
-                        <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                          {team.captain} · {team.registrationDate}
-                        </span>
-                      </div>
+                      <StatusPill status={team.status} />
                     </div>
-                    <StatusPill status={team.status} />
-                  </div>
-                ))
-              )}
+                  ))}
               {!isLoading && pendingRegistrations.length === 0 && (
                 <div className="px-6 py-8">
                   <AdminEmptyState
@@ -289,7 +298,7 @@ function AdminDashboard() {
             </div>
           </Panel>
         </section>
-      </div>
+      </AdminPageContent>
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 import {
@@ -499,6 +500,38 @@ export async function updateRegistrationStatus(
   const registrationCount = await countTournamentRegistrations(existing.tournamentId);
   await syncTournamentTeamCount(existing.tournamentId, registrationCount);
 
+  if (existing.status !== status) {
+    const tournamentName =
+      tournament?.name ?? (await fetchTournamentById(existing.tournamentId))?.name;
+    if (status === "Approved") {
+      void logAdminAction({
+        action: ADMIN_AUDIT_ACTIONS.REGISTRATION_APPROVED,
+        entityType: "registration",
+        entityId: registrationId,
+        metadata: {
+          teamName: existing.name,
+          tournamentId: existing.tournamentId,
+          tournamentName,
+          previousStatus: existing.status,
+          newStatus: status,
+        },
+      });
+    } else if (status === "Rejected") {
+      void logAdminAction({
+        action: ADMIN_AUDIT_ACTIONS.REGISTRATION_REJECTED,
+        entityType: "registration",
+        entityId: registrationId,
+        metadata: {
+          teamName: existing.name,
+          tournamentId: existing.tournamentId,
+          tournamentName,
+          previousStatus: existing.status,
+          newStatus: status,
+        },
+      });
+    }
+  }
+
   return fetchRegistrationWithPlayers(registrationId);
 }
 
@@ -684,7 +717,20 @@ export async function addTeamToTournament(
     await assignTeamActiveTournament(rosterTeamId, tournamentId, tournament.name);
   }
 
-  return fetchRegistrationWithPlayers(reg.id as string);
+  const registration = await fetchRegistrationWithPlayers(reg.id as string);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ADDED,
+    entityType: "registration",
+    entityId: registration.id,
+    metadata: {
+      teamName: rosterTeam.name,
+      tournamentId,
+      tournamentName: tournament.name,
+      status: registrationStatus,
+    },
+  });
+
+  return registration;
 }
 
 export interface AddTeamsToTournamentResult {
@@ -761,7 +807,22 @@ export async function addMemberToTournament(
 
   const updatedCount = await countTournamentRegistrations(tournamentId);
   await syncTournamentTeamCount(tournamentId, updatedCount);
-  return fetchRegistrationWithPlayers(reg.id as string);
+
+  const registration = await fetchRegistrationWithPlayers(reg.id as string);
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ADDED,
+    entityType: "registration",
+    entityId: registration.id,
+    metadata: {
+      memberName: member.username,
+      memberId: member.id,
+      tournamentId,
+      tournamentName: tournament.name,
+      status: registrationStatus,
+    },
+  });
+
+  return registration;
 }
 
 export interface AddMembersToTournamentResult {
@@ -892,6 +953,19 @@ export async function resyncRegistrationsForTeam(rosterTeamId: string): Promise<
 }
 
 export async function removeTeamFromTournament(registrationId: string): Promise<void> {
+  let auditExisting: MockTeam | null = null;
+  let auditTournament: Awaited<ReturnType<typeof fetchTournamentById>> | null = null;
+  try {
+    auditExisting = await fetchRegistrationWithPlayers(registrationId);
+    try {
+      auditTournament = await fetchTournamentById(auditExisting.tournamentId);
+    } catch {
+      // Tournament name for audit is optional.
+    }
+  } catch {
+    // Registration read for audit is optional; deletion uses the row fetch below.
+  }
+
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
     .select("tournament_id, roster_team_id")
@@ -929,4 +1003,17 @@ export async function removeTeamFromTournament(registrationId: string): Promise<
 
     if (teamErr) throw new Error(teamErr.message);
   }
+
+  void logAdminAction({
+    action: ADMIN_AUDIT_ACTIONS.REGISTRATION_REMOVED,
+    entityType: "registration",
+    entityId: registrationId,
+    metadata: {
+      teamName: auditExisting?.name,
+      memberName: auditExisting?.memberUserId ? auditExisting.name : undefined,
+      tournamentId: auditExisting?.tournamentId,
+      tournamentName: auditTournament?.name,
+      previousStatus: auditExisting?.status,
+    },
+  });
 }

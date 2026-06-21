@@ -2,10 +2,7 @@
  * Shared bracket build helpers — wiring, seeding placement, labels, play-in.
  */
 
-import {
-  bracketCapacity,
-  directSeedCount,
-} from "./bracket-field";
+import { bracketCapacity, directSeedCount } from "./bracket-field";
 import { sortBracketRoundsByFlow } from "@/features/tournaments/utils/bracket-round-order";
 import {
   bracketRoundOnePairings,
@@ -214,10 +211,7 @@ function matchIdSlotIndex(matchId: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function orderedMatchIdsForLabeling(
-  matches: ManagedMatch[],
-  matchIds: string[],
-): string[] {
+function orderedMatchIdsForLabeling(matches: ManagedMatch[], matchIds: string[]): string[] {
   const roundMatches = matchIds
     .map((id) => matches.find((entry) => entry.id === id))
     .filter((entry): entry is ManagedMatch => !!entry);
@@ -233,8 +227,7 @@ function orderedMatchIdsForLabeling(
   if (bijective) {
     return [...roundMatches]
       .sort(
-        (a, b) =>
-          matchIdSlotIndex(a.winnerNext!.matchId) - matchIdSlotIndex(b.winnerNext!.matchId),
+        (a, b) => matchIdSlotIndex(a.winnerNext!.matchId) - matchIdSlotIndex(b.winnerNext!.matchId),
       )
       .map((match) => match.id);
   }
@@ -552,9 +545,7 @@ function addPlayInLowerPool(
   });
 
   const poolFeederIds =
-    lbR1Count > 0
-      ? reduceLowerPoolWinners(matches, roundMetas, piMatchIds, lbR1Count)
-      : piMatchIds;
+    lbR1Count > 0 ? reduceLowerPoolWinners(matches, roundMetas, piMatchIds, lbR1Count) : piMatchIds;
 
   const crossoverCount = Math.min(poolFeederIds.length, lbR1Count, lbR2Count);
   const crossoverIds: string[] = [];
@@ -617,9 +608,7 @@ export function assertUniqueFeederSlots(matches: ManagedMatch[]): void {
       const key = `${ref.matchId}:${ref.slot}`;
       const existing = slots.get(key);
       if (existing && existing !== match.id) {
-        throw new Error(
-          `Bracket wiring conflict: ${existing} and ${match.id} both feed ${key}.`,
-        );
+        throw new Error(`Bracket wiring conflict: ${existing} and ${match.id} both feed ${key}.`);
       }
       slots.set(key, match.id);
     }

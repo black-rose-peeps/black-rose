@@ -40,7 +40,9 @@ export function SortableTableHead({
         )}
       >
         <span className="truncate">{label}</span>
-        <Icon className={cn("h-3 w-3", isActive ? "text-foreground" : "text-muted-foreground/60")} />
+        <Icon
+          className={cn("h-3 w-3", isActive ? "text-foreground" : "text-muted-foreground/60")}
+        />
       </button>
     </TableHead>
   );
