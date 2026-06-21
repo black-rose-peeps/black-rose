@@ -30,7 +30,9 @@ export function formValuesToAddTeamMemberInput(
   };
 }
 
-export function teamToEditFormValues(team: Team): Pick<CreateTeamFormValues, "name" | "tag" | "game"> {
+export function teamToEditFormValues(
+  team: Team,
+): Pick<CreateTeamFormValues, "name" | "tag" | "game"> {
   return {
     name: team.name,
     tag: team.tag,
@@ -153,7 +155,10 @@ function getActiveTeamMemberIds(teams: Team[]): Set<string> {
 }
 
 /** Verified members not already on a team — eligible as a new team captain. */
-export function getMembersAvailableForNewTeam(members: AdminMember[], teams: Team[]): AdminMember[] {
+export function getMembersAvailableForNewTeam(
+  members: AdminMember[],
+  teams: Team[],
+): AdminMember[] {
   const onTeam = getActiveTeamMemberIds(teams);
   return members.filter((m) => m.status === "Verified" && !onTeam.has(m.id));
 }

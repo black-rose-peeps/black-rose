@@ -35,6 +35,7 @@ import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminParticipantsRouteImport } from './routes/admin.participants'
+import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminAnnouncementsRouteImport } from './routes/admin.announcements'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin.users.index'
 import { Route as AdminTournamentsIndexRouteImport } from './routes/admin.tournaments.index'
@@ -171,6 +172,11 @@ const AdminParticipantsRoute = AdminParticipantsRouteImport.update({
   path: '/participants',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
+  id: '/audit-log',
+  path: '/audit-log',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
   id: '/announcements',
   path: '/announcements',
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/unauthorized': typeof UnauthorizedRoute
   '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/unauthorized': typeof UnauthorizedRoute
   '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/unauthorized': typeof UnauthorizedRoute
   '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/waitlist'
     | '/admin/announcements'
+    | '/admin/audit-log'
     | '/admin/participants'
     | '/admin/settings'
     | '/admin/teams'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/waitlist'
     | '/admin/announcements'
+    | '/admin/audit-log'
     | '/admin/participants'
     | '/admin/settings'
     | '/admin/teams'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/waitlist'
     | '/admin/announcements'
+    | '/admin/audit-log'
     | '/admin/participants'
     | '/admin/settings'
     | '/admin/teams'
@@ -587,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminParticipantsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/audit-log': {
+      id: '/admin/audit-log'
+      path: '/audit-log'
+      fullPath: '/admin/audit-log'
+      preLoaderRoute: typeof AdminAuditLogRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/announcements': {
       id: '/admin/announcements'
       path: '/announcements'
@@ -654,6 +673,7 @@ const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
+  AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminParticipantsRoute: typeof AdminParticipantsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminTeamsRoute: typeof AdminTeamsRoute
@@ -664,6 +684,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAnnouncementsRoute: AdminAnnouncementsRoute,
+  AdminAuditLogRoute: AdminAuditLogRoute,
   AdminParticipantsRoute: AdminParticipantsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminTeamsRoute: AdminTeamsRoute,

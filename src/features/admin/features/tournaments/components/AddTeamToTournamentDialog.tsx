@@ -179,7 +179,10 @@ export function AddTeamToTournamentDialog({
             be active in one live or upcoming event at a time — they become eligible again once
             their current tournament is completed.
             {requiredRosterSize ? (
-              <> {tournament.game} rosters need at least {requiredRosterSize} active members.</>
+              <>
+                {" "}
+                {tournament.game} rosters need at least {requiredRosterSize} active members.
+              </>
             ) : null}{" "}
             {approvedCount}/{tournament.teamCap} slots used
             {!atCap && ` · ${slotsRemaining} slot${slotsRemaining === 1 ? "" : "s"} left`}.

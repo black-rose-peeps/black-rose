@@ -1,13 +1,13 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AdaptiveAlertDialog,
+  AdaptiveAlertDialogAction,
+  AdaptiveAlertDialogCancel,
+  AdaptiveAlertDialogContent,
+  AdaptiveAlertDialogDescription,
+  AdaptiveAlertDialogFooter,
+  AdaptiveAlertDialogHeader,
+  AdaptiveAlertDialogTitle,
+} from "@/components/ui/adaptive-alert-dialog";
 
 interface ConfirmDeleteDialogProps {
   open: boolean;
@@ -29,20 +29,20 @@ export function ConfirmDeleteDialog({
   onConfirm,
 }: ConfirmDeleteDialogProps) {
   return (
-    <AlertDialog
+    <AdaptiveAlertDialog
       open={open}
       onOpenChange={(next) => {
         if (!next && !isDeleting) onClose();
       }}
     >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+      <AdaptiveAlertDialogContent>
+        <AdaptiveAlertDialogHeader>
+          <AdaptiveAlertDialogTitle>{title}</AdaptiveAlertDialogTitle>
+          <AdaptiveAlertDialogDescription>{description}</AdaptiveAlertDialogDescription>
+        </AdaptiveAlertDialogHeader>
+        <AdaptiveAlertDialogFooter>
+          <AdaptiveAlertDialogCancel disabled={isDeleting}>Cancel</AdaptiveAlertDialogCancel>
+          <AdaptiveAlertDialogAction
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={(event) => {
@@ -51,9 +51,9 @@ export function ConfirmDeleteDialog({
             }}
           >
             {isDeleting ? "Deleting…" : confirmLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </AdaptiveAlertDialogAction>
+        </AdaptiveAlertDialogFooter>
+      </AdaptiveAlertDialogContent>
+    </AdaptiveAlertDialog>
   );
 }

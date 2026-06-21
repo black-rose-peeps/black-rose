@@ -117,10 +117,7 @@ export function recomputeSwissStateFromMatches(
   };
 }
 
-function sortTeamsByRecord(
-  teamList: string[],
-  records: Record<string, SwissTeamRecord>,
-): string[] {
+function sortTeamsByRecord(teamList: string[], records: Record<string, SwissTeamRecord>): string[] {
   return [...teamList].sort((a, b) => {
     const ra = records[a] ?? { wins: 0, losses: 0 };
     const rb = records[b] ?? { wins: 0, losses: 0 };
@@ -406,9 +403,7 @@ export function updateSwissMatchScores(
   else if (scoreB >= required) winner = source.teamB;
 
   const nextMatches = matches.map((match) =>
-    match.id === matchId
-      ? { ...match, scoreA, scoreB, winner, confirmed: winner !== null }
-      : match,
+    match.id === matchId ? { ...match, scoreA, scoreB, winner, confirmed: winner !== null } : match,
   );
 
   const nextSwiss = recomputeSwissStateFromMatches(
@@ -476,7 +471,9 @@ export function catchUpSwissRounds(
     const currentRound = getCurrentSwissRound(nextMatches, nextRoundMetas);
     if (!isSwissRoundCompleteWithByes(nextMatches, currentRound, nextSwiss)) break;
 
-    const activeTeams = teamNames.filter((team) => getSwissTeamStatus(team, nextSwiss) === "active");
+    const activeTeams = teamNames.filter(
+      (team) => getSwissTeamStatus(team, nextSwiss) === "active",
+    );
     if (activeTeams.length === 0) break;
 
     const next = generateSwissNextRound(nextMatches, nextRoundMetas, nextSwiss, teamNames);
@@ -570,13 +567,9 @@ export function applySwissMatchUpdates(
   return catchUpSwissRounds(matches, roundMetas, swiss, teamNames);
 }
 
-export function isSwissGroupStageComplete(
-  teamNames: string[],
-  swiss: SwissBracketState,
-): boolean {
+export function isSwissGroupStageComplete(teamNames: string[], swiss: SwissBracketState): boolean {
   return (
-    teamNames.length > 0 &&
-    teamNames.every((team) => getSwissTeamStatus(team, swiss) !== "active")
+    teamNames.length > 0 && teamNames.every((team) => getSwissTeamStatus(team, swiss) !== "active")
   );
 }
 
@@ -718,7 +711,6 @@ export function getSwissStandings(
       return a.record.losses - b.record.losses;
     });
 }
-
 
 export interface SwissStandingDetailed {
   team: string;

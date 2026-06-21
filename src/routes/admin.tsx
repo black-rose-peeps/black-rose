@@ -33,7 +33,7 @@ function AdminLayout() {
       <div className="flex min-h-screen w-full bg-background text-foreground">
         <AdminSidebar />
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <div className="pointer-events-none fixed inset-0 left-64 grid-bg opacity-20" />
+          <div className="pointer-events-none fixed inset-0 grid-bg opacity-20 md:left-64" />
           <div className="relative flex min-w-0 flex-1 flex-col">
             <Outlet />
           </div>

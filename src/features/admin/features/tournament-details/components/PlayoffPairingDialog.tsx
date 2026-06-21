@@ -246,9 +246,7 @@ export function PlayoffPairingDialog({
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-0 top-0 h-16 bg-linear-to-b to-transparent",
-                  includeThirdPlaceMatch
-                    ? "from-orange-400/12"
-                    : "from-white/[0.03]",
+                  includeThirdPlaceMatch ? "from-orange-400/12" : "from-white/[0.03]",
                 )}
               />
               <div

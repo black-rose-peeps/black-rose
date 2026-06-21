@@ -26,3 +26,5 @@ export const PROFILE_GAME_OPTIONS = [
   "Teamfight Tactics",
   "Where Winds Meet",
 ] as const;
+
+export const PROFILE_REGION_OPTIONS = ["PH", "SEA", "APAC", "Global"] as const;

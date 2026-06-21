@@ -164,8 +164,8 @@ export function AddMembersToTournamentDialog({
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Add Players</DialogTitle>
           <DialogDescription>
-            Register individual members in {tournament.name}. {approvedCount}/
-            {tournament.teamCap} slots used
+            Register individual members in {tournament.name}. {approvedCount}/{tournament.teamCap}{" "}
+            slots used
             {!atCap && ` · ${slotsRemaining} slot${slotsRemaining === 1 ? "" : "s"} left`}.
           </DialogDescription>
         </DialogHeader>

@@ -69,6 +69,8 @@ import { fetchBracketState } from "../services/bracket.service";
 import type { PersistedBracketPayload } from "../services/bracket.service";
 import { updateTournamentStatus } from "@/features/admin/features/tournaments/services/tournaments.service";
 import type { MockTournament } from "@/lib/mock-data";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { BracketManagerMobileNav } from "@/features/admin/features/tournaments/components/mobile";
 
 /** Convert admin ManagedMatch[] + roundMetas into the public BracketRound[] shape. */
 function managedMatchesToPublicRounds(
@@ -180,14 +182,14 @@ interface BracketManagerProps {
   format: string;
   teamCap: number;
   teams: TournamentTeam[];
-  initialBracket: BracketRound[];
+  initialBracket?: BracketRound[] | null;
   tournamentStatus: MockTournament["status"];
   prizeBreakdown?: PrizeTier[];
   onTournamentStatusChange?: (status: MockTournament["status"]) => void;
 }
 
 function deriveBracketState(
-  initialBracket: BracketRound[],
+  initialBracket: BracketRound[] | null | undefined,
   teams: TournamentTeam[],
   bracketSize: number,
   format: string,
@@ -197,14 +199,15 @@ function deriveBracketState(
   bracketGenerated: boolean;
   bracketLocked: boolean;
 } {
+  const rounds = initialBracket ?? [];
   const assignments: Array<TournamentTeam | null> = Array(bracketSize).fill(null);
   const findTeam = (name: string | null | undefined) =>
     name ? (teams.find((t) => t.name === name) ?? null) : null;
 
   const firstRound =
-    initialBracket.find((round) => round.id === "ub-r1" || round.id === "se-r0") ??
-    initialBracket.find((round) => !isOpeningPlayInRound(round.label)) ??
-    initialBracket[0];
+    rounds.find((round) => round.id === "ub-r1" || round.id === "se-r0") ??
+    rounds.find((round) => !isOpeningPlayInRound(round.label)) ??
+    rounds[0];
 
   const hydrated = assignmentsFromBracketMatches(
     bracketSize,
@@ -219,7 +222,7 @@ function deriveBracketState(
   }
 
   const assignedCount = assignments.filter(Boolean).length;
-  const hasInitialBracket = initialBracket.length > 0 && assignedCount > 0;
+  const hasInitialBracket = rounds.length > 0 && assignedCount > 0;
 
   return {
     assignments,
@@ -243,6 +246,7 @@ export function BracketManager({
   prizeBreakdown = [],
   onTournamentStatusChange,
 }: BracketManagerProps) {
+  const isMobile = useIsMobile();
   const fieldSize = teams.length;
 
   const bracketEngine = useMemo(() => {
@@ -1004,7 +1008,7 @@ export function BracketManager({
   return (
     <div className="flex flex-col text-foreground">
       {saveError && (
-        <div className="border-b border-destructive/40 bg-destructive/10 px-8 py-3 text-sm text-destructive">
+        <div className="border-b border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive md:px-8">
           {saveError}
         </div>
       )}
@@ -1044,11 +1048,11 @@ export function BracketManager({
         onMarkComplete={requestMarkComplete}
       />
 
-      {/* Section Tabs */}
-      <div className="flex border-b border-border px-8">
+      {/* Section Tabs — desktop */}
+      <div className="hidden border-b border-border px-4 md:flex md:px-8">
         <button
           onClick={() => setActiveTab("seeding")}
-          className={`px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
+          className={`touch-target px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
             activeTab === "seeding"
               ? "text-white border-white"
               : "text-muted-foreground border-transparent hover:text-gray-400"
@@ -1058,7 +1062,7 @@ export function BracketManager({
         </button>
         <button
           onClick={() => setActiveTab("bracket")}
-          className={`px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
+          className={`touch-target px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
             activeTab === "bracket"
               ? "text-white border-white"
               : "text-muted-foreground border-transparent hover:text-gray-400"
@@ -1068,7 +1072,7 @@ export function BracketManager({
         </button>
         <button
           onClick={() => setActiveTab("validation")}
-          className={`px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
+          className={`touch-target px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
             activeTab === "validation"
               ? "text-white border-white"
               : "text-muted-foreground border-transparent hover:text-gray-400"
@@ -1083,7 +1087,7 @@ export function BracketManager({
         {activeTab === "seeding" && (
           <div className="space-y-6">
             {canIncludeThirdPlaceMatch && (
-              <div className="border-b border-border px-8 pb-6 pt-6">
+              <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
                 <ThirdPlaceMatchOption
                   enabled={includeThirdPlaceMatch}
                   onToggle={handleIncludeThirdPlaceMatchToggle}
@@ -1307,6 +1311,14 @@ export function BracketManager({
           </div>
         )}
       </div>
+
+      {isMobile ? (
+        <BracketManagerMobileNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          bracketGenerated={bracketGenerated}
+        />
+      ) : null}
 
       <BracketActionDialog
         open={bracketDialog !== null}

@@ -28,6 +28,7 @@ import { getSession, setSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
   PROFILE_GAME_OPTIONS,
+  PROFILE_REGION_OPTIONS,
   SOCIAL_PLATFORM_LABELS,
   SOCIAL_PLATFORM_ORDER,
 } from "@/features/member/constants";
@@ -131,6 +132,18 @@ function ProfileEditPage() {
 
   const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
 
+  const normalizedRegion = region.trim();
+
+  const regionOptions = useMemo(() => {
+    if (
+      normalizedRegion &&
+      !PROFILE_REGION_OPTIONS.includes(normalizedRegion as (typeof PROFILE_REGION_OPTIONS)[number])
+    ) {
+      return [...PROFILE_REGION_OPTIONS, normalizedRegion];
+    }
+    return PROFILE_REGION_OPTIONS;
+  }, [normalizedRegion]);
+
   useEffect(() => {
     if (mainRole && !roleOptions.includes(mainRole as (typeof roleOptions)[number])) {
       setMainRole("");
@@ -169,7 +182,7 @@ function ProfileEditPage() {
         setBio(data.bio);
         setMainGame(normalizedGame);
         setMainRole(data.mainRole);
-        setRegion(data.region);
+        setRegion(data.region.trim());
         setValorantGameName(data.valorantGameName);
         setValorantTagline(data.valorantTagline);
         setIsPublic(data.isPublic);
@@ -461,12 +474,18 @@ function ProfileEditPage() {
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Region
                   </Label>
-                  <Input
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    placeholder="PH / APAC"
-                    className={techFieldClass}
-                  />
+                  <Select value={normalizedRegion || undefined} onValueChange={setRegion}>
+                    <SelectTrigger className={techFieldClass}>
+                      <SelectValue placeholder="Select a region" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                      {regionOptions.map((option) => (
+                        <SelectItem key={option} value={option} className="font-tech text-xs">
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </TechPanel>

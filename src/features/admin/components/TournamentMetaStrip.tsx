@@ -32,9 +32,7 @@ export function TournamentMetaStrip({ items, className }: TournamentMetaStripPro
             key={item.label}
             className={cn(
               "flex min-w-[9rem] flex-1 items-center gap-3 px-5 py-4",
-              item.highlight
-                ? "bg-white text-black"
-                : "bg-[oklch(0.07_0_0)] text-foreground",
+              item.highlight ? "bg-white text-black" : "bg-[oklch(0.07_0_0)] text-foreground",
             )}
           >
             {item.icon && (

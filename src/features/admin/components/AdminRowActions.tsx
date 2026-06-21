@@ -44,7 +44,7 @@ export function AdminRowActions({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 gap-1.5 px-2.5 font-tech text-[10px] uppercase tracking-wider"
+          className="touch-target min-h-11 gap-1.5 px-2.5 font-tech text-[10px] uppercase tracking-wider sm:min-h-8"
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
