@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { AdaptiveModal, AdaptiveModalContent } from "@/components/ui/adaptive-modal";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   getNotifications,
@@ -105,9 +106,18 @@ function NotificationPanel({
 
       <ul className="custom-scrollbar max-h-[min(42vh,15rem)] overflow-y-auto divide-y divide-white/5 sm:max-h-64">
         {notifications.length === 0 ? (
-          <li className="flex flex-col items-center gap-2 py-8 text-center">
-            <Radar className="h-6 w-6 text-muted-foreground/30" strokeWidth={1.25} />
-            <p className="text-sm text-muted-foreground">No notifications yet.</p>
+          <li className="px-4 py-3">
+            <ArenaEmptyState
+              embedded
+              eyebrow="Signal Clear"
+              title={
+                <>
+                  Nothing on your <span className="text-stroke">radar.</span>
+                </>
+              }
+              description="Team invites, tournament updates, profile comments, and match alerts will appear here when they land."
+              className="border-white/6 bg-transparent"
+            />
           </li>
         ) : (
           notifications.map((n) => {

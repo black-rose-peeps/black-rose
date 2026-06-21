@@ -14,6 +14,7 @@ import {
   searchVerifiedMembersDirectory,
   type MemberDirectoryEntry,
 } from "@/features/member/services/member-search.service";
+import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { MemberAvatar } from "./MemberAvatar";
 import { MemberNameStack } from "./MemberNameStack";
 import { cn } from "@/lib/utils";
@@ -23,17 +24,15 @@ interface MemberSearchDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function SearchEmptyPrompt() {
+function clearSearchButton(onClick: () => void) {
   return (
-    <div className="px-4 py-8 text-center sm:py-10">
-      <Search className="mx-auto h-5 w-5 text-muted-foreground/35" strokeWidth={1.5} />
-      <p className="mt-3 font-tech text-label-readable uppercase text-muted-foreground">
-        Find your <span className="text-foreground/80">guildmates</span>
-      </p>
-      <p className="mx-auto mt-1.5 max-w-[16rem] text-xs leading-relaxed text-muted-foreground/70">
-        Search verified members by display name or Discord handle.
-      </p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="clip-cta inline-flex h-9 items-center border border-white/15 bg-white/4 px-4 font-tech text-ui-readable uppercase transition hover:border-white/25 hover:bg-white/8"
+    >
+      Clear search
+    </button>
   );
 }
 
@@ -140,35 +139,53 @@ export function MemberSearchDialog({ open, onOpenChange }: MemberSearchDialogPro
 
           <CommandList className="custom-scrollbar max-h-[min(38vh,12rem)] sm:max-h-80">
             {!hasQuery ? (
-              <SearchEmptyPrompt />
+              <div className="px-4 py-3">
+                <ArenaEmptyState
+                  embedded
+                  eyebrow="Verified Directory"
+                  title={
+                    <>
+                      Find your <span className="text-stroke">guildmates.</span>
+                    </>
+                  }
+                  description="Search verified members by display name or Discord handle."
+                  className="border-white/6 bg-transparent"
+                />
+              </div>
             ) : showInitialSkeleton ? (
-              <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Searching…
               </div>
             ) : error ? (
-              <div className="space-y-3 px-4 py-6 text-center">
-                <p className="text-sm text-red-400">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="clip-cta inline-flex min-h-11 items-center border border-white/15 bg-white/4 px-4 font-tech text-ui-readable uppercase transition hover:border-white/25 hover:bg-white/8"
-                >
-                  Clear search
-                </button>
+              <div className="px-4 py-3">
+                <ArenaEmptyState
+                  embedded
+                  eyebrow="Search Error"
+                  title={
+                    <>
+                      Couldn&apos;t complete <span className="text-stroke">search.</span>
+                    </>
+                  }
+                  description={error}
+                  actions={clearSearchButton(() => setSearch(""))}
+                  className="border-red-400/15 bg-red-400/[0.03]"
+                />
               </div>
             ) : results.length === 0 ? (
-              <div className="space-y-3 px-4 py-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No verified member matches &ldquo;{search.trim()}&rdquo;.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="clip-cta inline-flex min-h-11 items-center border border-white/15 bg-white/4 px-4 font-tech text-ui-readable uppercase transition hover:border-white/25 hover:bg-white/8"
-                >
-                  Clear search
-                </button>
+              <div className="px-4 py-3">
+                <ArenaEmptyState
+                  embedded
+                  eyebrow="No Matches"
+                  title={
+                    <>
+                      Nobody <span className="text-stroke">found.</span>
+                    </>
+                  }
+                  description={`No verified member matches "${search.trim()}". Try a different display name or Discord handle.`}
+                  actions={clearSearchButton(() => setSearch(""))}
+                  className="border-white/6 bg-transparent"
+                />
               </div>
             ) : (
               <CommandGroup
