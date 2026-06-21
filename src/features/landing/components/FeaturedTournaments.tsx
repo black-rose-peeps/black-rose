@@ -9,11 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function FeaturedTournamentsSkeleton() {
   return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
       {Array.from({ length: 3 }).map((_, index) => (
         <div key={index} className="clip-angle-lg flex flex-col border border-white/[0.08] bg-card">
-          <Skeleton className="h-52 rounded-none bg-white/5" />
-          <div className="flex flex-col gap-4 p-6">
+          <Skeleton className="h-40 rounded-none bg-white/5 sm:h-52" />
+          <div className="flex flex-col gap-3 p-4 sm:gap-4 sm:p-6">
             <Skeleton className="h-3 w-24 rounded-none bg-white/5" />
             <Skeleton className="h-8 w-3/4 rounded-none bg-white/5" />
             <Skeleton className="h-16 w-full rounded-none bg-white/5" />
@@ -57,7 +57,7 @@ export function FeaturedTournaments() {
         {isLoading ? (
           <FeaturedTournamentsSkeleton />
         ) : spotlight.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
             {spotlight.map((tournament) => (
               <TournamentShowcaseCard key={tournament.id} tournament={tournament} />
             ))}

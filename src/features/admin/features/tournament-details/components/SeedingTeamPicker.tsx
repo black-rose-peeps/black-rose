@@ -39,7 +39,7 @@ export function SeedingTeamPicker({
   return (
     <div>
       <label className="mb-1.5 block text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-        {label} · Seed {seed}
+        {label ? `${label} · Seed ${seed}` : `Seed ${seed}`}
       </label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>

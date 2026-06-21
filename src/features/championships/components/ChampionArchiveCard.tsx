@@ -31,36 +31,36 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
       <div className="relative">
         <ChampionPortrait champion={champion} className="border-0 border-b border-white/[0.06]" />
 
-        <div className="absolute left-4 top-4 flex items-center gap-2 border border-white/15 bg-black/75 px-2.5 py-1 font-tech text-[9px] uppercase tracking-[0.2em] text-white/90 backdrop-blur-md">
+        <div className="absolute left-3 top-3 flex items-center gap-2 border border-white/15 bg-black/75 px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.2em] text-white/90 backdrop-blur-md sm:left-4 sm:top-4 sm:px-2.5 sm:py-1">
           <RoseStarMark size={10} className="text-amber-300/90" />#
           {String(index + 1).padStart(2, "0")}
         </div>
 
         <div
-          className={`absolute right-4 top-4 border px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-md ${accent.tag}`}
+          className={`absolute right-3 top-3 border px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-md sm:right-4 sm:top-4 ${accent.tag}`}
         >
           {getGameAbbrev(game)}
         </div>
       </div>
 
-      <div className="relative flex flex-1 flex-col px-5 pb-5 pt-4">
+      <div className="relative flex flex-1 flex-col px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.14]" />
 
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-display text-2xl leading-[1.05] tracking-[0.04em] text-white transition group-hover:text-white">
+            <p className="font-display text-xl leading-[1.05] tracking-[0.04em] text-white transition group-hover:text-white sm:text-2xl">
               {champion.teamName}
             </p>
             <p className="mt-1 truncate font-title text-[11px] text-muted-foreground">
               {champion.tournamentName}
             </p>
           </div>
-          <span className="clip-tab grid h-10 w-10 shrink-0 place-items-center border border-white/10 bg-white/[0.04] font-display text-xs tracking-display text-white/70">
+          <span className="clip-tab grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/[0.04] font-display text-xs tracking-display text-white/70 sm:h-10 sm:w-10">
             {champion.teamTag}
           </span>
         </div>
 
-        <div className="relative mt-4 flex items-center justify-between border-t border-white/[0.08] pt-4">
+        <div className="relative mt-3 flex items-center justify-between border-t border-white/[0.08] pt-3 sm:mt-4 sm:pt-4">
           <div className="flex items-center gap-2 text-amber-300/75">
             <Crown className="h-3.5 w-3.5" strokeWidth={1.25} />
             <span className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em]">

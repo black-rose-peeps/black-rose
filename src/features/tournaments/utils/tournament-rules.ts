@@ -215,7 +215,8 @@ function disputesRules(): RuleSection {
   return {
     title: "Disputes",
     items: [
-      "All disputes must be submitted to staff within 10 minutes of the match ending.",
+      "All disputes must be submitted to staff on the Black Rose official Discord server within 10 minutes of the match ending.",
+      "Contact admins or Valorant Operations in Discord — not via email.",
       "Staff decisions are final.",
       "Screenshot or video evidence is required for any disputed call.",
     ],

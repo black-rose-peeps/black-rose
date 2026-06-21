@@ -1,18 +1,26 @@
 /**
  * Public read-only Swiss-system bracket viewer.
- * Mirrors the admin SwissBracketView layout (rounds → record pools → match cards).
+ * Mirrors the admin SwissBracketView: standings table + round navigator + match cards.
  */
 
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { SwissFormatIntro } from "../../components/SwissFormatIntro";
 import { SwissPhaseBanner } from "../../components/SwissPhaseBanner";
 import { isTournamentConcluded } from "../../utils/tournament-status";
-import { SwissResultsBoard } from "../../components/SwissResultsBoard";
-import { withTeamTags } from "../../utils/team-tags";
 import {
-  computeSwissStandingsFromBracket,
+  computeSwissStandingsDetailedFromBracket,
+  filterSwissGroupRounds,
+  formatSwissPoolLabel,
+  getCurrentSwissRoundFromBracket,
+  isPublicSwissRoundComplete,
+  isSwissPlayoffRound,
+  parseSwissPoolKey,
+  parseSwissRoundNumber,
+  swissStandingsLabel,
+  swissStandingsThroughRound,
   SWISS_LOSSES_TO_ELIMINATE,
   SWISS_WINS_TO_ADVANCE,
 } from "../../utils/swiss-standings";
@@ -24,37 +32,68 @@ interface SwissBracketTabProps {
   bracket: BracketRound[];
   format: string;
   teamTags?: Map<string, string>;
+  teamNames?: string[];
+  seedByTeam?: Map<string, number>;
   tournamentStatus?: string;
-}
-
-function parsePoolKey(matchRound: string): string {
-  const poolPart = matchRound.includes(" · ") ? matchRound.split(" · ")[1] : null;
-  if (!poolPart) return "0-0";
-  const match = poolPart.match(/(\d+)W-(\d+)L/i);
-  return match ? `${match[1]}-${match[2]}` : "0-0";
-}
-
-function formatPoolLabel(poolKey: string): string {
-  const [w, l] = poolKey.split("-").map(Number);
-  return `${w}W-${l}L`;
-}
-
-function isPlayoffRound(round: BracketRound): boolean {
-  return /playoffs?/i.test(round.label);
 }
 
 export function SwissBracketTab({
   bracket,
   format,
   teamTags,
+  teamNames,
+  seedByTeam,
   tournamentStatus,
 }: SwissBracketTabProps) {
-  const swissRounds = bracket.filter((round) => !isPlayoffRound(round));
-  const playoffRounds = bracket.filter((round) => isPlayoffRound(round));
-  const standings = computeSwissStandingsFromBracket(swissRounds);
-  const advanced = standings.filter((entry) => entry.status === "advanced");
-  const eliminated = standings.filter((entry) => entry.status === "eliminated");
-  const active = standings.filter((entry) => entry.status === "active");
+  const swissRounds = filterSwissGroupRounds(bracket);
+  const playoffRounds = bracket.filter((round) => isSwissPlayoffRound(round));
+  const playoffsStarted = playoffRounds.length > 0;
+  const currentRound = getCurrentSwissRoundFromBracket(swissRounds);
+  const totalRounds = swissRounds.length;
+  const [selectedRound, setSelectedRound] = useState(currentRound);
+  const prevCurrentRoundRef = useRef(currentRound);
+
+  useEffect(() => {
+    setSelectedRound((round) => Math.min(Math.max(1, round), Math.max(1, totalRounds)));
+  }, [totalRounds]);
+
+  useEffect(() => {
+    const prevCurrent = prevCurrentRoundRef.current;
+    prevCurrentRoundRef.current = currentRound;
+
+    if (currentRound > prevCurrent && selectedRound === prevCurrent) {
+      setSelectedRound(currentRound);
+    }
+  }, [currentRound, selectedRound]);
+
+  const activeRound = Math.min(Math.max(1, selectedRound), Math.max(1, totalRounds));
+  const activeRoundData = swissRounds.find((round) => parseSwissRoundNumber(round) === activeRound);
+  const roundMatches = activeRoundData?.matches ?? [];
+  const roundByes = activeRoundData?.swissByes ?? [];
+  const activeRoundComplete = activeRoundData
+    ? isPublicSwissRoundComplete(activeRoundData)
+    : false;
+  const hasDecidedInActiveRound =
+    roundMatches.some((match) => !!match.winner && match.teamA && match.teamB) ||
+    roundByes.length > 0;
+  const standingsThroughRound = swissStandingsThroughRound(activeRound);
+
+  const standings = playoffsStarted
+    ? computeSwissStandingsDetailedFromBracket(swissRounds, { teamNames, seedByTeam })
+    : computeSwissStandingsDetailedFromBracket(swissRounds, {
+        throughRound: standingsThroughRound,
+        teamNames,
+        seedByTeam,
+      });
+
+  const statusByTeam = new Map(standings.map((entry) => [entry.team, entry.status]));
+
+  const standingsLabel = swissStandingsLabel({
+    playoffsStarted,
+    activeRound,
+    activeRoundComplete,
+    hasDecidedInActiveRound,
+  });
 
   return (
     <div className="flex flex-col gap-10">
@@ -69,78 +108,179 @@ export function SwissBracketTab({
         lossesToEliminate={SWISS_LOSSES_TO_ELIMINATE}
       />
 
-      {playoffRounds.length > 0 && (
+      {playoffsStarted && (
         <SwissPhaseBanner
           variant="playoffs-public"
           completed={tournamentStatus ? isTournamentConcluded(tournamentStatus) : false}
         />
       )}
 
-      {swissRounds.map((round) => {
-        const poolKeys = [
-          ...new Set(round.matches.map((match) => parsePoolKey(match.round ?? round.label))),
-        ].sort((a, b) => {
-          const [aw, al] = a.split("-").map(Number);
-          const [bw, bl] = b.split("-").map(Number);
-          if (bw !== aw) return bw - aw;
-          return al - bl;
-        });
+      <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,1.4fr)]">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-display text-base font-bold uppercase tracking-[0.18em]">
+              Standings
+            </h3>
+            <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+              {standingsLabel}
+            </span>
+          </div>
 
-        return (
-          <section key={round.label} className="space-y-4">
-            <div className="flex items-center gap-3 border-b border-border pb-3">
-              <h3 className="font-display text-sm uppercase tracking-wider">{round.label}</h3>
+          <div className="overflow-hidden border border-border bg-card">
+            <div className="custom-scrollbar max-h-[640px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-surface/95 backdrop-blur">
+                  <tr className="text-left font-tech text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5 text-center">#</th>
+                    <th className="px-3 py-2.5">Team</th>
+                    <th className="px-2 py-2.5 text-center">W</th>
+                    <th className="px-2 py-2.5 text-center">L</th>
+                    <th className="px-2 py-2.5 text-center">MP</th>
+                    <th className="px-2 py-2.5 text-center">BH</th>
+                    <th className="px-2 py-2.5 text-center">OMW%</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {standings.map((entry) => {
+                    const top = entry.rank <= 4;
+                    const tag = teamTags?.get(entry.team);
+                    return (
+                      <tr
+                        key={entry.team}
+                        className={cn(
+                          "transition-colors hover:bg-muted/40",
+                          entry.status === "advanced" && "border-l-2 border-l-emerald-400/50",
+                          entry.status === "eliminated" && "border-l-2 border-l-red-400/40 opacity-75",
+                        )}
+                      >
+                        <td className="px-3 py-2.5 text-center">
+                          <span
+                            className={cn(
+                              "inline-grid h-6 w-6 place-items-center font-mono text-xs font-bold",
+                              top
+                                ? "border border-amber-400/35 bg-amber-400/10 text-amber-300"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {entry.rank}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="grid h-6 w-6 shrink-0 place-items-center border border-border bg-muted/80 font-tech text-[9px] font-bold uppercase">
+                              {(tag ?? entry.team.slice(0, 3)).slice(0, 3)}
+                            </span>
+                            <span className="truncate font-semibold">{entry.team}</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2.5 text-center font-mono tabular-nums text-emerald-400">
+                          {entry.record.wins}
+                        </td>
+                        <td className="px-2 py-2.5 text-center font-mono tabular-nums text-muted-foreground">
+                          {entry.record.losses}
+                        </td>
+                        <td className="px-2 py-2.5 text-center font-mono text-xs font-bold tabular-nums">
+                          {entry.matchPoints}
+                        </td>
+                        <td className="px-2 py-2.5 text-center font-mono text-xs tabular-nums text-muted-foreground">
+                          {entry.buchholz.toFixed(1)}
+                        </td>
+                        <td className="px-2 py-2.5 text-center font-mono text-xs tabular-nums text-muted-foreground">
+                          {(entry.omw * 100).toFixed(0)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
+          </div>
+        </div>
 
-            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {poolKeys.map((poolKey) => {
-                const poolMatches = round.matches.filter(
-                  (match) => parsePoolKey(match.round ?? round.label) === poolKey,
-                );
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-display text-base font-bold uppercase tracking-[0.18em]">
+              Round {activeRound} Pairings
+            </h3>
 
-                return (
-                  <Card key={`${round.label}-${poolKey}`} className="border-border bg-card/50">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center justify-between font-tech text-xs uppercase tracking-wider">
-                        <span>{formatPoolLabel(poolKey)}</span>
-                        <Badge variant="outline" className="font-tech text-[10px]">
-                          {poolMatches.length} {poolMatches.length === 1 ? "match" : "matches"}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {poolMatches.map((match) => (
-                        <PublicSwissMatchCard
-                          key={match.id}
-                          match={match}
-                          standings={standings}
-                          teamTags={teamTags}
-                        />
-                      ))}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+            {totalRounds > 0 && (
+              <div className="flex items-center gap-1 border border-border bg-card p-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRound((round) => Math.max(1, round - 1))}
+                  disabled={activeRound === 1}
+                  className="grid h-8 w-8 place-items-center text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                  aria-label="Previous round"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                {swissRounds.map((round) => {
+                  const roundNumber = parseSwissRoundNumber(round);
+                  return (
+                    <button
+                      key={round.id ?? round.label}
+                      type="button"
+                      onClick={() => setSelectedRound(roundNumber)}
+                      className={cn(
+                        "h-8 min-w-8 px-2 font-mono text-xs font-bold transition-colors",
+                        activeRound === roundNumber
+                          ? "bg-primary text-primary-foreground"
+                          : roundNumber === currentRound
+                            ? "text-amber-400"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      {roundNumber}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setSelectedRound((round) => Math.min(totalRounds, round + 1))}
+                  disabled={activeRound === totalRounds}
+                  className="grid h-8 w-8 place-items-center text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                  aria-label="Next round"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
 
-      <SwissResultsBoard
-        variant="public"
-        advanced={withTeamTags(
-          advanced.map((entry) => ({ team: entry.team, record: entry.record })),
-          teamTags,
-        )}
-        eliminated={withTeamTags(
-          eliminated.map((entry) => ({ team: entry.team, record: entry.record })),
-          teamTags,
-        )}
-        active={withTeamTags(
-          active.map((entry) => ({ team: entry.team, record: entry.record })),
-          teamTags,
-        )}
-      />
+          <div
+            key={activeRound}
+            className="grid animate-in fade-in-0 slide-in-from-bottom-2 gap-3 duration-300 sm:grid-cols-2"
+          >
+            {roundMatches.map((match) => (
+              <PublicSwissMatchCard
+                key={match.id}
+                match={match}
+                teamTags={teamTags}
+                statusByTeam={statusByTeam}
+              />
+            ))}
+            {roundByes.length > 0 && (
+              <div className="border border-dashed border-border bg-card/30 p-3 sm:col-span-2">
+                <p className="mb-2 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Bye
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {roundByes.map((team) => (
+                    <Badge key={team} variant="outline" className="font-tech text-[10px]">
+                      {teamTags?.get(team) ? `${teamTags.get(team)} · ${team}` : team}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {roundMatches.length === 0 && roundByes.length === 0 && (
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                No pairings for this round yet.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
 
       {playoffRounds.length > 0 && (
         <section className="space-y-6 border-t border-white/8 pt-10">
@@ -162,31 +302,41 @@ export function SwissBracketTab({
 
 function PublicSwissMatchCard({
   match,
-  standings,
   teamTags,
+  statusByTeam,
 }: {
   match: BracketMatch;
-  standings: ReturnType<typeof computeSwissStandingsFromBracket>;
   teamTags?: Map<string, string>;
+  statusByTeam: Map<string, "active" | "advanced" | "eliminated">;
 }) {
   const decided = !!match.winner;
   const hasScores = match.scoreA !== undefined && match.scoreB !== undefined;
-  const statusByTeam = new Map(standings.map((entry) => [entry.team, entry.status]));
+  const poolKey = parseSwissPoolKey(match.round);
 
   return (
-    <div className={cn("border border-border bg-card", decided && "ring-1 ring-emerald-400/30")}>
-      {match.round && (
-        <div className="flex items-center justify-between border-b border-border/60 px-2 py-1">
-          <span className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
-            {match.round}
-          </span>
+    <div
+      className={cn(
+        "match-card border border-border bg-card",
+        decided && "ring-1 ring-emerald-400/30",
+      )}
+    >
+      <div className="flex items-center justify-between border-b border-border/60 px-2 py-1">
+        <span className="text-[10px] font-tech uppercase tracking-wider text-muted-foreground">
+          {match.label ?? match.round}
+        </span>
+        <div className="flex items-center gap-2">
+          {poolKey !== "0-0" && (
+            <Badge variant="outline" className="font-tech text-[9px] uppercase">
+              {formatSwissPoolLabel(poolKey)}
+            </Badge>
+          )}
           {decided && (
             <span className="text-[9px] font-tech text-emerald-400/70 uppercase tracking-wider">
               Final
             </span>
           )}
         </div>
-      )}
+      </div>
 
       <PublicBracketTeamSlot
         name={match.teamA}

@@ -1,3 +1,4 @@
+import { inferRoundIdFromMatchId } from "./bracket-display";
 import type { BracketRound } from "../types";
 import type { BracketRoundMeta, ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import { buildMatchSlotHints } from "./bracket-slot-hints";
@@ -7,8 +8,13 @@ export type ConnectorStatus = "upcoming" | "completed" | "live";
 export interface LayoutInputMatch {
   id: string;
   roundIndex: number;
+  roundId?: string;
   nextWinnerMatchId?: string | null;
   connectorStatus: ConnectorStatus;
+  teamA?: string | null;
+  teamB?: string | null;
+  confirmed?: boolean;
+  winner?: string | null;
 }
 
 /** Infer winner paths for published rounds missing explicit advancement ids. */
@@ -36,9 +42,14 @@ export function managedToLayoutMatches(
 
   return matches.map((match) => ({
     id: match.id,
+    roundId: match.roundId,
     roundIndex: roundIndex.get(match.roundId) ?? 0,
     nextWinnerMatchId: match.winnerNext?.matchId ?? null,
     connectorStatus: match.confirmed && match.winner ? "completed" : "upcoming",
+    teamA: match.teamA,
+    teamB: match.teamB,
+    confirmed: match.confirmed,
+    winner: match.winner,
   }));
 }
 
@@ -50,10 +61,15 @@ export function publicToLayoutMatches(rounds: BracketRound[]): LayoutInputMatch[
     for (const match of round.matches) {
       layoutMatches.push({
         id: match.id,
+        roundId: round.id ?? inferRoundIdFromMatchId(match.id) ?? undefined,
         roundIndex,
         nextWinnerMatchId:
           match.winnerAdvancesTo ?? inferredLinks.get(match.id) ?? null,
         connectorStatus: match.winner ? "completed" : "upcoming",
+        teamA: match.teamA,
+        teamB: match.teamB,
+        confirmed: Boolean(match.winner),
+        winner: match.winner ?? null,
       });
     }
   });

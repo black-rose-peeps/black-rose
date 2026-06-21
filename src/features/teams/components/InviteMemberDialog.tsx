@@ -1,16 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Loader2, Search, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandGroup,
-  CommandInput,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Command, CommandGroup, CommandInput, CommandList } from "@/components/ui/command";
+import { AdaptiveModal, AdaptiveModalContent } from "@/components/ui/adaptive-modal";
 import { inviteMemberToTeam } from "@/features/admin/features/teams/services/teams.service";
 import {
   searchVerifiedMembersForInvite,
@@ -172,8 +164,11 @@ export function InviteMemberDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl gap-0 overflow-hidden rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 shadow-2xl shadow-black/40">
+    <AdaptiveModal open={open} onOpenChange={onOpenChange}>
+      <AdaptiveModalContent
+        mobileSize="full"
+        className="flex max-w-xl flex-col gap-0 overflow-hidden border-white/12 bg-[oklch(0.08_0_0)] p-0 shadow-2xl shadow-black/40"
+      >
         <div className="border-b border-white/8 px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -280,9 +275,7 @@ export function InviteMemberDialog({
             ) : (
               <CommandGroup
                 heading={
-                  searching
-                    ? "Searching…"
-                    : `${total} member${total === 1 ? "" : "s"} found`
+                  searching ? "Searching…" : `${total} member${total === 1 ? "" : "s"} found`
                 }
                 className="px-2 pb-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-tech [&_[cmdk-group-heading]]:text-label-readable [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-muted-foreground/70"
               >
@@ -388,7 +381,7 @@ export function InviteMemberDialog({
             <p className="text-sm text-red-400">{inviteError}</p>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

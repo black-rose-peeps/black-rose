@@ -47,7 +47,7 @@ export function TournamentDetailSkeleton() {
       </section>
 
       {/* Tabs */}
-      <div className="sticky top-16 z-20 border-b border-white/8 bg-background/90 backdrop-blur-md">
+      <div className="sticky sticky-below-header z-20 border-b border-white/8 bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center gap-0 px-6 py-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="mx-2 h-4 w-16" />

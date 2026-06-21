@@ -35,9 +35,21 @@ export interface SyncSummary {
   totalPages: number;
   batchSize: number;
   notVerifiedQueued: number;
+  priorityNotVerified?: boolean;
 }
 
-export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
+export interface SyncRoseRolesOptions {
+  /**
+   * Manual/admin runs: always check the newest Not Verified members (page 0)
+   * and skip the verified-member audit slice for maximum verification throughput.
+   */
+  priorityNotVerified?: boolean;
+}
+
+export async function syncRoseRoles(
+  env: Env,
+  options?: SyncRoseRolesOptions,
+): Promise<SyncSummary> {
   const batchSize = getMaxMembersPerRun(env);
   const summary: SyncSummary = {
     checked: 0,
@@ -53,6 +65,7 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
     totalPages: 1,
     batchSize,
     notVerifiedQueued: 0,
+    priorityNotVerified: options?.priorityNotVerified ?? false,
   };
 
   const roseRoleId = await resolveRoseRoleId(env);
@@ -76,7 +89,8 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
 
   summary.notVerifiedQueued = notVerifiedCount ?? 0;
   const notVerifiedPages = Math.max(1, Math.ceil(summary.notVerifiedQueued / batchSize));
-  const notVerifiedPage = rotationTick % notVerifiedPages;
+  const priorityNotVerified = options?.priorityNotVerified ?? false;
+  const notVerifiedPage = priorityNotVerified ? 0 : rotationTick % notVerifiedPages;
   const notVerifiedFrom = notVerifiedPage * batchSize;
   const notVerifiedTo = notVerifiedFrom + batchSize - 1;
 
@@ -97,12 +111,12 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
   }
   summary.subrequestsUsed += 1;
 
-  const reservedForVerified = verifiedReservedSlots(batchSize);
+  const reservedForVerified = priorityNotVerified ? 0 : verifiedReservedSlots(batchSize);
   const notVerifiedLimit = batchSize - reservedForVerified;
   const members: MemberRow[] = [
     ...((notVerifiedRows ?? []) as MemberRow[]).slice(0, notVerifiedLimit),
   ];
-  const remainingSlots = batchSize - members.length;
+  const remainingSlots = priorityNotVerified ? 0 : batchSize - members.length;
 
   if (remainingSlots > 0) {
     const { count: verifiedCount, error: verifiedCountError } = await supabase

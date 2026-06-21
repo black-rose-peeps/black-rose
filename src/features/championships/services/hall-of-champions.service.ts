@@ -56,8 +56,9 @@ function resolveChampionPlacements(
       payload.admin.managedMatches,
       payload.admin.swiss,
     );
-    const prizeTiers =
-      payload.prizeBreakdown?.length ? payload.prizeBreakdown : tournament.prizeBreakdown;
+    const prizeTiers = payload.prizeBreakdown?.length
+      ? payload.prizeBreakdown
+      : tournament.prizeBreakdown;
     const podiums = buildPodiumPlacements(prizeTiers ?? [], raw);
     if (championFromPlacements(podiums)) return podiums;
     if (championFromPlacements(raw)) return raw;
@@ -65,8 +66,9 @@ function resolveChampionPlacements(
 
   if (payload.rounds?.length) {
     const raw = derivePublicPlacements(tournament.format, payload.rounds);
-    const prizeTiers =
-      payload.prizeBreakdown?.length ? payload.prizeBreakdown : tournament.prizeBreakdown;
+    const prizeTiers = payload.prizeBreakdown?.length
+      ? payload.prizeBreakdown
+      : tournament.prizeBreakdown;
     const podiums = buildPodiumPlacements(prizeTiers ?? [], raw);
     if (championFromPlacements(podiums)) return podiums;
     if (championFromPlacements(raw)) return raw;
@@ -109,9 +111,7 @@ function findRegistrationForChampion(
   championName: string,
   registrations: MockTeam[],
 ): MockTeam | null {
-  return (
-    registrations.find((row) => teamMatchesChampion(championName, row.name, row.tag)) ?? null
-  );
+  return registrations.find((row) => teamMatchesChampion(championName, row.name, row.tag)) ?? null;
 }
 
 function rowToRecord(
@@ -247,12 +247,7 @@ async function deriveFromBrackets(
         created_at: tournament.startDate,
       };
 
-      return rowToRecord(
-        syntheticRow,
-        tournament,
-        teamId,
-        resolveCrownVariant(payload),
-      );
+      return rowToRecord(syntheticRow, tournament, teamId, resolveCrownVariant(payload));
     }),
   );
 
@@ -264,11 +259,15 @@ export async function fetchHallOfChampions(): Promise<HallOfChampionRecord[]> {
   const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
 
   const archiveTournamentIds = new Set(archiveRows.map((row) => row.tournament_id));
-  const teamIdsByName = await fetchTeamIdsByName(archiveRows.map((row) => row.team_name));
+  const visibleArchiveRows = archiveRows.filter((row) => {
+    const tournament = tournamentById.get(row.tournament_id);
+    return tournament ? isConcluded(tournament.status) : false;
+  });
+  const teamIdsByName = await fetchTeamIdsByName(visibleArchiveRows.map((row) => row.team_name));
 
   const bracketVariants = new Map<string, "grand" | "final">();
   await Promise.all(
-    archiveRows.map(async (row) => {
+    visibleArchiveRows.map(async (row) => {
       const state = await fetchBracketState(row.tournament_id).catch(() => null);
       if (state?.payload) {
         bracketVariants.set(row.tournament_id, resolveCrownVariant(state.payload));
@@ -277,7 +276,7 @@ export async function fetchHallOfChampions(): Promise<HallOfChampionRecord[]> {
   );
 
   const registrationRosterIds = await Promise.all(
-    archiveRows.map(async (row) => {
+    visibleArchiveRows.map(async (row) => {
       try {
         const registrations = await fetchTournamentRegistrations(row.tournament_id);
         const match = findRegistrationForChampion(row.team_name, registrations);
@@ -288,7 +287,7 @@ export async function fetchHallOfChampions(): Promise<HallOfChampionRecord[]> {
     }),
   );
 
-  const fromArchive = archiveRows.map((row, index) =>
+  const fromArchive = visibleArchiveRows.map((row, index) =>
     rowToRecord(
       row,
       tournamentById.get(row.tournament_id),
@@ -300,9 +299,7 @@ export async function fetchHallOfChampions(): Promise<HallOfChampionRecord[]> {
   const fromBrackets = await deriveFromBrackets(tournaments, archiveTournamentIds);
   const merged = [...fromArchive, ...fromBrackets];
 
-  merged.sort(
-    (a, b) => new Date(b.crownedAt).getTime() - new Date(a.crownedAt).getTime(),
-  );
+  merged.sort((a, b) => new Date(b.crownedAt).getTime() - new Date(a.crownedAt).getTime());
 
   return enrichChampionTeamIds(merged);
 }

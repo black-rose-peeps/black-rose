@@ -57,13 +57,7 @@ function ProfileExternalLink({
   }
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={className}
-      {...props}
-    >
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className} {...props}>
       {children}
     </a>
   );
@@ -136,6 +130,9 @@ function MemberProfilePage() {
   if (loading) return <MemberProfileSkeleton />;
 
   if (loadError) {
+    const viewerIsVerified = session ? hasFullMemberAccess(session.role) : false;
+    const backTo = viewerIsVerified ? "/dashboard" : "/";
+    const backLabel = viewerIsVerified ? "Back to Dashboard" : "Back to Home";
     return (
       <MemberPageLayout maxWidth="max-w-4xl">
         <ArenaEmptyState
@@ -153,7 +150,7 @@ function MemberProfilePage() {
               variant="outline"
               className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
             >
-              <Link to="/dashboard">Back to Dashboard</Link>
+              <Link to={backTo}>{backLabel}</Link>
             </Button>
           }
         />
@@ -162,6 +159,9 @@ function MemberProfilePage() {
   }
 
   if (notFound || !profile) {
+    const viewerIsVerified = session ? hasFullMemberAccess(session.role) : false;
+    const backTo = viewerIsVerified ? "/dashboard" : "/";
+    const backLabel = viewerIsVerified ? "Back to Dashboard" : "Back to Home";
     return (
       <MemberPageLayout maxWidth="max-w-4xl">
         <ArenaEmptyState
@@ -179,7 +179,7 @@ function MemberProfilePage() {
               variant="outline"
               className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
             >
-              <Link to="/dashboard">Back to Dashboard</Link>
+              <Link to={backTo}>{backLabel}</Link>
             </Button>
           }
         />
@@ -189,6 +189,8 @@ function MemberProfilePage() {
 
   const isOwnProfile = session?.id === profile.memberId;
   const viewerIsVerified = session ? hasFullMemberAccess(session.role) : false;
+  const backTo = viewerIsVerified ? "/dashboard" : "/";
+  const backLabel = viewerIsVerified ? "Dashboard" : "Home";
   const p = profile;
 
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
@@ -197,22 +199,22 @@ function MemberProfilePage() {
 
   return (
     <MemberPageLayout maxWidth="max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Button
           asChild
           variant="ghost"
-          className="-ml-2 rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
+          className="touch-target -ml-2 inline-flex min-h-11 w-fit items-center rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
         >
-          <Link to="/dashboard">
+          <Link to={backTo}>
             <ArrowLeft className="h-3.5 w-3.5" />
-            Dashboard
+            {backLabel}
           </Link>
         </Button>
         {isOwnProfile && (
           <Button
             asChild
             variant="outline"
-            className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
+            className="clip-cta inline-flex h-11 w-full items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase sm:w-auto"
           >
             <Link to="/dashboard/profile" search={{ tab: "identity" }}>
               <Pencil className="h-3.5 w-3.5" />
@@ -289,7 +291,7 @@ function MemberProfilePage() {
                   className="h-5 w-5 shrink-0 object-contain"
                   loading="lazy"
                 />
-                <span className="font-tech text-label-readable uppercase whitespace-nowrap text-foreground">
+                <span className="hidden font-tech text-label-readable uppercase text-foreground sm:inline">
                   {SOCIAL_PLATFORM_LABELS[s.platform]}
                 </span>
               </div>
@@ -299,7 +301,7 @@ function MemberProfilePage() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="flex flex-col gap-5 lg:col-span-2">
+        <div className="order-2 flex flex-col gap-5 lg:order-1 lg:col-span-2">
           {p.bio ? (
             <ProfileCard label="About">
               <p className="text-sm leading-relaxed text-muted-foreground">{p.bio}</p>
@@ -366,7 +368,7 @@ function MemberProfilePage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-5">
+        <div className="order-1 flex flex-col gap-5 lg:order-2">
           <ProfileCard label="Player Info">
             <dl className="flex flex-col gap-3">
               <div>

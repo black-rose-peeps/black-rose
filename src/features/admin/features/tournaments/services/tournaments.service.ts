@@ -1,12 +1,18 @@
 import {
   concludeTournamentRegistrations,
+  countBracketParticipantRegistrations,
   reconcileTournamentTeamCount,
 } from "./tournament-registrations.service";
+import {
+  deleteTournamentChampion,
+  syncTournamentChampionArchive,
+} from "@/features/admin/features/tournament-details/services/bracket.service";
 import { supabase } from "@/lib/supabase";
 import type { MockTournament } from "@/lib/mock-data";
 import {
   isRegistrationDeadlineExtended,
   isRegistrationDeadlinePassed,
+  isTournamentConcluded,
   withResolvedTournamentStatus,
 } from "@/features/tournaments/utils/tournament-status";
 import type { PrizeTier } from "@/features/tournaments/types";
@@ -213,6 +219,8 @@ export async function updateTournamentStatus(
   tournamentId: string,
   status: MockTournament["status"],
 ): Promise<MockTournament> {
+  const previous = await fetchTournamentById(tournamentId);
+
   const { data, error } = await supabase
     .from("tournaments")
     .update({ status })
@@ -225,6 +233,15 @@ export async function updateTournamentStatus(
   if (status === "Completed" || status === "Archived") {
     await concludeTournamentRegistrations(tournamentId);
     await releaseTeamsFromTournament(tournamentId);
+    await syncTournamentTeamCount(
+      tournamentId,
+      await countBracketParticipantRegistrations(tournamentId),
+    );
+    const completed = rowToTournament(data);
+    await syncTournamentChampionArchive(tournamentId, completed.name);
+  } else if (previous && isTournamentConcluded(previous.status)) {
+    await deleteTournamentChampion(tournamentId);
+    await reconcileTournamentTeamCount(tournamentId, previous.teamsRegistered);
   }
 
   return rowToTournament(data);
@@ -307,6 +324,15 @@ export async function updateTournament(
   if (updated.status === "Completed" || updated.status === "Archived") {
     await concludeTournamentRegistrations(id);
     await releaseTeamsFromTournament(id);
+    await syncTournamentTeamCount(id, await countBracketParticipantRegistrations(id));
+    await syncTournamentChampionArchive(id, updated.name);
+  } else if (
+    previous &&
+    isTournamentConcluded(previous.status) &&
+    !isTournamentConcluded(updated.status)
+  ) {
+    await deleteTournamentChampion(id);
+    await reconcileTournamentTeamCount(id, previous.teamsRegistered);
   }
 
   updated = await reopenRegistrationIfDeadlineExtended(previous, updated);

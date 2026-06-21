@@ -23,7 +23,7 @@ export function HallOfChampionsGrid({ champions, limit }: HallOfChampionsGridPro
 
   return (
     <>
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
         {visible.map((champion, index) => (
           <ChampionArchiveCard
             key={champion.id}
@@ -34,11 +34,7 @@ export function HallOfChampionsGrid({ champions, limit }: HallOfChampionsGridPro
         ))}
       </div>
 
-      <ChampionStoryDialog
-        champion={selected}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
+      <ChampionStoryDialog champion={selected} open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
   );
 }

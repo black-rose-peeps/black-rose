@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { ClipboardList, Eye } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import {
   canBulkApproveParticipant,
   registrationActionPriority,
   registrationActionsEnabled,
+  registrationNeedsReview,
 } from "../constants/registration-status";
 import { TeamModal } from "@/features/admin/components/TeamModal";
 import { registrationStatusVariant } from "../utils";
@@ -258,10 +260,7 @@ export function ParticipantsManagement() {
                     <Skeleton className="h-5 w-16 rounded-full" />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Skeleton className="h-7 w-16 rounded-md" />
-                      <Skeleton className="h-7 w-14 rounded-md" />
-                    </div>
+                    <Skeleton className="ml-auto h-7 w-[5.5rem] rounded-md" />
                   </TableCell>
                 </TableRow>
               ))}
@@ -372,10 +371,6 @@ export function ParticipantsManagement() {
 
               <TableBody>
                 {pagination.paginatedItems.map((team) => {
-                const isUpdating = updatingId === team.id;
-
-                const actionsEnabled = registrationActionsEnabled(team.tournamentStatus);
-
                 const canSelect = canBulkApproveParticipant(team.status, team.tournamentStatus);
 
                 const isSelected = selectedIds.has(team.id);
@@ -446,40 +441,41 @@ export function ParticipantsManagement() {
                     </TableCell>
 
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="font-tech text-[10px] uppercase tracking-wider-2"
-                          onClick={() => setOpenTeam(team)}
-                        >
-                          View
-                        </Button>
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={isUpdating || !actionsEnabled || team.status === "Approved"}
-                          className="font-tech text-[10px] uppercase tracking-wider-2"
-                          onClick={() => updateStatus(team.id, "Approved")}
-                        >
-                          Approve
-                        </Button>
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={isUpdating || !actionsEnabled || team.status === "Rejected"}
-                          className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => updateStatus(team.id, "Rejected")}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </TableCell>
+                    <div className="flex items-center justify-end">
+                      {(() => {
+                        const needsReview = registrationNeedsReview(
+                          team.status,
+                          team.tournamentStatus,
+                        );
+                        return (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={cn(
+                              "min-w-[5.5rem] gap-1.5 font-tech text-[10px] uppercase tracking-wider-2",
+                              needsReview
+                                ? "border-amber-400/35 bg-amber-400/[0.04] text-amber-100 hover:border-amber-400/50 hover:bg-amber-400/10"
+                                : "border-border text-muted-foreground hover:text-foreground",
+                            )}
+                            onClick={() => setOpenTeam(team)}
+                          >
+                            {needsReview ? (
+                              <>
+                                <ClipboardList className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                                Review
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                                View
+                              </>
+                            )}
+                          </Button>
+                        );
+                      })()}
+                    </div>
+                  </TableCell>
                   </TableRow>
                 );
               })}

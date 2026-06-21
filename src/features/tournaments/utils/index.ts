@@ -60,6 +60,7 @@ export function mockTeamToTournamentTeam(team: MockTeam): TournamentTeam {
 export {
   applyRegistrationSeeds,
   seedByRegistrationId,
+  sortTournamentTeamsBySeed,
   tournamentTeamsHaveSeeds,
 } from "./tournament-team-seeds";
 
