@@ -429,7 +429,12 @@ export async function searchVerifiedMembersForInvite(
 }
 
 export async function deleteMember(id: string, options?: { stale?: boolean }): Promise<void> {
-  const member = await fetchMemberById(id);
+  let member: AdminMember | null = null;
+  try {
+    member = await fetchMemberById(id);
+  } catch {
+    // Audit metadata is optional; deletion must not depend on a pre-read.
+  }
 
   const { data: onTeam, error: teamErr } = await supabase
     .from("team_members")

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle, ExternalLink, Gamepad2, MapPin, Shield, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { memberStatusBadgeVariant, memberNeedsSyncQueueReset } from "../utils";
+import { fetchProfileCommentsAsAdmin } from "@/features/member/services/profile-comments.service";
 import { AdminMemberCommentsPanel } from "./AdminMemberCommentsPanel";
 import { MemberDetailMobileNav, MemberMobileSocialList, type MemberDetailTab } from "./mobile";
 import type { AdminMember } from "../types";
@@ -26,6 +27,27 @@ interface AdminMemberDetailProps {
 export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMemberDetailProps) {
   const isMobile = useIsMobile();
   const [mobileTab, setMobileTab] = useState<MemberDetailTab>("profile");
+  const [commentsCount, setCommentsCount] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!member?.id) {
+      setCommentsCount(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    void fetchProfileCommentsAsAdmin(member.id, { page: 1, pageSize: 1 })
+      .then((data) => {
+        if (!cancelled) setCommentsCount(data.total);
+      })
+      .catch(() => {
+        if (!cancelled) setCommentsCount(undefined);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [member?.id]);
 
   if (isLoading) {
     return (
@@ -271,12 +293,20 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
 
           {mobileTab === "comments" ? (
             <div className="md:hidden">
-              <AdminMemberCommentsPanel profileMemberId={member.id} profileOwner={profileOwner} />
+              <AdminMemberCommentsPanel
+                profileMemberId={member.id}
+                profileOwner={profileOwner}
+                onCommentsCountChange={setCommentsCount}
+              />
             </div>
           ) : null}
         </AdminPageContent>
 
-        <MemberDetailMobileNav activeTab={mobileTab} onTabChange={setMobileTab} />
+        <MemberDetailMobileNav
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
+          commentsCount={commentsCount}
+        />
       </>
     );
   }

@@ -292,6 +292,8 @@ export function formatAuditLogDetails(log: AdminAuditLog): string {
   if (
     typeof meta.tournamentName === "string" &&
     meta.tournamentName.trim() &&
+    typeof meta.teamName !== "string" &&
+    typeof meta.memberName !== "string" &&
     !parts.some((part) => part.includes(meta.tournamentName as string))
   ) {
     parts.push(meta.tournamentName);

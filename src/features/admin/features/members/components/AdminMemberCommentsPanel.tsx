@@ -36,11 +36,13 @@ const PAGE_SIZE = 10;
 interface AdminMemberCommentsPanelProps {
   profileMemberId: string;
   profileOwner: ProfileOwnerInfo;
+  onCommentsCountChange?: (count: number) => void;
 }
 
 export function AdminMemberCommentsPanel({
   profileMemberId,
   profileOwner,
+  onCommentsCountChange,
 }: AdminMemberCommentsPanelProps) {
   const [comments, setComments] = useState<ProfileComment[]>([]);
   const [page, setPage] = useState(1);
@@ -62,6 +64,7 @@ export function AdminMemberCommentsPanel({
         });
         setComments(data.comments);
         setTotal(data.total);
+        onCommentsCountChange?.(data.total);
         setPage(data.page);
         setTotalPages(data.totalPages);
       } catch (err) {
@@ -73,7 +76,7 @@ export function AdminMemberCommentsPanel({
         setLoading(false);
       }
     },
-    [profileMemberId],
+    [onCommentsCountChange, profileMemberId],
   );
 
   useEffect(() => {

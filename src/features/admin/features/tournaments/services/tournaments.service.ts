@@ -460,7 +460,12 @@ async function unregisterAllTeamsFromTournament(tournamentId: string): Promise<v
 }
 
 export async function deleteTournament(id: string): Promise<void> {
-  const tournament = await fetchTournamentById(id);
+  let tournament: MockTournament | null = null;
+  try {
+    tournament = await fetchTournamentById(id);
+  } catch {
+    // Audit metadata is optional; deletion must not depend on a pre-read.
+  }
 
   let { data, error } = await supabase.rpc("delete_tournament_cascade", {
     p_tournament_id: id,
@@ -499,6 +504,6 @@ export async function deleteTournament(id: string): Promise<void> {
     action: ADMIN_AUDIT_ACTIONS.TOURNAMENT_DELETED,
     entityType: "tournament",
     entityId: id,
-    metadata: { tournamentName: tournament.name },
+    metadata: { tournamentName: tournament?.name },
   });
 }

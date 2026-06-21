@@ -953,8 +953,18 @@ export async function resyncRegistrationsForTeam(rosterTeamId: string): Promise<
 }
 
 export async function removeTeamFromTournament(registrationId: string): Promise<void> {
-  const existing = await fetchRegistrationWithPlayers(registrationId);
-  const tournament = await fetchTournamentById(existing.tournamentId);
+  let auditExisting: MockTeam | null = null;
+  let auditTournament: Awaited<ReturnType<typeof fetchTournamentById>> | null = null;
+  try {
+    auditExisting = await fetchRegistrationWithPlayers(registrationId);
+    try {
+      auditTournament = await fetchTournamentById(auditExisting.tournamentId);
+    } catch {
+      // Tournament name for audit is optional.
+    }
+  } catch {
+    // Registration read for audit is optional; deletion uses the row fetch below.
+  }
 
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
@@ -999,11 +1009,11 @@ export async function removeTeamFromTournament(registrationId: string): Promise<
     entityType: "registration",
     entityId: registrationId,
     metadata: {
-      teamName: existing.name,
-      memberName: existing.memberUserId ? existing.name : undefined,
-      tournamentId: existing.tournamentId,
-      tournamentName: tournament?.name,
-      previousStatus: existing.status,
+      teamName: auditExisting?.name,
+      memberName: auditExisting?.memberUserId ? auditExisting.name : undefined,
+      tournamentId: auditExisting?.tournamentId,
+      tournamentName: auditTournament?.name,
+      previousStatus: auditExisting?.status,
     },
   });
 }

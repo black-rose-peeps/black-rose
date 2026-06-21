@@ -798,7 +798,13 @@ export async function leaveTeam(teamId: string, actingUserId: string): Promise<v
 }
 
 export async function deleteTeam(teamId: string): Promise<void> {
-  const team = await fetchTeamById(teamId);
+  let team: Team | null = null;
+  try {
+    team = await fetchTeamById(teamId);
+  } catch {
+    // Audit metadata is optional; deletion must not depend on a pre-read.
+  }
+
   await deleteTeamAdminFn({ data: { teamId } });
   void logAdminAction({
     action: ADMIN_AUDIT_ACTIONS.TEAM_DELETED,

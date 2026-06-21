@@ -60,6 +60,14 @@ begin
     raise exception 'entity_type is required';
   end if;
 
+  if not exists (
+    select 1
+    from public.admin_accounts
+    where lower(username) = lower(trim(p_actor_admin_username))
+  ) then
+    raise exception 'Unauthorized audit log actor';
+  end if;
+
   insert into public.admin_audit_logs (
     actor_admin_username,
     action,
