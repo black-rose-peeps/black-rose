@@ -1,3 +1,4 @@
+import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { teamDisplayAbbr } from "../../utils/team-tags";
 
@@ -11,6 +12,8 @@ export interface PublicBracketTeamSlotProps {
   hasScores?: boolean;
   swissStatus?: "active" | "advanced" | "eliminated";
   isChampionRow?: boolean;
+  /** Top seed advanced via round-one bye (protected seed). */
+  isProtectedSeed?: boolean;
 }
 
 export function PublicBracketTeamSlot({
@@ -23,6 +26,7 @@ export function PublicBracketTeamSlot({
   hasScores = false,
   swissStatus,
   isChampionRow = false,
+  isProtectedSeed = false,
 }: PublicBracketTeamSlotProps) {
   const isTbd = name === null;
   const abbr = isTbd ? "?" : teamDisplayAbbr(name, tag);
@@ -70,6 +74,16 @@ export function PublicBracketTeamSlot({
       >
         {isTbd ? (placeholder ?? "TBD") : name}
       </span>
+
+      {!isTbd && isProtectedSeed && (
+        <span
+          title="Protected seed — round-one bye"
+          aria-label="Protected seed — round-one bye"
+          className="shrink-0"
+        >
+          <Shield className="h-3 w-3 text-muted-foreground/45" strokeWidth={1.5} aria-hidden />
+        </span>
+      )}
 
       {(hasScores || score !== undefined) && !isTbd && (
         <span

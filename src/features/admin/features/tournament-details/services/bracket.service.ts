@@ -3,10 +3,9 @@ import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import type { SwissBracketState } from "../utils/managed-swiss-bracket";
+import { resolveGrandFinalChampion } from "../utils/grand-final";
 
 export type BracketStateStatus = "not_generated" | "draft" | "published";
-
-export type SeedingMode = "traditional" | "manual";
 
 export interface PersistedBracketPayload {
   rounds: BracketRound[];
@@ -17,8 +16,8 @@ export interface PersistedBracketPayload {
     roundMetas: BracketRoundMeta[];
     roundFormats: Record<string, BestOfFormat>;
     assignmentTeamIds: Array<string | null>;
-    seedingMode?: SeedingMode;
     swiss?: SwissBracketState;
+    includeThirdPlaceMatch?: boolean;
   };
 }
 
@@ -108,9 +107,12 @@ export async function savePublishedBracket(
 function detectChampionFromPayload(payload: PersistedBracketPayload): string | null {
   const matches = payload.admin?.managedMatches ?? [];
 
-  // 1. Grand final (double elimination)
-  const grand = matches.find((m) => m.bracketSide === "grand" && m.confirmed && m.winner);
-  if (grand?.winner) return grand.winner;
+  const fromGrandFinal = resolveGrandFinalChampion(matches);
+  if (fromGrandFinal) return fromGrandFinal;
+
+  // Legacy: any confirmed grand-side match
+  const legacyGrand = matches.find((m) => m.bracketSide === "grand" && m.confirmed && m.winner);
+  if (legacyGrand?.winner) return legacyGrand.winner;
 
   // 2. Single-elim or Swiss playoff final
   const final = matches.find(
@@ -157,8 +159,7 @@ async function syncTournamentChampion(
     .eq("tournament_id", tournamentId)
     .maybeSingle();
 
-  const completedAt =
-    existing?.completed_at ?? new Date().toISOString().split("T")[0];
+  const completedAt = existing?.completed_at ?? new Date().toISOString().split("T")[0];
 
   await supabase.from("tournament_champions").upsert(
     {

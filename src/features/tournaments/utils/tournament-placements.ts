@@ -1,15 +1,15 @@
 import { isDoubleEliminationFormat, isSwissFormat } from "../constants/formats";
 import type { BracketRound, PrizeTier } from "../types";
+import { inferPublicBracketSide, inferRoundIdFromMatchId } from "./bracket-display";
 import {
-  inferPublicBracketSide,
-  inferRoundIdFromMatchId,
-} from "./bracket-display";
+  GRAND_FINAL_MATCH_ID,
+  GRAND_FINAL_RESET_MATCH_ID,
+  resolveGrandFinalChampion,
+  resolveGrandFinalRunnerUp,
+} from "@/features/admin/features/tournament-details/utils/grand-final";
 import type { ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import type { SwissBracketState } from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
-import {
-  getSwissPhase,
-  getSwissStandings,
-} from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
+import { getSwissPhase } from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
 
 export interface TournamentPlacement {
   rank: number;
@@ -56,10 +56,7 @@ function isSemifinalRound(match: ManagedMatch): boolean {
 
 function isThirdPlaceRound(match: ManagedMatch): boolean {
   const normalized = normalizeRoundLabel(match.roundLabel);
-  return (
-    /\b(third|3rd)\s*place\b/i.test(normalized) ||
-    /\bbro(nze)?\b/i.test(normalized)
-  );
+  return /\b(third|3rd)\s*place\b/i.test(normalized) || /\bbro(nze)?\b/i.test(normalized);
 }
 
 function isLowerFinalRoundId(match: ManagedMatch): boolean {
@@ -141,9 +138,7 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
   );
   if (!final?.winner) return [];
 
-  const placements: TournamentPlacement[] = [
-    { rank: 1, label: "Champion", team: final.winner },
-  ];
+  const placements: TournamentPlacement[] = [{ rank: 1, label: "Champion", team: final.winner }];
 
   const runnerUp = loserOf(final);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
@@ -188,18 +183,21 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
 }
 
 export function deriveDoubleElimPlacements(matches: ManagedMatch[]): TournamentPlacement[] {
-  const grandFinal = findMatch(
-    matches,
-    (match) => match.bracketSide === "grand" && match.confirmed && !!match.winner,
-  );
-  if (!grandFinal?.winner) return [];
+  const champion = resolveGrandFinalChampion(matches);
+  if (!champion) return [];
 
-  const placements: TournamentPlacement[] = [
-    { rank: 1, label: "Champion", team: grandFinal.winner },
-  ];
+  const placements: TournamentPlacement[] = [{ rank: 1, label: "Champion", team: champion }];
 
-  const runnerUp = loserOf(grandFinal);
+  const runnerUp = resolveGrandFinalRunnerUp(matches);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
+
+  const grandFinal = matches.find(
+    (match) =>
+      (match.id === GRAND_FINAL_MATCH_ID || match.id === GRAND_FINAL_RESET_MATCH_ID) &&
+      match.confirmed &&
+      !!match.winner,
+  );
+  if (!grandFinal) return placements;
 
   const lowerFinal = findLowerFinalMatch(matches, grandFinal);
   const lowerFinalLoser = lowerFinal ? loserOf(lowerFinal) : null;

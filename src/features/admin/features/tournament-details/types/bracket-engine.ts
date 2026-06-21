@@ -3,7 +3,16 @@
  * Handles bracket generation, team validation, and automatic positioning
  */
 
-import { isEvenBracketFieldSize, playInMatchCount, singleElimRoundMatchCounts, eliminationRoundLabel } from "../utils/bracket-field";
+import {
+  isEvenBracketFieldSize,
+  bracketCapacity,
+  singleElimRoundMatchCounts,
+  eliminationRoundLabel,
+} from "../utils/bracket-field";
+import {
+  firstRoundSeedPairings,
+  teamForRegisteredSeed,
+} from "@/features/tournaments/utils/tournament-seeding";
 
 export interface BracketMatch {
   matchId: string;
@@ -169,9 +178,6 @@ export class BracketEngine {
   private getRoundName(roundNum: number, teamCount: number): string {
     const roundCounts = singleElimRoundMatchCounts(teamCount);
     const matchCount = roundCounts[roundNum - 1] ?? 0;
-    if (roundNum === 1 && playInMatchCount(teamCount) > 0) {
-      return "Opening — Play-in";
-    }
     return eliminationRoundLabel(matchCount * 2);
   }
 
@@ -182,11 +188,20 @@ export class BracketEngine {
     this.reset();
 
     const firstRound = this.structure.rounds[0];
+    const capacity = bracketCapacity(this.structure.totalTeams);
+    const pairings = firstRoundSeedPairings(capacity);
+    const registeredCount = teams.length;
 
     for (let i = 0; i < firstRound.matches.length; i++) {
       const match = firstRound.matches[i];
-      match.teamA = teams[i * 2] ?? null;
-      match.teamB = teams[i * 2 + 1] ?? null;
+      const pairing = pairings[i];
+      if (!pairing) {
+        match.teamA = null;
+        match.teamB = null;
+        continue;
+      }
+      match.teamA = teamForRegisteredSeed(pairing.seedA, registeredCount, teams);
+      match.teamB = teamForRegisteredSeed(pairing.seedB, registeredCount, teams);
     }
 
     this.advanceWinners();

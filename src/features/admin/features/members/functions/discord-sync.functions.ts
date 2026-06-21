@@ -6,6 +6,10 @@ interface DiscordSyncResponse {
   verified?: number;
   unverified?: number;
   deferred?: number;
+  notVerifiedQueued?: number;
+  page?: number;
+  totalPages?: number;
+  priorityNotVerified?: boolean;
 }
 
 export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
@@ -14,6 +18,8 @@ export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
   const unverified = summary.unverified ?? 0;
   const updated = summary.updated ?? 0;
   const deferred = summary.deferred ?? 0;
+  const queued = summary.notVerifiedQueued ?? 0;
+  const priority = summary.priorityNotVerified ?? false;
 
   const parts: string[] = ["Discord sync completed."];
 
@@ -35,6 +41,14 @@ export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
 
   if (deferred > 0) {
     parts.push(`${deferred} member${deferred === 1 ? "" : "s"} deferred — run sync again to continue.`);
+  }
+
+  if (queued > checked) {
+    parts.push(
+      priority
+        ? `${queued} still waiting — this run checked the ${checked} newest Not Verified member${checked === 1 ? "" : "s"}. Run sync again to continue.`
+        : `${queued} in the Not Verified queue. Cron rotates pages every 15 min; use Sync Discord now for the newest batch.`,
+    );
   }
 
   return parts.join(" ");
@@ -76,10 +90,11 @@ export const triggerDiscordSync = createServerFn({ method: "POST" })
   .handler(async (): Promise<DiscordSyncResponse> => {
     const { workerUrl, syncSecret } = getRequiredSyncConfig();
 
-    const response = await fetchWithTimeout(`${workerUrl}/sync`, {
+    const response = await fetchWithTimeout(`${workerUrl}/sync?priority=1`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${syncSecret}`,
+        "X-Sync-Priority": "1",
       },
     });
 

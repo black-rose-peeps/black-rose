@@ -9,7 +9,13 @@ export function roundFlowRank(roundId: string): number {
   if (roundId === "pi-r1") return 5;
 
   const poMatch = roundId.match(/^po-r(\d+)$/);
-  if (poMatch) return 10_000 + parseInt(poMatch[1], 10) * 10;
+  if (poMatch) return 20_000 + parseInt(poMatch[1], 10) * 10;
+
+  if (roundId === "po-3rd") return 20_500;
+  if (roundId === "se-3rd") return 1_005;
+
+  const swMatch = roundId.match(/^sw-r(\d+)$/);
+  if (swMatch) return 50 + parseInt(swMatch[1], 10) * 10;
 
   const seMatch = roundId.match(/^se-r(\d+)$/);
   if (seMatch) return (parseInt(seMatch[1], 10) + 1) * 10;
@@ -27,9 +33,7 @@ export function roundFlowRank(roundId: string): number {
 
   const lbSpecial: Record<string, number> = {
     "lb-pi": 150,
-    "lb-r1": 200,
     "lb-pc": 250,
-    "lb-r2": 400,
     "lb-sf": 600,
     "lb-f": 800,
   };
@@ -39,7 +43,7 @@ export function roundFlowRank(roundId: string): number {
   if (lbPdMatch) return 150 + parseInt(lbPdMatch[1], 10) * 5;
 
   const lbMatch = roundId.match(/^lb-r(\d+)$/);
-  if (lbMatch) return 200 + (parseInt(lbMatch[1], 10) - 1) * 100;
+  if (lbMatch) return 200 + (parseInt(lbMatch[1], 10) - 1) * 20;
 
   return 99_999;
 }

@@ -73,6 +73,8 @@ export interface BracketRound {
   id?: string;
   label: string;
   matches: BracketMatch[];
+  /** Teams that received a bye this Swiss round (published from admin). */
+  swissByes?: string[];
 }
 
 export interface TournamentPlayer {

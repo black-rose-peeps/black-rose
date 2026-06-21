@@ -22,7 +22,8 @@ export default {
     if (url.pathname === "/sync" && request.method === "POST") {
       if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
 
-      const promise = runSync(env);
+      const priorityNotVerified = parsePriorityNotVerified(request);
+      const promise = runSync(env, { priorityNotVerified });
       ctx.waitUntil(promise);
       const summary = await promise;
       return Response.json(summary);
@@ -51,7 +52,7 @@ export default {
       const boostUntilMs = Date.now() + boostMinutes * 60 * 1000;
       await setBoostUntilMs(env, boostUntilMs);
 
-      const promise = runSync(env);
+      const promise = runSync(env, { priorityNotVerified: true });
       ctx.waitUntil(promise);
       const summary = await promise;
 
@@ -89,11 +90,14 @@ async function runScheduledSync(event: ScheduledEvent, env: Env): Promise<void> 
   await runSync(env);
 }
 
-async function runSync(env: Env): Promise<SyncSummary> {
+async function runSync(
+  env: Env,
+  options?: { priorityNotVerified?: boolean },
+): Promise<SyncSummary> {
   validateEnv(env);
 
   try {
-    const summary = await syncRoseRoles(env);
+    const summary = await syncRoseRoles(env, options);
     console.info("[discord-sync] Complete", summary);
     return summary;
   } catch (err) {
@@ -103,6 +107,15 @@ async function runSync(env: Env): Promise<SyncSummary> {
     );
     throw err;
   }
+}
+
+function parsePriorityNotVerified(request: Request): boolean {
+  const url = new URL(request.url);
+  const query = url.searchParams.get("priority");
+  if (query === "1" || query === "true") return true;
+
+  const header = request.headers.get("x-sync-priority")?.trim().toLowerCase();
+  return header === "1" || header === "true";
 }
 
 function validateEnv(env: Env): void {

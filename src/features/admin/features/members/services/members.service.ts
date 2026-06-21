@@ -1,8 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import {
-  formatValorantRiotId,
-  isValorantGame,
-} from "@/features/member/utils/valorant-identity";
+import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { isUuid } from "../utils/postgrest-filter";
@@ -90,10 +87,7 @@ export async function updateMemberVerificationStatus(
   return rowToAdminMember(data);
 }
 
-export async function updateMember(
-  id: string,
-  input: CreateMemberInput,
-): Promise<AdminMember> {
+export async function updateMember(id: string, input: CreateMemberInput): Promise<AdminMember> {
   const { data, error } = await supabase
     .from("members")
     .update({
@@ -142,10 +136,7 @@ export interface InviteSearchOptions {
   excludeTeamId?: string;
 }
 
-async function fetchMemberIdsOnActiveGame(
-  game: string,
-  excludeTeamId?: string,
-): Promise<string[]> {
+async function fetchMemberIdsOnActiveGame(game: string, excludeTeamId?: string): Promise<string[]> {
   const { data: teamRows, error: teamErr } = await supabase
     .from("teams")
     .select("id")
@@ -191,7 +182,11 @@ async function collectInviteSearchMemberIds(query: string, game?: string): Promi
   const ids = new Set<string>();
 
   const runs = [
-    supabase.from("members").select("id").eq("status", "Verified").ilike("discord_username", pattern),
+    supabase
+      .from("members")
+      .select("id")
+      .eq("status", "Verified")
+      .ilike("discord_username", pattern),
     supabase.from("members").select("id").eq("status", "Verified").ilike("username", pattern),
     supabase
       .from("member_profiles")
@@ -252,13 +247,9 @@ async function collectInviteSearchMemberIds(query: string, game?: string): Promi
   return [...ids];
 }
 
-function rowToInviteSearchMember(
-  row: Record<string, unknown>,
-  game?: string,
-): InviteSearchMember {
+function rowToInviteSearchMember(row: Record<string, unknown>, game?: string): InviteSearchMember {
   const username = row.username as string;
-  const discordUsername =
-    (row.discord_username as string | null | undefined)?.trim() || username;
+  const discordUsername = (row.discord_username as string | null | undefined)?.trim() || username;
   const profiles = row.member_profiles as
     | {
         display_name?: string;
@@ -284,8 +275,7 @@ function rowToInviteSearchMember(
       profile.valorant_game_name?.trim() ?? "",
       profile.valorant_tagline?.trim() ?? "",
     );
-  const displayName =
-    game && isValorantGame(game) && valorantId ? valorantId : baseDisplayName;
+  const displayName = game && isValorantGame(game) && valorantId ? valorantId : baseDisplayName;
 
   const avatarUrl = profile?.avatar_url?.trim() || null;
 
