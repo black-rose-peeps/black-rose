@@ -132,16 +132,17 @@ function ProfileEditPage() {
 
   const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
 
+  const normalizedRegion = region.trim();
+
   const regionOptions = useMemo(() => {
-    const trimmed = region.trim();
     if (
-      trimmed &&
-      !PROFILE_REGION_OPTIONS.includes(trimmed as (typeof PROFILE_REGION_OPTIONS)[number])
+      normalizedRegion &&
+      !PROFILE_REGION_OPTIONS.includes(normalizedRegion as (typeof PROFILE_REGION_OPTIONS)[number])
     ) {
-      return [...PROFILE_REGION_OPTIONS, trimmed];
+      return [...PROFILE_REGION_OPTIONS, normalizedRegion];
     }
     return PROFILE_REGION_OPTIONS;
-  }, [region]);
+  }, [normalizedRegion]);
 
   useEffect(() => {
     if (mainRole && !roleOptions.includes(mainRole as (typeof roleOptions)[number])) {
@@ -181,7 +182,7 @@ function ProfileEditPage() {
         setBio(data.bio);
         setMainGame(normalizedGame);
         setMainRole(data.mainRole);
-        setRegion(data.region);
+        setRegion(data.region.trim());
         setValorantGameName(data.valorantGameName);
         setValorantTagline(data.valorantTagline);
         setIsPublic(data.isPublic);
@@ -473,7 +474,7 @@ function ProfileEditPage() {
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Region
                   </Label>
-                  <Select value={region || undefined} onValueChange={setRegion}>
+                  <Select value={normalizedRegion || undefined} onValueChange={setRegion}>
                     <SelectTrigger className={techFieldClass}>
                       <SelectValue placeholder="Select a region" />
                     </SelectTrigger>
