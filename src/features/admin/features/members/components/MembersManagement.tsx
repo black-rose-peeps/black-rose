@@ -51,11 +51,8 @@ import { EditMemberModal } from "./EditMemberModal";
 import { MemberSyncQueueFilters } from "./MemberSyncQueueFilters";
 import { useDeleteMember } from "../hooks/useDeleteMember";
 import { DEFAULT_SYNC_HOT_DAYS } from "../constants";
-import {
-  formatDiscordSyncMessage,
-  getMemberSyncQueueConfig,
-  triggerDiscordSync,
-} from "../functions/discord-sync.functions";
+import { getMemberSyncQueueConfig, triggerDiscordSync } from "../functions/discord-sync.functions";
+import { formatDiscordSyncMessage } from "../utils/discord-sync-config";
 
 export function MembersManagement() {
   const navigate = useNavigate();
