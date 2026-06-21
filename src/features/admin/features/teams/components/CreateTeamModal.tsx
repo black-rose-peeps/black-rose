@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -64,10 +65,7 @@ export function CreateTeamModal({
 
   useEffect(() => {
     if (!open) return;
-    if (
-      values.captainMemberId &&
-      !availableCaptains.some((m) => m.id === values.captainMemberId)
-    ) {
+    if (values.captainMemberId && !availableCaptains.some((m) => m.id === values.captainMemberId)) {
       setValues((prev) => ({ ...prev, captainMemberId: "" }));
     }
   }, [open, availableCaptains, values.captainMemberId]);
@@ -89,10 +87,7 @@ export function CreateTeamModal({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (
-      values.captainMemberId &&
-      !availableCaptains.some((m) => m.id === values.captainMemberId)
-    ) {
+    if (values.captainMemberId && !availableCaptains.some((m) => m.id === values.captainMemberId)) {
       setValues((prev) => ({ ...prev, captainMemberId: "" }));
       setFieldErrors((prev) => ({
         ...prev,
@@ -115,103 +110,107 @@ export function CreateTeamModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !isSubmitting && onClose()}>
-      <DialogContent className="border-border bg-card sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl tracking-wider">Create Team</DialogTitle>
-          <DialogDescription>
-            Set up a new roster. The captain is added as the first member automatically.
-          </DialogDescription>
-        </DialogHeader>
+    <AdaptiveModal open={open} onOpenChange={(next) => !next && !isSubmitting && onClose()}>
+      <AdaptiveModalContent className="border-border bg-card sm:max-w-lg" mobileSize="tall">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AdaptiveModalHeader>
+            <AdaptiveModalTitle>Create Team</AdaptiveModalTitle>
+            <AdaptiveModalDescription>
+              Set up a new roster. The captain is added as the first member automatically.
+            </AdaptiveModalDescription>
+          </AdaptiveModalHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="team-name">Team Name</Label>
-              <Input
-                id="team-name"
-                value={values.name}
-                onChange={(e) => updateField("name", e.target.value)}
-                placeholder="e.g. Novellino eSports"
-                disabled={isSubmitting}
-                className="bg-background/50"
-              />
-              {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+          <AdaptiveModalBody className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="team-name">Team Name</Label>
+                <Input
+                  id="team-name"
+                  value={values.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  placeholder="e.g. Novellino eSports"
+                  disabled={isSubmitting}
+                  className="bg-background/50"
+                />
+                {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="team-tag">Tag</Label>
+                <Input
+                  id="team-tag"
+                  value={values.tag}
+                  onChange={(e) => updateField("tag", e.target.value.toUpperCase())}
+                  placeholder="NE"
+                  maxLength={5}
+                  disabled={isSubmitting}
+                  className="bg-background/50 font-tech uppercase"
+                />
+                {fieldErrors.tag && <p className="text-xs text-destructive">{fieldErrors.tag}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="team-game">Game</Label>
+                <Select
+                  value={values.game}
+                  onValueChange={(game) =>
+                    updateField("game", game as CreateTeamFormValues["game"])
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="team-game" className="bg-background/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ADMIN_TEAM_GAMES.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="team-captain">Captain</Label>
+                <Select
+                  value={values.captainMemberId}
+                  onValueChange={(id) => updateField("captainMemberId", id)}
+                  disabled={isSubmitting || availableCaptains.length === 0}
+                >
+                  <SelectTrigger id="team-captain" className="bg-background/50">
+                    <SelectValue
+                      placeholder={
+                        members.length === 0
+                          ? "Register members first"
+                          : availableCaptains.length === 0
+                            ? "No eligible members available"
+                            : "Select captain"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCaptains.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.username} · @{m.discordUsername}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors.captainMemberId && (
+                  <p className="text-xs text-destructive">{fieldErrors.captainMemberId}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="team-tag">Tag</Label>
-              <Input
-                id="team-tag"
-                value={values.tag}
-                onChange={(e) => updateField("tag", e.target.value.toUpperCase())}
-                placeholder="NE"
-                maxLength={5}
-                disabled={isSubmitting}
-                className="bg-background/50 font-tech uppercase"
-              />
-              {fieldErrors.tag && <p className="text-xs text-destructive">{fieldErrors.tag}</p>}
-            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </AdaptiveModalBody>
 
-            <div className="space-y-2">
-              <Label htmlFor="team-game">Game</Label>
-              <Select
-                value={values.game}
-                onValueChange={(game) => updateField("game", game as CreateTeamFormValues["game"])}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger id="team-game" className="bg-background/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ADMIN_TEAM_GAMES.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>
-                      {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="team-captain">Captain</Label>
-              <Select
-                value={values.captainMemberId}
-                onValueChange={(id) => updateField("captainMemberId", id)}
-                disabled={isSubmitting || availableCaptains.length === 0}
-              >
-                <SelectTrigger id="team-captain" className="bg-background/50">
-                  <SelectValue
-                    placeholder={
-                      members.length === 0
-                        ? "Register members first"
-                        : availableCaptains.length === 0
-                          ? "No eligible members available"
-                          : "Select captain"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCaptains.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.username} · @{m.discordUsername}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {fieldErrors.captainMemberId && (
-                <p className="text-xs text-destructive">{fieldErrors.captainMemberId}</p>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <DialogFooter className="gap-2 sm:gap-0">
+          <AdaptiveModalFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
@@ -222,9 +221,9 @@ export function CreateTeamModal({
             >
               {isSubmitting ? "Creating…" : "Create Team"}
             </Button>
-          </DialogFooter>
+          </AdaptiveModalFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

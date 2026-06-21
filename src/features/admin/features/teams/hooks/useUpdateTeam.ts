@@ -8,7 +8,10 @@ export function useUpdateTeam() {
   const [error, setError] = useState<string | null>(null);
 
   const submit = useCallback(
-    async (teamId: string, input: Pick<CreateTeamInput, "name" | "tag" | "game">): Promise<Team> => {
+    async (
+      teamId: string,
+      input: Pick<CreateTeamInput, "name" | "tag" | "game">,
+    ): Promise<Team> => {
       setIsSubmitting(true);
       setError(null);
       try {

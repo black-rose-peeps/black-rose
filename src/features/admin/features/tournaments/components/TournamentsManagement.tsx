@@ -30,8 +30,11 @@ import type { AdminTournament } from "../types";
 import { CreateTournamentModal } from "./CreateTournamentModal";
 import { EditTournamentModal } from "./EditTournamentModal";
 import { useDeleteTournament } from "../hooks/useDeleteTournament";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { TournamentMobileList } from "./mobile";
 
 export function TournamentsManagement() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { tournaments, isLoading, error, prependTournament, replaceTournament, removeTournament } =
     useTournaments();
@@ -107,83 +110,19 @@ export function TournamentsManagement() {
           </div>
         )}
 
-        <div className="p-6 pt-4">
+        <div className="p-4 pt-4 sm:p-6">
           {isLoading ? (
-            <AdminManagementTable columnWidths={TOURNAMENTS_TABLE_COLUMNS}>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                    Tournament
-                  </TableHead>
-                  <SortableTableHead
-                    label="Format"
-                    sortKey="format"
-                    activeKey={sortKey}
-                    direction={direction}
-                    onSort={toggleSort}
-                  />
-                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                    Prize
-                  </TableHead>
-                  <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                    Teams
-                  </TableHead>
-                  <SortableTableHead
-                    label="Status"
-                    sortKey="status"
-                    activeKey={sortKey}
-                    direction={direction}
-                    onSort={toggleSort}
-                  />
-                  <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    <TableCell>
-                      <Skeleton className="h-4 w-40 mb-1.5" />
-                      <Skeleton className="h-3 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-28" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-16" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-10" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-24 rounded-full" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="ml-auto h-8 w-8 rounded-md" />
-                    </TableCell>
-                  </TableRow>
+            isMobile ? (
+              <ul className="divide-y divide-white/8 md:hidden">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <li key={i} className="space-y-2 px-4 py-4">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </li>
                 ))}
-              </TableBody>
-            </AdminManagementTable>
-          ) : tournaments.length === 0 ? (
-            <AdminEmptyState
-              eyebrow="Events"
-              title={<AdminEmptyTitle noun="tournaments" />}
-              description="Create your first competitive event to open registration, manage brackets, and publish results. Supported formats include single elimination, double elimination, and Swiss — once enough teams are approved."
-              actions={
-                <Button
-                  onClick={() => setIsCreateOpen(true)}
-                  size="sm"
-                  className="gap-2 font-tech uppercase tracking-wider"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Tournament
-                </Button>
-              }
-            />
-          ) : (
-            <>
+              </ul>
+            ) : (
               <AdminManagementTable columnWidths={TOURNAMENTS_TABLE_COLUMNS}>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -216,67 +155,170 @@ export function TournamentsManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagination.paginatedItems.map((t) => (
-                  <TableRow
-                    key={t.id}
-                    role="button"
-                    tabIndex={0}
-                    className="cursor-pointer transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    onClick={() => openTournament(t.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openTournament(t.id);
-                      }
-                    }}
-                  >
-                    <TableCell className={adminTableCellClip}>
-                      <div>
-                        <div className={cn("font-title text-base", adminTableTextTruncate)}>
-                          {t.name}
-                        </div>
-                        <div className={cn("text-xs text-muted-foreground", adminTableTextTruncate)}>
-                          {GAME_LABELS[t.game]} · {t.region}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn("text-sm text-muted-foreground", adminTableCellClip)}>
-                      <span className={adminTableTextTruncate}>{t.format}</span>
-                    </TableCell>
-                    <TableCell className={cn("text-sm", adminTableCellClip)}>
-                      <span className={adminTableTextTruncate}>{t.prizePool}</span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {t.teamsRegistered}/{t.teamCap}
-                    </TableCell>
-                    <TableCell>
-                      <StatusPill status={t.status} />
-                    </TableCell>
-                    <TableCell
-                      className="text-right"
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
-                    >
-                      <AdminRowActions
-                        onEdit={() => setEditingTournament(t)}
-                        onDelete={() => {
-                          resetDeleteError();
-                          setDeletingTournament(t);
-                        }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i} className="hover:bg-transparent">
+                      <TableCell>
+                        <Skeleton className="h-4 w-40 mb-1.5" />
+                        <Skeleton className="h-3 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-10" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-24 rounded-full" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-8 w-8 rounded-md" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </AdminManagementTable>
-              <AdminTablePagination
-                page={pagination.page}
-                totalPages={pagination.totalPages}
-                total={pagination.total}
-                rangeStart={pagination.rangeStart}
-                rangeEnd={pagination.rangeEnd}
-                onPageChange={pagination.setPage}
-              />
+            )
+          ) : tournaments.length === 0 ? (
+            <AdminEmptyState
+              eyebrow="Events"
+              title={<AdminEmptyTitle noun="tournaments" />}
+              description="Create your first competitive event to open registration, manage brackets, and publish results. Supported formats include single elimination, double elimination, and Swiss — once enough teams are approved."
+              actions={
+                <Button
+                  onClick={() => setIsCreateOpen(true)}
+                  size="sm"
+                  className="gap-2 font-tech uppercase tracking-wider"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Tournament
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              {isMobile ? (
+                <TournamentMobileList
+                  tournaments={pagination.paginatedItems}
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  total={pagination.total}
+                  rangeStart={pagination.rangeStart}
+                  rangeEnd={pagination.rangeEnd}
+                  onPageChange={pagination.setPage}
+                  onOpen={openTournament}
+                  onEdit={setEditingTournament}
+                  onDelete={(tournament) => {
+                    resetDeleteError();
+                    setDeletingTournament(tournament);
+                  }}
+                />
+              ) : (
+                <>
+                  <AdminManagementTable columnWidths={TOURNAMENTS_TABLE_COLUMNS}>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          Tournament
+                        </TableHead>
+                        <SortableTableHead
+                          label="Format"
+                          sortKey="format"
+                          activeKey={sortKey}
+                          direction={direction}
+                          onSort={toggleSort}
+                        />
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          Prize
+                        </TableHead>
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          Teams
+                        </TableHead>
+                        <SortableTableHead
+                          label="Status"
+                          sortKey="status"
+                          activeKey={sortKey}
+                          direction={direction}
+                          onSort={toggleSort}
+                        />
+                        <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagination.paginatedItems.map((t) => (
+                        <TableRow
+                          key={t.id}
+                          role="button"
+                          tabIndex={0}
+                          className="cursor-pointer transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          onClick={() => openTournament(t.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openTournament(t.id);
+                            }
+                          }}
+                        >
+                          <TableCell className={adminTableCellClip}>
+                            <div>
+                              <div className={cn("font-title text-base", adminTableTextTruncate)}>
+                                {t.name}
+                              </div>
+                              <div
+                                className={cn(
+                                  "text-xs text-muted-foreground",
+                                  adminTableTextTruncate,
+                                )}
+                              >
+                                {GAME_LABELS[t.game]} · {t.region}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell
+                            className={cn("text-sm text-muted-foreground", adminTableCellClip)}
+                          >
+                            <span className={adminTableTextTruncate}>{t.format}</span>
+                          </TableCell>
+                          <TableCell className={cn("text-sm", adminTableCellClip)}>
+                            <span className={adminTableTextTruncate}>{t.prizePool}</span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {t.teamsRegistered}/{t.teamCap}
+                          </TableCell>
+                          <TableCell>
+                            <StatusPill status={t.status} />
+                          </TableCell>
+                          <TableCell
+                            className="text-right"
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            <AdminRowActions
+                              onEdit={() => setEditingTournament(t)}
+                              onDelete={() => {
+                                resetDeleteError();
+                                setDeletingTournament(t);
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </AdminManagementTable>
+                  <AdminTablePagination
+                    page={pagination.page}
+                    totalPages={pagination.totalPages}
+                    total={pagination.total}
+                    rangeStart={pagination.rangeStart}
+                    rangeEnd={pagination.rangeEnd}
+                    onPageChange={pagination.setPage}
+                  />
+                </>
+              )}
             </>
           )}
         </div>

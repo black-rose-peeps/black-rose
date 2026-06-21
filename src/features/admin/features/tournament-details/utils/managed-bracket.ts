@@ -33,4 +33,3 @@ export {
 } from "./managed-single-elims-bracket";
 
 export { buildDoubleElimMatches } from "./managed-double-elims-bracket";
-

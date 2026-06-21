@@ -6,10 +6,7 @@ export function getSyncHotCutoffMs(hotDays = DEFAULT_SYNC_HOT_DAYS): number {
 }
 
 export function getMemberSyncQueueTier(
-  member: Pick<
-    AdminMember,
-    "status" | "createdAt" | "discordId" | "discordSyncPausedAt"
-  >,
+  member: Pick<AdminMember, "status" | "createdAt" | "discordId" | "discordSyncPausedAt">,
   hotDays = DEFAULT_SYNC_HOT_DAYS,
 ): MemberSyncQueueTier | null {
   if (member.status !== "Not Verified" || !member.discordId?.trim()) return null;
@@ -73,7 +70,10 @@ export function memberNeedsSyncQueueReset(
   return Boolean(member.discordSyncPausedAt) || member.discordNotInGuildStrikes > 0;
 }
 
-export function memberIsStaleSyncCandidate(member: AdminMember, hotDays = DEFAULT_SYNC_HOT_DAYS): boolean {
+export function memberIsStaleSyncCandidate(
+  member: AdminMember,
+  hotDays = DEFAULT_SYNC_HOT_DAYS,
+): boolean {
   const tier = getMemberSyncQueueTier(member, hotDays);
   return tier === "cold" || tier === "paused";
 }

@@ -104,7 +104,9 @@ function buildFormatGroups(roundMetas: BracketRoundMeta[], isDoubleElim: boolean
   return groups
     .map((group) => ({
       ...group,
-      roundIds: group.roundIds.filter((id) => ids.has(id) || roundMetas.some((round) => round.id.startsWith(id))),
+      roundIds: group.roundIds.filter(
+        (id) => ids.has(id) || roundMetas.some((round) => round.id.startsWith(id)),
+      ),
     }))
     .map((group) => ({
       ...group,
@@ -173,7 +175,10 @@ export function RoundFormatPanel({
   onApplyRecommended,
 }: RoundFormatPanelProps) {
   const [expanded, setExpanded] = useState(true);
-  const roundById = useMemo(() => new Map(roundMetas.map((round) => [round.id, round])), [roundMetas]);
+  const roundById = useMemo(
+    () => new Map(roundMetas.map((round) => [round.id, round])),
+    [roundMetas],
+  );
   const groups = useMemo(
     () => buildFormatGroups(roundMetas, isDoubleElim),
     [roundMetas, isDoubleElim],
@@ -185,7 +190,9 @@ export function RoundFormatPanel({
     <div className="mb-6 overflow-hidden border border-border bg-card/40">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/15 px-4 py-3">
         <div>
-          <p className="font-display text-xs uppercase tracking-wider text-foreground">Match formats</p>
+          <p className="font-display text-xs uppercase tracking-wider text-foreground">
+            Match formats
+          </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Sets map wins required on every match card in that round. Changes apply immediately to
             in-progress scores.
@@ -270,6 +277,8 @@ export function getLockedFormatRoundIds(
   return locked;
 }
 
-export function buildRecommendedRoundFormats(roundMetas: BracketRoundMeta[]): Record<string, BestOfFormat> {
+export function buildRecommendedRoundFormats(
+  roundMetas: BracketRoundMeta[],
+): Record<string, BestOfFormat> {
   return defaultRoundFormats(roundMetas);
 }

@@ -36,6 +36,7 @@ import {
   adminTableTextTruncate,
 } from "@/features/admin/components/AdminManagementTable";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
+import { AdminPageContent } from "@/features/admin/components/AdminPageContent";
 import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import {
@@ -78,6 +79,15 @@ import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { compareByOrder } from "@/features/admin/utils/sort-comparators";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { usePagination } from "@/features/admin/hooks/usePagination";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  TournamentDetailMobileNav,
+  TournamentMobileActionsMenu,
+  TournamentMobileMetaStrip,
+  TournamentRegistrationsMobileList,
+  type TournamentDetailTab,
+} from "@/features/admin/features/tournaments/components/mobile";
+import type { TournamentMetaItem } from "@/features/admin/components/TournamentMetaStrip";
 import {
   isSoloTournament,
   participationTypeLabel,
@@ -197,6 +207,8 @@ function TournamentDetailPage() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [reviewingRegistrationId, setReviewingRegistrationId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<TournamentDetailTab>("teams");
   const {
     submit: deleteTournamentSubmit,
     isDeleting,
@@ -210,10 +222,10 @@ function TournamentDetailPage() {
     return (
       <>
         <AdminTopbar title="Loading…" subtitle="Tournament Operations" />
-        <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+        <AdminPageContent>
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-24 w-full clip-angle" />
-        </div>
+        </AdminPageContent>
       </>
     );
   }
@@ -257,460 +269,626 @@ function TournamentDetailPage() {
   const capLabel = registrationCapLabel(tournament.participationType);
   const wwmLabel = wwmModeLabel(tournament.wwmMode);
 
+  const metaItems: TournamentMetaItem[] = [
+    {
+      label: "Game",
+      value: tournament.game,
+      icon: <Gamepad2 className="h-3.5 w-3.5" />,
+    },
+    {
+      label: "Registration",
+      value: wwmLabel
+        ? `${participationTypeLabel(tournament.participationType)} · ${wwmLabel}`
+        : participationTypeLabel(tournament.participationType),
+      icon: <UserRound className="h-3.5 w-3.5" />,
+    },
+    {
+      label: "Status",
+      value: <StatusPill status={tournament.status} />,
+      icon: <Trophy className="h-3.5 w-3.5" />,
+    },
+    {
+      label: "Prize Pool",
+      value: tournament.prizePool,
+      highlight: true,
+    },
+    {
+      label: "Start Date",
+      value: tournament.startDate,
+      icon: <Calendar className="h-3.5 w-3.5" />,
+    },
+    {
+      label: "Registration Deadline",
+      value: tournament.registrationDeadline,
+      icon: <CalendarClock className="h-3.5 w-3.5" />,
+    },
+    {
+      label: capLabel,
+      value: `${displayedEntrantCount}/${tournament.teamCap}`,
+      icon: <Users className="h-3.5 w-3.5" />,
+    },
+    {
+      label: "Players",
+      value: totalPlayers,
+      icon: <Users2 className="h-3.5 w-3.5" />,
+    },
+  ];
+
+  const mobileRegistrationRows = teamsPagination.paginatedItems.map((team) => ({
+    id: team.id,
+    name: team.name,
+    tag: team.tag,
+    captain: team.captain,
+    memberCount: team.members.length,
+    soloDiscord: team.members[0]?.discord ?? team.captain,
+    registrationDate: team.registrationDate,
+    status: team.status,
+  }));
+
+  const teamsPanelHeader = (
+    <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div>
+        <p className="font-tech text-label-readable uppercase text-muted-foreground">
+          Registrations
+        </p>
+        <h2 className="font-display text-xl font-bold tracking-wider-2">
+          {soloEvent ? "Registered Players" : "Registered Teams"}
+        </h2>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-9">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+          disabled={teamsLoading}
+          onClick={() => refetchRegistrations()}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Refresh
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          className="gap-2 font-tech uppercase tracking-wider"
+          disabled={approvedCount >= tournament.teamCap}
+          title={
+            approvedCount >= tournament.teamCap
+              ? `${capLabel} reached`
+              : soloEvent
+                ? "Register members directly"
+                : "Add a roster from Teams"
+          }
+          onClick={() => (soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true))}
+        >
+          <Plus className="h-4 w-4" />
+          {soloEvent ? "Add Players" : "Add Teams"}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const bracketPanelContent = supportsBracketManager ? (
+    <BracketManager
+      tournamentId={tournament.id}
+      tournamentName={tournament.name}
+      game={tournament.game}
+      region={tournament.region}
+      startDate={tournament.startDate}
+      format={tournament.format}
+      teamCap={tournament.teamCap}
+      teams={computedTeams}
+      initialBracket={tournament.bracket ?? []}
+      tournamentStatus={tournament.status}
+      prizeBreakdown={tournament.prizeBreakdown}
+      onTournamentStatusChange={(status) => patchTournament({ ...tournament, status })}
+    />
+  ) : (
+    <div className="py-12 text-center text-muted-foreground">
+      <p className="mx-auto max-w-lg">
+        {bracketNotice || "Bracket management is not available for this tournament yet."}
+      </p>
+      <p className="mt-2 text-sm">
+        {tournament.format} · {computedTeams.length}/{tournament.teamCap} teams registered
+      </p>
+    </div>
+  );
+
   return (
     <>
       <AdminTopbar title={tournament.name} subtitle="Tournament Operations" />
 
-      <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+      <AdminPageContent className={isMobile ? "pb-24" : undefined}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button
             variant="ghost"
             size="sm"
-            className="w-fit gap-2 font-tech uppercase tracking-wider"
+            className="touch-target min-h-11 w-fit gap-2 font-tech uppercase tracking-wider"
             asChild
           >
             <Link to="/admin/tournaments">
               <ArrowLeft className="h-4 w-4" />
-              Back to Tournaments
+              Back
             </Link>
           </Button>
-          <div className="flex flex-wrap items-center gap-2">
-            {tournament.status === "Completed" && (
+          {isMobile ? (
+            <TournamentMobileActionsMenu
+              showArchive={tournament.status === "Completed"}
+              onArchive={() => {
+                setArchiveError(null);
+                setIsArchiveOpen(true);
+              }}
+              onEdit={() => setIsEditOpen(true)}
+              onDelete={() => {
+                resetDeleteTournamentError();
+                setIsDeleteOpen(true);
+              }}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {tournament.status === "Completed" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+                  onClick={() => {
+                    setArchiveError(null);
+                    setIsArchiveOpen(true);
+                  }}
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  Archive
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+                onClick={() => setIsEditOpen(true)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2 font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
                 onClick={() => {
-                  setArchiveError(null);
-                  setIsArchiveOpen(true);
+                  resetDeleteTournamentError();
+                  setIsDeleteOpen(true);
                 }}
               >
-                <Archive className="h-3.5 w-3.5" />
-                Archive
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
               </Button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-2 font-tech text-[10px] uppercase tracking-wider"
-              onClick={() => setIsEditOpen(true)}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-2 font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
-              onClick={() => {
-                resetDeleteTournamentError();
-                setIsDeleteOpen(true);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
 
-        <TournamentMetaStrip
-          className="clip-angle"
-          items={[
-            {
-              label: "Game",
-              value: tournament.game,
-              icon: <Gamepad2 className="h-3.5 w-3.5" />,
-            },
-            {
-              label: "Registration",
-              value: wwmLabel
-                ? `${participationTypeLabel(tournament.participationType)} · ${wwmLabel}`
-                : participationTypeLabel(tournament.participationType),
-              icon: <UserRound className="h-3.5 w-3.5" />,
-            },
-            {
-              label: "Status",
-              value: <StatusPill status={tournament.status} />,
-              icon: <Trophy className="h-3.5 w-3.5" />,
-            },
-            {
-              label: "Prize Pool",
-              value: tournament.prizePool,
-              highlight: true,
-            },
-            {
-              label: "Start Date",
-              value: tournament.startDate,
-              icon: <Calendar className="h-3.5 w-3.5" />,
-            },
-            {
-              label: "Reg. Deadline",
-              value: tournament.registrationDeadline,
-              icon: <CalendarClock className="h-3.5 w-3.5" />,
-            },
-            {
-              label: capLabel,
-              value: `${displayedEntrantCount}/${tournament.teamCap}`,
-              icon: <Users className="h-3.5 w-3.5" />,
-            },
-            {
-              label: "Players",
-              value: totalPlayers,
-              icon: <Users2 className="h-3.5 w-3.5" />,
-            },
-          ]}
-        />
+        {isMobile ? (
+          <TournamentMobileMetaStrip className="clip-angle" items={metaItems} />
+        ) : (
+          <TournamentMetaStrip className="clip-angle" items={metaItems} />
+        )}
 
-        <Tabs defaultValue="teams" className="flex flex-col gap-4">
-          <TabsList className="h-auto w-full justify-start rounded-none border-b border-border bg-transparent p-0">
-            <TabsTrigger
-              value="teams"
-              className="gap-2 rounded-none border-b-2 border-transparent px-6 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none"
-            >
-              <Users2 className="h-4 w-4" />
-              {soloEvent ? "Registered Players" : "Registered Teams"}
-              <Badge variant="secondary" className="font-tech text-[10px]">
-                {teams.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger
-              value="prizes"
-              className="gap-2 rounded-none border-b-2 border-transparent px-6 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none"
-            >
-              <Coins className="h-4 w-4" />
-              Prize Distribution
-            </TabsTrigger>
-            <TabsTrigger
-              value="bracket"
-              disabled={!supportsBracketManager}
-              title={supportsBracketManager ? undefined : bracketNotice || "Bracket unavailable"}
-              className="gap-2 rounded-none border-b-2 border-transparent px-6 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none"
-            >
-              <Trophy className="h-4 w-4" />
-              Bracket Management
-            </TabsTrigger>
-          </TabsList>
+        {isMobile ? (
+          <>
+            {mobileTab === "teams" ? (
+              <Panel>
+                {teamsPanelHeader}
+                {teamsError && (
+                  <div className="px-4 pt-4">
+                    <Alert variant="destructive">
+                      <AlertDescription>{teamsError}</AlertDescription>
+                    </Alert>
+                  </div>
+                )}
+                <div className="pt-2">
+                  {teamsLoading && teams.length === 0 ? (
+                    <ul className="divide-y divide-white/8">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <li key={i} className="space-y-2 px-4 py-4">
+                          <Skeleton className="h-5 w-2/3" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : teams.length === 0 ? (
+                    <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      {soloEvent
+                        ? "No players registered yet. Use Add Players to register members directly."
+                        : "No teams registered yet. Use Add Teams to register rosters from Teams."}
+                    </p>
+                  ) : (
+                    <TournamentRegistrationsMobileList
+                      rows={mobileRegistrationRows}
+                      soloEvent={soloEvent}
+                      page={teamsPagination.page}
+                      totalPages={teamsPagination.totalPages}
+                      total={teamsPagination.total}
+                      rangeStart={teamsPagination.rangeStart}
+                      rangeEnd={teamsPagination.rangeEnd}
+                      onPageChange={teamsPagination.setPage}
+                      onView={(id) => {
+                        const team = teams.find((entry) => entry.id === id);
+                        if (team) setOpenTeam(team);
+                      }}
+                      onRemove={(row) => {
+                        const team = teams.find((entry) => entry.id === row.id);
+                        if (team) {
+                          setRemoveError(null);
+                          setRemovingRegistration(team);
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              </Panel>
+            ) : null}
 
-          <TabsContent value="prizes" className="mt-0">
-            <PrizeDistributionPanel
-              tournament={tournament}
-              onUpdated={(updated) => patchTournament(updated)}
-            />
-          </TabsContent>
+            {mobileTab === "prizes" ? (
+              <PrizeDistributionPanel
+                tournament={tournament}
+                onUpdated={(updated) => patchTournament(updated)}
+              />
+            ) : null}
 
-          <TabsContent value="teams" className="mt-0">
-            <Panel>
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4">
-                <div>
-                  <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                    Registrations
+            {mobileTab === "bracket" ? (
+              <Panel>
+                <div className="border-b border-border px-4 py-4">
+                  <p className="font-tech text-label-readable uppercase text-muted-foreground">
+                    Admin
                   </p>
                   <h2 className="font-display text-xl font-bold tracking-wider-2">
-                    {soloEvent ? "Registered Players" : "Registered Teams"}
+                    Bracket Management
                   </h2>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 font-tech text-[10px] uppercase tracking-wider"
-                    disabled={teamsLoading}
-                    onClick={() => refetchRegistrations()}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Refresh
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="gap-2 font-tech uppercase tracking-wider"
-                    disabled={approvedCount >= tournament.teamCap}
-                    title={
-                      approvedCount >= tournament.teamCap
-                        ? `${capLabel} reached`
-                        : soloEvent
-                          ? "Register members directly"
-                          : "Add a roster from Teams"
-                    }
-                    onClick={() => (soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true))}
-                  >
-                    <Plus className="h-4 w-4" />
-                    {soloEvent ? "Add Players" : "Add Teams"}
-                  </Button>
-                </div>
-              </div>
+                <div className="px-0 py-4">{bracketPanelContent}</div>
+              </Panel>
+            ) : null}
 
-              {teamsError && (
-                <div className="px-6 pt-4">
-                  <Alert variant="destructive">
-                    <AlertDescription>{teamsError}</AlertDescription>
-                  </Alert>
-                </div>
-              )}
-
-              <div className="p-6 pt-4">
-                <AdminManagementTable
-                  columnWidths={
-                    soloEvent
-                      ? TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS
-                      : TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS
-                  }
+            <TournamentDetailMobileNav
+              activeTab={mobileTab}
+              onTabChange={setMobileTab}
+              teamsLabel={soloEvent ? "Players" : "Teams"}
+              teamsCount={teams.length}
+              bracketDisabled={!supportsBracketManager}
+              bracketDisabledReason={bracketNotice || "Bracket unavailable"}
+            />
+          </>
+        ) : (
+          <Tabs defaultValue="teams" className="hidden flex-col gap-4 md:flex">
+            <div className="custom-scrollbar -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              <TabsList className="h-auto w-max min-w-full justify-start rounded-none border-b border-border bg-transparent p-0 sm:w-full">
+                <TabsTrigger
+                  value="teams"
+                  className="touch-target shrink-0 gap-2 rounded-none border-b-2 border-transparent px-4 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none sm:px-6"
                 >
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                        {soloEvent ? "Player" : "Team"}
-                      </TableHead>
-                      {soloEvent ? (
-                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                          Discord
-                        </TableHead>
-                      ) : (
-                        <>
-                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                            Captain
-                          </TableHead>
-                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                            Members
-                          </TableHead>
-                        </>
-                      )}
-                      <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                        Registered
-                      </TableHead>
-                      <SortableTableHead
-                        label="Status"
-                        sortKey="status"
-                        activeKey={teamSortKey}
-                        direction={teamSortDirection}
-                        onSort={toggleTeamSort}
-                      />
-                      <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamsLoading && teams.length === 0 ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i} className="hover:bg-transparent">
-                          <TableCell className={adminTableCellClip}>
-                            <div className="flex min-w-0 items-center gap-3">
-                              <Skeleton className="h-9 w-9 shrink-0" />
-                              <div className="min-w-0 flex-1 space-y-1.5">
-                                <Skeleton className="h-4 w-full max-w-32" />
-                                <Skeleton className="h-3 w-full max-w-20" />
-                              </div>
-                            </div>
-                          </TableCell>
-                          {soloEvent ? (
-                            <TableCell className={adminTableCellClip}>
-                              <Skeleton className="h-4 w-full max-w-24" />
-                            </TableCell>
-                          ) : (
-                            <>
-                              <TableCell className={adminTableCellClip}>
-                                <Skeleton className="h-4 w-full max-w-20" />
-                              </TableCell>
-                              <TableCell className={adminTableCellClip}>
-                                <Skeleton className="h-4 w-full max-w-16" />
-                              </TableCell>
-                            </>
-                          )}
-                          <TableCell>
-                            <Skeleton className="h-4 w-20" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-5 w-16 rounded-full" />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Skeleton className="ml-auto h-7 w-14 rounded-md" />
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : teams.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={soloEvent ? 5 : 6}
-                          className="py-12 text-center text-muted-foreground"
-                        >
-                          {soloEvent
-                            ? "No players registered yet. Use Add Players to register members directly."
-                            : "No teams registered yet. Use Add Teams to register rosters from the Teams tab."}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      teamsPagination.paginatedItems.map((team) => {
-                        const soloDiscord = team.members[0]?.discord ?? team.captain ?? undefined;
+                  <Users2 className="h-4 w-4" />
+                  <span className="sm:hidden">{soloEvent ? "Players" : "Teams"}</span>
+                  <span className="hidden sm:inline">
+                    {soloEvent ? "Registered Players" : "Registered Teams"}
+                  </span>
+                  <Badge variant="secondary" className="font-tech text-[10px]">
+                    {teams.length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="prizes"
+                  className="touch-target shrink-0 gap-2 rounded-none border-b-2 border-transparent px-4 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none sm:px-6"
+                >
+                  <Coins className="h-4 w-4" />
+                  <span className="sm:hidden">Prizes</span>
+                  <span className="hidden sm:inline">Prize Distribution</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="bracket"
+                  disabled={!supportsBracketManager}
+                  title={
+                    supportsBracketManager ? undefined : bracketNotice || "Bracket unavailable"
+                  }
+                  className="touch-target shrink-0 gap-2 rounded-none border-b-2 border-transparent px-4 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none sm:px-6"
+                >
+                  <Trophy className="h-4 w-4" />
+                  <span className="sm:hidden">Bracket</span>
+                  <span className="hidden sm:inline">Bracket Management</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-                        return (
-                          <TableRow
-                            key={team.id}
-                            className="transition-colors hover:bg-secondary/40"
-                          >
+            <TabsContent value="prizes" className="mt-0">
+              <PrizeDistributionPanel
+                tournament={tournament}
+                onUpdated={(updated) => patchTournament(updated)}
+              />
+            </TabsContent>
+
+            <TabsContent value="teams" className="mt-0">
+              <Panel>
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4">
+                  <div>
+                    <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                      Registrations
+                    </p>
+                    <h2 className="font-display text-xl font-bold tracking-wider-2">
+                      {soloEvent ? "Registered Players" : "Registered Teams"}
+                    </h2>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+                      disabled={teamsLoading}
+                      onClick={() => refetchRegistrations()}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Refresh
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-2 font-tech uppercase tracking-wider"
+                      disabled={approvedCount >= tournament.teamCap}
+                      title={
+                        approvedCount >= tournament.teamCap
+                          ? `${capLabel} reached`
+                          : soloEvent
+                            ? "Register members directly"
+                            : "Add a roster from Teams"
+                      }
+                      onClick={() =>
+                        soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true)
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                      {soloEvent ? "Add Players" : "Add Teams"}
+                    </Button>
+                  </div>
+                </div>
+
+                {teamsError && (
+                  <div className="px-6 pt-4">
+                    <Alert variant="destructive">
+                      <AlertDescription>{teamsError}</AlertDescription>
+                    </Alert>
+                  </div>
+                )}
+
+                <div className="p-6 pt-4">
+                  <AdminManagementTable
+                    columnWidths={
+                      soloEvent
+                        ? TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS
+                        : TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS
+                    }
+                  >
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          {soloEvent ? "Player" : "Team"}
+                        </TableHead>
+                        {soloEvent ? (
+                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                            Discord
+                          </TableHead>
+                        ) : (
+                          <>
+                            <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                              Captain
+                            </TableHead>
+                            <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                              Members
+                            </TableHead>
+                          </>
+                        )}
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          Registered
+                        </TableHead>
+                        <SortableTableHead
+                          label="Status"
+                          sortKey="status"
+                          activeKey={teamSortKey}
+                          direction={teamSortDirection}
+                          onSort={toggleTeamSort}
+                        />
+                        <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {teamsLoading && teams.length === 0 ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                          <TableRow key={i} className="hover:bg-transparent">
                             <TableCell className={adminTableCellClip}>
                               <div className="flex min-w-0 items-center gap-3">
-                                <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech">
-                                  {team.tag}
-                                </div>
-                                <div className="min-w-0">
-                                  <div
-                                    className={cn(
-                                      "font-display text-base tracking-wider-2",
-                                      adminTableTextTruncate,
-                                    )}
-                                    title={team.name}
-                                  >
-                                    {team.name}
-                                  </div>
-                                  {soloEvent ? (
-                                    <div
-                                      className={cn(
-                                        "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
-                                        adminTableTextTruncate,
-                                      )}
-                                    >
-                                      Member registration
-                                    </div>
-                                  ) : (
-                                    <div
-                                      className={cn(
-                                        "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
-                                        adminTableTextTruncate,
-                                      )}
-                                    >
-                                      {team.members.length}{" "}
-                                      {team.members.length === 1 ? "player" : "players"}
-                                    </div>
-                                  )}
+                                <Skeleton className="h-9 w-9 shrink-0" />
+                                <div className="min-w-0 flex-1 space-y-1.5">
+                                  <Skeleton className="h-4 w-full max-w-32" />
+                                  <Skeleton className="h-3 w-full max-w-20" />
                                 </div>
                               </div>
                             </TableCell>
                             {soloEvent ? (
-                              <TableCell
-                                className={cn("text-muted-foreground", adminTableCellClip)}
-                              >
-                                <span className={adminTableTextTruncate} title={soloDiscord}>
-                                  {soloDiscord
-                                    ? soloDiscord.startsWith("@")
-                                      ? soloDiscord
-                                      : `@${soloDiscord}`
-                                    : "—"}
-                                </span>
+                              <TableCell className={adminTableCellClip}>
+                                <Skeleton className="h-4 w-full max-w-24" />
                               </TableCell>
                             ) : (
                               <>
-                                <TableCell className={cn("text-sm", adminTableCellClip)}>
-                                  <span className={adminTableTextTruncate} title={team.captain}>
-                                    {team.captain}
-                                  </span>
+                                <TableCell className={adminTableCellClip}>
+                                  <Skeleton className="h-4 w-full max-w-20" />
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">
-                                  {team.members.length} members
+                                <TableCell className={adminTableCellClip}>
+                                  <Skeleton className="h-4 w-full max-w-16" />
                                 </TableCell>
                               </>
                             )}
-                            <TableCell className="text-muted-foreground">
-                              {team.registrationDate}
+                            <TableCell>
+                              <Skeleton className="h-4 w-20" />
                             </TableCell>
                             <TableCell>
-                              <Badge variant={registrationStatusVariant(team.status)}>
-                                {team.status}
-                              </Badge>
+                              <Skeleton className="h-5 w-16 rounded-full" />
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="font-tech text-[10px] uppercase tracking-wider"
-                                  onClick={() => setOpenTeam(team)}
-                                >
-                                  View
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
-                                  onClick={() => {
-                                    setRemoveError(null);
-                                    setRemovingRegistration(team);
-                                  }}
-                                >
-                                  Remove
-                                </Button>
-                              </div>
+                              <Skeleton className="ml-auto h-7 w-14 rounded-md" />
                             </TableCell>
                           </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </AdminManagementTable>
-              </div>
+                        ))
+                      ) : teams.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={soloEvent ? 5 : 6}
+                            className="py-12 text-center text-muted-foreground"
+                          >
+                            {soloEvent
+                              ? "No players registered yet. Use Add Players to register members directly."
+                              : "No teams registered yet. Use Add Teams to register rosters from the Teams tab."}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        teamsPagination.paginatedItems.map((team) => {
+                          const soloDiscord = team.members[0]?.discord ?? team.captain ?? undefined;
 
-              <AdminTablePagination
-                page={teamsPagination.page}
-                totalPages={teamsPagination.totalPages}
-                total={teamsPagination.total}
-                rangeStart={teamsPagination.rangeStart}
-                rangeEnd={teamsPagination.rangeEnd}
-                onPageChange={teamsPagination.setPage}
-              />
-            </Panel>
-          </TabsContent>
+                          return (
+                            <TableRow
+                              key={team.id}
+                              className="transition-colors hover:bg-secondary/40"
+                            >
+                              <TableCell className={adminTableCellClip}>
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech">
+                                    {team.tag}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div
+                                      className={cn(
+                                        "font-display text-base tracking-wider-2",
+                                        adminTableTextTruncate,
+                                      )}
+                                      title={team.name}
+                                    >
+                                      {team.name}
+                                    </div>
+                                    {soloEvent ? (
+                                      <div
+                                        className={cn(
+                                          "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
+                                          adminTableTextTruncate,
+                                        )}
+                                      >
+                                        Member registration
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className={cn(
+                                          "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
+                                          adminTableTextTruncate,
+                                        )}
+                                      >
+                                        {team.members.length}{" "}
+                                        {team.members.length === 1 ? "player" : "players"}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              {soloEvent ? (
+                                <TableCell
+                                  className={cn("text-muted-foreground", adminTableCellClip)}
+                                >
+                                  <span className={adminTableTextTruncate} title={soloDiscord}>
+                                    {soloDiscord
+                                      ? soloDiscord.startsWith("@")
+                                        ? soloDiscord
+                                        : `@${soloDiscord}`
+                                      : "—"}
+                                  </span>
+                                </TableCell>
+                              ) : (
+                                <>
+                                  <TableCell className={cn("text-sm", adminTableCellClip)}>
+                                    <span className={adminTableTextTruncate} title={team.captain}>
+                                      {team.captain}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground">
+                                    {team.members.length} members
+                                  </TableCell>
+                                </>
+                              )}
+                              <TableCell className="text-muted-foreground">
+                                {team.registrationDate}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={registrationStatusVariant(team.status)}>
+                                  {team.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="font-tech text-[10px] uppercase tracking-wider"
+                                    onClick={() => setOpenTeam(team)}
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      setRemoveError(null);
+                                      setRemovingRegistration(team);
+                                    }}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </AdminManagementTable>
+                </div>
 
-          <TabsContent value="bracket" className="mt-0">
-            <Panel>
-              <div className="border-b border-border px-6 py-4">
-                <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                  Admin
-                </p>
-                <h2 className="font-display text-xl font-bold tracking-wider-2">
-                  Bracket Management
-                </h2>
-              </div>
-              <div className="px-6 py-6">
-                {supportsBracketManager ? (
-                  <BracketManager
-                    tournamentId={tournament.id}
-                    tournamentName={tournament.name}
-                    game={tournament.game}
-                    region={tournament.region}
-                    startDate={tournament.startDate}
-                    format={tournament.format}
-                    teamCap={tournament.teamCap}
-                    teams={computedTeams}
-                    initialBracket={[]}
-                    tournamentStatus={tournament.status}
-                    prizeBreakdown={tournament.prizeBreakdown}
-                    onTournamentStatusChange={(status) =>
-                      patchTournament({ ...tournament, status })
-                    }
-                  />
-                ) : (
-                  <div className="py-12 text-center text-muted-foreground">
-                    <p className="mx-auto max-w-lg">
-                      {bracketNotice ||
-                        "Bracket management is not available for this tournament yet."}
-                    </p>
-                    <p className="mt-2 text-sm">
-                      {tournament.format} · {computedTeams.length}/{tournament.teamCap} teams
-                      registered
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Panel>
-          </TabsContent>
-        </Tabs>
-      </div>
+                <AdminTablePagination
+                  page={teamsPagination.page}
+                  totalPages={teamsPagination.totalPages}
+                  total={teamsPagination.total}
+                  rangeStart={teamsPagination.rangeStart}
+                  rangeEnd={teamsPagination.rangeEnd}
+                  onPageChange={teamsPagination.setPage}
+                />
+              </Panel>
+            </TabsContent>
+
+            <TabsContent value="bracket" className="mt-0">
+              <Panel>
+                <div className="border-b border-border px-6 py-4">
+                  <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                    Admin
+                  </p>
+                  <h2 className="font-display text-xl font-bold tracking-wider-2">
+                    Bracket Management
+                  </h2>
+                </div>
+                <div className="px-6 py-6">{bracketPanelContent}</div>
+              </Panel>
+            </TabsContent>
+          </Tabs>
+        )}
+      </AdminPageContent>
 
       {openTeam && tournament && (
         <TeamModal

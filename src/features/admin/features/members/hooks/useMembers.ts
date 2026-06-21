@@ -26,10 +26,7 @@ export function useMembers() {
     }
   }, []);
 
-  const debouncedRefetch = useMemo(
-    () => createAdminSilentRefetch(refetch),
-    [refetch],
-  );
+  const debouncedRefetch = useMemo(() => createAdminSilentRefetch(refetch), [refetch]);
 
   useEffect(() => {
     void refetch();
@@ -90,13 +87,9 @@ export function useMembers() {
           debouncedRefetch({ silent: true });
         },
       )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "members" },
-        () => {
-          debouncedRefetch({ silent: true });
-        },
-      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "members" }, () => {
+        debouncedRefetch({ silent: true });
+      })
       .subscribe();
 
     return () => {

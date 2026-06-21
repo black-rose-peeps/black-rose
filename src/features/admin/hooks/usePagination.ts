@@ -43,4 +43,4 @@ export function usePagination<T>(items: T[], pageSize = ADMIN_PAGE_SIZE) {
     rangeEnd,
     hasMultiplePages: totalPages > 1,
   };
-};
+}

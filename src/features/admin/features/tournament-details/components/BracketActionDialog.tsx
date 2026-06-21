@@ -38,7 +38,9 @@ export function BracketActionDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="border-border bg-card">
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-display text-xl tracking-display">{title}</AlertDialogTitle>
+          <AlertDialogTitle className="font-display text-xl tracking-display">
+            {title}
+          </AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
             {description}
           </AlertDialogDescription>

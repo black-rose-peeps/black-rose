@@ -8,10 +8,7 @@ import {
   syncTournamentChampionArchive,
 } from "@/features/admin/features/tournament-details/services/bracket.service";
 import { supabase } from "@/lib/supabase";
-import {
-  ADMIN_AUDIT_ACTIONS,
-  logAdminAction,
-} from "@/features/admin/services/audit-log.service";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import type { MockTournament } from "@/lib/mock-data";
 import {
   isRegistrationDeadlineExtended,

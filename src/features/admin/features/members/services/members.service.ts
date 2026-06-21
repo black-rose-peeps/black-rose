@@ -1,8 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import {
-  ADMIN_AUDIT_ACTIONS,
-  logAdminAction,
-} from "@/features/admin/services/audit-log.service";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
@@ -11,14 +8,11 @@ import { rowToAdminMember } from "../utils";
 
 const MEMBER_SYNC_COLUMNS = "discord_not_in_guild_strikes, discord_sync_paused_at";
 
-const ADMIN_MEMBER_LIST_COLUMNS =
-  `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
+const ADMIN_MEMBER_LIST_COLUMNS = `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
 
-const ADMIN_MEMBER_DETAIL_COLUMNS =
-  `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
+const ADMIN_MEMBER_DETAIL_COLUMNS = `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
 
-const ADMIN_MEMBER_MUTATION_COLUMNS =
-  `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}`;
+const ADMIN_MEMBER_MUTATION_COLUMNS = `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}`;
 
 function throwMemberUniqueViolation(error: { message: string }): never {
   const msg = error.message;

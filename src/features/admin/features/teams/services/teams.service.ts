@@ -1,8 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import {
-  ADMIN_AUDIT_ACTIONS,
-  logAdminAction,
-} from "@/features/admin/services/audit-log.service";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import { deleteTeamAdminFn } from "../functions/delete-team.functions";
 import { deleteTeamCaptainFn } from "../functions/delete-team-captain.functions";
 import { transferTeamCaptainFn } from "../functions/transfer-team-captain.functions";
@@ -79,8 +76,7 @@ async function fetchDiscordUsernames(memberIds: string[]): Promise<Map<string, s
     (data ?? []).map((row) => {
       const id = row.id as string;
       const username = row.username as string;
-      const discord =
-        (row.discord_username as string | null | undefined)?.trim() || username;
+      const discord = (row.discord_username as string | null | undefined)?.trim() || username;
       return [id, discord];
     }),
   );
@@ -102,7 +98,7 @@ function rowToTeamMember(
     : null;
   const useValorantId = isValorantGame(teamGame) && !!valorantId;
   const displayName = useValorantId ? valorantId! : baseDisplayName;
-  const ign = useValorantId ? valorantId! : ((row.ign as string) || username);
+  const ign = useValorantId ? valorantId! : (row.ign as string) || username;
 
   return {
     userId,
@@ -201,7 +197,10 @@ function rowToTeam(row: Record<string, unknown>, members: TeamMember[]): Team {
   };
 }
 
-async function fetchActiveTeamGamesForMember(memberId: string, excludeTeamId?: string): Promise<string[]> {
+async function fetchActiveTeamGamesForMember(
+  memberId: string,
+  excludeTeamId?: string,
+): Promise<string[]> {
   const { data: memberships, error: memberErr } = await supabase
     .from("team_members")
     .select("team_id")
@@ -414,11 +413,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 
   // Insert captain as first team member
   const captainRole = resolveRoleForGame(input.captainRole ?? "TBD", input.game);
-  const captainIdentity = await resolveMemberTeamIdentity(
-    captain.id,
-    captain.username,
-    input.game,
-  );
+  const captainIdentity = await resolveMemberTeamIdentity(captain.id, captain.username, input.game);
   const captainMember = adminMemberToTeamMember(
     captain,
     captainRole,
@@ -460,11 +455,7 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
-  const memberIdentity = await resolveMemberTeamIdentity(
-    member.id,
-    member.username,
-    team.game,
-  );
+  const memberIdentity = await resolveMemberTeamIdentity(member.id, member.username, team.game);
   const memberRole = resolveRoleForGame(input.role ?? "TBD", team.game);
   const teamMember = adminMemberToTeamMember(
     member,
@@ -545,11 +536,7 @@ export async function inviteMemberToTeam(input: AddTeamMemberInput): Promise<Tea
   await assertRosterHasCapacity(team);
   await assertMemberAvailableForGame(member.id, team.game, input.teamId);
 
-  const memberIdentity = await resolveMemberTeamIdentity(
-    member.id,
-    member.username,
-    team.game,
-  );
+  const memberIdentity = await resolveMemberTeamIdentity(member.id, member.username, team.game);
   const memberRole = resolveRoleForGame(input.role ?? "TBD", team.game);
   const teamMember = adminMemberToTeamMember(
     member,
@@ -581,7 +568,9 @@ export interface UserTeamMembershipRow {
 }
 
 /** All team membership rows for a user, including removed (for notification sync). */
-export async function fetchUserTeamMembershipRows(userId: string): Promise<UserTeamMembershipRow[]> {
+export async function fetchUserTeamMembershipRows(
+  userId: string,
+): Promise<UserTeamMembershipRow[]> {
   const { data, error } = await supabase
     .from("team_members")
     .select("team_id, status, joined_at")

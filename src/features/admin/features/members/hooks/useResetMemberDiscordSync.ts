@@ -12,8 +12,7 @@ export function useResetMemberDiscordSync() {
     try {
       return await resetMemberDiscordSyncQueue(memberId);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to unpause Discord sync.";
+      const message = err instanceof Error ? err.message : "Failed to unpause Discord sync.";
       setError(message);
       throw err;
     } finally {

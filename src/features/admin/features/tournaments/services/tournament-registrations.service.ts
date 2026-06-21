@@ -1,8 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import {
-  ADMIN_AUDIT_ACTIONS,
-  logAdminAction,
-} from "@/features/admin/services/audit-log.service";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 import {

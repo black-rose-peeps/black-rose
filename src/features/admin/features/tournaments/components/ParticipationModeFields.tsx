@@ -27,10 +27,7 @@ export function ParticipationModeFields({
 }: ParticipationModeFieldsProps) {
   const showWwmMode = values.game === "Where Winds Meet";
   const isTftSolo = values.game === "Teamfight Tactics";
-  const participationType = resolveParticipationType(
-    values.game,
-    values.wwmMode || null,
-  );
+  const participationType = resolveParticipationType(values.game, values.wwmMode || null);
 
   if (!showWwmMode && !isTftSolo) return null;
 

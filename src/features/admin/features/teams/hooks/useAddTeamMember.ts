@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 import { resyncRegistrationsForTeam } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
-import { addMemberToTeam, addMembersToTeam, type AddMembersToTeamResult } from "../services/teams.service";
+import {
+  addMemberToTeam,
+  addMembersToTeam,
+  type AddMembersToTeamResult,
+} from "../services/teams.service";
 import type { AddTeamMemberInput, Team } from "../types";
 
 async function resyncTeamRoster(teamId: string) {

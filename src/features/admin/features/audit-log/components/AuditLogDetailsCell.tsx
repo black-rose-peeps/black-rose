@@ -22,7 +22,9 @@ export function AuditLogDetailsCell({ log }: AuditLogDetailsCellProps) {
 
   if (details.length <= EXPANDABLE_DETAILS_LENGTH) {
     return (
-      <span className="block line-clamp-2 text-sm leading-snug text-muted-foreground">{details}</span>
+      <span className="block line-clamp-2 text-sm leading-snug text-muted-foreground">
+        {details}
+      </span>
     );
   }
 

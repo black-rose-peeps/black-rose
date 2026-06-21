@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BracketStatus } from "@/features/admin/types";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { BracketMobileActionsMenu } from "@/features/admin/features/tournaments/components/mobile";
 
 interface BracketStat {
   label: string;
@@ -89,6 +91,7 @@ export function BracketManagerHeader({
   onPublish,
   onMarkComplete,
 }: BracketManagerHeaderProps) {
+  const isMobile = useIsMobile();
   const shuffleTitle =
     bracketGenerated && hasBracketProgress
       ? "Reset the bracket to reshuffle seeds after match results exist"
@@ -96,7 +99,7 @@ export function BracketManagerHeader({
 
   return (
     <div className="border-b border-border">
-      <div className="relative overflow-hidden px-6 py-6 lg:px-8">
+      <div className="relative overflow-hidden px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
 
@@ -115,6 +118,29 @@ export function BracketManagerHeader({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {isMobile ? (
+                <BracketMobileActionsMenu
+                  bracketGenerated={bracketGenerated}
+                  canGenerate={canGenerate}
+                  canPublish={canPublish}
+                  isPublished={isPublished}
+                  isSaving={isSaving}
+                  resultsLocked={resultsLocked}
+                  seedingLocked={seedingLocked}
+                  seedingShuffleDisabled={seedingShuffleDisabled}
+                  hasBracketProgress={hasBracketProgress}
+                  showMarkComplete={showMarkComplete}
+                  assignedCount={assignedCount}
+                  teamCount={teamCount}
+                  onGenerate={onGenerate}
+                  onRandomSeed={onRandomSeed}
+                  onAutoSeed={onAutoSeed}
+                  onToggleLock={onToggleLock}
+                  onReset={onReset}
+                  onPublish={onPublish}
+                  onMarkComplete={onMarkComplete}
+                />
+              ) : null}
               {resultsLocked && (
                 <Badge
                   variant="outline"
@@ -160,7 +186,7 @@ export function BracketManagerHeader({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-border bg-card/40 px-6 py-4 lg:px-8">
+      <div className="hidden flex-col gap-3 border-t border-border bg-card/40 px-4 py-4 md:flex lg:px-8">
         <div className="flex flex-wrap items-center gap-2">
           <p className="mr-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
             Seeding

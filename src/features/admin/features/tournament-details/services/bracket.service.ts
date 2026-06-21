@@ -1,8 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import {
-  ADMIN_AUDIT_ACTIONS,
-  logAdminAction,
-} from "@/features/admin/services/audit-log.service";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";

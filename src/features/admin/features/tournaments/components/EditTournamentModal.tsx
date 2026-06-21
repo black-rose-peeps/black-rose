@@ -21,12 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TOURNAMENT_FORMATS } from "@/features/tournaments/constants/formats";
+import { ADMIN_TOURNAMENT_STATUSES, TOURNAMENT_GAMES, TOURNAMENT_REGIONS } from "../constants";
 import {
-  ADMIN_TOURNAMENT_STATUSES,
-  TOURNAMENT_GAMES,
-  TOURNAMENT_REGIONS,
-} from "../constants";
-import { registrationCapLabel, resolveParticipationType } from "@/features/tournaments/types/participation";
+  registrationCapLabel,
+  resolveParticipationType,
+} from "@/features/tournaments/types/participation";
 import { useUpdateTournament } from "../hooks/useUpdateTournament";
 import type { AdminTournament, CreateTournamentFormValues } from "../types";
 import {

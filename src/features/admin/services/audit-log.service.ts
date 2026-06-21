@@ -213,9 +213,7 @@ export async function fetchAdminAuditLogs(limit = 500): Promise<AdminAuditLog[]>
 
   if (error) {
     if (error.message.includes("admin_audit_logs")) {
-      throw new Error(
-        "Audit log table is missing. Run docs/sql/admin_audit_logs.sql in Supabase.",
-      );
+      throw new Error("Audit log table is missing. Run docs/sql/admin_audit_logs.sql in Supabase.");
     }
     throw new Error(error.message);
   }
