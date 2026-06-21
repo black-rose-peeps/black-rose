@@ -7,9 +7,14 @@ interface DiscordSyncResponse {
   unverified?: number;
   deferred?: number;
   notVerifiedQueued?: number;
+  notVerifiedHotQueued?: number;
+  notVerifiedColdQueued?: number;
+  notVerifiedPaused?: number;
+  syncPaused?: number;
   page?: number;
   totalPages?: number;
   priorityNotVerified?: boolean;
+  coldSweep?: boolean;
 }
 
 export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
@@ -18,8 +23,11 @@ export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
   const unverified = summary.unverified ?? 0;
   const updated = summary.updated ?? 0;
   const deferred = summary.deferred ?? 0;
-  const queued = summary.notVerifiedQueued ?? 0;
+  const queued = summary.notVerifiedHotQueued ?? summary.notVerifiedQueued ?? 0;
+  const cold = summary.notVerifiedColdQueued ?? 0;
+  const paused = summary.notVerifiedPaused ?? 0;
   const priority = summary.priorityNotVerified ?? false;
+  const syncPaused = summary.syncPaused ?? 0;
 
   const parts: string[] = ["Discord sync completed."];
 
@@ -43,12 +51,23 @@ export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
     parts.push(`${deferred} member${deferred === 1 ? "" : "s"} deferred — run sync again to continue.`);
   }
 
+  if (syncPaused > 0) {
+    parts.push(`${syncPaused} member${syncPaused === 1 ? "" : "s"} paused (not in Discord guild).`);
+  }
+
   if (queued > checked) {
     parts.push(
       priority
-        ? `${queued} still waiting — this run checked the ${checked} newest Not Verified member${checked === 1 ? "" : "s"}. Run sync again to continue.`
-        : `${queued} in the Not Verified queue. Cron rotates pages every 15 min; use Sync Discord now for the newest batch.`,
+        ? `${queued} in the hot queue — this run checked the ${checked} newest active Not Verified member${checked === 1 ? "" : "s"}. Run sync again to continue.`
+        : `${queued} in the hot Not Verified queue. Cron always checks newest first; use Sync Discord now during verification waves.`,
     );
+  }
+
+  if (cold > 0 || paused > 0) {
+    const extras: string[] = [];
+    if (cold > 0) extras.push(`${cold} cold (older than hot window)`);
+    if (paused > 0) extras.push(`${paused} paused`);
+    parts.push(`Backlog: ${extras.join(", ")} — cold/paused members are swept daily, not every cron run.`);
   }
 
   return parts.join(" ");
