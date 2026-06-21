@@ -77,8 +77,7 @@ export function MemberNav() {
             to: "/dashboard/profile",
             search: { tab: "identity" },
             icon: Pencil,
-            active:
-              pathname === "/dashboard/profile" || pathname.startsWith("/dashboard/profile"),
+            active: pathname.startsWith("/dashboard/profile"),
           },
         ],
       });

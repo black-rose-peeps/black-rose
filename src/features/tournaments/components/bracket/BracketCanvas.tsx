@@ -94,6 +94,8 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
 
     function onTouchStart(event: TouchEvent) {
       if (event.touches.length === 2) {
+        drag.current = null;
+        isDragging.current = false;
         pinch.current = { dist: touchDistance(event.touches), scale: scaleRef.current };
       }
     }

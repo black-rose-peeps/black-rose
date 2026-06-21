@@ -236,7 +236,7 @@ export function TournamentShowcaseCard({
 
         {/* CTA */}
         {showCtaSkeleton ? (
-          <div className="relative mt-4 sm:mt-6">
+          <div className="relative mt-4 h-11 sm:mt-6 sm:h-12">
             <TournamentCardCtaSkeleton />
           </div>
         ) : cta.interactive ? (

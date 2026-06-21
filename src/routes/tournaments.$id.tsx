@@ -293,7 +293,7 @@ function TournamentDetailPage() {
   };
 
   const approvedCount =
-    displayTeams.length > 0 ? displayTeams.length : entrantCount || tournament.teamsRegistered;
+    displayTeams.length > 0 ? displayTeams.length : (entrantCount ?? tournament.teamsRegistered);
   const rulesBracketSize = bracketFieldSize(approvedCount) ?? tournament.teamCap;
 
   const displayRules = resolveTournamentRules(tournament.format, tournament.rules, {

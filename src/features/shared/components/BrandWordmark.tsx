@@ -47,7 +47,10 @@ export function BrandWordmark({ className }: BrandWordmarkProps) {
         aria-hidden
         className="pointer-events-none absolute -left-[9999px] whitespace-nowrap font-display text-lg tracking-wider-2 sm:text-xl"
       />
-      <span className="block truncate font-display text-lg tracking-wider-2 sm:text-xl">
+      <span
+        aria-label="BLACK ROSE"
+        className="block truncate font-display text-lg tracking-wider-2 sm:text-xl"
+      >
         {label}
       </span>
     </span>

@@ -29,7 +29,7 @@ function clearSearchButton(onClick: () => void) {
     <button
       type="button"
       onClick={onClick}
-      className="clip-cta inline-flex h-9 items-center border border-white/15 bg-white/4 px-4 font-tech text-ui-readable uppercase transition hover:border-white/25 hover:bg-white/8"
+      className="clip-cta inline-flex min-h-11 items-center border border-white/15 bg-white/4 px-4 font-tech text-ui-readable uppercase transition hover:border-white/25 hover:bg-white/8"
     >
       Clear search
     </button>

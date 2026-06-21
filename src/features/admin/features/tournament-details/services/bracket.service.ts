@@ -189,7 +189,7 @@ export async function syncTournamentChampionArchive(
   tournamentId: string,
   tournamentName: string,
 ): Promise<void> {
-  const state = await fetchBracketState(tournamentId).catch(() => null);
+  const state = await fetchBracketState(tournamentId);
   if (!state?.payload) return;
   await syncTournamentChampion(tournamentId, tournamentName, state.payload);
 }

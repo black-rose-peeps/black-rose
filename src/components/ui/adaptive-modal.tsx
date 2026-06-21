@@ -102,7 +102,7 @@ const AdaptiveModalFooter = ({ className, ...props }: React.HTMLAttributes<HTMLD
   <DialogFooter
     className={cn(
       "shrink-0 gap-2 border-t border-white/8 bg-[oklch(0.08_0_0)] px-4 py-4 safe-bottom sm:border-0 sm:bg-transparent sm:px-6 sm:py-0",
-      "[&>button]:min-h-11 [&>button]:w-full sm:[&>button]:w-auto",
+      "[&>button]:min-h-11 [&>a]:min-h-11 [&>button]:w-full [&>a]:w-full sm:[&>button]:w-auto sm:[&>a]:w-auto",
       className,
     )}
     {...props}
