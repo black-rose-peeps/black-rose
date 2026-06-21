@@ -68,6 +68,7 @@ import {
 import {
   isBracketSeedingStatus,
   countSlotFilledRegistrations,
+  countDisplayedTournamentEntrants,
   REGISTRATION_STATUS_SORT_ORDER,
   registrationActionsEnabled,
   tournamentHasUnresolvedRegistrations,
@@ -230,6 +231,7 @@ function TournamentDetailPage() {
   // ── Loaded ─────────────────────────────────────────────────────────────
 
   const approvedCount = countSlotFilledRegistrations(teams);
+  const displayedEntrantCount = countDisplayedTournamentEntrants(teams, tournament.status);
   const totalPlayers = teams.reduce((acc, t) => acc + t.members.length, 0);
 
   const bracketTeams = teams.filter((t) => isBracketSeedingStatus(t.status, tournament.status));
@@ -351,7 +353,7 @@ function TournamentDetailPage() {
             },
             {
               label: capLabel,
-              value: `${approvedCount}/${tournament.teamCap}`,
+              value: `${displayedEntrantCount}/${tournament.teamCap}`,
               icon: <Users className="h-3.5 w-3.5" />,
             },
             {

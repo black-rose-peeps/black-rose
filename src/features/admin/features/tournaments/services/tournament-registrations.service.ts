@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { MockTeam } from "@/lib/mock-data";
+import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 import {
   assignTeamActiveTournament,
@@ -15,11 +15,13 @@ import {
   isBlockingTournamentStatus,
   tournamentRosterRequirementError,
 } from "@/features/tournaments/utils/team-tournament-eligibility";
+import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
 import {
-  formatValorantRiotId,
-  isValorantGame,
-} from "@/features/member/utils/valorant-identity";
-import { fetchTournamentById, fetchTournaments, syncTournamentTeamCount } from "./tournaments.service";
+  fetchTournamentById,
+  fetchTournaments,
+  syncTournamentTeamCount,
+} from "./tournaments.service";
+import type { MockTeam } from "@/lib/mock-data";
 
 export {
   assertMemberAvailableForTournament,
@@ -84,9 +86,7 @@ export async function hasPriorTournamentParticipation(params: {
   const tournamentIds = [...new Set(legacyRegs.map((row) => row.tournament_id as string))];
   const tournaments = await fetchTournaments();
   const concludedIds = new Set(
-    tournaments
-      .filter((t) => t.status === "Completed" || t.status === "Archived")
-      .map((t) => t.id),
+    tournaments.filter((t) => t.status === "Completed" || t.status === "Archived").map((t) => t.id),
   );
 
   return tournamentIds.some((id) => concludedIds.has(id));
@@ -116,17 +116,44 @@ async function countTournamentRegistrations(tournamentId: string): Promise<numbe
   return count ?? 0;
 }
 
-/** Align tournaments.teams_registered with approved registration rows. */
+async function countBracketParticipantRegistrations(tournamentId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("tournament_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId)
+    .in("status", ["Approved", "Previously Competed"]);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+async function fetchTournamentStatus(tournamentId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("status")
+    .eq("id", tournamentId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data?.status as string | undefined) ?? null;
+}
+
+/** Align tournaments.teams_registered with registration rows. */
 export async function reconcileTournamentTeamCount(
   tournamentId: string,
   cachedCount: number,
 ): Promise<number> {
-  const actualCount = await countTournamentRegistrations(tournamentId);
+  const status = await fetchTournamentStatus(tournamentId);
+  const actualCount = isTournamentConcluded(status ?? "")
+    ? await countBracketParticipantRegistrations(tournamentId)
+    : await countTournamentRegistrations(tournamentId);
   if (actualCount !== cachedCount) {
     await syncTournamentTeamCount(tournamentId, actualCount);
   }
   return actualCount;
 }
+
+export { countBracketParticipantRegistrations };
 
 function teamCaptainDisplayName(team: Team): string {
   const captain =
@@ -379,9 +406,7 @@ export async function fetchTournamentRegistrations(tournamentId: string): Promis
 
   const teams = regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
   const tournament = await fetchTournamentById(tournamentId);
-  const gameById = new Map<string, string>(
-    tournament ? [[tournamentId, tournament.game]] : [],
-  );
+  const gameById = new Map<string, string>(tournament ? [[tournamentId, tournament.game]] : []);
   return enrichRegistrationsWithLiveData(teams, gameById);
 }
 
@@ -416,10 +441,7 @@ export async function fetchAllRegistrations(): Promise<MockTeam[]> {
   return enrichRegistrationsWithLiveData(teams, gameById);
 }
 
-async function assertApprovalWithinCap(
-  tournamentId: string,
-  teamCap: number,
-): Promise<void> {
+async function assertApprovalWithinCap(tournamentId: string, teamCap: number): Promise<void> {
   const approvedCount = await countTournamentRegistrations(tournamentId);
   if (approvedCount >= teamCap) {
     throw new Error(`Registration cap reached (${teamCap}).`);
@@ -461,11 +483,7 @@ export async function updateRegistrationStatus(
   if (error) throw new Error(error.message);
 
   if (isNewApproval && tournament && existing.rosterTeamId) {
-    await assignTeamActiveTournament(
-      existing.rosterTeamId,
-      existing.tournamentId,
-      tournament.name,
-    );
+    await assignTeamActiveTournament(existing.rosterTeamId, existing.tournamentId, tournament.name);
   }
 
   if (status === "Rejected" && existing.rosterTeamId) {
@@ -681,7 +699,9 @@ export async function addMemberToTournament(
   const tournament = await fetchTournamentById(tournamentId);
   if (!tournament) throw new Error("Tournament not found.");
   if (!isSoloTournament(tournament)) {
-    throw new Error("This tournament uses team registration. Add teams instead of individual players.");
+    throw new Error(
+      "This tournament uses team registration. Add teams instead of individual players.",
+    );
   }
 
   const registrationCount = await countTournamentRegistrations(tournamentId);

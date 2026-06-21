@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { Crown } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { GAME_EDITORIAL_ACCENT } from "@/features/tournaments/utils/tournament-display";
 import type { HallOfChampionRecord } from "../types";
 import {
@@ -31,15 +32,22 @@ export function ChampionStoryDialog({ champion, open, onOpenChange }: ChampionSt
   const narrative = buildChampionNarrative(champion);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto rounded-none border-white/10 bg-[oklch(0.055_0_0)] p-0 shadow-[0_32px_80px_rgba(0,0,0,0.75)] sm:rounded-none">
-        <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-          <ChampionPortrait champion={champion} variant="hero" className="border-0 lg:min-h-full" />
+    <AdaptiveModal open={open} onOpenChange={onOpenChange}>
+      <AdaptiveModalContent
+        mobileSize="full"
+        className="max-h-[92vh] max-w-5xl overflow-hidden border-white/10 bg-[oklch(0.055_0_0)] p-0 shadow-[0_32px_80px_rgba(0,0,0,0.75)]"
+      >
+        <AdaptiveModalBody className="custom-scrollbar flex flex-col p-0">
+          <ChampionPortrait
+            champion={champion}
+            variant="hero"
+            className="shrink-0 border-0 border-b border-white/[0.06]"
+          />
 
-          <div className="relative flex flex-col px-6 py-7 sm:px-8 sm:py-9">
+          <div className="relative flex flex-col px-5 py-6 sm:px-8 sm:py-8">
             <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.14]" />
 
-            <DialogHeader className="relative space-y-4 text-left">
+            <AdaptiveModalHeader className="relative space-y-4 border-0 px-0 py-0 text-left">
               <div className="flex items-center gap-2 text-amber-300/80">
                 <RoseStarMark size={14} className="text-amber-300/90" />
                 <span className="font-tech font-semibold text-[11px] uppercase tracking-[0.22em]">
@@ -47,14 +55,14 @@ export function ChampionStoryDialog({ champion, open, onOpenChange }: ChampionSt
                 </span>
               </div>
 
-              <DialogTitle className="font-display text-3xl leading-[1.05] tracking-[0.04em] text-white">
+              <AdaptiveModalTitle className="text-2xl leading-[1.05] tracking-[0.04em] text-white sm:text-3xl">
                 {champion.teamName}
-              </DialogTitle>
+              </AdaptiveModalTitle>
 
-              <DialogDescription className="text-left font-medium text-md leading-relaxed text-white/55">
+              <AdaptiveModalDescription className="text-left font-medium text-base leading-relaxed text-white/55">
                 {champion.tournamentName} · {champion.game}
-              </DialogDescription>
-            </DialogHeader>
+              </AdaptiveModalDescription>
+            </AdaptiveModalHeader>
 
             <div className="relative mt-6 flex items-center gap-2 border border-amber-400/25 bg-amber-400/5 px-3 py-2">
               <Crown className="h-4 w-4 shrink-0 text-amber-300/85" strokeWidth={1.25} />
@@ -119,8 +127,8 @@ export function ChampionStoryDialog({ champion, open, onOpenChange }: ChampionSt
               )}
             </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </AdaptiveModalBody>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

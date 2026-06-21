@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
+import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import type { SwissBracketState } from "../utils/managed-swiss-bracket";
 import { resolveGrandFinalChampion } from "../utils/grand-final";
@@ -137,6 +138,15 @@ async function syncTournamentChampion(
   tournamentName: string,
   payload: PersistedBracketPayload,
 ): Promise<void> {
+  const { data: tournamentRow, error: statusError } = await supabase
+    .from("tournaments")
+    .select("status")
+    .eq("id", tournamentId)
+    .maybeSingle();
+
+  if (statusError) throw new Error(statusError.message);
+  if (!tournamentRow || !isTournamentConcluded(tournamentRow.status as string)) return;
+
   const championName = detectChampionFromPayload(payload);
   if (!championName) return;
 
@@ -174,6 +184,16 @@ async function syncTournamentChampion(
   );
 }
 
+/** Persist champion archive row after an event is marked concluded. */
+export async function syncTournamentChampionArchive(
+  tournamentId: string,
+  tournamentName: string,
+): Promise<void> {
+  const state = await fetchBracketState(tournamentId).catch(() => null);
+  if (!state?.payload) return;
+  await syncTournamentChampion(tournamentId, tournamentName, state.payload);
+}
+
 // ── Bracket persistence ────────────────────────────────────────────────────
 
 /**
@@ -206,6 +226,18 @@ export async function resetBracketState(tournamentId: string): Promise<void> {
   const { error } = await supabase.rpc("reset_tournament_bracket_state", {
     p_tournament_id: tournamentId,
   });
+
+  if (error) throw new Error(error.message);
+
+  await deleteTournamentChampion(tournamentId);
+}
+
+/** Remove hall-of-champions archive row when a concluded event is reopened or reset. */
+export async function deleteTournamentChampion(tournamentId: string): Promise<void> {
+  const { error } = await supabase
+    .from("tournament_champions")
+    .delete()
+    .eq("tournament_id", tournamentId);
 
   if (error) throw new Error(error.message);
 }

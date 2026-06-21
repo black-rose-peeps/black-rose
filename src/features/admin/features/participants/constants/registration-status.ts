@@ -15,9 +15,7 @@ export function canBulkApproveParticipant(
   registrationStatus: RegistrationStatus,
   tournamentStatus: TournamentStatus | string | null,
 ): boolean {
-  return (
-    registrationActionsEnabled(tournamentStatus) && isReviewQueueStatus(registrationStatus)
-  );
+  return registrationActionsEnabled(tournamentStatus) && isReviewQueueStatus(registrationStatus);
 }
 
 /** Registrations that occupy a tournament slot / teams_registered / registration cap. */
@@ -36,6 +34,24 @@ export function countSlotFilledRegistrations(
 /** Entrants that count toward bracket seeding (including after event completion). */
 export function isBracketParticipantStatus(status: RegistrationStatus): boolean {
   return status === "Approved" || status === "Previously Competed";
+}
+
+export function countBracketParticipantRegistrations(
+  registrations: ReadonlyArray<{ status: RegistrationStatus }>,
+): number {
+  return registrations.filter((registration) => isBracketParticipantStatus(registration.status))
+    .length;
+}
+
+/** Slot fill during registration; full entrant count after the event concludes. */
+export function countDisplayedTournamentEntrants(
+  registrations: ReadonlyArray<{ status: RegistrationStatus }>,
+  tournamentStatus: TournamentStatus | string,
+): number {
+  if (isTournamentConcluded(tournamentStatus)) {
+    return countBracketParticipantRegistrations(registrations);
+  }
+  return countSlotFilledRegistrations(registrations);
 }
 
 /** Entrants that may seed a bracket for the given tournament phase. */

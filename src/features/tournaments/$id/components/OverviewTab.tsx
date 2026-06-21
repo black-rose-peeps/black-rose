@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { StaffDiscordContact } from "@/features/shared/components/StaffDiscordContact";
 import { Calendar, Trophy } from "lucide-react";
 import { PodiumWinnersShowcase } from "../../components/PodiumWinnersShowcase";
 import { SwissResultsBoard } from "../../components/SwissResultsBoard";
@@ -112,7 +113,14 @@ export function OverviewTab({ tournament: t, teamTags }: OverviewTabProps) {
         <Card title="Tournament Info">
           <dl className="flex flex-col gap-4">
             <InfoRow label="Organizer" value={t.organizer} />
-            <InfoRow label="Contact" value={t.contact} />
+            <div>
+              <dt className="font-tech text-label-readable uppercase text-muted-foreground">
+                Contact
+              </dt>
+              <dd className="mt-1.5">
+                <StaffDiscordContact />
+              </dd>
+            </div>
             <InfoRow label="Format" value={t.format} />
             <InfoRow label="Region" value={t.region} />
             <InfoRow label="Registration Deadline" value={t.registrationDeadline} />
@@ -167,9 +175,7 @@ function Card({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-tech text-label-readable uppercase text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="font-tech text-label-readable uppercase text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 text-sm">{value}</dd>
     </div>
   );

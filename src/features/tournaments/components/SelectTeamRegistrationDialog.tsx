@@ -3,12 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { GAME_COLOR } from "@/features/teams/constants";
 import {
   countActiveRosterMembers,
@@ -117,14 +119,14 @@ export function SelectTeamRegistrationDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 gap-0">
-        <DialogHeader className="border-b border-white/8 px-6 py-5">
-          <DialogTitle className="flex items-center gap-2 font-display text-2xl tracking-display">
+    <AdaptiveModal open={open} onOpenChange={onOpenChange}>
+      <AdaptiveModalContent className="flex max-w-lg flex-col gap-0 border-white/12 bg-[oklch(0.08_0_0)] p-0">
+        <AdaptiveModalHeader>
+          <AdaptiveModalTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-muted-foreground" />
             Register for Tournament
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+          </AdaptiveModalTitle>
+          <AdaptiveModalDescription>
             Choose which team to submit for{" "}
             <span className="text-foreground">{tournamentName}</span>.
             {requiredRosterSize ? (
@@ -135,10 +137,10 @@ export function SelectTeamRegistrationDialog({
               </>
             ) : null}{" "}
             An admin will review your registration before your team is confirmed.
-          </DialogDescription>
-        </DialogHeader>
+          </AdaptiveModalDescription>
+        </AdaptiveModalHeader>
 
-        <div className="flex flex-col gap-4 px-6 py-5">
+        <AdaptiveModalBody className="flex flex-col gap-4">
           {loading ? (
             <SelectTeamRegistrationSkeleton />
           ) : teams.length === 0 ? (
@@ -244,8 +246,8 @@ export function SelectTeamRegistrationDialog({
           )}
 
           {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </AdaptiveModalBody>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

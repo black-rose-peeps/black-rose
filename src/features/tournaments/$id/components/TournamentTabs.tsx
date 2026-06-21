@@ -15,7 +15,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function TournamentTabs({ active, onChange, teamCount }: TournamentTabsProps) {
   return (
-    <div className="sticky top-16 z-20 border-b border-white/8 bg-background/90 backdrop-blur-md">
+    <div className="sticky sticky-below-header z-20 border-b border-white/8 bg-background/90 backdrop-blur-md">
       <div className="mx-auto max-w-7xl overflow-x-auto">
         <div
           role="tablist"

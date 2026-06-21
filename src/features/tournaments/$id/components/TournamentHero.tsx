@@ -27,7 +27,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
   const isOver = t.status === "Completed" || t.status === "Archived";
 
   return (
-    <section className="relative overflow-hidden border-b border-white/6 pt-24 pb-8 sm:pt-28 sm:pb-12">
+    <section className="relative overflow-hidden border-b border-white/6 site-header-offset-spaced pb-8 sm:pb-12">
       {/* Background depth */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
       <div
