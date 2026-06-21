@@ -60,6 +60,12 @@ export function useMembers() {
                     discordUsername: (row.discord_username as string) ?? member.discordUsername,
                     discordId: (row.discord_id as string | null | undefined) ?? member.discordId,
                     status: normalizeMemberStatus(String(row.status ?? member.status)),
+                    discordNotInGuildStrikes: Number(
+                      row.discord_not_in_guild_strikes ?? member.discordNotInGuildStrikes,
+                    ),
+                    discordSyncPausedAt:
+                      (row.discord_sync_paused_at as string | null | undefined) ??
+                      member.discordSyncPausedAt,
                   }
                 : member,
             );

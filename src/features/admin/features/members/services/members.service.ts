@@ -5,11 +5,16 @@ import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
 
+const MEMBER_SYNC_COLUMNS = "discord_not_in_guild_strikes, discord_sync_paused_at";
+
 const ADMIN_MEMBER_LIST_COLUMNS =
-  "id, username, discord_username, discord_id, status, registered_at, created_at, member_profiles(avatar_url, slug, display_name)";
+  `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
 
 const ADMIN_MEMBER_DETAIL_COLUMNS =
-  "id, username, discord_username, discord_id, status, registered_at, created_at, member_profiles(avatar_url, slug, display_name)";
+  `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
+
+const ADMIN_MEMBER_MUTATION_COLUMNS =
+  `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}`;
 
 function throwMemberUniqueViolation(error: { message: string }): never {
   const msg = error.message;
@@ -49,9 +54,6 @@ export async function fetchMemberById(id: string): Promise<AdminMember | null> {
   return data ? rowToAdminMember(data) : null;
 }
 
-const ADMIN_MEMBER_MUTATION_COLUMNS =
-  "id, username, discord_username, discord_id, status, registered_at, created_at";
-
 export async function createMember(input: CreateMemberInput): Promise<AdminMember> {
   const { data, error } = await supabase
     .from("members")
@@ -79,6 +81,21 @@ export async function updateMemberVerificationStatus(
   const { data, error } = await supabase
     .from("members")
     .update({ status })
+    .eq("id", id)
+    .select(ADMIN_MEMBER_MUTATION_COLUMNS)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return rowToAdminMember(data);
+}
+
+export async function resetMemberDiscordSyncQueue(id: string): Promise<AdminMember> {
+  const { data, error } = await supabase
+    .from("members")
+    .update({
+      discord_not_in_guild_strikes: 0,
+      discord_sync_paused_at: null,
+    })
     .eq("id", id)
     .select(ADMIN_MEMBER_MUTATION_COLUMNS)
     .single();

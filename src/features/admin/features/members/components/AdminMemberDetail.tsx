@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AdminDetailGrid, AdminPageHero, TechPanel } from "@/features/admin/components/AdminShell";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "@/features/member/constants";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
-import { memberStatusBadgeVariant } from "../utils";
+import { memberStatusBadgeVariant, memberNeedsSyncQueueReset } from "../utils";
 import { AdminMemberCommentsPanel } from "./AdminMemberCommentsPanel";
 import type { AdminMember } from "../types";
 import type { MemberProfile } from "@/features/member/types";
@@ -56,6 +56,7 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
   }
 
   const initials = profile?.avatarInitials ?? member.username.slice(0, 2).toUpperCase();
+  const showSyncDiagnostics = memberNeedsSyncQueueReset(member);
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
@@ -120,6 +121,20 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
                   </dt>
                   <dd className="mt-0.5 text-muted-foreground">{member.registeredAt}</dd>
                 </div>
+                {showSyncDiagnostics ? (
+                  <div>
+                    <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                      Discord sync
+                    </dt>
+                    <dd className="mt-0.5 text-muted-foreground">
+                      {member.discordNotInGuildStrikes} not-in-guild strike
+                      {member.discordNotInGuildStrikes === 1 ? "" : "s"}
+                      {member.discordSyncPausedAt
+                        ? ` · paused ${new Date(member.discordSyncPausedAt).toLocaleDateString()}`
+                        : ""}
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="sm:col-span-2">
                   <dt className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
                     Headline

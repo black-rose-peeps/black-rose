@@ -38,7 +38,11 @@ export async function applyVerificationByDiscordId(
 
   const { error: updateError } = await supabase
     .from("members")
-    .update({ status: targetStatus })
+    .update({
+      status: targetStatus,
+      discord_not_in_guild_strikes: 0,
+      discord_sync_paused_at: null,
+    })
     .eq("id", existing.id);
 
   if (updateError) {
