@@ -28,6 +28,7 @@ import { getSession, setSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
   PROFILE_GAME_OPTIONS,
+  PROFILE_REGION_OPTIONS,
   SOCIAL_PLATFORM_LABELS,
   SOCIAL_PLATFORM_ORDER,
 } from "@/features/member/constants";
@@ -130,6 +131,17 @@ function ProfileEditPage() {
   } = useProfileCompleteCelebration(memberId);
 
   const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
+
+  const regionOptions = useMemo(() => {
+    const trimmed = region.trim();
+    if (
+      trimmed &&
+      !PROFILE_REGION_OPTIONS.includes(trimmed as (typeof PROFILE_REGION_OPTIONS)[number])
+    ) {
+      return [...PROFILE_REGION_OPTIONS, trimmed];
+    }
+    return PROFILE_REGION_OPTIONS;
+  }, [region]);
 
   useEffect(() => {
     if (mainRole && !roleOptions.includes(mainRole as (typeof roleOptions)[number])) {
@@ -461,12 +473,18 @@ function ProfileEditPage() {
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Region
                   </Label>
-                  <Input
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    placeholder="PH / APAC"
-                    className={techFieldClass}
-                  />
+                  <Select value={region || undefined} onValueChange={setRegion}>
+                    <SelectTrigger className={techFieldClass}>
+                      <SelectValue placeholder="Select a region" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                      {regionOptions.map((option) => (
+                        <SelectItem key={option} value={option} className="font-tech text-xs">
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </TechPanel>
