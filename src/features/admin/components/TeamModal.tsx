@@ -1,6 +1,26 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Calendar, Crown, Hash, Loader2, Users } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Crown,
+  Hash,
+  Loader2,
+  ShieldAlert,
+  UserX,
+  Users,
+  XCircle,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,9 +46,13 @@ import {
   type RegistrationHistoryEntry,
 } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
-import { registrationActionsEnabled } from "@/features/admin/features/participants/constants/registration-status";
+import {
+  isReviewQueueStatus,
+  registrationActionsEnabled,
+} from "@/features/admin/features/participants/constants/registration-status";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import { isValorantGame } from "@/features/member/utils/valorant-identity";
+import { cn } from "@/lib/utils";
 import type { Team, TeamMember } from "@/features/teams/types";
 import type { MockTeam, TournamentStatus } from "@/lib/mock-data";
 
@@ -48,6 +72,20 @@ function formatDiscord(value: string): string {
   return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
 }
 
+type RegistrationDecisionMode = "review" | "approved" | "rejected" | null;
+
+function resolveRegistrationDecisionMode(
+  status: MockTeam["status"],
+  actionsEnabled: boolean,
+  hasHandlers: boolean,
+): RegistrationDecisionMode {
+  if (!actionsEnabled || !hasHandlers) return null;
+  if (isReviewQueueStatus(status)) return "review";
+  if (status === "Approved") return "approved";
+  if (status === "Rejected") return "rejected";
+  return null;
+}
+
 export function TeamModal({
   team,
   tournamentName,
@@ -62,6 +100,8 @@ export function TeamModal({
   const [rosterLoading, setRosterLoading] = useState(false);
   const [tournamentHistory, setTournamentHistory] = useState<RegistrationHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,15 +157,16 @@ export function TeamModal({
     };
   }, [team.rosterTeamId]);
 
-  const showReviewActions =
-    Boolean(onApprove || onReject) &&
-    registrationActionsEnabled(tournamentStatus) &&
-    (team.status === "Pending" || team.status === "Previously Competed" || team.status === "Rejected");
+  const actionsEnabled = registrationActionsEnabled(tournamentStatus);
+  const hasHandlers = Boolean(onApprove || onReject);
+  const decisionMode = resolveRegistrationDecisionMode(team.status, actionsEnabled, hasHandlers);
 
-  const isLive = Boolean(liveMembers && liveMembers.length > 0);
-  const rosterSource = isLive ? "live" : "snapshot";
-  const rosterCount = isLive ? liveMembers!.length : team.members.length;
+  const activeRoster = liveMembers && liveMembers.length > 0 ? liveMembers : null;
+  const isLive = activeRoster !== null;
+  const rosterCount = isLive ? activeRoster.length : team.members.length;
   const showIgnColumn = !rosterGame || !isValorantGame(rosterGame);
+
+  const tournamentLabel = tournamentName ?? "this tournament";
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -271,7 +312,7 @@ export function TeamModal({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {liveMembers.map((member) => (
+                {activeRoster.map((member) => (
                   <TableRow key={member.userId}>
                     <TableCell>
                       <MemberNameStack
@@ -328,7 +369,161 @@ export function TeamModal({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
+        {decisionMode && (
+          <section
+            className={cn(
+              "relative overflow-hidden border",
+              decisionMode === "review" && "border-amber-400/25 bg-amber-400/4",
+              decisionMode === "approved" && "border-emerald-400/25 bg-emerald-400/4",
+              decisionMode === "rejected" && "border-destructive/25 bg-destructive/5",
+            )}
+          >
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-y-0 left-0 w-px bg-linear-to-b to-transparent",
+                decisionMode === "review" && "from-amber-300/70",
+                decisionMode === "approved" && "from-emerald-300/70",
+                decisionMode === "rejected" && "from-destructive/60",
+              )}
+            />
+
+            <div className="relative p-4 sm:p-5">
+              {decisionMode === "review" && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center border border-amber-400/30 bg-amber-400/10">
+                      <ShieldAlert className="h-4 w-4 text-amber-200" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-tech text-[10px] uppercase tracking-wider-2 text-amber-200/80">
+                        Awaiting decision
+                      </p>
+                      <p className="mt-1 font-display text-base tracking-display text-white">
+                        Review this entry before approving
+                      </p>
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                        Check the roster above. Approving reserves a slot in{" "}
+                        <span className="text-foreground/90">{tournamentLabel}</span>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      disabled={isUpdating || !onApprove}
+                      onClick={() => setApproveConfirmOpen(true)}
+                      className={cn(
+                        "group relative overflow-hidden border border-emerald-400/30 bg-emerald-400/8 p-4 text-left transition",
+                        "hover:border-emerald-400/50 hover:bg-emerald-400/12",
+                        "disabled:pointer-events-none disabled:opacity-50",
+                      )}
+                    >
+                      <CheckCircle2
+                        className="mb-2 h-5 w-5 text-emerald-300"
+                        strokeWidth={1.5}
+                      />
+                      <p className="font-display text-sm tracking-display text-white">
+                        Approve entry
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Confirm roster and add to the tournament field.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isUpdating || !onReject}
+                      onClick={() => setRejectConfirmOpen(true)}
+                      className={cn(
+                        "group relative overflow-hidden border border-border bg-black/20 p-4 text-left transition",
+                        "hover:border-destructive/40 hover:bg-destructive/5",
+                        "disabled:pointer-events-none disabled:opacity-50",
+                      )}
+                    >
+                      <XCircle className="mb-2 h-5 w-5 text-muted-foreground group-hover:text-destructive" strokeWidth={1.5} />
+                      <p className="font-display text-sm tracking-display text-white">
+                        Decline entry
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Reject this registration without using a slot.
+                      </p>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {decisionMode === "approved" && (
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center border border-emerald-400/30 bg-emerald-400/10">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-300" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="font-tech text-[10px] uppercase tracking-wider-2 text-emerald-200/80">
+                        Approved
+                      </p>
+                      <p className="mt-1 font-display text-base tracking-display text-white">
+                        Active tournament entry
+                      </p>
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                        This team counts toward the registration cap and can be seeded into the
+                        bracket.
+                      </p>
+                    </div>
+                  </div>
+
+                  {onReject && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isUpdating}
+                      className="shrink-0 border-destructive/30 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setRejectConfirmOpen(true)}
+                    >
+                      <UserX className="mr-1.5 h-3.5 w-3.5" />
+                      Revoke approval
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {decisionMode === "rejected" && (
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center border border-destructive/30 bg-destructive/10">
+                      <XCircle className="h-4 w-4 text-destructive" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="font-tech text-[10px] uppercase tracking-wider-2 text-destructive/80">
+                        Declined
+                      </p>
+                      <p className="mt-1 font-display text-base tracking-display text-white">
+                        Not in the tournament field
+                      </p>
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                        You can approve this entry later if the decision was made in error.
+                      </p>
+                    </div>
+                  </div>
+
+                  {onApprove && (
+                    <Button
+                      type="button"
+                      disabled={isUpdating}
+                      className="shrink-0 bg-emerald-500 font-tech text-[10px] uppercase tracking-wider-2 text-white hover:bg-emerald-400"
+                      onClick={() => setApproveConfirmOpen(true)}
+                    >
+                      Approve entry
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -337,30 +532,80 @@ export function TeamModal({
           >
             Close
           </Button>
-          {showReviewActions && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isUpdating || team.status === "Approved" || !onApprove}
-                className="font-tech text-[10px] uppercase tracking-wider-2"
-                onClick={() => void onApprove?.()}
-              >
-                {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                Approve
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={isUpdating || team.status === "Rejected" || !onReject}
-                className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
-                onClick={() => void onReject?.()}
-              >
-                Reject
-              </Button>
-            </div>
-          )}
         </DialogFooter>
+
+        <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+          <AlertDialogContent className="border-border bg-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display text-xl tracking-display">
+                Approve {team.name}?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                This confirms the entry for{" "}
+                <span className="text-foreground">{tournamentLabel}</span>. The team will count
+                toward the registration cap and can be seeded into the bracket.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="font-tech uppercase tracking-wider">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-emerald-500 font-tech uppercase tracking-wider text-white hover:bg-emerald-400"
+                disabled={isUpdating}
+                onClick={() => {
+                  setApproveConfirmOpen(false);
+                  void onApprove?.();
+                }}
+              >
+                Approve entry
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={rejectConfirmOpen} onOpenChange={setRejectConfirmOpen}>
+          <AlertDialogContent className="border-border bg-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display text-xl tracking-display">
+                {decisionMode === "approved"
+                  ? `Revoke approval for ${team.name}?`
+                  : `Decline ${team.name}?`}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                {decisionMode === "approved" ? (
+                  <>
+                    This removes the team from the approved field for{" "}
+                    <span className="text-foreground">{tournamentLabel}</span>, frees a
+                    registration slot, and clears their active tournament link. If the bracket was
+                    already generated, update seeding separately.
+                  </>
+                ) : (
+                  <>
+                    This declines the registration for{" "}
+                    <span className="text-foreground">{tournamentLabel}</span> without using a
+                    tournament slot.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="font-tech uppercase tracking-wider">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive font-tech uppercase tracking-wider text-destructive-foreground hover:bg-destructive/90"
+                disabled={isUpdating}
+                onClick={() => {
+                  setRejectConfirmOpen(false);
+                  void onReject?.();
+                }}
+              >
+                {decisionMode === "approved" ? "Revoke approval" : "Decline entry"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
