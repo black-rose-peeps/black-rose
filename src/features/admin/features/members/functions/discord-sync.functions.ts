@@ -1,4 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import {
+  DEFAULT_MEMBER_SYNC_QUEUE_CONFIG,
+  formatColdSweepCadence,
+  normalizeWorkerQueueConfig,
+} from "../utils/discord-sync-config.server";
+import type { MemberSyncQueueConfig } from "../types";
 
 interface DiscordSyncResponse {
   checked?: number;
@@ -15,9 +21,14 @@ interface DiscordSyncResponse {
   totalPages?: number;
   priorityNotVerified?: boolean;
   coldSweep?: boolean;
+  queueConfig?: unknown;
+  syncQueueConfig?: MemberSyncQueueConfig;
 }
 
-export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
+export function formatDiscordSyncMessage(
+  summary: DiscordSyncResponse,
+  config?: Pick<MemberSyncQueueConfig, "coldSweepIntervalMinutes">,
+): string {
   const checked = summary.checked ?? 0;
   const verified = summary.verified ?? 0;
   const unverified = summary.unverified ?? 0;
@@ -28,6 +39,10 @@ export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
   const paused = summary.notVerifiedPaused ?? 0;
   const priority = summary.priorityNotVerified ?? false;
   const syncPaused = summary.syncPaused ?? 0;
+  const coldSweepMinutes =
+    config?.coldSweepIntervalMinutes ??
+    summary.syncQueueConfig?.coldSweepIntervalMinutes ??
+    DEFAULT_MEMBER_SYNC_QUEUE_CONFIG.coldSweepIntervalMinutes;
 
   const parts: string[] = ["Discord sync completed."];
 
@@ -48,7 +63,9 @@ export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
   }
 
   if (deferred > 0) {
-    parts.push(`${deferred} member${deferred === 1 ? "" : "s"} deferred — run sync again to continue.`);
+    parts.push(
+      `${deferred} member${deferred === 1 ? "" : "s"} deferred — run sync again to continue.`,
+    );
   }
 
   if (syncPaused > 0) {
@@ -67,7 +84,9 @@ export function formatDiscordSyncMessage(summary: DiscordSyncResponse): string {
     const extras: string[] = [];
     if (cold > 0) extras.push(`${cold} cold (older than hot window)`);
     if (paused > 0) extras.push(`${paused} paused`);
-    parts.push(`Backlog: ${extras.join(", ")} — cold/paused members are swept daily, not every cron run.`);
+    parts.push(
+      `Backlog: ${extras.join(", ")} — cold/paused members are swept ${formatColdSweepCadence(coldSweepMinutes)}, not every cron run.`,
+    );
   }
 
   return parts.join(" ");
@@ -104,6 +123,37 @@ async function fetchWithTimeout(input: string, init: RequestInit): Promise<Respo
   }
 }
 
+function mapSyncResponse(body: DiscordSyncResponse): DiscordSyncResponse {
+  const syncQueueConfig =
+    normalizeWorkerQueueConfig(body.queueConfig) ??
+    body.syncQueueConfig ??
+    DEFAULT_MEMBER_SYNC_QUEUE_CONFIG;
+
+  return {
+    ...body,
+    syncQueueConfig,
+  };
+}
+
+async function fetchWorkerSyncQueueConfig(): Promise<MemberSyncQueueConfig> {
+  const { workerUrl, syncSecret } = getRequiredSyncConfig();
+
+  try {
+    const response = await fetchWithTimeout(`${workerUrl}/sync/status`, {
+      headers: { Authorization: `Bearer ${syncSecret}` },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Worker status request failed (${response.status}).`);
+    }
+
+    const body = (await response.json()) as DiscordSyncResponse;
+    return normalizeWorkerQueueConfig(body.queueConfig) ?? DEFAULT_MEMBER_SYNC_QUEUE_CONFIG;
+  } catch {
+    return DEFAULT_MEMBER_SYNC_QUEUE_CONFIG;
+  }
+}
+
 export const triggerDiscordSync = createServerFn({ method: "POST" })
   .validator(() => ({}))
   .handler(async (): Promise<DiscordSyncResponse> => {
@@ -122,5 +172,9 @@ export const triggerDiscordSync = createServerFn({ method: "POST" })
       throw new Error(`Sync request failed (${response.status}): ${detail}`);
     }
 
-    return (await response.json()) as DiscordSyncResponse;
+    return mapSyncResponse((await response.json()) as DiscordSyncResponse);
   });
+
+export const getMemberSyncQueueConfig = createServerFn({ method: "GET" })
+  .validator(() => ({}))
+  .handler(async (): Promise<MemberSyncQueueConfig> => fetchWorkerSyncQueueConfig());

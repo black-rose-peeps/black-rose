@@ -36,7 +36,7 @@ import { usePagination } from "@/features/admin/hooks/usePagination";
 import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { matchesAdminMemberDirectorySearch } from "@/features/admin/utils/search";
 import { useMembers, useResetMemberDiscordSync, useUpdateMemberVerification } from "../hooks";
-import type { AdminMember, MemberSyncQueueFilter } from "../types";
+import type { AdminMember, MemberSyncQueueConfig, MemberSyncQueueFilter } from "../types";
 import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
 import {
   countMembersBySyncQueueFilter,
@@ -50,7 +50,12 @@ import { CreateMemberModal } from "./CreateMemberModal";
 import { EditMemberModal } from "./EditMemberModal";
 import { MemberSyncQueueFilters } from "./MemberSyncQueueFilters";
 import { useDeleteMember } from "../hooks/useDeleteMember";
-import { formatDiscordSyncMessage, triggerDiscordSync } from "../functions/discord-sync.functions";
+import { DEFAULT_SYNC_HOT_DAYS } from "../constants";
+import {
+  formatDiscordSyncMessage,
+  getMemberSyncQueueConfig,
+  triggerDiscordSync,
+} from "../functions/discord-sync.functions";
 
 export function MembersManagement() {
   const navigate = useNavigate();
@@ -77,27 +82,35 @@ export function MembersManagement() {
   const [deleteMode, setDeleteMode] = useState<"default" | "stale">("default");
   const [searchQuery, setSearchQuery] = useState("");
   const [syncQueueFilter, setSyncQueueFilter] = useState<MemberSyncQueueFilter>("all");
+  const [syncQueueConfig, setSyncQueueConfig] = useState<MemberSyncQueueConfig>(
+    () => ({
+      hotDays: DEFAULT_SYNC_HOT_DAYS,
+      coldSweepIntervalMinutes: 1440,
+    }),
+  );
   const {
     submit: deleteMemberSubmit,
     isDeleting,
     error: deleteError,
     resetError: resetDeleteError,
   } = useDeleteMember();
-  const queueCounts = useMemo(() => countMembersBySyncQueueFilter(members), [members]);
+  const queueCounts = useMemo(
+    () => countMembersBySyncQueueFilter(members, syncQueueConfig.hotDays),
+    [members, syncQueueConfig.hotDays],
+  );
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
-      if (!matchesSyncQueueFilter(member, syncQueueFilter)) return false;
+      if (!matchesSyncQueueFilter(member, syncQueueFilter, syncQueueConfig.hotDays)) return false;
       if (!searchQuery.trim()) return true;
       return matchesAdminMemberDirectorySearch(searchQuery, member);
     });
-  }, [members, searchQuery, syncQueueFilter]);
+  }, [members, searchQuery, syncQueueFilter, syncQueueConfig.hotDays]);
 
   const verificationOrder = useMemo(() => ["Not Verified", "Verified"] as const, []);
   const sortComparators = useMemo(
     () => ({
-      registered: (a: AdminMember, b: AdminMember) =>
-        compareStrings(a.createdAt, b.createdAt),
+      registered: (a: AdminMember, b: AdminMember) => compareStrings(a.createdAt, b.createdAt),
       verification: (a: AdminMember, b: AdminMember) =>
         compareByOrder(verificationOrder, a.status, b.status),
     }),
@@ -115,6 +128,14 @@ export function MembersManagement() {
     pagination.setPage(1);
   }, [sortKey, direction, searchQuery, syncQueueFilter, pagination.setPage]);
 
+  useEffect(() => {
+    void getMemberSyncQueueConfig({})
+      .then(setSyncQueueConfig)
+      .catch(() => {
+        // Keep defaults aligned with Worker when env is unavailable locally.
+      });
+  }, []);
+
   function handleCreated(member: AdminMember) {
     prependMember(member);
     pagination.setPage(1);
@@ -126,13 +147,11 @@ export function MembersManagement() {
     setIsSyncError(false);
     try {
       const summary = await triggerDiscordSync({});
-      setSyncMessage(formatDiscordSyncMessage(summary));
+      setSyncMessage(formatDiscordSyncMessage(summary, summary.syncQueueConfig ?? syncQueueConfig));
       setIsSyncConfirmOpen(false);
     } catch (err) {
       setIsSyncError(true);
-      setSyncMessage(
-        err instanceof Error ? err.message : "Failed to run Discord sync.",
-      );
+      setSyncMessage(err instanceof Error ? err.message : "Failed to run Discord sync.");
     } finally {
       setIsSyncing(false);
     }
@@ -176,9 +195,7 @@ export function MembersManagement() {
           <div className="px-6 pt-4">
             {error || verificationError || syncResetError ? (
               <Alert variant="destructive">
-                <AlertDescription>
-                  {error ?? verificationError ?? syncResetError}
-                </AlertDescription>
+                <AlertDescription>{error ?? verificationError ?? syncResetError}</AlertDescription>
               </Alert>
             ) : null}
             {syncMessage ? (
@@ -331,186 +348,196 @@ export function MembersManagement() {
                 />
               ) : (
                 <>
-              <AdminManagementTable columnWidths={MEMBERS_TABLE_COLUMNS}>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Username
-                    </TableHead>
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Discord
-                    </TableHead>
-                    <SortableTableHead
-                      label="Registered"
-                      sortKey="registered"
-                      activeKey={sortKey}
-                      direction={direction}
-                      onSort={toggleSort}
-                    />
-                    <SortableTableHead
-                      label="Verification"
-                      sortKey="verification"
-                      activeKey={sortKey}
-                      direction={direction}
-                      onSort={toggleSort}
-                    />
-                    <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagination.paginatedItems.map((member) => (
-                  <TableRow
-                    key={member.id}
-                    className="cursor-pointer transition-colors hover:bg-white/3"
-                    onClick={() => navigate({ to: "/admin/users/$memberId", params: { memberId: member.id } })}
-                  >
-                    <TableCell className={adminTableCellClip}>
-                      <Link
-                        to="/admin/users/$memberId"
-                        params={{ memberId: member.id }}
-                        className="flex min-w-0 items-center gap-3 hover:text-foreground"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MemberAvatar
-                          avatarUrl={member.avatarUrl}
-                          initials={initialsFromName(member.displayName)}
-                          name={member.displayName}
-                          className="h-8 w-8 shrink-0 text-[10px] font-tech tracking-wider-2"
+                  <AdminManagementTable columnWidths={MEMBERS_TABLE_COLUMNS}>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          Username
+                        </TableHead>
+                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                          Discord
+                        </TableHead>
+                        <SortableTableHead
+                          label="Registered"
+                          sortKey="registered"
+                          activeKey={sortKey}
+                          direction={direction}
+                          onSort={toggleSort}
                         />
-                        <span className={cn("font-medium", adminTableTextTruncate)}>
-                          {member.displayName}
-                        </span>
-                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-                      </Link>
-                    </TableCell>
-                    <TableCell className={adminTableCellClip}>
-                      <div className={cn("text-sm", adminTableTextTruncate)}>
-                        @{member.discordUsername}
-                      </div>
-                      {member.discordId && (
-                        <div
-                          className={cn(
-                            "text-xs text-muted-foreground font-mono",
-                            adminTableTextTruncate,
-                          )}
+                        <SortableTableHead
+                          label="Verification"
+                          sortKey="verification"
+                          activeKey={sortKey}
+                          direction={direction}
+                          onSort={toggleSort}
+                        />
+                        <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagination.paginatedItems.map((member) => (
+                        <TableRow
+                          key={member.id}
+                          className="cursor-pointer transition-colors hover:bg-white/3"
+                          onClick={() =>
+                            navigate({
+                              to: "/admin/users/$memberId",
+                              params: { memberId: member.id },
+                            })
+                          }
                         >
-                          {member.discordId}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {member.registeredAt}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={memberStatusBadgeVariant(member.status)}>
-                        {member.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
-                        {memberNeedsSyncQueueReset(member) ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={resettingId !== null || updatingId !== null}
-                            className="gap-1.5 font-tech text-[10px] uppercase tracking-wider-2"
-                            onClick={async () => {
-                              resetSyncResetError();
-                              try {
-                                const updated = await resetSyncQueue(member.id);
-                                replaceMember(updated);
-                              } catch {
-                                // syncResetError shown in alert
-                              }
-                            }}
-                          >
-                            {resettingId === member.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <RotateCcw className="h-3.5 w-3.5" />
+                          <TableCell className={adminTableCellClip}>
+                            <Link
+                              to="/admin/users/$memberId"
+                              params={{ memberId: member.id }}
+                              className="flex min-w-0 items-center gap-3 hover:text-foreground"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MemberAvatar
+                                avatarUrl={member.avatarUrl}
+                                initials={initialsFromName(member.displayName)}
+                                name={member.displayName}
+                                className="h-8 w-8 shrink-0 text-[10px] font-tech tracking-wider-2"
+                              />
+                              <span className={cn("font-medium", adminTableTextTruncate)}>
+                                {member.displayName}
+                              </span>
+                              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                            </Link>
+                          </TableCell>
+                          <TableCell className={adminTableCellClip}>
+                            <div className={cn("text-sm", adminTableTextTruncate)}>
+                              @{member.discordUsername}
+                            </div>
+                            {member.discordId && (
+                              <div
+                                className={cn(
+                                  "text-xs text-muted-foreground font-mono",
+                                  adminTableTextTruncate,
+                                )}
+                              >
+                                {member.discordId}
+                              </div>
                             )}
-                            Unpause
-                          </Button>
-                        ) : null}
-                        {memberIsStaleSyncCandidate(member) ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            disabled={isDeleting || updatingId !== null || resettingId !== null}
-                            className="gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              resetDeleteError();
-                              setDeleteMode("stale");
-                              setDeletingMember(member);
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Remove stale
-                          </Button>
-                        ) : null}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={updatingId !== null || member.status === "Verified"}
-                          className="font-tech text-[10px] uppercase tracking-wider-2"
-                          onClick={async () => {
-                            resetVerificationError();
-                            try {
-                              const updated = await updateVerification(member.id, "Verified");
-                              replaceMember(updated);
-                            } catch {
-                              // verificationError shown in alert
-                            }
-                          }}
-                        >
-                          Verify
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={updatingId !== null || member.status === "Not Verified"}
-                          className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
-                          onClick={async () => {
-                            resetVerificationError();
-                            try {
-                              const updated = await updateVerification(member.id, "Not Verified");
-                              replaceMember(updated);
-                            } catch {
-                              // verificationError shown in alert
-                            }
-                          }}
-                        >
-                          Unverify
-                        </Button>
-                        <AdminRowActions
-                          groupLabel="Member"
-                          onEdit={() => setEditingMember(member)}
-                          onDelete={() => {
-                            resetDeleteError();
-                            setDeleteMode("default");
-                            setDeletingMember(member);
-                          }}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                </TableBody>
-              </AdminManagementTable>
-              <AdminTablePagination
-                page={pagination.page}
-                totalPages={pagination.totalPages}
-                total={pagination.total}
-                rangeStart={pagination.rangeStart}
-                rangeEnd={pagination.rangeEnd}
-                onPageChange={pagination.setPage}
-              />
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {member.registeredAt}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={memberStatusBadgeVariant(member.status)}>
+                              {member.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-2">
+                              {memberNeedsSyncQueueReset(member) ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={resettingId !== null || updatingId !== null}
+                                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider-2"
+                                  onClick={async () => {
+                                    resetSyncResetError();
+                                    try {
+                                      const updated = await resetSyncQueue(member.id);
+                                      replaceMember(updated);
+                                    } catch {
+                                      // syncResetError shown in alert
+                                    }
+                                  }}
+                                >
+                                  {resettingId === member.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                  )}
+                                  Unpause
+                                </Button>
+                              ) : null}
+                              {memberIsStaleSyncCandidate(member, syncQueueConfig.hotDays) ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={
+                                    isDeleting || updatingId !== null || resettingId !== null
+                                  }
+                                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
+                                  onClick={() => {
+                                    resetDeleteError();
+                                    setDeleteMode("stale");
+                                    setDeletingMember(member);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Remove stale
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={updatingId !== null || member.status === "Verified"}
+                                className="font-tech text-[10px] uppercase tracking-wider-2"
+                                onClick={async () => {
+                                  resetVerificationError();
+                                  try {
+                                    const updated = await updateVerification(member.id, "Verified");
+                                    replaceMember(updated);
+                                  } catch {
+                                    // verificationError shown in alert
+                                  }
+                                }}
+                              >
+                                Verify
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={updatingId !== null || member.status === "Not Verified"}
+                                className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:text-destructive"
+                                onClick={async () => {
+                                  resetVerificationError();
+                                  try {
+                                    const updated = await updateVerification(
+                                      member.id,
+                                      "Not Verified",
+                                    );
+                                    replaceMember(updated);
+                                  } catch {
+                                    // verificationError shown in alert
+                                  }
+                                }}
+                              >
+                                Unverify
+                              </Button>
+                              <AdminRowActions
+                                groupLabel="Member"
+                                onEdit={() => setEditingMember(member)}
+                                onDelete={() => {
+                                  resetDeleteError();
+                                  setDeleteMode("default");
+                                  setDeletingMember(member);
+                                }}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </AdminManagementTable>
+                  <AdminTablePagination
+                    page={pagination.page}
+                    totalPages={pagination.totalPages}
+                    total={pagination.total}
+                    rangeStart={pagination.rangeStart}
+                    rangeEnd={pagination.rangeEnd}
+                    onPageChange={pagination.setPage}
+                  />
                 </>
               )}
             </>

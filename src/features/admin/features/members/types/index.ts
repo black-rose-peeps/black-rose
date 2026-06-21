@@ -5,6 +5,11 @@ export type MemberSyncQueueTier = "hot" | "cold" | "paused";
 
 export type MemberSyncQueueFilter = "all" | MemberSyncQueueTier | "backlog";
 
+export interface MemberSyncQueueConfig {
+  hotDays: number;
+  coldSweepIntervalMinutes: number;
+}
+
 export interface AdminMember {
   id: string;
   username: string;

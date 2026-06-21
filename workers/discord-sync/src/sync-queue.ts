@@ -7,6 +7,7 @@ export interface SyncMemberRow {
   discord_id: string;
   status: MemberStatus;
   discord_not_in_guild_strikes: number;
+  discord_sync_paused_at: string | null;
 }
 
 export interface NotVerifiedQueueCounts {
@@ -17,7 +18,7 @@ export interface NotVerifiedQueueCounts {
 }
 
 const MEMBER_SELECT =
-  "id, discord_id, status, discord_not_in_guild_strikes";
+  "id, discord_id, status, discord_not_in_guild_strikes, discord_sync_paused_at";
 
 function notVerifiedBase(supabase: SupabaseClient) {
   return supabase
@@ -141,6 +142,8 @@ function normalizeMemberRows(rows: unknown[] | null): SyncMemberRow[] {
       discord_id: String(record.discord_id),
       status: record.status as MemberStatus,
       discord_not_in_guild_strikes: Number(record.discord_not_in_guild_strikes ?? 0),
+      discord_sync_paused_at:
+        (record.discord_sync_paused_at as string | null | undefined) ?? null,
     };
   });
 }
@@ -153,5 +156,5 @@ export function runsPerColdSweep(
   coldSweepIntervalMinutes: number,
   baselineIntervalMinutes: number,
 ): number {
-  return Math.max(1, Math.round(coldSweepIntervalMinutes / baselineIntervalMinutes));
+  return Math.max(1, Math.ceil(coldSweepIntervalMinutes / baselineIntervalMinutes));
 }

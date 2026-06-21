@@ -8,11 +8,7 @@ interface MemberSyncQueueFiltersProps {
   onChange: (value: MemberSyncQueueFilter) => void;
 }
 
-export function MemberSyncQueueFilters({
-  value,
-  counts,
-  onChange,
-}: MemberSyncQueueFiltersProps) {
+export function MemberSyncQueueFilters({ value, counts, onChange }: MemberSyncQueueFiltersProps) {
   return (
     <ToggleGroup
       type="single"

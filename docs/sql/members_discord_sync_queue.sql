@@ -5,6 +5,13 @@ alter table public.members
   add column if not exists discord_not_in_guild_strikes integer not null default 0;
 
 alter table public.members
+  drop constraint if exists members_discord_not_in_guild_strikes_nonneg;
+
+alter table public.members
+  add constraint members_discord_not_in_guild_strikes_nonneg
+  check (discord_not_in_guild_strikes >= 0);
+
+alter table public.members
   add column if not exists discord_sync_paused_at timestamptz;
 
 comment on column public.members.discord_not_in_guild_strikes is

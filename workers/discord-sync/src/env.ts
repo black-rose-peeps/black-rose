@@ -70,3 +70,17 @@ export function getColdSweepIntervalMinutes(env: Env): number {
   if (!Number.isFinite(parsed) || parsed < 15) return 1440;
   return Math.min(parsed, 60 * 24 * 30);
 }
+
+export interface SyncQueueConfig {
+  hotDays: number;
+  coldSweepIntervalMinutes: number;
+  notInGuildStrikeLimit: number;
+}
+
+export function getSyncQueueConfig(env: Env): SyncQueueConfig {
+  return {
+    hotDays: getHotQueueDays(env),
+    coldSweepIntervalMinutes: getColdSweepIntervalMinutes(env),
+    notInGuildStrikeLimit: getNotInGuildStrikeLimit(env),
+  };
+}

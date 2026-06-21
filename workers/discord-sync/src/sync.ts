@@ -31,6 +31,7 @@ interface MemberRow {
   discord_id: string;
   status: MemberStatus;
   discord_not_in_guild_strikes: number;
+  discord_sync_paused_at: string | null;
 }
 
 export interface SyncSummary {
@@ -202,7 +203,7 @@ export async function syncRoseRoles(
 
       const { data: verifiedRows, error: verifiedError } = await supabase
         .from("members")
-        .select("id, discord_id, status, discord_not_in_guild_strikes")
+        .select("id, discord_id, status, discord_not_in_guild_strikes, discord_sync_paused_at")
         .eq("status", "Verified")
         .not("discord_id", "is", null)
         .order("created_at", { ascending: false })
@@ -218,6 +219,7 @@ export async function syncRoseRoles(
         ...((verifiedRows ?? []) as SyncMemberRow[]).map((row) => ({
           ...row,
           discord_not_in_guild_strikes: row.discord_not_in_guild_strikes ?? 0,
+          discord_sync_paused_at: row.discord_sync_paused_at ?? null,
         })),
       );
     }
@@ -345,6 +347,16 @@ function buildStrikeUpdate(
   clearPause: boolean;
 } {
   if (notInGuild) {
+    if (member.discord_sync_paused_at) {
+      return {
+        strikes: member.discord_not_in_guild_strikes,
+        pausedAt: member.discord_sync_paused_at,
+        pausedNow: false,
+        reset: false,
+        clearPause: false,
+      };
+    }
+
     const strikes = member.discord_not_in_guild_strikes + 1;
     const pausedNow = strikes >= strikeLimit;
     return {
