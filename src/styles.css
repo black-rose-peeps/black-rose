@@ -329,6 +329,36 @@
     color: transparent;
   }
 
+  /* Mobile / notch-safe layout — desktop spacing unchanged when inset is 0 */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .site-header-offset {
+    padding-top: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+
+  .site-header-offset-spaced {
+    padding-top: calc(6rem + env(safe-area-inset-top, 0px));
+  }
+
+  .site-header-offset-hero {
+    padding-top: calc(8rem + env(safe-area-inset-top, 0px));
+  }
+
+  .sticky-below-header {
+    top: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
   /* Bracket Manager Specific Styles */
   .btn {
     font-family: var(--font-tech);

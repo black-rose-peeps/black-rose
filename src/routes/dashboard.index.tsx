@@ -39,6 +39,9 @@ import { isSocialLinkPublic } from "@/features/member/utils/social-links";
 import type { AppUser } from "@/features/auth/types";
 import type { MemberProfile } from "@/features/member/types";
 
+const SECTION_LINK_CLASS =
+  "touch-target inline-flex min-h-11 items-center rounded-none px-1 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground";
+
 function profileFallbackFromSession(session: AppUser): MemberProfile {
   const initials = session.displayName.slice(0, 2).toUpperCase();
   return {
@@ -372,12 +375,7 @@ function DashboardPage() {
           title="Active Registration"
           action={
             p.activeRegistrations.length > 0 ? (
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
-              >
+              <Button asChild variant="ghost" size="sm" className={SECTION_LINK_CLASS}>
                 <Link to="/tournaments">Browse →</Link>
               </Button>
             ) : undefined
@@ -389,12 +387,7 @@ function DashboardPage() {
                 <li key={`${entry.tournamentId}-${entry.teamTag}`} className="flex flex-col gap-2">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-medium leading-tight">{entry.tournamentName}</p>
-                    <Button
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto shrink-0 rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
-                    >
+                    <Button asChild variant="ghost" size="sm" className={SECTION_LINK_CLASS}>
                       <Link to="/tournaments/$id" params={{ id: entry.tournamentId }}>
                         View →
                       </Link>
@@ -463,14 +456,17 @@ function DashboardPage() {
           {p.upcomingMatches.length > 0 ? (
             <ul className="divide-y divide-white/6">
               {p.upcomingMatches.map((m) => (
-                <li key={m.matchId} className="flex items-start justify-between gap-4 py-3">
-                  <div>
+                <li
+                  key={m.matchId}
+                  className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                >
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">{m.tournamentName}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       vs {m.opponent} · {m.round}
                     </p>
                   </div>
-                  <span className="shrink-0 text-right font-tech text-label-readable uppercase text-muted-foreground">
+                  <span className="font-tech text-label-readable uppercase text-muted-foreground sm:shrink-0 sm:text-right">
                     {m.scheduledAt}
                   </span>
                 </li>
@@ -494,26 +490,24 @@ function DashboardPage() {
           label={`${publicSocials.length} public · ${linkedSocials.length} / ${totalSocials} linked`}
           title="Social Links"
           action={
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="h-auto rounded-none p-0 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
-            >
+            <Button asChild variant="ghost" size="sm" className={SECTION_LINK_CLASS}>
               <Link to="/dashboard/profile" search={{ tab: "socials" }}>
                 Manage →
               </Link>
             </Button>
           }
         >
-          <ul className="flex flex-col gap-2.5">
+          <ul className="flex flex-col gap-1 sm:gap-1.5">
             {p.socialLinks.map((s) => {
               const hasUrl = Boolean(s.url?.trim());
               const isPublic = isSocialLinkPublic(s);
 
               return (
-                <li key={s.platform} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">
+                <li
+                  key={s.platform}
+                  className="flex min-h-0 items-center justify-between gap-3 py-0.5"
+                >
+                  <span className="text-sm leading-snug text-muted-foreground">
                     {SOCIAL_PLATFORM_LABELS[s.platform]}
                   </span>
                   {!hasUrl ? (
@@ -521,10 +515,10 @@ function DashboardPage() {
                       Missing
                     </span>
                   ) : isPublic ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       <Badge
                         variant="outline"
-                        className="rounded-none border-emerald-400/20 bg-emerald-400/5 font-tech text-label-readable uppercase text-emerald-400"
+                        className="h-6 rounded-none border-emerald-400/20 bg-emerald-400/5 px-2 py-0 font-tech text-label-readable uppercase leading-none text-emerald-400"
                       >
                         Public
                       </Badge>
@@ -532,16 +526,16 @@ function DashboardPage() {
                         href={s.url!}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-muted-foreground transition hover:text-foreground"
+                        className="-m-1.5 inline-flex p-1.5 text-muted-foreground transition hover:text-foreground active:opacity-70"
                         aria-label={`Open ${SOCIAL_PLATFORM_LABELS[s.platform]}`}
                       >
-                        <ExternalLink className="h-3 w-3" />
+                        <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </div>
                   ) : (
                     <Badge
                       variant="outline"
-                      className="rounded-none border-white/10 bg-white/5 font-tech text-label-readable uppercase text-muted-foreground"
+                      className="h-6 rounded-none border-white/10 bg-white/5 px-2 py-0 font-tech text-label-readable uppercase leading-none text-muted-foreground"
                     >
                       Private
                     </Badge>

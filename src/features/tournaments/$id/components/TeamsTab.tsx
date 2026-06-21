@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Crown, Hash, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import {
   Pagination,
   PaginationContent,
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
-import { tournamentTeamsHaveSeeds } from "../../utils";
+import { sortTournamentTeamsBySeed, tournamentTeamsHaveSeeds } from "../../utils";
 import type { TournamentTeam } from "../../types";
 
 // ── Page size ──────────────────────────────────────────────────────────────
@@ -65,14 +66,15 @@ interface TeamsTabProps {
 export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
   const [page, setPageState] = useState(1);
   const [selected, setSelected] = useState<TournamentTeam | null>(null);
-  const showSeeds = tournamentTeamsHaveSeeds(teams);
+  const sortedTeams = useMemo(() => sortTournamentTeamsBySeed(teams), [teams]);
+  const showSeeds = tournamentTeamsHaveSeeds(sortedTeams);
 
-  const totalPages = Math.max(1, Math.ceil(teams.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sortedTeams.length / PAGE_SIZE));
   const safePage = clamp(page, totalPages);
   const start = (safePage - 1) * PAGE_SIZE;
-  const paged = teams.slice(start, start + PAGE_SIZE);
-  const rangeStart = teams.length === 0 ? 0 : start + 1;
-  const rangeEnd = Math.min(safePage * PAGE_SIZE, teams.length);
+  const paged = sortedTeams.slice(start, start + PAGE_SIZE);
+  const rangeStart = sortedTeams.length === 0 ? 0 : start + 1;
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, sortedTeams.length);
 
   function setPage(next: number) {
     setPageState(clamp(next, totalPages));
@@ -102,7 +104,10 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {["Team", "Captain", "Players", ...(showSeeds ? ["Seed"] : []), ""].map((h) => (
-                  <TableHead key={h || "actions"} className="font-tech text-label-readable uppercase">
+                  <TableHead
+                    key={h || "actions"}
+                    className="font-tech text-label-readable uppercase"
+                  >
                     {h}
                   </TableHead>
                 ))}
@@ -145,7 +150,7 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
 
   // ── Empty state ──────────────────────────────────────────────────────────
 
-  if (teams.length === 0) {
+  if (sortedTeams.length === 0) {
     return (
       <ArenaEmptyState
         compact
@@ -182,19 +187,11 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="font-tech text-label-readable uppercase">
-                  Team
-                </TableHead>
-                <TableHead className="font-tech text-label-readable uppercase">
-                  Captain
-                </TableHead>
-                <TableHead className="font-tech text-label-readable uppercase">
-                  Players
-                </TableHead>
+                <TableHead className="font-tech text-label-readable uppercase">Team</TableHead>
+                <TableHead className="font-tech text-label-readable uppercase">Captain</TableHead>
+                <TableHead className="font-tech text-label-readable uppercase">Players</TableHead>
                 {showSeeds && (
-                  <TableHead className="font-tech text-label-readable uppercase">
-                    Seed
-                  </TableHead>
+                  <TableHead className="font-tech text-label-readable uppercase">Seed</TableHead>
                 )}
                 <TableHead className="text-right font-tech text-label-readable uppercase">
                   Actions
@@ -243,7 +240,7 @@ export function TeamsTab({ teams, isLoading = false }: TeamsTabProps) {
         {/* Pagination footer */}
         <div className="flex flex-col gap-3 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-xs text-muted-foreground">
-            Showing {rangeStart}–{rangeEnd} of {teams.length}
+            Showing {rangeStart}–{rangeEnd} of {sortedTeams.length}
           </p>
 
           {totalPages > 1 && (
@@ -334,11 +331,7 @@ function TeamMobileCard({
   return (
     <div className="p-4">
       <div className="flex items-start justify-between gap-3">
-        <button
-          type="button"
-          className="min-w-0 flex-1 text-left"
-          onClick={onOpen}
-        >
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={onOpen}>
           <TeamIdentity team={team} />
         </button>
         <Button
@@ -375,119 +368,117 @@ function TeamMobileCard({
 
 function TeamDetailModal({ team, onClose }: { team: TournamentTeam; onClose: () => void }) {
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="custom-scrollbar max-h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
+    <AdaptiveModal open onOpenChange={(next) => !next && onClose()}>
+      <AdaptiveModalContent
+        mobileSize="full"
+        className="flex max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+      >
+        <AdaptiveModalHeader>
           <div className="flex items-start gap-4 pr-6">
             <div className="grid h-12 w-12 shrink-0 place-items-center border border-border bg-secondary font-tech text-sm tracking-wider">
               {team.tag}
             </div>
             <div className="min-w-0 space-y-1">
-              <DialogTitle className="font-display text-xl tracking-wider-2">
+              <AdaptiveModalTitle className="text-xl tracking-wider-2">
                 {team.name}
-              </DialogTitle>
-              <DialogDescription>Team roster and details</DialogDescription>
+              </AdaptiveModalTitle>
+              <AdaptiveModalDescription>Team roster and details</AdaptiveModalDescription>
             </div>
           </div>
-        </DialogHeader>
+        </AdaptiveModalHeader>
 
-        {/* Info card */}
-        <div className="rounded-lg border border-border bg-muted/10 p-4">
-          <h3 className="mb-3 font-tech text-label-readable uppercase text-muted-foreground">
-            Team Info
-          </h3>
-          <dl className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <dt className="text-muted-foreground">Tag</dt>
-              <dd className="ml-auto font-medium">{team.tag}</dd>
-            </div>
-            <div className="flex items-center gap-2">
-              <Crown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <dt className="text-muted-foreground">Captain</dt>
-              <dd className="ml-auto font-medium">{team.captain}</dd>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <dt className="text-muted-foreground">Roster</dt>
-              <dd className="ml-auto font-medium">{team.players.length} players</dd>
-            </div>
-            {team.seed != null && (
+        <AdaptiveModalBody className="custom-scrollbar space-y-4">
+          <div className="rounded-lg border border-border bg-muted/10 p-4">
+            <h3 className="mb-3 font-tech text-label-readable uppercase text-muted-foreground">
+              Team Info
+            </h3>
+            <dl className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center text-center font-tech text-label-readable text-muted-foreground">
-                  #
-                </span>
-                <dt className="text-muted-foreground">Seed</dt>
-                <dd className="ml-auto font-medium">{team.seed}</dd>
+                <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <dt className="text-muted-foreground">Tag</dt>
+                <dd className="ml-auto font-medium">{team.tag}</dd>
               </div>
-            )}
-          </dl>
-          <div className="mt-3">
-            <Badge variant="secondary" className="font-tech text-label-readable uppercase">
-              Registered
-            </Badge>
+              <div className="flex items-center gap-2">
+                <Crown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <dt className="text-muted-foreground">Captain</dt>
+                <dd className="ml-auto font-medium">{team.captain}</dd>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <dt className="text-muted-foreground">Roster</dt>
+                <dd className="ml-auto font-medium">{team.players.length} players</dd>
+              </div>
+              {team.seed != null && (
+                <div className="flex items-center gap-2">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-center font-tech text-label-readable text-muted-foreground">
+                    #
+                  </span>
+                  <dt className="text-muted-foreground">Seed</dt>
+                  <dd className="ml-auto font-medium">{team.seed}</dd>
+                </div>
+              )}
+            </dl>
+            <div className="mt-3">
+              <Badge variant="secondary" className="font-tech text-label-readable uppercase">
+                Registered
+              </Badge>
+            </div>
           </div>
-        </div>
 
-        <Separator />
+          <Separator />
 
-        {/* Roster table */}
-        <div className="space-y-3 overflow-x-auto">
-          <h3 className="font-tech text-label-readable uppercase text-muted-foreground">
-            Roster
-          </h3>
-          <Table className="min-w-[20rem]">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="font-tech text-label-readable uppercase">
-                  #
-                </TableHead>
-                <TableHead className="font-tech text-label-readable uppercase">
-                  IGN
-                </TableHead>
-                <TableHead className="font-tech text-label-readable uppercase">
-                  Role
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {team.players.map((p, i) => (
-                <TableRow key={`${p.ign}-${i}`}>
-                  <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
-                  <TableCell>
-                    {p.discord ? (
-                      <MemberNameStack
-                        displayName={p.ign}
-                        discordUsername={p.discord}
-                        profileSlug={p.profileSlug}
-                        size="sm"
-                      />
-                    ) : (
-                      <span className="font-medium">{p.ign}</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-tech text-label-readable uppercase">
-                      {p.role}
-                    </Badge>
-                  </TableCell>
+          {/* Roster table */}
+          <div className="space-y-3 overflow-x-auto">
+            <h3 className="font-tech text-label-readable uppercase text-muted-foreground">
+              Roster
+            </h3>
+            <Table className="min-w-[20rem]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="font-tech text-label-readable uppercase">#</TableHead>
+                  <TableHead className="font-tech text-label-readable uppercase">IGN</TableHead>
+                  <TableHead className="font-tech text-label-readable uppercase">Role</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {team.players.map((p, i) => (
+                  <TableRow key={`${p.ign}-${i}`}>
+                    <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                    <TableCell>
+                      {p.discord ? (
+                        <MemberNameStack
+                          displayName={p.ign}
+                          discordUsername={p.discord}
+                          profileSlug={p.profileSlug}
+                          size="sm"
+                        />
+                      ) : (
+                        <span className="font-medium">{p.ign}</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-tech text-label-readable uppercase">
+                        {p.role}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </AdaptiveModalBody>
 
-        <DialogFooter>
+        <AdaptiveModalFooter>
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
-            className="font-tech uppercase tracking-wider"
+            className="min-h-11 font-tech uppercase tracking-wider"
           >
             Close
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </AdaptiveModalFooter>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

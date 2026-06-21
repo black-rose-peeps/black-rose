@@ -262,7 +262,7 @@ function ProfileEditPage() {
       <Button
         asChild
         variant="ghost"
-        className="mb-6 -ml-2 rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="touch-target mb-6 -ml-2 inline-flex min-h-11 items-center rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
       >
         <Link to="/dashboard">
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -274,7 +274,7 @@ function ProfileEditPage() {
         eyebrow="Member Profile"
         title="Edit Profile"
         subtitle={profile ? profileCompletionHint(completion) : undefined}
-        emblemSize="h-56 w-56"
+        emblemSize="h-40 w-40 sm:h-56 sm:w-56"
         meta={
           profile && (
             <div className="max-w-xs">
@@ -320,31 +320,31 @@ function ProfileEditPage() {
           }
           className="gap-6"
         >
-          <TabsList className="h-auto w-full justify-start gap-1 rounded-none border border-white/8 bg-[oklch(0.07_0_0)] p-1">
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border border-white/8 bg-[oklch(0.07_0_0)] p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <TabsTrigger
               value="identity"
-              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
             >
               <User className="mr-1.5 h-3.5 w-3.5" />
               Identity
             </TabsTrigger>
             <TabsTrigger
               value="player"
-              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
             >
               <Gamepad2 className="mr-1.5 h-3.5 w-3.5" />
               Player
             </TabsTrigger>
             <TabsTrigger
               value="socials"
-              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
             >
               <Share2 className="mr-1.5 h-3.5 w-3.5" />
               Socials
             </TabsTrigger>
             <TabsTrigger
               value="privacy"
-              className="min-h-11 flex-1 rounded-none font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground"
+              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
             >
               <Eye className="mr-1.5 h-3.5 w-3.5" />
               Privacy
@@ -561,7 +561,7 @@ function ProfileEditPage() {
 
           <TabsContent value="privacy" className="mt-0">
             <TechPanel label="Visibility" title="Profile Access">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium">Public profile</p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -574,13 +574,13 @@ function ProfileEditPage() {
           </TabsContent>
         </Tabs>
 
-        <Separator className="my-8 bg-white/8" />
+        <Separator className="my-8 hidden bg-white/8 lg:block" />
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="sticky bottom-0 z-10 -mx-4 mt-8 flex flex-wrap items-center gap-3 border-t border-white/8 bg-background/95 px-4 py-4 backdrop-blur-md safe-bottom sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:mt-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
           <Button
             type="submit"
             disabled={saving || !profile}
-            className="clip-cta h-11 rounded-none bg-white px-8 font-tech text-ui-readable uppercase text-black hover:bg-white/90"
+            className="clip-cta h-11 w-full rounded-none bg-white px-8 font-tech text-ui-readable uppercase text-black hover:bg-white/90 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Save Profile
@@ -591,7 +591,7 @@ function ProfileEditPage() {
               Saved
             </span>
           )}
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="w-full text-sm text-red-400 sm:w-auto">{error}</p>}
         </div>
       </form>
 

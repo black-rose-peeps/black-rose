@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { GAME_COLOR } from "@/features/teams/constants";
 import {
   createTournamentRegistrationRequest,
@@ -100,21 +101,20 @@ export function RequestTournamentRegistrationDialog({
   const alreadyRequested = Boolean(selectedEntry?.existingRequest);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 gap-0">
-        <DialogHeader className="border-b border-white/8 px-6 py-5">
-          <DialogTitle className="flex items-center gap-2 font-display text-2xl tracking-display">
+    <AdaptiveModal open={open} onOpenChange={onOpenChange}>
+      <AdaptiveModalContent className="flex max-w-lg flex-col gap-0 border-white/12 bg-[oklch(0.08_0_0)] p-0">
+        <AdaptiveModalHeader>
+          <AdaptiveModalTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-muted-foreground" />
             Ask Captain to Register
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+          </AdaptiveModalTitle>
+          <AdaptiveModalDescription>
             Only your team captain can submit a tournament registration. Confirm below to notify
-            them that you want to join{" "}
-            <span className="text-foreground">{tournamentName}</span>.
-          </DialogDescription>
-        </DialogHeader>
+            them that you want to join <span className="text-foreground">{tournamentName}</span>.
+          </AdaptiveModalDescription>
+        </AdaptiveModalHeader>
 
-        <div className="flex flex-col gap-4 px-6 py-5">
+        <AdaptiveModalBody className="flex flex-col gap-4">
           {loading ? (
             <SelectTeamRegistrationSkeleton />
           ) : entries.length === 0 ? (
@@ -173,8 +173,8 @@ export function RequestTournamentRegistrationDialog({
               {selectedTeam && (
                 <p className="text-xs text-muted-foreground">
                   Your captain will get a notification to register{" "}
-                  <span className="text-foreground">{selectedTeam.name}</span> [
-                  {selectedTeam.tag}] for admin approval.
+                  <span className="text-foreground">{selectedTeam.name}</span> [{selectedTeam.tag}]
+                  for admin approval.
                 </p>
               )}
 
@@ -194,9 +194,9 @@ export function RequestTournamentRegistrationDialog({
           )}
 
           {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
+        </AdaptiveModalBody>
 
-        <DialogFooter className="border-t border-white/8 px-6 py-4">
+        <AdaptiveModalFooter>
           <Button
             type="button"
             variant="ghost"
@@ -205,8 +205,8 @@ export function RequestTournamentRegistrationDialog({
           >
             Cancel
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </AdaptiveModalFooter>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

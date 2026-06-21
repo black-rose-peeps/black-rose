@@ -1,5 +1,6 @@
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { BLACK_ROSE_STAFF_CONTACT_SUMMARY } from "@/features/auth/constants";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { TournamentHero } from "@/features/tournaments/$id/components/TournamentHero";
@@ -21,6 +22,8 @@ import {
   resolveTournamentStatus,
   toPublicTournamentStatus,
 } from "@/features/tournaments/utils";
+import { countDisplayedTournamentEntrants } from "@/features/admin/features/participants/constants/registration-status";
+import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
 import { TournamentRegisterCTA } from "@/features/tournaments/components/TournamentRegisterCTA";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
@@ -59,7 +62,7 @@ function detailFromSummary(
     wwmMode: summary.wwmMode ?? null,
     description: `${summary.name} is a Black Rose community tournament. Follow the bracket and overview for live updates.`,
     organizer: "Black Rose Operations",
-    contact: "ops@blackrose.gg",
+    contact: BLACK_ROSE_STAFF_CONTACT_SUMMARY,
     prizeBreakdown: summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
     schedule: buildTournamentSchedule({
       registrationDeadline: summary.registrationDeadline,
@@ -193,6 +196,14 @@ function TournamentDetailPage() {
     () => new Map(displayTeams.map((team, index) => [team.name, team.seed ?? index + 1])),
     [displayTeams],
   );
+  const entrantCount = useMemo(
+    () =>
+      countDisplayedTournamentEntrants(
+        registrations.map((registration) => ({ status: registration.status })),
+        tournament.status,
+      ),
+    [registrations, tournament.status],
+  );
 
   // Bracket: subscribe to the live bracket store so the public page re-renders
   // whenever the admin publishes, updates scores/winners, or resets.
@@ -265,7 +276,11 @@ function TournamentDetailPage() {
 
   const liveDetail: TournamentDetail = {
     ...tournament,
-    teamsRegistered: teamsLoading ? tournament.teamsRegistered : registrations.length,
+    teamsRegistered: teamsLoading
+      ? isTournamentConcluded(tournament.status)
+        ? Math.max(tournament.teamsRegistered, entrantCount)
+        : tournament.teamsRegistered
+      : entrantCount,
     prizeBreakdown: resolvedPrizeBreakdown,
     schedule: buildTournamentSchedule({
       registrationDeadline: tournament.registrationDeadline,
@@ -277,7 +292,8 @@ function TournamentDetailPage() {
     placements: displayPlacements,
   };
 
-  const approvedCount = displayTeams.length > 0 ? displayTeams.length : tournament.teamsRegistered;
+  const approvedCount =
+    displayTeams.length > 0 ? displayTeams.length : (entrantCount ?? tournament.teamsRegistered);
   const rulesBracketSize = bracketFieldSize(approvedCount) ?? tournament.teamCap;
 
   const displayRules = resolveTournamentRules(tournament.format, tournament.rules, {
@@ -356,11 +372,7 @@ function TournamentDetailPage() {
           )}
           {activeTab === "rules" && (
             <div role="tabpanel" id="tab-panel-rules" aria-labelledby="tab-rules">
-              <RulesTab
-                rules={displayRules}
-                format={tournament.format}
-                contact={tournament.contact}
-              />
+              <RulesTab rules={displayRules} format={tournament.format} />
             </div>
           )}
         </div>

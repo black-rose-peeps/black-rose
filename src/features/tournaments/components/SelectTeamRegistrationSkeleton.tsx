@@ -15,7 +15,7 @@ export function RegisterNowButtonSkeleton() {
 export function TournamentCardCtaSkeleton() {
   return (
     <Skeleton
-      className="h-10 w-full rounded-none bg-white/10"
+      className="h-full w-full rounded-none bg-white/10"
       aria-busy="true"
       aria-label="Loading registration status"
     />

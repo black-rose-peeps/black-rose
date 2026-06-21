@@ -1,12 +1,12 @@
 import { useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { Button } from "@/components/ui/button";
 import { CornerAccents } from "@/features/member/components/MemberShell";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
@@ -46,17 +46,17 @@ export function DiscordAppLinkDialog({
   }
 
   return (
-    <Dialog open={pending !== null} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-none border border-white/12 bg-[oklch(0.07_0_0)] p-0 shadow-[0_24px_64px_rgba(0,0,0,0.85)] sm:rounded-none">
-        <div className="relative overflow-hidden px-6 pb-5 pt-7">
+    <AdaptiveModal open={pending !== null} onOpenChange={handleOpenChange}>
+      <AdaptiveModalContent className="max-w-sm gap-0 overflow-hidden border border-white/12 bg-[oklch(0.07_0_0)] p-0 shadow-[0_24px_64px_rgba(0,0,0,0.85)]">
+        <div className="relative overflow-hidden px-4 pb-5 pt-6 sm:px-6 sm:pt-7">
           <div className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
           <CornerAccents />
 
-          <DialogHeader className="relative space-y-3 text-left">
-            <DialogTitle className="font-display text-2xl leading-tight tracking-display text-foreground">
+          <AdaptiveModalHeader className="relative border-0 px-0 py-0">
+            <AdaptiveModalTitle className="text-2xl leading-tight">
               {isOAuth ? "Sign in with Discord" : "Open Discord app?"}
-            </DialogTitle>
-            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+            </AdaptiveModalTitle>
+            <AdaptiveModalDescription>
               {isOAuth ? (
                 <>
                   Sign in using the account already logged into your Discord desktop app — not your
@@ -68,8 +68,8 @@ export function DiscordAppLinkDialog({
                 "This opens the link in your Discord desktop app."
               )}{" "}
               If your browser asks to allow discord:// links, choose Open or Allow.
-            </DialogDescription>
-          </DialogHeader>
+            </AdaptiveModalDescription>
+          </AdaptiveModalHeader>
 
           <label className="relative mt-4 flex cursor-pointer items-center gap-2.5 text-left">
             <input
@@ -96,7 +96,7 @@ export function DiscordAppLinkDialog({
           )}
         </div>
 
-        <DialogFooter className="relative gap-3 border-t border-white/8 bg-black/20 px-6 py-4 sm:flex-row sm:justify-end">
+        <AdaptiveModalFooter className="relative gap-3 border-t border-white/8 bg-black/20 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="ghost"
@@ -137,8 +137,8 @@ export function DiscordAppLinkDialog({
               Open Discord
             </Button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </AdaptiveModalFooter>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

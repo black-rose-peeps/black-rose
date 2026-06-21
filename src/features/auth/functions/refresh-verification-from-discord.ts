@@ -28,7 +28,7 @@ export const refreshVerificationFromDiscord = createServerFn({ method: "POST" })
 
     if (!isDiscordRoleSyncConfigured()) {
       throw new Error(
-        "Discord role check is not available. Wait a few minutes for automatic sync, or contact staff.",
+        "Discord role check is not available. Wait a few minutes for automatic sync, or reach staff on the Black Rose Discord server.",
       );
     }
 

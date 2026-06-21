@@ -26,7 +26,9 @@ export function ChampionPortrait({
 
   return (
     <div
-      className={`relative overflow-hidden border border-white/[0.08] bg-[oklch(0.055_0_0)] ${variant === "hero" ? "min-h-[22rem]" : "aspect-[3/4]"} ${className}`}
+      className={`relative w-full overflow-hidden border border-white/[0.08] bg-[oklch(0.055_0_0)] ${
+        variant === "hero" ? "h-44 sm:h-56" : "h-40 sm:h-52"
+      } ${className}`}
     >
       <span className="pointer-events-none absolute left-0 top-0 z-20 h-4 w-4 border-l border-t border-white/25" />
       <span className="pointer-events-none absolute right-0 top-0 z-20 h-4 w-4 border-r border-t border-white/25" />
@@ -37,7 +39,7 @@ export function ChampionPortrait({
         <img
           src={champion.portraitUrl!}
           alt={`${champion.teamName} — ${crownVariantLabel(champion.crownVariant)}`}
-          className="absolute inset-0 h-full w-full object-cover object-top"
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
       ) : (
         <>
@@ -48,17 +50,34 @@ export function ChampionPortrait({
             className="absolute inset-0 h-full w-full object-cover object-center opacity-35 blur-[1px] grayscale contrast-125"
           />
           <div className="absolute inset-0 bg-linear-to-t from-[oklch(0.055_0_0)] via-[oklch(0.055_0_0/0.55)] to-black/30" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center sm:px-6">
             <div
-              className={`clip-tab grid h-20 w-20 place-items-center border font-display text-2xl tracking-display shadow-[0_0_40px_rgba(0,0,0,0.45)] ${accent.tag}`}
+              className={`clip-tab grid place-items-center border font-display tracking-display shadow-[0_0_40px_rgba(0,0,0,0.45)] ${accent.tag} ${
+                variant === "hero"
+                  ? "h-16 w-16 text-xl sm:h-20 sm:w-20 sm:text-2xl"
+                  : "h-12 w-12 text-lg sm:h-16 sm:w-16 sm:text-xl"
+              }`}
             >
               {champion.teamTag}
             </div>
-            <Crown className="mt-5 h-5 w-5 text-amber-300/80" strokeWidth={1.25} />
-            <p className="mt-3 font-tech font-semibold text-[10px] uppercase tracking-[0.22em] text-white/55">
+            <Crown
+              className={`text-amber-300/80 ${variant === "hero" ? "mt-5 h-5 w-5" : "mt-2 h-4 w-4 sm:mt-5 sm:h-5 sm:w-5"}`}
+              strokeWidth={1.25}
+            />
+            <p
+              className={`font-tech font-semibold uppercase tracking-[0.22em] text-white/55 ${
+                variant === "hero" ? "mt-3 text-[10px]" : "mt-1.5 text-[8px] sm:mt-3 sm:text-[10px]"
+              }`}
+            >
               Champion Portrait
             </p>
-            <p className="mt-1 max-w-[14rem] text-[10px] leading-relaxed text-white/35">
+            <p
+              className={`max-w-[14rem] leading-relaxed text-white/35 ${
+                variant === "hero"
+                  ? "mt-1 text-[10px]"
+                  : "mt-0.5 hidden text-[9px] sm:mt-1 sm:block sm:text-[10px]"
+              }`}
+            >
               Official victory shoot pending — archive entry live.
             </p>
           </div>
@@ -77,15 +96,10 @@ export function ChampionPortrait({
         className={`absolute inset-x-0 bottom-0 h-px bg-linear-to-r ${accent.line} opacity-90`}
       />
 
-      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/35 to-transparent px-4 pb-4 pt-16">
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/35 to-transparent px-4 pb-3 pt-8 sm:px-5 sm:pb-4 sm:pt-10">
         <p className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em] text-amber-300/75">
           {crownVariantLabel(champion.crownVariant)}
         </p>
-        {variant === "hero" ? (
-          <p className="mt-1 font-display text-xl tracking-[0.04em] text-white">
-            {champion.teamName}
-          </p>
-        ) : null}
       </div>
     </div>
   );

@@ -186,7 +186,7 @@ function ThreadMoreMenu({
           variant="ghost"
           size="icon"
           disabled={loading}
-          className="h-8 w-8 shrink-0 rounded-none text-muted-foreground hover:bg-white/8 hover:text-foreground"
+          className="touch-target h-11 w-11 shrink-0 rounded-none text-muted-foreground hover:bg-white/8 hover:text-foreground sm:h-8 sm:w-8"
           aria-label="More actions"
         >
           {loading ? (
@@ -269,7 +269,7 @@ function ThreadActionButtons({
           size="icon"
           onClick={onReplyClick}
           className={cn(
-            "h-8 w-8 rounded-none text-muted-foreground hover:bg-white/8 hover:text-foreground",
+            "touch-target h-11 w-11 rounded-none text-muted-foreground hover:bg-white/8 hover:text-foreground sm:h-8 sm:w-8",
             isReplying && "bg-white/10 text-foreground",
           )}
           aria-label={isReplying ? "Cancel reply" : "Reply"}
@@ -460,9 +460,9 @@ export function ProfileCommentThread({
   const viewerIsAuthor = Boolean(viewerMemberId && viewerMemberId === comment.author.memberId);
   const canReply = Boolean(
     viewerMemberId &&
-      viewerIsVerified &&
-      !showAdminActions &&
-      (viewerIsOwner || viewerMemberId !== profileMemberId),
+    viewerIsVerified &&
+    !showAdminActions &&
+    (viewerIsOwner || viewerMemberId !== profileMemberId),
   );
   const isEditingRoot = editingId === comment.id;
   const [expanded, setExpanded] = useState(false);
@@ -633,9 +633,7 @@ export function ProfileCommentThread({
                     editPosting={editPosting}
                     onReplyClick={handleReplyClick}
                     onEdit={
-                      viewerIsReplyAuthor
-                        ? () => onStartEdit?.(reply.id, reply.body)
-                        : undefined
+                      viewerIsReplyAuthor ? () => onStartEdit?.(reply.id, reply.body) : undefined
                     }
                     onDelete={
                       viewerIsReplyAuthor

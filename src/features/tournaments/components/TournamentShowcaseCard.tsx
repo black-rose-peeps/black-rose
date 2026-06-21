@@ -112,7 +112,7 @@ export function TournamentShowcaseCard({
       <Link
         to="/tournaments/$id"
         params={{ id: t.id }}
-        className="relative block h-52 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        className="relative block h-40 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 sm:h-52"
       >
         <img
           src={cover}
@@ -141,14 +141,14 @@ export function TournamentShowcaseCard({
         <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent opacity-0 transition duration-500 group-hover:opacity-100" />
 
         {/* Broadcast status */}
-        <div className="absolute font-light! left-4 top-4 flex items-center gap-2 border border-white/15 bg-black/75 px-2.5 py-1 font-tech text-label-readable uppercase text-white/90 backdrop-blur-md">
+        <div className="absolute left-3 top-3 flex items-center gap-2 border border-white/15 bg-black/75 px-2 py-0.5 font-tech text-label-readable uppercase text-white/90 backdrop-blur-md sm:left-4 sm:top-4 sm:px-2.5 sm:py-1">
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
           {status.label}
         </div>
 
         {/* Game tag — techwear label */}
         <div
-          className={`absolute right-4 top-4 border px-2 py-0.5 font-tech text-label-readable uppercase backdrop-blur-md ${accent.tag}`}
+          className={`absolute right-3 top-3 border px-2 py-0.5 font-tech text-label-readable uppercase backdrop-blur-md sm:right-4 sm:top-4 ${accent.tag}`}
         >
           {getGameAbbrev(t.game)}
         </div>
@@ -163,7 +163,7 @@ export function TournamentShowcaseCard({
       </Link>
 
       {/* ── Card body ────────────────────────────────────────── */}
-      <div className="relative flex flex-1 flex-col px-6 pb-6 pt-5">
+      <div className="relative flex flex-1 flex-col px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-5">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.18]" />
 
         <div className="relative">
@@ -180,35 +180,35 @@ export function TournamentShowcaseCard({
           <Link
             to="/tournaments/$id"
             params={{ id: t.id }}
-            className="mt-2 block font-title tracking-display text-[1.65rem] leading-[1.05] text-white transition duration-300 group-hover:text-white"
+            className="mt-1.5 block font-title text-xl leading-[1.05] tracking-display text-white transition duration-300 group-hover:text-white sm:mt-2 sm:text-[1.65rem]"
           >
             {t.name}
           </Link>
         </div>
 
         {/* Luxury stat strip */}
-        <dl className="relative mt-5 grid grid-cols-3 divide-x divide-white/[0.08] border-y border-white/[0.08] py-4">
-          <div className="pr-3">
+        <dl className="relative mt-3 grid grid-cols-3 divide-x divide-white/[0.08] border-y border-white/[0.08] py-3 sm:mt-5 sm:py-4">
+          <div className="pr-2 sm:pr-3">
             <dt className="font-tech text-label-readable uppercase text-muted-foreground">
               Prize Pool
             </dt>
-            <dd className="mt-1.5 truncate font-display text-xl tracking-[0.06em] text-white">
+            <dd className="mt-1 truncate font-display text-lg tracking-[0.06em] text-white sm:mt-1.5 sm:text-xl">
               {t.prizePool}
             </dd>
           </div>
-          <div className="px-3">
+          <div className="px-2 sm:px-3">
             <dt className="font-tech text-label-readable uppercase text-muted-foreground">
               Roster
             </dt>
-            <dd className="mt-1.5 font-display text-xl tracking-[0.06em] text-white">
+            <dd className="mt-1 font-display text-lg tracking-[0.06em] text-white sm:mt-1.5 sm:text-xl">
               {formatSlotLabel(t.teamsRegistered, t.teamCap)}
             </dd>
           </div>
-          <div className="pl-3">
+          <div className="pl-2 sm:pl-3">
             <dt className="font-tech text-label-readable uppercase text-muted-foreground">
               {t.status === "Live" ? "Started" : "Deadline"}
             </dt>
-            <dd className="mt-1.5 font-display text-xl tracking-[0.06em] text-white">
+            <dd className="mt-1 font-display text-lg tracking-[0.06em] text-white sm:mt-1.5 sm:text-xl">
               {deadlineLabel}
             </dd>
           </div>
@@ -216,7 +216,7 @@ export function TournamentShowcaseCard({
 
         {/* Capacity meter */}
         {!isOver && (
-          <div className="relative mt-4">
+          <div className="relative mt-3 sm:mt-4">
             <div className="mb-1.5 flex items-center justify-between font-tech text-label-readable uppercase text-muted-foreground">
               <span>Capacity</span>
               <span className={slotsLeft === 0 ? "text-white" : "text-white/50"}>
@@ -236,14 +236,14 @@ export function TournamentShowcaseCard({
 
         {/* CTA */}
         {showCtaSkeleton ? (
-          <div className="relative mt-6">
+          <div className="relative mt-4 h-11 sm:mt-6 sm:h-12">
             <TournamentCardCtaSkeleton />
           </div>
         ) : cta.interactive ? (
           <Link
             to="/tournaments/$id"
             params={{ id: t.id }}
-            className={`relative mt-6 clip-cta font-semibold inline-flex h-12 w-full items-center justify-center gap-2 border border-transparent font-tech text-ui-readable uppercase transition duration-300 ${cta.className} ${accent.cta}`}
+            className={`relative mt-4 clip-cta font-semibold inline-flex h-11 w-full items-center justify-center gap-2 border border-transparent font-tech text-ui-readable uppercase transition duration-300 sm:mt-6 sm:h-12 ${cta.className} ${accent.cta}`}
           >
             {cta.label}
             <span aria-hidden className="text-sm leading-none">
@@ -252,7 +252,7 @@ export function TournamentShowcaseCard({
           </Link>
         ) : (
           <div
-            className={`relative mt-6 clip-cta inline-flex h-12 w-full items-center justify-center font-tech text-ui-readable uppercase ${cta.className}`}
+            className={`relative mt-4 clip-cta inline-flex h-11 w-full items-center justify-center font-tech text-ui-readable uppercase sm:mt-6 sm:h-12 ${cta.className}`}
           >
             {cta.label}
           </div>

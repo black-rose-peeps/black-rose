@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,85 +67,87 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 gap-0">
-        <DialogHeader className="border-b border-white/8 px-6 py-5">
-          <DialogTitle className="font-display text-2xl tracking-display">Edit Team</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+    <AdaptiveModal open={open} onOpenChange={onOpenChange}>
+      <AdaptiveModalContent className="flex max-w-md flex-col gap-0 border-white/12 bg-[oklch(0.08_0_0)] p-0">
+        <AdaptiveModalHeader>
+          <AdaptiveModalTitle>Edit Team</AdaptiveModalTitle>
+          <AdaptiveModalDescription>
             Update your team name, tag, or primary game.
-          </DialogDescription>
-        </DialogHeader>
+          </AdaptiveModalDescription>
+        </AdaptiveModalHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-5">
-          <div className="space-y-2">
-            <Label
-              htmlFor="team-name"
-              className="font-tech text-label-readable uppercase text-muted-foreground"
-            >
-              Team Name
-            </Label>
-            <Input
-              id="team-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={40}
-              className={techFieldClass}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AdaptiveModalBody className="flex flex-col gap-5">
+            <div className="space-y-2">
+              <Label
+                htmlFor="team-name"
+                className="font-tech text-label-readable uppercase text-muted-foreground"
+              >
+                Team Name
+              </Label>
+              <Input
+                id="team-name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={40}
+                className={techFieldClass}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="team-tag"
-              className="font-tech text-label-readable uppercase text-muted-foreground"
-            >
-              Team Tag (2–5 letters)
-            </Label>
-            <Input
-              id="team-tag"
-              required
-              value={tag}
-              onChange={(e) => setTag(e.target.value.toUpperCase().slice(0, 5))}
-              minLength={2}
-              maxLength={5}
-              pattern="[A-Z]{2,5}"
-              className={`${techFieldClass} font-tech uppercase tracking-wider-2`}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="team-tag"
+                className="font-tech text-label-readable uppercase text-muted-foreground"
+              >
+                Team Tag (2–5 letters)
+              </Label>
+              <Input
+                id="team-tag"
+                required
+                value={tag}
+                onChange={(e) => setTag(e.target.value.toUpperCase().slice(0, 5))}
+                minLength={2}
+                maxLength={5}
+                pattern="[A-Z]{2,5}"
+                className={`${techFieldClass} font-tech uppercase tracking-wider-2`}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="team-game"
-              className="font-tech text-label-readable uppercase text-muted-foreground"
-            >
-              Primary Game
-            </Label>
-            <Select
-              value={game}
-              onValueChange={(v) => setGame(v as Team["game"])}
-              disabled={Boolean(team.activeTournamentId)}
-            >
-              <SelectTrigger id="team-game" className={techFieldClass}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                {GAME_OPTIONS.filter((g) => g.value !== "Multi").map((g) => (
-                  <SelectItem key={g.value} value={g.value} className="font-tech text-xs">
-                    {g.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {team.activeTournamentId && (
-              <p className="text-sm text-muted-foreground/60">
-                Game cannot be changed while registered for a tournament.
-              </p>
-            )}
-          </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="team-game"
+                className="font-tech text-label-readable uppercase text-muted-foreground"
+              >
+                Primary Game
+              </Label>
+              <Select
+                value={game}
+                onValueChange={(v) => setGame(v as Team["game"])}
+                disabled={Boolean(team.activeTournamentId)}
+              >
+                <SelectTrigger id="team-game" className={techFieldClass}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                  {GAME_OPTIONS.filter((g) => g.value !== "Multi").map((g) => (
+                    <SelectItem key={g.value} value={g.value} className="font-tech text-xs">
+                      {g.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {team.activeTournamentId && (
+                <p className="text-sm text-muted-foreground/60">
+                  Game cannot be changed while registered for a tournament.
+                </p>
+              )}
+            </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-red-400">{error}</p>}
+          </AdaptiveModalBody>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+          <AdaptiveModalFooter className="sm:gap-2">
             <Button
               type="button"
               variant="outline"
@@ -161,9 +164,9 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Save Changes
             </Button>
-          </DialogFooter>
+          </AdaptiveModalFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

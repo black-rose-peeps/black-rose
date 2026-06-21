@@ -33,8 +33,8 @@ export function MemberSearchButton() {
         onClick={() => setOpen(true)}
         aria-label="Search verified members"
         aria-haspopup="dialog"
-        title="Search members (Ctrl+K)"
-        className="clip-tab flex h-10 w-10 cursor-pointer items-center justify-center border border-white/10 bg-white/4 text-muted-foreground transition hover:border-white/25 hover:bg-white/[0.07] hover:text-foreground"
+        title="Search verified members"
+        className="clip-tab touch-target flex cursor-pointer items-center justify-center border border-white/10 bg-white/4 text-muted-foreground transition hover:border-white/25 hover:bg-white/[0.07] hover:text-foreground"
       >
         <Search className="h-4 w-4" strokeWidth={1.5} />
       </button>

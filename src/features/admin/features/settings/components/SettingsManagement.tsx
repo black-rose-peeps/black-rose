@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
 import { Panel, PanelHeader, PrimaryButton } from "@/features/admin/components/ui";
 import { SettingsField, SettingsToggle } from "@/features/admin/components/SettingsControls";
 
@@ -27,10 +28,11 @@ export function SettingsManagement() {
               className="w-full px-3 py-2 bg-input border border-border rounded text-foreground"
             />
           </SettingsField>
-          <SettingsField label="Support Email">
+          <SettingsField label="Staff Support (Discord)">
             <input
-              type="email"
-              defaultValue="ops@blackrose.gg"
+              type="url"
+              readOnly
+              defaultValue={DISCORD_SERVER_INVITE}
               className="w-full px-3 py-2 bg-input border border-border rounded text-foreground"
             />
           </SettingsField>

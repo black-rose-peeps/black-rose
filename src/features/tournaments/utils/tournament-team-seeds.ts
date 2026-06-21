@@ -24,3 +24,15 @@ export function applyRegistrationSeeds(
 export function tournamentTeamsHaveSeeds(teams: readonly TournamentTeam[]): boolean {
   return teams.some((team) => team.seed != null);
 }
+
+/** Ascending by seed (#1 first). Unseeded teams keep their relative order at the end. */
+export function sortTournamentTeamsBySeed(teams: readonly TournamentTeam[]): TournamentTeam[] {
+  return [...teams].sort((a, b) => {
+    const seedA = a.seed;
+    const seedB = b.seed;
+    if (seedA != null && seedB != null) return seedA - seedB;
+    if (seedA != null) return -1;
+    if (seedB != null) return 1;
+    return 0;
+  });
+}
