@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshVerificationFromDiscord } from "../functions/refresh-verification-from-discord";
+import {
+  DISCORD_FOR_BRIEFING_ROLE_LABEL,
+  DISCORD_TOURNA_ROLES_CHANNEL_LABEL,
+} from "../constants";
 import { syncMemberAccessFromDatabase } from "../services/sync-session";
 import { getSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
@@ -8,8 +12,7 @@ import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
 /** DB-only fallback if Realtime is unavailable. */
 const FALLBACK_POLL_INTERVAL_MS = 60_000;
 
-const NOT_VERIFIED_YET_MESSAGE =
-  "ROSE role not detected yet. React in #tourna-roles on Discord, wait a few seconds, then try again.";
+const NOT_VERIFIED_YET_MESSAGE = `No ROSE yet. React in #${DISCORD_TOURNA_ROLES_CHANNEL_LABEL} after you get ${DISCORD_FOR_BRIEFING_ROLE_LABEL}, then try again.`;
 
 const NOT_IN_GUILD_MESSAGE =
   "Your Discord account was not found in the Black Rose server. Join the server first, then try again.";

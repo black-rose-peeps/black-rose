@@ -25,6 +25,10 @@ export const DISCORD_TOURNA_ROLES_CHANNEL_LABEL = formatDiscordChannelLabel(
   import.meta.env.VITE_DISCORD_TOURNA_ROLES_CHANNEL_LABEL ?? "tourna-roles",
 );
 
+/** Discord role granted when staff approve a waitlist application. Unlocks #tourna-roles. */
+export const DISCORD_FOR_BRIEFING_ROLE_LABEL =
+  import.meta.env.VITE_DISCORD_FOR_BRIEFING_ROLE_LABEL ?? "For Briefing";
+
 /** Public copy — all staff / tournament support is on the official Discord server. */
 export const BLACK_ROSE_STAFF_CONTACT_SUMMARY =
   "Black Rose official Discord — admins & Valorant Operations";
