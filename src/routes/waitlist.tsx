@@ -242,8 +242,8 @@ function WaitlistPage() {
             <div className="min-w-0">
               <p className="text-sm font-medium">Get ROSE on Discord</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                When approved (with the "For briefing" role), react with ROSE in #
-                {DISCORD_TOURNA_ROLES_CHANNEL_LABEL}.
+                When approved (with the {DISCORD_FOR_BRIEFING_ROLE_LABEL} role), react with ROSE in
+                #{DISCORD_TOURNA_ROLES_CHANNEL_LABEL}.
               </p>
               <DiscordAppAnchor
                 discordUrl={DISCORD_TOURNA_ROLES_CHANNEL_URL}

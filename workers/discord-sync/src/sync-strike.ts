@@ -42,11 +42,12 @@ export function buildStrikeUpdate(
   }
 
   const hadStrikes = member.discord_not_in_guild_strikes > 0;
+  const wasPaused = member.discord_sync_paused_at != null;
   return {
     strikes: 0,
     pausedAt: null,
     pausedNow: false,
-    reset: hadStrikes,
-    clearPause: hadStrikes,
+    reset: hadStrikes || wasPaused,
+    clearPause: hadStrikes || wasPaused,
   };
 }

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshVerificationFromDiscord } from "../functions/refresh-verification-from-discord";
-import {
-  DISCORD_FOR_BRIEFING_ROLE_LABEL,
-  DISCORD_TOURNA_ROLES_CHANNEL_LABEL,
-} from "../constants";
+import { DISCORD_FOR_BRIEFING_ROLE_LABEL, DISCORD_TOURNA_ROLES_CHANNEL_LABEL } from "../constants";
 import { syncMemberAccessFromDatabase } from "../services/sync-session";
 import { getSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
@@ -72,9 +69,6 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
       }
 
       if (verified || (result.hasRose && result.status === "Verified")) {
-        if (result.hasRose && result.status === "Verified") {
-          onVerifiedRef.current();
-        }
         setCheckError(null);
         return true;
       }
@@ -83,13 +77,10 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
         setCheckError(NOT_IN_GUILD_MESSAGE);
       } else if (!result.hasRose) {
         setCheckError(NOT_VERIFIED_YET_MESSAGE);
-      } else {
-        setCheckError(NOT_VERIFIED_YET_MESSAGE);
       }
       return false;
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Could not refresh verification status.";
+      const message = err instanceof Error ? err.message : "Could not refresh verification status.";
       setCheckError(message);
       return false;
     } finally {

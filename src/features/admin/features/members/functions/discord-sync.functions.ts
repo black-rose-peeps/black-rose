@@ -20,7 +20,7 @@ export interface DiscordMemberSyncSummary extends WorkerMemberSyncResult {
 }
 
 const MEMBER_SYNC_SELECT =
-  "id, username, discord_username, discord_id, status, registered_at, created_at, discord_not_in_guild_strikes, discord_sync_paused_at";
+  "id, username, discord_username, discord_id, status, registered_at, created_at, discord_not_in_guild_strikes, discord_sync_paused_at, member_profiles(avatar_url, slug, display_name)";
 
 const WORKER_REQUEST_TIMEOUT_MS = 15000;
 
@@ -79,9 +79,6 @@ function mergeMemberWithSyncResult(
   return {
     ...member,
     status: result.status,
-    discordNotInGuildStrikes: result.notInGuild || result.syncPaused ? member.discordNotInGuildStrikes : 0,
-    discordSyncPausedAt:
-      result.syncPaused && result.notInGuild ? member.discordSyncPausedAt : null,
   };
 }
 
@@ -133,12 +130,10 @@ export const triggerDiscordMemberSync = createServerFn({ method: "POST" })
     return { memberId: data.memberId.trim() };
   })
   .handler(async ({ data }): Promise<DiscordMemberSyncSummary> => {
-    const { isDiscordRoleSyncConfigured } = await import(
-      "@/features/auth/server/discord-config.server"
-    );
-    const { checkMemberRoseRoleImmediately } = await import(
-      "@/features/auth/server/discord-guild.server"
-    );
+    const { isDiscordRoleSyncConfigured } =
+      await import("@/features/auth/server/discord-config.server");
+    const { checkMemberRoseRoleImmediately } =
+      await import("@/features/auth/server/discord-guild.server");
 
     if (!isDiscordRoleSyncConfigured() && !isDiscordWorkerSyncConfigured()) {
       throw new Error("Discord verification is not configured on the server.");
@@ -205,15 +200,10 @@ export const triggerDiscordMemberSync = createServerFn({ method: "POST" })
       throw new Error(refreshError.message);
     }
 
-    const { invalidateMemberAuthCache } = await import(
-      "@/features/auth/server/member-auth.server"
-    );
+    const { invalidateMemberAuthCache } = await import("@/features/auth/server/member-auth.server");
     invalidateMemberAuthCache(data.memberId);
 
-    const member = mergeMemberWithSyncResult(
-      refreshed as Record<string, unknown>,
-      syncResult,
-    );
+    const member = mergeMemberWithSyncResult(refreshed as Record<string, unknown>, syncResult);
 
     return {
       discordId,
