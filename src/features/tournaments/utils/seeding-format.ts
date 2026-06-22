@@ -1,4 +1,7 @@
-import { bracketCapacity, byeCount } from "@/features/admin/features/tournament-details/utils/bracket-field";
+import {
+  bracketCapacity,
+  byeCount,
+} from "@/features/admin/features/tournament-details/utils/bracket-field";
 
 /** How teams are assigned to seed numbers before bracket generation. */
 export type SeedingFormat = "committee" | "tier" | "protected_random" | "random";
@@ -51,11 +54,11 @@ export function defaultProtectedSeedCount(teamCount: number): number {
 }
 
 export function protectedSeedCountOptions(teamCount: number): number[] {
-  const defaults = new Set<number>([
-    4,
-    defaultProtectedSeedCount(teamCount),
-    Math.floor(teamCount / 2),
-  ].filter((n) => n >= 2 && n < teamCount));
+  const defaults = new Set<number>(
+    [4, defaultProtectedSeedCount(teamCount), Math.floor(teamCount / 2)].filter(
+      (n) => n >= 2 && n < teamCount,
+    ),
+  );
   return [...defaults].sort((a, b) => a - b);
 }
 
@@ -86,9 +89,7 @@ export function buildTierSeedingAssignments<T extends { id: string }>(
 ): Array<T | null> {
   const elite = teams.filter((team) => tierByTeamId[team.id] === "elite");
   const contender = teams.filter((team) => tierByTeamId[team.id] === "contender");
-  const open = teams.filter(
-    (team) => !tierByTeamId[team.id] || tierByTeamId[team.id] === "open",
-  );
+  const open = teams.filter((team) => !tierByTeamId[team.id] || tierByTeamId[team.id] === "open");
 
   return [...elite, ...contender, ...open];
 }
@@ -139,12 +140,22 @@ function clampedProtectedCount(teamCount: number, protectedSeedCount: number): n
   return Math.min(Math.max(1, protectedSeedCount), Math.max(1, teamCount - 1));
 }
 
+function unregisteredTeamFailure(): SeedingReadinessResult {
+  return {
+    ready: false,
+    title: "Unregistered team",
+    description:
+      "A seeded team is no longer registered. Remove it from seeding or refresh the team list.",
+  };
+}
+
 /** Whether the admin can click Generate Bracket for the selected seeding format. */
 export function validateSeedingReadiness<T extends { id: string }>(
   input: SeedingReadinessInput<T>,
 ): SeedingReadinessResult {
   const { format, teams, assignments, protectedSeedCount } = input;
   const teamCount = teams.length;
+  const registeredIds = new Set(teams.map((team) => team.id));
 
   if (teamCount < 2) {
     return {
@@ -166,6 +177,9 @@ export function validateSeedingReadiness<T extends { id: string }>(
             title: "Seeding incomplete",
             description: `Assign all ${teamCount} teams to seed slots 1–${teamCount} before generating.`,
           };
+        }
+        if (!registeredIds.has(team.id)) {
+          return unregisteredTeamFailure();
         }
         if (ids.has(team.id)) {
           return {
@@ -191,6 +205,9 @@ export function validateSeedingReadiness<T extends { id: string }>(
             title: "Protected seeds incomplete",
             description: `Assign teams to protected seeds 1–${protectedCount} before generating. Remaining seeds are filled randomly on generate.`,
           };
+        }
+        if (!registeredIds.has(team.id)) {
+          return unregisteredTeamFailure();
         }
         if (ids.has(team.id)) {
           return {

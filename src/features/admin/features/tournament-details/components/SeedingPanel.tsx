@@ -254,28 +254,6 @@ export function SeedingPanel({
     return roundOneSeedingPairings(bracketSize);
   }, [bracketSize, isSwiss]);
 
-  const readyMatches = useMemo(() => {
-    let ready = 0;
-    const matchCount = isSwiss ? seedingMatchCount : roundOnePairings.length;
-    for (let i = 0; i < matchCount; i++) {
-      const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
-      const pairing = roundOnePairings[i];
-      if (!pairing && !isByeSlot) continue;
-
-      if (isSwiss && isByeSlot) {
-        if (assignments[bracketSize - 1]) ready++;
-        continue;
-      }
-
-      if (!pairing) continue;
-      const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
-      const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
-      if (teamA && teamB) ready++;
-      else if (teamA || teamB) ready++;
-    }
-    return ready;
-  }, [assignments, bracketSize, hasSwissByeSlot, isSwiss, roundOnePairings, seedingMatchCount]);
-
   const standardMatches = useMemo(() => {
     return roundOnePairings.map((pairing, index) => {
       if (isSwiss && hasSwissByeSlot && index === roundOnePairings.length - 1) {
@@ -312,8 +290,7 @@ export function SeedingPanel({
   }, [bracketSize, hasSwissByeSlot, isElimination, isSwiss, roundOnePairings]);
 
   const useProtectedSeedSection =
-    isElimination &&
-    (elimByes > 0 || seedingFormat === "protected_random");
+    isElimination && (elimByes > 0 || seedingFormat === "protected_random");
 
   const protectedSeedNumbers = useMemo(() => {
     if (!useProtectedSeedSection) return [];
@@ -322,13 +299,7 @@ export function SeedingPanel({
         ? Math.min(Math.max(1, protectedSeedCount), bracketSize - 1)
         : elimByes;
     return Array.from({ length: count }, (_, index) => index + 1);
-  }, [
-    bracketSize,
-    elimByes,
-    protectedSeedCount,
-    seedingFormat,
-    useProtectedSeedSection,
-  ]);
+  }, [bracketSize, elimByes, protectedSeedCount, seedingFormat, useProtectedSeedSection]);
 
   const remainingSeedNumbers = useMemo(() => {
     if (seedingFormat !== "protected_random") return [];
@@ -349,6 +320,65 @@ export function SeedingPanel({
         : standardMatches,
     [standardMatches, useProtectedSeedSection],
   );
+
+  const readyMatches = useMemo(() => {
+    if (isSwiss) {
+      let ready = 0;
+      for (let i = 0; i < seedingMatchCount; i++) {
+        const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
+        const pairing = roundOnePairings[i];
+        if (!pairing && !isByeSlot) continue;
+
+        if (isByeSlot) {
+          if (assignments[bracketSize - 1]) ready++;
+          continue;
+        }
+
+        if (!pairing) continue;
+        const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
+        const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
+        if (teamA && teamB) ready++;
+        else if (teamA || teamB) ready++;
+      }
+      return ready;
+    }
+
+    if (useProtectedSeedSection) {
+      let ready = protectedSeedNumbers.filter((seed) => assignments[seed - 1]).length;
+      for (const match of openingMatches) {
+        const teamA = assignments[match.teamAIdx];
+        const teamB = assignments[match.teamBIdx];
+        if (match.byeSide === "none") {
+          if (teamA && teamB) ready++;
+          else if (teamA || teamB) ready++;
+        } else if (match.byeSide === "teamA") {
+          if (teamB) ready++;
+        } else if (teamA) {
+          ready++;
+        }
+      }
+      return ready;
+    }
+
+    let ready = 0;
+    for (const pairing of roundOnePairings) {
+      const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
+      const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
+      if (teamA && teamB) ready++;
+      else if (teamA || teamB) ready++;
+    }
+    return ready;
+  }, [
+    assignments,
+    bracketSize,
+    hasSwissByeSlot,
+    isSwiss,
+    openingMatches,
+    protectedSeedNumbers,
+    roundOnePairings,
+    seedingMatchCount,
+    useProtectedSeedSection,
+  ]);
 
   const showCommitteeList =
     isElimination && seedingFormat === "committee" && !useProtectedSeedSection;
@@ -572,7 +602,8 @@ export function SeedingPanel({
                 </span>
                 <span className="h-px flex-1 bg-border" />
                 <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Seeds {remainingSeedNumbers[0]}–{remainingSeedNumbers[remainingSeedNumbers.length - 1]}
+                  Seeds {remainingSeedNumbers[0]}–
+                  {remainingSeedNumbers[remainingSeedNumbers.length - 1]}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
