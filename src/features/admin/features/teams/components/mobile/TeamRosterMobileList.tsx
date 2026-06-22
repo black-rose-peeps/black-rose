@@ -22,7 +22,7 @@ export function TeamRosterMobileList({
 }: TeamRosterMobileListProps) {
   const roster = team.members.filter((m) => m.status === "captain" || m.status === "active");
   const showIgnSubline = !isValorantGame(team.game);
-  const rowClass = compact ? "py-2.5" : "px-4 py-3.5";
+  const rowClass = compact ? "px-0 py-2.5" : "px-4 py-3.5";
 
   if (roster.length === 0) {
     return (

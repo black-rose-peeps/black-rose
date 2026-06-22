@@ -399,11 +399,17 @@ export function TeamModal({
           </p>
         ) : null}
 
-        <div className="shrink-0 flex border-b border-white/8 px-4 sm:px-6">
+        <div
+          role="tablist"
+          aria-label="Registration sections"
+          className="shrink-0 flex border-b border-white/8 px-4 sm:px-6"
+        >
           {(["roster", "history"] as const).map((tab) => (
             <button
               key={tab}
               type="button"
+              role="tab"
+              aria-selected={panelTab === tab}
               onClick={() => setPanelTab(tab)}
               className={cn(
                 "touch-target flex-1 border-b-2 px-2 py-2.5 font-tech text-[10px] uppercase tracking-wider-2 transition",

@@ -290,8 +290,16 @@ export function TeamsManagement() {
                         {pagination.paginatedItems.map((team) => (
                           <TableRow
                             key={team.id}
-                            className="cursor-pointer transition-colors hover:bg-white/3"
+                            role="button"
+                            tabIndex={0}
+                            className="cursor-pointer transition-colors hover:bg-white/3 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             onClick={() => setRosterTeam(team)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setRosterTeam(team);
+                              }
+                            }}
                           >
                             <TableCell className={adminTableCellClip}>
                               <div className="flex min-w-0 items-center gap-3">
@@ -330,7 +338,11 @@ export function TeamsManagement() {
                             <TableCell className="text-sm text-muted-foreground">
                               {countActiveMembers(team)} players
                             </TableCell>
-                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <TableCell
+                              className="text-right"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
                               <div className="flex flex-wrap items-center justify-end gap-2">
                                 <Button
                                   type="button"
