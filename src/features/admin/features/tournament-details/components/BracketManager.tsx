@@ -19,6 +19,7 @@ import { BracketManagerHeader } from "./BracketManagerHeader";
 import { ManagedBracketView } from "./ManagedBracketView";
 import { PlayoffPairingDialog } from "./PlayoffPairingDialog";
 import { SeedingPanel } from "./SeedingPanel";
+import { SeedingFormatOption } from "./SeedingFormatOption";
 import { ThirdPlaceMatchOption } from "./ThirdPlaceMatchOption";
 import { GrandFinalOption } from "./GrandFinalOption";
 import { SwissBracketView } from "./SwissBracketView";
@@ -74,6 +75,18 @@ import {
   resolveStoredGrandFinalMode,
   type GrandFinalMode,
 } from "@/features/admin/features/tournament-details/utils/grand-final";
+import {
+  buildProtectedRandomAssignments,
+  buildRandomSeedingAssignments,
+  buildRegistrationOrderAssignments,
+  buildTierSeedingAssignments,
+  defaultProtectedSeedCount,
+  DEFAULT_SEEDING_FORMAT,
+  resolveSeedingAssignments,
+  validateSeedingReadiness,
+  type SeedingFormat,
+  type SeedingTier,
+} from "@/features/tournaments/utils/seeding-format";
 import type { MockTournament } from "@/lib/mock-data";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { BracketManagerMobileNav } from "@/features/admin/features/tournaments/components/mobile";
@@ -137,6 +150,9 @@ function buildPersistedPayload(
     teamNames: string[];
     includeThirdPlaceMatch?: boolean;
     grandFinalMode?: GrandFinalMode;
+    seedingFormat?: SeedingFormat;
+    teamTiers?: Record<string, SeedingTier | undefined>;
+    protectedSeedCount?: number;
   },
 ): PersistedBracketPayload {
   const placements = buildPodiumPlacements(
@@ -162,6 +178,9 @@ function buildPersistedPayload(
       swiss: options.swiss,
       includeThirdPlaceMatch: options.includeThirdPlaceMatch,
       grandFinalMode: options.grandFinalMode,
+      seedingFormat: options.seedingFormat,
+      teamTiers: options.teamTiers,
+      protectedSeedCount: options.protectedSeedCount,
     },
   };
 }
@@ -295,6 +314,15 @@ export function BracketManager({
   );
   const [includeThirdPlaceMatch, setIncludeThirdPlaceMatch] = useState(false);
   const [grandFinalMode, setGrandFinalMode] = useState<GrandFinalMode>(DEFAULT_GRAND_FINAL_MODE);
+  const [seedingFormat, setSeedingFormat] = useState<SeedingFormat>(DEFAULT_SEEDING_FORMAT);
+  const [teamTiers, setTeamTiers] = useState<Record<string, SeedingTier | undefined>>({});
+  const [protectedSeedCount, setProtectedSeedCount] = useState(() =>
+    defaultProtectedSeedCount(bracketSize),
+  );
+
+  useEffect(() => {
+    setProtectedSeedCount(defaultProtectedSeedCount(bracketSize));
+  }, [bracketSize]);
 
   useEffect(() => {
     const teamIdSet = new Set(teams.map((team) => team.id));
@@ -339,6 +367,17 @@ export function BracketManager({
   const seedingShuffleDisabled = seedingDisabled || (bracketGenerated && hasBracketProgress);
   const isTournamentCompleted = tournamentStatus === "Completed";
   const teamNames = useMemo(() => teams.map((team) => team.name), [teams]);
+  const adminSeedingOptions = useMemo(
+    () =>
+      isSwiss
+        ? {}
+        : {
+            seedingFormat,
+            teamTiers,
+            protectedSeedCount,
+          },
+    [isSwiss, seedingFormat, teamTiers, protectedSeedCount],
+  );
   const seedByTeam = useMemo(() => buildSeedByTeam(teamNames, teams), [teamNames, teams]);
   const currentPlacements = useMemo(
     () =>
@@ -428,6 +467,9 @@ export function BracketManager({
                   admin.roundMetas.map((meta) => meta.id),
                   admin.grandFinalMode,
                 ),
+                seedingFormat: admin.seedingFormat,
+                teamTiers: admin.teamTiers,
+                protectedSeedCount: admin.protectedSeedCount,
               },
             );
             void publishBracket(tournamentId, payload).catch((err) => {
@@ -449,6 +491,11 @@ export function BracketManager({
               admin.roundMetas.map((meta) => meta.id),
               admin.grandFinalMode,
             ),
+          );
+          setSeedingFormat(admin.seedingFormat ?? DEFAULT_SEEDING_FORMAT);
+          setTeamTiers(admin.teamTiers ?? {});
+          setProtectedSeedCount(
+            admin.protectedSeedCount ?? defaultProtectedSeedCount(bracketSize),
           );
           setBracketGenerated(true);
           setBracketLocked(true);
@@ -524,6 +571,32 @@ export function BracketManager({
   const assignedCount = assignments.slice(0, bracketSize).filter(Boolean).length;
   const parityOk = teams.length % 2 === 0 || (isSwiss && hasSwissByeSlot);
   const allAssigned = teams.length >= 2 && parityOk && assignedCount === teams.length;
+
+  const seedingInput = useMemo(
+    () => ({
+      format: seedingFormat,
+      teams,
+      assignments,
+      tierByTeamId: teamTiers,
+      protectedSeedCount,
+    }),
+    [seedingFormat, teams, assignments, teamTiers, protectedSeedCount],
+  );
+
+  const seedingReadiness = useMemo(() => {
+    if (isSwiss) {
+      return allAssigned
+        ? { ready: true, title: "", description: "" }
+        : {
+            ready: false,
+            title: "Seeding incomplete",
+            description: `Assign all ${teams.length} registered teams in the seeding panel before generating the bracket.`,
+          };
+    }
+    return validateSeedingReadiness(seedingInput);
+  }, [allAssigned, isSwiss, seedingInput, teams.length]);
+
+  const canGenerateBracket = parityOk && teams.length >= 2 && seedingReadiness.ready;
   const managedBracketReady = managedMatches.length > 0 && roundMetas.length > 0;
   const canPublish =
     status === "draft" &&
@@ -533,17 +606,25 @@ export function BracketManager({
 
   function handleGenerate() {
     if (resultsLocked) return;
-    if (!allAssigned) {
+    if (!canGenerateBracket) {
       setBracketDialog({
         kind: "info",
-        title: "Seeding incomplete",
-        description: `Assign all ${teams.length} registered teams in the seeding panel before generating the bracket.`,
+        title: seedingReadiness.title || "Seeding incomplete",
+        description:
+          seedingReadiness.description ||
+          `Complete seeding requirements before generating the bracket.`,
       });
       setActiveTab("seeding");
       return;
     }
 
-    const teamNames = orderedTeamNamesFromAssignments(assignments, bracketSize);
+    const resolvedAssignments = isSwiss
+      ? assignments.slice(0, bracketSize)
+      : resolveSeedingAssignments(seedingInput);
+
+    setAssignments(resolvedAssignments);
+
+    const teamNames = orderedTeamNamesFromAssignments(resolvedAssignments, bracketSize);
     bracketEngine.autoSeed(teamNames);
 
     const managed = buildManagedState(
@@ -582,13 +663,43 @@ export function BracketManager({
 
   function handleAutoSeed() {
     if (seedingShuffleDisabled) return;
-    syncBracketToSeeding(teams.map((team) => team));
+    if (seedingFormat === "tier") {
+      handleApplyTierSeeding();
+      return;
+    }
+    syncBracketToSeeding(buildRegistrationOrderAssignments(teams));
   }
 
   function handleRandomSeed() {
     if (seedingShuffleDisabled) return;
-    const shuffled = [...teams].sort(() => Math.random() - 0.5);
-    syncBracketToSeeding(shuffled);
+    syncBracketToSeeding(buildRandomSeedingAssignments(teams));
+  }
+
+  function handleSeedingFormatChange(next: SeedingFormat) {
+    if (seedingShuffleDisabled || next === seedingFormat) return;
+    setSeedingFormat(next);
+  }
+
+  function handleTierChange(teamId: string, tier: SeedingTier) {
+    if (seedingShuffleDisabled) return;
+    setTeamTiers((prev) => ({ ...prev, [teamId]: tier }));
+  }
+
+  function handleApplyTierSeeding() {
+    if (seedingShuffleDisabled) return;
+    syncBracketToSeeding(buildTierSeedingAssignments(teams, teamTiers));
+  }
+
+  function handleRandomFillRemaining() {
+    if (seedingShuffleDisabled) return;
+    syncBracketToSeeding(
+      buildProtectedRandomAssignments(teams, assignments, protectedSeedCount),
+    );
+  }
+
+  function handleProtectedSeedCountChange(count: number) {
+    if (seedingShuffleDisabled) return;
+    setProtectedSeedCount(count);
   }
 
   function handleIncludeThirdPlaceMatchToggle() {
@@ -754,6 +865,7 @@ export function BracketManager({
       teamNames,
       includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
       grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
+      ...adminSeedingOptions,
     });
 
     setIsSaving(true);
@@ -803,6 +915,7 @@ export function BracketManager({
           teamNames,
           includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
           grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
+          ...adminSeedingOptions,
         },
       );
       void publishBracket(tournamentId, payload, tournamentName).catch((err) => {
@@ -824,6 +937,7 @@ export function BracketManager({
       canIncludeThirdPlaceMatch,
       isDoubleElim,
       grandFinalMode,
+      adminSeedingOptions,
     ],
   );
 
@@ -1104,7 +1218,7 @@ export function BracketManager({
         ]}
         bracketStatus={status}
         bracketGenerated={bracketGenerated}
-        canGenerate={allAssigned}
+        canGenerate={canGenerateBracket}
         canPublish={canPublish}
         isPublished={isPublished}
         isSaving={isSaving}
@@ -1160,6 +1274,24 @@ export function BracketManager({
         {/* Team Seeding Tab */}
         {activeTab === "seeding" && (
           <div className="space-y-6">
+            {!isSwiss && (
+              <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
+                <SeedingFormatOption
+                  value={seedingFormat}
+                  onChange={handleSeedingFormatChange}
+                  disabled={seedingShuffleDisabled}
+                  disabledReason={
+                    seedingShuffleDisabled
+                      ? hasBracketProgress
+                        ? "Locked — clear match results to change"
+                        : seedingLocked
+                          ? "Locked while bracket is published"
+                          : undefined
+                      : undefined
+                  }
+                />
+              </div>
+            )}
             {isDoubleElim && (
               <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
                 <GrandFinalOption
@@ -1204,6 +1336,13 @@ export function BracketManager({
               hasSwissByeSlot={hasSwissByeSlot}
               isSwiss={isSwiss}
               isDoubleElim={isDoubleElim}
+              seedingFormat={seedingFormat}
+              protectedSeedCount={protectedSeedCount}
+              tierByTeamId={teamTiers}
+              onProtectedSeedCountChange={handleProtectedSeedCountChange}
+              onApplyTierSeeding={handleApplyTierSeeding}
+              onRandomFillRemaining={handleRandomFillRemaining}
+              onTierChange={handleTierChange}
               directSeedCount={directSeeds}
               disabled={seedingShuffleDisabled}
               onTeamSelect={onTeamSelect}
@@ -1382,13 +1521,17 @@ export function BracketManager({
                     )
                   }
                 />
-                <ValidationItem label="All matches populated" passed={allAssigned} />
+                <ValidationItem label="Seeding requirements met" passed={seedingReadiness.ready} />
+                <ValidationItem label="All teams seeded" passed={allAssigned} />
                 <ValidationItem label="Bracket structure valid" passed={bracketGenerated} />
                 <ValidationItem
                   label="Team count correct"
-                  passed={assignedCount === teams.length && teams.length >= 2}
+                  passed={teams.length >= 2 && parityOk}
                 />
-                <ValidationItem label="Seeding complete" passed={allAssigned && bracketGenerated} />
+                <ValidationItem
+                  label="Seeding complete"
+                  passed={seedingReadiness.ready && bracketGenerated && allAssigned}
+                />
               </div>
             </div>
 

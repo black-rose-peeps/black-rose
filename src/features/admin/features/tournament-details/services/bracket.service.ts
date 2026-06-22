@@ -5,6 +5,7 @@ import type { TournamentPlacement } from "@/features/tournaments/utils/tournamen
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import type { GrandFinalMode } from "../utils/grand-final";
+import type { SeedingFormat, SeedingTier } from "@/features/tournaments/utils/seeding-format";
 import type { SwissBracketState } from "../utils/managed-swiss-bracket";
 import { resolveGrandFinalChampion, resolveStoredGrandFinalMode } from "../utils/grand-final";
 
@@ -22,6 +23,9 @@ export interface PersistedBracketPayload {
     swiss?: SwissBracketState;
     includeThirdPlaceMatch?: boolean;
     grandFinalMode?: GrandFinalMode;
+    seedingFormat?: SeedingFormat;
+    teamTiers?: Record<string, SeedingTier | undefined>;
+    protectedSeedCount?: number;
   };
 }
 
