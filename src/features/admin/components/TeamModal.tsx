@@ -1,15 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  Calendar,
-  CheckCircle2,
-  Crown,
-  Hash,
-  ShieldAlert,
-  UserX,
-  Users,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, UserX, XCircle } from "lucide-react";
 import {
   AdaptiveAlertDialog,
   AdaptiveAlertDialogAction,
@@ -26,12 +17,10 @@ import {
   AdaptiveModal,
   AdaptiveModalBody,
   AdaptiveModalContent,
-  AdaptiveModalDescription,
   AdaptiveModalFooter,
   AdaptiveModalHeader,
   AdaptiveModalTitle,
 } from "@/components/ui/adaptive-modal";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -72,6 +61,8 @@ interface TeamModalProps {
   isUpdating?: boolean;
 }
 
+type PanelTab = "roster" | "history";
+
 function formatDiscord(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "—";
@@ -92,6 +83,43 @@ function resolveRegistrationDecisionMode(
   return null;
 }
 
+function TournamentHistoryList({ entries }: { entries: RegistrationHistoryEntry[] }) {
+  if (entries.length === 0) {
+    return <p className="text-sm text-muted-foreground">No prior tournament entries.</p>;
+  }
+
+  return (
+    <ul className="divide-y divide-white/8 text-sm">
+      {entries.map((entry) => (
+        <li
+          key={entry.registrationId}
+          className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+        >
+          <div className="min-w-0">
+            <Link
+              to="/admin/tournaments/$id"
+              params={{ id: entry.tournamentId }}
+              className="truncate font-medium text-foreground transition hover:text-foreground/80"
+            >
+              {entry.tournamentName}
+            </Link>
+            <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+              {entry.registrationDate}
+              {entry.tournamentStatus ? ` · ${entry.tournamentStatus}` : ""}
+            </p>
+          </div>
+          <Badge
+            variant={registrationStatusVariant(entry.status)}
+            className="shrink-0 font-tech text-[9px] uppercase"
+          >
+            {entry.status}
+          </Badge>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function TeamModal({
   team,
   tournamentName,
@@ -102,6 +130,7 @@ export function TeamModal({
   isUpdating = false,
 }: TeamModalProps) {
   const isMobile = useIsMobile();
+  const [panelTab, setPanelTab] = useState<PanelTab>("roster");
   const [liveMembers, setLiveMembers] = useState<TeamMember[] | null>(null);
   const [rosterGame, setRosterGame] = useState<Team["game"] | null>(null);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -109,6 +138,10 @@ export function TeamModal({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
   const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    setPanelTab("roster");
+  }, [team.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,376 +207,295 @@ export function TeamModal({
   const showIgnColumn = !rosterGame || !isValorantGame(rosterGame);
 
   const tournamentLabel = tournamentName ?? "this tournament";
+  const rosterSourceLabel = rosterLoading
+    ? "Loading live roster…"
+    : isLive
+      ? "Live team roster"
+      : team.rosterTeamId
+        ? "Registration snapshot"
+        : null;
+
+  const hasFooterActions =
+    (decisionMode === "review" && onApprove && onReject) ||
+    (decisionMode === "approved" && onReject) ||
+    (decisionMode === "rejected" && onApprove);
+
+  function renderRosterPanel() {
+    if (rosterLoading) {
+      return (
+        <TeamRosterTableSkeleton
+          rows={Math.max(team.members.length, 3)}
+          variant="live"
+          showIgnColumn={showIgnColumn}
+        />
+      );
+    }
+
+    if (isMobile) {
+      return (
+        <TeamModalRosterMobileList
+          variant={isLive ? "live" : "snapshot"}
+          liveMembers={activeRoster ?? []}
+          snapshotMembers={team.members}
+          showIgn={showIgnColumn}
+          compact
+        />
+      );
+    }
+
+    if (isLive) {
+      return (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-8 py-1 text-[10px] font-tech uppercase tracking-wider-2">
+                Player
+              </TableHead>
+              {showIgnColumn && (
+                <TableHead className="h-8 py-1 text-[10px] font-tech uppercase tracking-wider-2">
+                  IGN
+                </TableHead>
+              )}
+              <TableHead className="h-8 py-1 text-[10px] font-tech uppercase tracking-wider-2">
+                Role
+              </TableHead>
+              <TableHead className="h-8 py-1 text-[10px] font-tech uppercase tracking-wider-2">
+                Status
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {activeRoster.map((member) => (
+              <TableRow key={member.userId}>
+                <TableCell className="py-2">
+                  <MemberNameStack
+                    displayName={member.displayName}
+                    discordUsername={member.discordUsername}
+                    profileSlug={member.profileSlug}
+                    size="sm"
+                  />
+                </TableCell>
+                {showIgnColumn && (
+                  <TableCell className="py-2 text-sm text-muted-foreground">
+                    {member.ign || "—"}
+                  </TableCell>
+                )}
+                <TableCell className="py-2 text-sm text-muted-foreground">
+                  {member.role || "—"}
+                </TableCell>
+                <TableCell className="py-2">
+                  <Badge variant="outline" className="font-tech text-[10px] uppercase">
+                    {member.status}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      );
+    }
+
+    if (team.members.length > 0) {
+      return (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-8 py-1 text-[10px] font-tech uppercase tracking-wider-2">
+                IGN
+              </TableHead>
+              <TableHead className="h-8 py-1 text-[10px] font-tech uppercase tracking-wider-2">
+                Role
+              </TableHead>
+              <TableHead className="h-8 py-1 text-[10px] font-tech uppercase tracking-wider-2">
+                Discord
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {team.members.map((member, index) => (
+              <TableRow key={`${member.ign}-${member.role}-${index}`}>
+                <TableCell className="py-2 font-medium">{member.ign}</TableCell>
+                <TableCell className="py-2 text-sm text-muted-foreground">
+                  {member.role || "—"}
+                </TableCell>
+                <TableCell className="py-2 text-sm text-muted-foreground">
+                  {formatDiscord(member.discord)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      );
+    }
+
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        No roster players on this registration.
+      </p>
+    );
+  }
 
   return (
     <AdaptiveModal open onOpenChange={(open) => !open && onClose()}>
-      <AdaptiveModalContent className="border-border bg-card sm:max-w-2xl" mobileSize="full">
-        <AdaptiveModalHeader>
-          <div className="flex items-start gap-4 pr-2 sm:pr-6">
-            <div className="grid h-12 w-12 shrink-0 place-items-center border border-border bg-secondary font-tech text-sm tracking-wider">
+      <AdaptiveModalContent
+        className="flex max-h-[min(92dvh,42rem)] flex-col overflow-hidden border-border bg-card sm:max-w-3xl"
+        mobileSize="full"
+      >
+        <AdaptiveModalHeader className="space-y-3 py-3 sm:py-4">
+          <div className="flex items-start gap-3 pr-8 sm:pr-10">
+            <div className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-secondary font-tech text-xs tracking-wider">
               {team.tag}
             </div>
-            <div className="min-w-0 space-y-1">
-              <AdaptiveModalTitle>{team.name}</AdaptiveModalTitle>
-              <AdaptiveModalDescription>
-                {tournamentName
-                  ? `Registration for ${tournamentName}`
-                  : "Registered team details and roster"}
-              </AdaptiveModalDescription>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <AdaptiveModalTitle className="text-lg sm:text-xl">{team.name}</AdaptiveModalTitle>
+                <Badge
+                  variant={registrationStatusVariant(team.status)}
+                  className="font-tech text-[10px] uppercase"
+                >
+                  {team.status}
+                </Badge>
+              </div>
+              <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {tournamentName ? (
+                  <div className="min-w-0">
+                    <dt className="sr-only">Tournament</dt>
+                    <dd className="truncate">
+                      <Link
+                        to="/admin/tournaments/$id"
+                        params={{ id: team.tournamentId }}
+                        className="text-foreground/90 transition hover:text-foreground"
+                      >
+                        {tournamentName}
+                      </Link>
+                    </dd>
+                  </div>
+                ) : null}
+                <div>
+                  <span className="text-muted-foreground/70">Captain </span>
+                  <span className="text-foreground/90">{team.captain}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground/70">Registered </span>
+                  <span className="text-foreground/90">{team.registrationDate}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground/70">Roster </span>
+                  <span className="text-foreground/90">{rosterCount} players</span>
+                </div>
+                {rosterSourceLabel ? (
+                  <div className="font-tech text-[10px] uppercase tracking-wider-2">
+                    {rosterSourceLabel}
+                  </div>
+                ) : null}
+              </dl>
             </div>
           </div>
         </AdaptiveModalHeader>
 
-        <AdaptiveModalBody className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
-              <h3 className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                Team Info
-              </h3>
-              <dl className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <Hash className="h-3.5 w-3.5 text-muted-foreground" />
-                  <dt className="text-muted-foreground">Tag</dt>
-                  <dd className="ml-auto font-medium">{team.tag}</dd>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Crown className="h-3.5 w-3.5 text-muted-foreground" />
-                  <dt className="text-muted-foreground">Captain</dt>
-                  <dd className="ml-auto font-medium">{team.captain}</dd>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  <dt className="text-muted-foreground">Registered</dt>
-                  <dd className="ml-auto font-medium">{team.registrationDate}</dd>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                  <dt className="text-muted-foreground">Roster</dt>
-                  <dd className="ml-auto font-medium">{rosterCount} players</dd>
-                </div>
-              </dl>
-              <Badge
-                variant={registrationStatusVariant(team.status)}
-                className="font-tech text-[10px] uppercase"
-              >
-                {team.status}
-              </Badge>
-            </div>
+        {decisionMode === "review" ? (
+          <p className="shrink-0 border-b border-amber-400/20 bg-amber-400/5 px-4 py-2 text-xs leading-snug text-amber-100/90 sm:px-6">
+            Review the roster, then approve or decline using the buttons below.
+          </p>
+        ) : null}
 
-            <div className="space-y-3 rounded-lg border border-border p-4">
-              <h3 className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                Tournament History
-              </h3>
-              {historyLoading ? (
-                <TournamentHistoryListSkeleton rows={3} />
-              ) : tournamentHistory.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No prior tournament entries.</p>
-              ) : (
-                <ul className="max-h-40 space-y-2 overflow-y-auto pr-1 text-sm">
-                  {tournamentHistory.map((entry) => (
-                    <li
-                      key={entry.registrationId}
-                      className="flex items-start justify-between gap-2 border-b border-border/60 pb-2 last:border-0 last:pb-0"
-                    >
-                      <div className="min-w-0">
-                        <Link
-                          to="/admin/tournaments/$id"
-                          params={{ id: entry.tournamentId }}
-                          className="font-medium text-foreground transition hover:text-foreground/80"
-                        >
-                          {entry.tournamentName}
-                        </Link>
-                        <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                          {entry.registrationDate}
-                          {entry.tournamentStatus ? ` · ${entry.tournamentStatus}` : ""}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={registrationStatusVariant(entry.status)}
-                        className="shrink-0 font-tech text-[9px] uppercase"
-                      >
-                        {entry.status}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                Participating Roster
-              </h3>
-              {team.rosterTeamId && (
-                <span className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground/70">
-                  {rosterLoading
-                    ? "Loading live roster…"
-                    : isLive
-                      ? "Live team roster"
-                      : "Registration snapshot"}
-                </span>
-              )}
-            </div>
-
-            {rosterLoading ? (
-              <TeamRosterTableSkeleton
-                rows={Math.max(team.members.length, 3)}
-                variant="live"
-                showIgnColumn={showIgnColumn}
-              />
-            ) : isMobile ? (
-              <TeamModalRosterMobileList
-                variant={isLive ? "live" : "snapshot"}
-                liveMembers={activeRoster ?? []}
-                snapshotMembers={team.members}
-                showIgn={showIgnColumn}
-              />
-            ) : isLive ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Player
-                    </TableHead>
-                    {showIgnColumn && (
-                      <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                        IGN
-                      </TableHead>
-                    )}
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Role
-                    </TableHead>
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Status
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activeRoster.map((member) => (
-                    <TableRow key={member.userId}>
-                      <TableCell>
-                        <MemberNameStack
-                          displayName={member.displayName}
-                          discordUsername={member.discordUsername}
-                          profileSlug={member.profileSlug}
-                          size="sm"
-                        />
-                      </TableCell>
-                      {showIgnColumn && (
-                        <TableCell className="text-muted-foreground">{member.ign || "—"}</TableCell>
-                      )}
-                      <TableCell className="text-muted-foreground">{member.role || "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="font-tech text-[10px] uppercase">
-                          {member.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : team.members.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      IGN
-                    </TableHead>
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Role
-                    </TableHead>
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Discord
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {team.members.map((member, index) => (
-                    <TableRow key={`${member.ign}-${member.role}-${index}`}>
-                      <TableCell className="font-medium">{member.ign}</TableCell>
-                      <TableCell className="text-muted-foreground">{member.role || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDiscord(member.discord)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No roster players on this registration.
-              </p>
-            )}
-          </div>
-
-          {decisionMode && (
-            <section
+        <div className="shrink-0 flex border-b border-white/8 px-4 sm:px-6">
+          {(["roster", "history"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setPanelTab(tab)}
               className={cn(
-                "relative overflow-hidden border",
-                decisionMode === "review" && "border-amber-400/25 bg-amber-400/4",
-                decisionMode === "approved" && "border-emerald-400/25 bg-emerald-400/4",
-                decisionMode === "rejected" && "border-destructive/25 bg-destructive/5",
+                "touch-target flex-1 border-b-2 px-2 py-2.5 font-tech text-[10px] uppercase tracking-wider-2 transition",
+                panelTab === tab
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground",
               )}
             >
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-y-0 left-0 w-px bg-linear-to-b to-transparent",
-                  decisionMode === "review" && "from-amber-300/70",
-                  decisionMode === "approved" && "from-emerald-300/70",
-                  decisionMode === "rejected" && "from-destructive/60",
-                )}
-              />
+              {tab === "roster"
+                ? `Roster (${rosterCount})`
+                : historyLoading
+                  ? "History"
+                  : `History (${tournamentHistory.length})`}
+            </button>
+          ))}
+        </div>
 
-              <div className="relative p-4 sm:p-5">
-                {decisionMode === "review" && (
-                  <>
-                    <div className="flex items-start gap-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center border border-amber-400/30 bg-amber-400/10">
-                        <ShieldAlert className="h-4 w-4 text-amber-200" strokeWidth={1.5} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-tech text-[10px] uppercase tracking-wider-2 text-amber-200/80">
-                          Awaiting decision
-                        </p>
-                        <p className="mt-1 font-display text-base tracking-display text-white">
-                          Review this entry before approving
-                        </p>
-                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                          Check the roster above. Approving reserves a slot in{" "}
-                          <span className="text-foreground/90">{tournamentLabel}</span>.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        disabled={isUpdating || !onApprove}
-                        onClick={() => setApproveConfirmOpen(true)}
-                        className={cn(
-                          "group relative overflow-hidden border border-emerald-400/30 bg-emerald-400/8 p-4 text-left transition",
-                          "hover:border-emerald-400/50 hover:bg-emerald-400/12",
-                          "disabled:pointer-events-none disabled:opacity-50",
-                        )}
-                      >
-                        <CheckCircle2 className="mb-2 h-5 w-5 text-emerald-300" strokeWidth={1.5} />
-                        <p className="font-display text-sm tracking-display text-white">
-                          Approve entry
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                          Confirm roster and add to the tournament field.
-                        </p>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={isUpdating || !onReject}
-                        onClick={() => setRejectConfirmOpen(true)}
-                        className={cn(
-                          "group relative overflow-hidden border border-border bg-black/20 p-4 text-left transition",
-                          "hover:border-destructive/40 hover:bg-destructive/5",
-                          "disabled:pointer-events-none disabled:opacity-50",
-                        )}
-                      >
-                        <XCircle
-                          className="mb-2 h-5 w-5 text-muted-foreground group-hover:text-destructive"
-                          strokeWidth={1.5}
-                        />
-                        <p className="font-display text-sm tracking-display text-white">
-                          Decline entry
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                          Reject this registration without using a slot.
-                        </p>
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {decisionMode === "approved" && (
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center border border-emerald-400/30 bg-emerald-400/10">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-300" strokeWidth={1.5} />
-                      </div>
-                      <div>
-                        <p className="font-tech text-[10px] uppercase tracking-wider-2 text-emerald-200/80">
-                          Approved
-                        </p>
-                        <p className="mt-1 font-display text-base tracking-display text-white">
-                          Active tournament entry
-                        </p>
-                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                          This team counts toward the registration cap and can be seeded into the
-                          bracket.
-                        </p>
-                      </div>
-                    </div>
-
-                    {onReject && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isUpdating}
-                        className="shrink-0 border-destructive/30 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setRejectConfirmOpen(true)}
-                      >
-                        <UserX className="mr-1.5 h-3.5 w-3.5" />
-                        Revoke approval
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {decisionMode === "rejected" && (
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center border border-destructive/30 bg-destructive/10">
-                        <XCircle className="h-4 w-4 text-destructive" strokeWidth={1.5} />
-                      </div>
-                      <div>
-                        <p className="font-tech text-[10px] uppercase tracking-wider-2 text-destructive/80">
-                          Declined
-                        </p>
-                        <p className="mt-1 font-display text-base tracking-display text-white">
-                          Not in the tournament field
-                        </p>
-                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                          You can approve this entry later if the decision was made in error.
-                        </p>
-                      </div>
-                    </div>
-
-                    {onApprove && (
-                      <Button
-                        type="button"
-                        disabled={isUpdating}
-                        className="shrink-0 bg-emerald-500 font-tech text-[10px] uppercase tracking-wider-2 text-white hover:bg-emerald-400"
-                        onClick={() => setApproveConfirmOpen(true)}
-                      >
-                        Approve entry
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
+        <AdaptiveModalBody className="min-h-0 flex-1 space-y-0 py-3 sm:py-4">
+          {panelTab === "roster" ? renderRosterPanel() : null}
+          {panelTab === "history" ? (
+            historyLoading ? (
+              <TournamentHistoryListSkeleton rows={3} />
+            ) : (
+              <TournamentHistoryList entries={tournamentHistory} />
+            )
+          ) : null}
         </AdaptiveModalBody>
 
-        <AdaptiveModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="font-tech uppercase tracking-wider"
-          >
-            Close
-          </Button>
+        <AdaptiveModalFooter className="gap-2 sm:gap-3">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="font-tech uppercase tracking-wider"
+            >
+              Close
+            </Button>
+
+            {hasFooterActions ? (
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                {decisionMode === "review" && onApprove && onReject ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isUpdating}
+                      className="border-destructive/30 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setRejectConfirmOpen(true)}
+                    >
+                      <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                      Decline
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={isUpdating}
+                      className="bg-emerald-500 font-tech text-[10px] uppercase tracking-wider-2 text-white hover:bg-emerald-400"
+                      onClick={() => setApproveConfirmOpen(true)}
+                    >
+                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                      Approve
+                    </Button>
+                  </>
+                ) : null}
+
+                {decisionMode === "approved" && onReject ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isUpdating}
+                    className="border-destructive/30 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setRejectConfirmOpen(true)}
+                  >
+                    <UserX className="mr-1.5 h-3.5 w-3.5" />
+                    Revoke approval
+                  </Button>
+                ) : null}
+
+                {decisionMode === "rejected" && onApprove ? (
+                  <Button
+                    type="button"
+                    disabled={isUpdating}
+                    className="bg-emerald-500 font-tech text-[10px] uppercase tracking-wider-2 text-white hover:bg-emerald-400"
+                    onClick={() => setApproveConfirmOpen(true)}
+                  >
+                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                    Approve entry
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </AdaptiveModalFooter>
 
         <AdaptiveAlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>

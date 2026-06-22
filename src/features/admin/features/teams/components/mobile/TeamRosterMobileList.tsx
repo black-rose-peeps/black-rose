@@ -10,6 +10,7 @@ interface TeamRosterMobileListProps {
   removingUserId: string | null;
   isSubmitting: boolean;
   onRemove: (userId: string) => void;
+  compact?: boolean;
 }
 
 export function TeamRosterMobileList({
@@ -17,9 +18,11 @@ export function TeamRosterMobileList({
   removingUserId,
   isSubmitting,
   onRemove,
+  compact = false,
 }: TeamRosterMobileListProps) {
   const roster = team.members.filter((m) => m.status === "captain" || m.status === "active");
   const showIgnSubline = !isValorantGame(team.game);
+  const rowClass = compact ? "py-2.5" : "px-4 py-3.5";
 
   if (roster.length === 0) {
     return (
@@ -36,7 +39,7 @@ export function TeamRosterMobileList({
         const isRemoving = removingUserId === member.userId;
 
         return (
-          <li key={member.userId} className="px-4 py-3.5">
+          <li key={member.userId} className={rowClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <MemberNameStack
