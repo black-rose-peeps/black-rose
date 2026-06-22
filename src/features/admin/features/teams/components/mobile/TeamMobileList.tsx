@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { GAME_COLOR } from "@/features/teams/constants";
@@ -13,7 +14,7 @@ interface TeamMobileListProps {
   rangeStart: number;
   rangeEnd: number;
   onPageChange: (page: number) => void;
-  onRoster: (team: Team) => void;
+  onOpen: (team: Team) => void;
   onAddMember: (team: Team) => void;
   onEdit: (team: Team) => void;
   onDelete: (team: Team) => void;
@@ -28,7 +29,7 @@ export function TeamMobileList({
   rangeStart,
   rangeEnd,
   onPageChange,
-  onRoster,
+  onOpen,
   onAddMember,
   onEdit,
   onDelete,
@@ -41,7 +42,7 @@ export function TeamMobileList({
             <div className="flex items-start gap-3 px-4 py-4">
               <button
                 type="button"
-                onClick={() => onRoster(team)}
+                onClick={() => onOpen(team)}
                 className="flex min-w-0 flex-1 items-start gap-3 text-left transition active:opacity-80"
               >
                 <div className="grid h-11 w-11 shrink-0 place-items-center border border-white/15 bg-white/5 text-[10px] font-tech tracking-wider-2">
@@ -65,12 +66,21 @@ export function TeamMobileList({
                   </p>
                 </div>
               </button>
-              <TeamMobileRowActions
-                onRoster={() => onRoster(team)}
-                onAddMember={() => onAddMember(team)}
-                onEdit={() => onEdit(team)}
-                onDelete={() => onDelete(team)}
-              />
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <TeamMobileRowActions
+                  onAddMember={() => onAddMember(team)}
+                  onEdit={() => onEdit(team)}
+                  onDelete={() => onDelete(team)}
+                />
+                <button
+                  type="button"
+                  onClick={() => onOpen(team)}
+                  className="touch-target inline-flex items-center justify-center text-muted-foreground/50"
+                  aria-label={`Open ${team.name} roster`}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </li>
         ))}

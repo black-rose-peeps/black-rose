@@ -1,4 +1,4 @@
-import { Pencil, Trash2, UserPlus, Users } from "lucide-react";
+import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,18 +9,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface TeamMobileRowActionsProps {
-  onRoster: () => void;
   onAddMember: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function TeamMobileRowActions({
-  onRoster,
-  onAddMember,
-  onEdit,
-  onDelete,
-}: TeamMobileRowActionsProps) {
+export function TeamMobileRowActions({ onAddMember, onEdit, onDelete }: TeamMobileRowActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -35,10 +29,6 @@ export function TeamMobileRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={onRoster}>
-          <Users className="mr-2 h-4 w-4" />
-          View roster
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={onAddMember}>
           <UserPlus className="mr-2 h-4 w-4" />
           Add member

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { Plus, UserPlus, Users } from "lucide-react";
+import { ChevronRight, Plus, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -252,7 +252,7 @@ export function TeamsManagement() {
                     rangeStart={pagination.rangeStart}
                     rangeEnd={pagination.rangeEnd}
                     onPageChange={pagination.setPage}
-                    onRoster={setRosterTeam}
+                    onOpen={setRosterTeam}
                     onAddMember={setAddMemberTeam}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
@@ -290,7 +290,16 @@ export function TeamsManagement() {
                         {pagination.paginatedItems.map((team) => (
                           <TableRow
                             key={team.id}
-                            className="transition-colors hover:bg-secondary/40"
+                            role="button"
+                            tabIndex={0}
+                            className="cursor-pointer transition-colors hover:bg-white/3 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            onClick={() => setRosterTeam(team)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setRosterTeam(team);
+                              }
+                            }}
                           >
                             <TableCell className={adminTableCellClip}>
                               <div className="flex min-w-0 items-center gap-3">
@@ -305,6 +314,7 @@ export function TeamsManagement() {
                                 >
                                   {team.name}
                                 </span>
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
                               </div>
                             </TableCell>
                             <TableCell className={adminTableCellClip}>
@@ -328,18 +338,12 @@ export function TeamsManagement() {
                             <TableCell className="text-sm text-muted-foreground">
                               {countActiveMembers(team)} players
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell
+                              className="text-right"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
                               <div className="flex flex-wrap items-center justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-                                  onClick={() => setRosterTeam(team)}
-                                >
-                                  <Users className="h-3.5 w-3.5" />
-                                  Roster
-                                </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -401,6 +405,13 @@ export function TeamsManagement() {
           updateTeam(team);
           setRosterTeam(team);
         }}
+        onAddMember={
+          rosterTeam
+            ? () => {
+                setAddMemberTeam(rosterTeam);
+              }
+            : undefined
+        }
       />
 
       <AddTeamMemberDialog
@@ -412,6 +423,7 @@ export function TeamsManagement() {
         onUpdated={(team) => {
           updateTeam(team);
           if (addMemberTeam?.id === team.id) setAddMemberTeam(team);
+          if (rosterTeam?.id === team.id) setRosterTeam(team);
         }}
       />
 
