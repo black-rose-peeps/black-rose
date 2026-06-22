@@ -1,5 +1,11 @@
 import { DEFAULT_SYNC_HOT_DAYS } from "../constants";
-import type { AdminMember, MemberSyncQueueFilter, MemberSyncQueueTier } from "../types";
+import type {
+  AdminMember,
+  MemberSyncQueueConfig,
+  MemberSyncQueueFilter,
+  MemberSyncQueueTier,
+} from "../types";
+import { formatColdSweepCadence } from "./discord-sync-config";
 
 export function getSyncHotCutoffMs(hotDays = DEFAULT_SYNC_HOT_DAYS): number {
   return Date.now() - hotDays * 24 * 60 * 60 * 1000;
@@ -61,6 +67,31 @@ export function syncQueueTierLabel(tier: MemberSyncQueueTier): string {
       return "Cold queue";
     case "paused":
       return "Paused";
+  }
+}
+
+/** Short admin-facing copy for the active sync queue tab. */
+export function getSyncQueueFilterDescription(
+  filter: MemberSyncQueueFilter,
+  config: MemberSyncQueueConfig = {
+    hotDays: DEFAULT_SYNC_HOT_DAYS,
+    coldSweepIntervalMinutes: 1440,
+  },
+): string | null {
+  const hotDays = config.hotDays;
+  const sweepLabel = formatColdSweepCadence(config.coldSweepIntervalMinutes);
+
+  switch (filter) {
+    case "all":
+      return "Full roster. Use the queue tabs below to focus Discord ROSE verification backlog.";
+    case "hot":
+      return `Not Verified sign-ups from the last ${hotDays} days (not paused). Checked on every automatic sync and Sync Discord now.`;
+    case "cold":
+      return `Not Verified sign-ups older than ${hotDays} days. Swept ${sweepLabel} — use Sync member for an immediate check.`;
+    case "paused":
+      return 'Auto-sync stopped after repeated “not in Discord” results. Skipped until you Unpause or Sync member.';
+    case "backlog":
+      return `Cold and paused members outside the hot queue. Swept ${sweepLabel}; use Sync member or Unpause when someone should be verified now.`;
   }
 }
 

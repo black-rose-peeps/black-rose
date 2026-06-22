@@ -15,9 +15,7 @@ export function getSupabaseAdmin(): SupabaseClient {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url) {
-    throw new Error(
-      "Missing Supabase URL for server auth. Set VITE_SUPABASE_URL or SUPABASE_URL.",
-    );
+    throw new Error("Missing Supabase URL for server auth. Set VITE_SUPABASE_URL or SUPABASE_URL.");
   }
   if (!serviceRoleKey) {
     throw new Error(

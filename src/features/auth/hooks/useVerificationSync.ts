@@ -11,6 +11,9 @@ const FALLBACK_POLL_INTERVAL_MS = 60_000;
 const NOT_VERIFIED_YET_MESSAGE =
   "ROSE role not detected yet. React in #tourna-roles on Discord, wait a few seconds, then try again.";
 
+const NOT_IN_GUILD_MESSAGE =
+  "Your Discord account was not found in the Black Rose server. Join the server first, then try again.";
+
 interface UseVerificationSyncOptions {
   /** Called when DB status becomes Verified. */
   onVerified: () => void;
@@ -58,12 +61,29 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
     setCheckError(null);
 
     try {
-      await refreshVerificationFromDiscord({ data: { memberId: session.id } });
-      const verified = await applySessionUpdate();
-      if (!verified) {
+      const result = await refreshVerificationFromDiscord({ data: { memberId: session.id } });
+      let verified = await applySessionUpdate();
+
+      if (!verified && result.hasRose && result.status === "Verified") {
+        verified = await applySessionUpdate();
+      }
+
+      if (verified || (result.hasRose && result.status === "Verified")) {
+        if (result.hasRose && result.status === "Verified") {
+          onVerifiedRef.current();
+        }
+        setCheckError(null);
+        return true;
+      }
+
+      if (result.notInGuild) {
+        setCheckError(NOT_IN_GUILD_MESSAGE);
+      } else if (!result.hasRose) {
+        setCheckError(NOT_VERIFIED_YET_MESSAGE);
+      } else {
         setCheckError(NOT_VERIFIED_YET_MESSAGE);
       }
-      return verified;
+      return false;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not refresh verification status.";

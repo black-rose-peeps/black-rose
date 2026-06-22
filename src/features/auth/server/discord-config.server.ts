@@ -19,3 +19,12 @@ export function getConfiguredRoseRoleName(): string {
 export function isDiscordRoleSyncConfigured(): boolean {
   return Boolean(getDiscordBotToken() && getDiscordGuildId());
 }
+
+/** Bot on Vercel or Cloudflare worker — either path can run a manual verification check. */
+export function isDiscordVerificationAvailable(): boolean {
+  if (isDiscordRoleSyncConfigured()) return true;
+  return Boolean(
+    process.env.DISCORD_SYNC_WORKER_URL?.trim() &&
+      process.env.DISCORD_SYNC_SECRET?.trim(),
+  );
+}

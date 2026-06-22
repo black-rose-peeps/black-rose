@@ -52,16 +52,17 @@ import {
 import { CreateMemberModal } from "./CreateMemberModal";
 import { EditMemberModal } from "./EditMemberModal";
 import { MemberSyncQueueFilters } from "./MemberSyncQueueFilters";
+import { MemberSyncQueueFilterHint } from "./MemberSyncQueueFilterHint";
 import { useDeleteMember } from "../hooks/useDeleteMember";
 import { DEFAULT_SYNC_HOT_DAYS } from "../constants";
-import { getMemberSyncQueueConfig, triggerDiscordSync } from "../functions/discord-sync.functions";
+import { getMemberSyncQueueConfig, triggerDiscordMemberSync, triggerDiscordSync } from "../functions/discord-sync.functions";
 import { formatDiscordSyncMessage } from "../utils/discord-sync-config";
 import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 
 export function MembersManagement() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { members, isLoading, error, prependMember, replaceMember, removeMember } = useMembers();
+  const { members, isLoading, error, refetch, prependMember, replaceMember, removeMember } = useMembers();
   const {
     updatingId,
     error: verificationError,
@@ -77,6 +78,7 @@ export function MembersManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncingMemberId, setSyncingMemberId] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isSyncError, setIsSyncError] = useState(false);
   const [editingMember, setEditingMember] = useState<AdminMember | null>(null);
@@ -146,6 +148,49 @@ export function MembersManagement() {
   function handleCreated(member: AdminMember) {
     prependMember(member);
     pagination.setPage(1);
+  }
+
+  async function handleSyncMember(member: AdminMember) {
+    if (!member.discordId) return;
+
+    setSyncingMemberId(member.id);
+    setSyncMessage(null);
+    setIsSyncError(false);
+    resetSyncResetError();
+
+    try {
+      const summary = await triggerDiscordMemberSync({ data: { memberId: member.id } });
+      replaceMember(summary.member);
+      void refetch({ silent: true });
+      void logAdminAction({
+        action: ADMIN_AUDIT_ACTIONS.DISCORD_SYNC_TRIGGERED,
+        entityType: "member",
+        entityId: member.id,
+        metadata: {
+          discordId: member.discordId,
+          verified: summary.status === "Verified",
+          hasRose: summary.hasRose,
+          notInGuild: summary.notInGuild,
+        },
+      });
+
+      if (summary.hasRose && summary.member.status === "Verified") {
+        setSyncMessage(`${member.username} is verified — ROSE role detected on Discord.`);
+      } else if (summary.notInGuild) {
+        setSyncMessage(
+          `${member.username} was checked but is not in the Black Rose Discord server (or Discord could not find them).`,
+        );
+      } else {
+        setSyncMessage(
+          `${member.username} was checked — ROSE role not detected yet. Confirm they reacted in #tourna-roles.`,
+        );
+      }
+    } catch (err) {
+      setIsSyncError(true);
+      setSyncMessage(err instanceof Error ? err.message : "Failed to sync this member.");
+    } finally {
+      setSyncingMemberId(null);
+    }
   }
 
   async function handleSyncConfirm() {
@@ -226,6 +271,28 @@ export function MembersManagement() {
   function renderMemberActions(member: AdminMember) {
     return (
       <>
+        {member.status === "Not Verified" && member.discordId ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={
+              syncingMemberId !== null ||
+              resettingId !== null ||
+              updatingId !== null ||
+              isSyncing
+            }
+            className="min-h-11 gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 sm:min-h-9"
+            onClick={() => void handleSyncMember(member)}
+          >
+            {syncingMemberId === member.id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Zap className="h-3.5 w-3.5" />
+            )}
+            Sync member
+          </Button>
+        ) : null}
         {memberNeedsSyncQueueReset(member) ? (
           <Button
             type="button"
@@ -455,13 +522,7 @@ export function MembersManagement() {
                     onChange={setSyncQueueFilter}
                   />
                 </div>
-                {(queueCounts.cold > 0 || queueCounts.paused > 0) && (
-                  <p className="text-xs text-muted-foreground">
-                    Hot queue members are checked every cron run. Cold and paused rows are swept
-                    daily by the Discord sync Worker — unpause to re-check sooner, or remove stale
-                    abandoned signups.
-                  </p>
-                )}
+                <MemberSyncQueueFilterHint filter={syncQueueFilter} config={syncQueueConfig} />
               </div>
               <AdminTableSearch
                 value={searchQuery}
@@ -521,10 +582,12 @@ export function MembersManagement() {
                     hotDays={syncQueueConfig.hotDays}
                     updatingId={updatingId}
                     resettingId={resettingId}
+                    syncingMemberId={syncingMemberId}
                     isDeleting={isDeleting}
                     onPageChange={pagination.setPage}
                     onOpen={openMember}
                     onUnpause={handleUnpause}
+                    onSyncMember={handleSyncMember}
                     onRemoveStale={handleRemoveStale}
                     onVerify={handleVerify}
                     onUnverify={handleUnverify}
