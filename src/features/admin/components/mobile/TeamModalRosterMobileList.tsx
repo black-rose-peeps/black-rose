@@ -14,6 +14,7 @@ interface TeamModalRosterMobileListProps {
   liveMembers: TeamMember[];
   snapshotMembers: MockTeam["members"];
   showIgn: boolean;
+  compact?: boolean;
 }
 
 export function TeamModalRosterMobileList({
@@ -21,7 +22,9 @@ export function TeamModalRosterMobileList({
   liveMembers,
   snapshotMembers,
   showIgn,
+  compact = false,
 }: TeamModalRosterMobileListProps) {
+  const rowClass = compact ? "px-0 py-2.5" : "px-4 py-3.5";
   if (variant === "live") {
     if (liveMembers.length === 0) {
       return (
@@ -34,7 +37,7 @@ export function TeamModalRosterMobileList({
     return (
       <ul className="divide-y divide-white/8 md:hidden">
         {liveMembers.map((member) => (
-          <li key={member.userId} className="px-4 py-3.5">
+          <li key={member.userId} className={rowClass}>
             <MemberNameStack
               displayName={member.displayName}
               discordUsername={member.discordUsername}
@@ -65,7 +68,7 @@ export function TeamModalRosterMobileList({
   return (
     <ul className="divide-y divide-white/8 md:hidden">
       {snapshotMembers.map((member, index) => (
-        <li key={`${member.ign}-${member.role}-${index}`} className="px-4 py-3.5">
+        <li key={`${member.ign}-${member.role}-${index}`} className={rowClass}>
           <p className="font-medium">{member.ign}</p>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <span>Role · {member.role || "—"}</span>
