@@ -4,8 +4,9 @@ import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
+import type { GrandFinalMode } from "../utils/grand-final";
 import type { SwissBracketState } from "../utils/managed-swiss-bracket";
-import { resolveGrandFinalChampion } from "../utils/grand-final";
+import { resolveGrandFinalChampion, resolveStoredGrandFinalMode } from "../utils/grand-final";
 
 export type BracketStateStatus = "not_generated" | "draft" | "published";
 
@@ -20,6 +21,7 @@ export interface PersistedBracketPayload {
     assignmentTeamIds: Array<string | null>;
     swiss?: SwissBracketState;
     includeThirdPlaceMatch?: boolean;
+    grandFinalMode?: GrandFinalMode;
   };
 }
 
@@ -130,8 +132,12 @@ async function fetchTournamentNameForAudit(tournamentId: string): Promise<string
 
 function detectChampionFromPayload(payload: PersistedBracketPayload): string | null {
   const matches = payload.admin?.managedMatches ?? [];
+  const grandFinalMode = resolveStoredGrandFinalMode(
+    payload.admin?.roundMetas?.map((meta) => meta.id) ?? [],
+    payload.admin?.grandFinalMode,
+  );
 
-  const fromGrandFinal = resolveGrandFinalChampion(matches);
+  const fromGrandFinal = resolveGrandFinalChampion(matches, grandFinalMode);
   if (fromGrandFinal) return fromGrandFinal;
 
   // Legacy: any confirmed grand-side match

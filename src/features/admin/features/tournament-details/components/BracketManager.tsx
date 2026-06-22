@@ -20,6 +20,7 @@ import { ManagedBracketView } from "./ManagedBracketView";
 import { PlayoffPairingDialog } from "./PlayoffPairingDialog";
 import { SeedingPanel } from "./SeedingPanel";
 import { ThirdPlaceMatchOption } from "./ThirdPlaceMatchOption";
+import { GrandFinalOption } from "./GrandFinalOption";
 import { SwissBracketView } from "./SwissBracketView";
 import type {
   BestOfFormat,
@@ -68,6 +69,11 @@ import { publishBracket, clearPublishedBracket, syncLocalBracket } from "@/lib/b
 import { fetchBracketState } from "../services/bracket.service";
 import type { PersistedBracketPayload } from "../services/bracket.service";
 import { updateTournamentStatus } from "@/features/admin/features/tournaments/services/tournaments.service";
+import {
+  DEFAULT_GRAND_FINAL_MODE,
+  resolveStoredGrandFinalMode,
+  type GrandFinalMode,
+} from "@/features/admin/features/tournament-details/utils/grand-final";
 import type { MockTournament } from "@/lib/mock-data";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { BracketManagerMobileNav } from "@/features/admin/features/tournaments/components/mobile";
@@ -130,11 +136,18 @@ function buildPersistedPayload(
     swiss?: SwissBracketState;
     teamNames: string[];
     includeThirdPlaceMatch?: boolean;
+    grandFinalMode?: GrandFinalMode;
   },
 ): PersistedBracketPayload {
   const placements = buildPodiumPlacements(
     options.prizeBreakdown ?? [],
-    deriveManagedPlacements(options.format, managedMatches, options.swiss, options.teamNames),
+    deriveManagedPlacements(
+      options.format,
+      managedMatches,
+      options.swiss,
+      options.teamNames,
+      options.grandFinalMode,
+    ),
   );
 
   return {
@@ -148,11 +161,17 @@ function buildPersistedPayload(
       assignmentTeamIds: assignments.map((t) => t?.id ?? null),
       swiss: options.swiss,
       includeThirdPlaceMatch: options.includeThirdPlaceMatch,
+      grandFinalMode: options.grandFinalMode,
     },
   };
 }
 
-function buildManagedState(teamNames: string[], format: string, includeThirdPlaceMatch = false) {
+function buildManagedState(
+  teamNames: string[],
+  format: string,
+  includeThirdPlaceMatch = false,
+  grandFinalMode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
+) {
   if (isSwissFormat(format)) {
     const built = buildSwissRound1(teamNames);
     return {
@@ -163,7 +182,7 @@ function buildManagedState(teamNames: string[], format: string, includeThirdPlac
     };
   }
   const built = isDoubleEliminationFormat(format)
-    ? buildDoubleElimMatches(teamNames)
+    ? buildDoubleElimMatches(teamNames, { grandFinalMode })
     : buildSingleElimMatches(teamNames, { includeThirdPlaceMatch });
   return {
     matches: built.matches,
@@ -275,6 +294,7 @@ export function BracketManager({
     Array(bracketSize).fill(null),
   );
   const [includeThirdPlaceMatch, setIncludeThirdPlaceMatch] = useState(false);
+  const [grandFinalMode, setGrandFinalMode] = useState<GrandFinalMode>(DEFAULT_GRAND_FINAL_MODE);
 
   useEffect(() => {
     const teamIdSet = new Set(teams.map((team) => team.id));
@@ -324,9 +344,15 @@ export function BracketManager({
     () =>
       buildPodiumPlacements(
         prizeBreakdown,
-        deriveManagedPlacements(format, managedMatches, swissState, teamNames),
+        deriveManagedPlacements(
+          format,
+          managedMatches,
+          swissState,
+          teamNames,
+          isDoubleElim ? grandFinalMode : undefined,
+        ),
       ),
-    [format, managedMatches, swissState, teamNames, prizeBreakdown],
+    [format, managedMatches, swissState, teamNames, prizeBreakdown, isDoubleElim, grandFinalMode],
   );
 
   // Restore published bracket from Supabase (survives refresh; shared with public).
@@ -398,6 +424,10 @@ export function BracketManager({
                 includeThirdPlaceMatch:
                   admin.includeThirdPlaceMatch ??
                   admin.roundMetas.some((meta) => meta.id === "se-3rd"),
+                grandFinalMode: resolveStoredGrandFinalMode(
+                  admin.roundMetas.map((meta) => meta.id),
+                  admin.grandFinalMode,
+                ),
               },
             );
             void publishBracket(tournamentId, payload).catch((err) => {
@@ -413,6 +443,12 @@ export function BracketManager({
           );
           setIncludeThirdPlaceMatch(
             admin.includeThirdPlaceMatch ?? admin.roundMetas.some((meta) => meta.id === "se-3rd"),
+          );
+          setGrandFinalMode(
+            resolveStoredGrandFinalMode(
+              admin.roundMetas.map((meta) => meta.id),
+              admin.grandFinalMode,
+            ),
           );
           setBracketGenerated(true);
           setBracketLocked(true);
@@ -449,7 +485,12 @@ export function BracketManager({
       const teamNames = orderedTeamNamesFromAssignments(derived.assignments, bracketSize);
       if (teamNames.length > 0) {
         bracketEngine.autoSeed(teamNames);
-        const managed = buildManagedState(teamNames, format, includeThirdPlaceMatch);
+        const managed = buildManagedState(
+          teamNames,
+          format,
+          includeThirdPlaceMatch,
+          grandFinalMode,
+        );
         setManagedMatches(managed.matches);
         setRoundMetas(managed.roundMetas);
         setRoundFormats(managed.roundFormats);
@@ -473,6 +514,7 @@ export function BracketManager({
     bracketGenerated,
     managedMatches.length,
     includeThirdPlaceMatch,
+    grandFinalMode,
   ]);
 
   const directSeeds =
@@ -504,7 +546,12 @@ export function BracketManager({
     const teamNames = orderedTeamNamesFromAssignments(assignments, bracketSize);
     bracketEngine.autoSeed(teamNames);
 
-    const managed = buildManagedState(teamNames, format, includeThirdPlaceMatch);
+    const managed = buildManagedState(
+      teamNames,
+      format,
+      includeThirdPlaceMatch,
+      grandFinalMode,
+    );
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
@@ -524,7 +571,7 @@ export function BracketManager({
 
     const names = orderedTeamNamesFromAssignments(nextAssignments, bracketSize);
     bracketEngine.autoSeed(names);
-    const managed = buildManagedState(names, format, includeThirdPlaceMatch);
+    const managed = buildManagedState(names, format, includeThirdPlaceMatch, grandFinalMode);
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
@@ -555,7 +602,26 @@ export function BracketManager({
 
     const names = orderedTeamNamesFromAssignments(assignments, bracketSize);
     bracketEngine.autoSeed(names);
-    const managed = buildManagedState(names, format, next);
+    const managed = buildManagedState(names, format, next, grandFinalMode);
+    setManagedMatches(managed.matches);
+    setRoundMetas(managed.roundMetas);
+    setRoundFormats(managed.roundFormats);
+    setSwissState(managed.swiss ?? null);
+    setBracketGenerated(true);
+    setStatus("draft");
+  }
+
+  function handleGrandFinalModeChange(next: GrandFinalMode) {
+    if (!isDoubleElim || seedingShuffleDisabled || next === grandFinalMode) return;
+    setGrandFinalMode(next);
+    if (!bracketGenerated) return;
+
+    const assignedTeams = assignments.filter(Boolean) as TournamentTeam[];
+    if (assignedTeams.length !== teams.length) return;
+
+    const names = orderedTeamNamesFromAssignments(assignments, bracketSize);
+    bracketEngine.autoSeed(names);
+    const managed = buildManagedState(names, format, includeThirdPlaceMatch, next);
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
@@ -687,6 +753,7 @@ export function BracketManager({
       swiss: swissState ?? undefined,
       teamNames,
       includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
+      grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
     });
 
     setIsSaving(true);
@@ -735,6 +802,7 @@ export function BracketManager({
           swiss: updatedSwiss,
           teamNames,
           includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
+          grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
         },
       );
       void publishBracket(tournamentId, payload, tournamentName).catch((err) => {
@@ -754,6 +822,8 @@ export function BracketManager({
       teamNames,
       includeThirdPlaceMatch,
       canIncludeThirdPlaceMatch,
+      isDoubleElim,
+      grandFinalMode,
     ],
   );
 
@@ -765,7 +835,11 @@ export function BracketManager({
         roundFormats?: Record<string, BestOfFormat>;
       },
     ) => {
-      const progressed = applyBracketProgression(updatedMatches, options?.roundMetas ?? roundMetas);
+      const progressed = applyBracketProgression(
+        updatedMatches,
+        options?.roundMetas ?? roundMetas,
+        grandFinalMode,
+      );
       let nextFormats = options?.roundFormats ?? roundFormats;
 
       if (
@@ -792,7 +866,7 @@ export function BracketManager({
         nextFormats,
       );
     },
-    [roundMetas, roundFormats, swissState, pushLiveUpdate],
+    [roundMetas, roundFormats, swissState, pushLiveUpdate, grandFinalMode],
   );
 
   const commitSwissUpdate = useCallback(
@@ -1086,6 +1160,24 @@ export function BracketManager({
         {/* Team Seeding Tab */}
         {activeTab === "seeding" && (
           <div className="space-y-6">
+            {isDoubleElim && (
+              <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
+                <GrandFinalOption
+                  value={grandFinalMode}
+                  onChange={handleGrandFinalModeChange}
+                  disabled={seedingShuffleDisabled}
+                  disabledReason={
+                    seedingShuffleDisabled
+                      ? hasBracketProgress
+                        ? "Locked — clear match results to change"
+                        : seedingLocked
+                          ? "Locked while bracket is published"
+                          : undefined
+                      : undefined
+                  }
+                />
+              </div>
+            )}
             {canIncludeThirdPlaceMatch && (
               <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
                 <ThirdPlaceMatchOption
@@ -1247,6 +1339,7 @@ export function BracketManager({
                     roundFormats={roundFormats}
                     teams={teams}
                     isDoubleElim={isDoubleElim}
+                    grandFinalMode={grandFinalMode}
                     readOnly={resultsLocked}
                     onFormatChange={handleRoundFormat}
                     onApplyRecommendedFormats={handleApplyRecommendedFormats}
