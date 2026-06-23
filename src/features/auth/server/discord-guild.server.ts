@@ -1,4 +1,7 @@
-import type { AdminMember, MemberVerificationStatus } from "@/features/admin/features/members/types";
+import type {
+  AdminMember,
+  MemberVerificationStatus,
+} from "@/features/admin/features/members/types";
 import {
   getConfiguredRoseRoleId,
   getConfiguredRoseRoleName,
@@ -11,7 +14,7 @@ import { DiscordApiError } from "./discord-api.server";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_USER_AGENT = "BlackRoseArena (https://blackrose.asia, 1.0.0)";
-const DISCORD_FETCH_TIMEOUT_MS = 5000;
+const DISCORD_FETCH_TIMEOUT_MS = 10_000;
 
 interface DiscordGuildRole {
   id: string;
@@ -161,6 +164,82 @@ export async function memberHasRoseRole(discordUserId: string): Promise<boolean>
   return rolesIncludeRose(roleIds, roseRoleId);
 }
 
+export interface ImmediateRoseRoleCheckResult {
+  hasRose: boolean;
+  notInGuild: boolean;
+  status: MemberVerificationStatus;
+  updated: boolean;
+}
+
+/**
+ * Waitlist / manual check — ask the Discord bot for THIS user's roles right now,
+ * then write verification status to the database (clears sync pause/strikes when in guild).
+ */
+export async function checkMemberRoseRoleImmediately(
+  member: AdminMember,
+): Promise<ImmediateRoseRoleCheckResult> {
+  if (!member.discordId) {
+    throw new Error("Your account is not linked to Discord. Please sign in again.");
+  }
+  if (!isDiscordRoleSyncConfigured()) {
+    throw new Error(
+      "Discord bot is not configured on the server (DISCORD_BOT_TOKEN / DISCORD_GUILD_ID).",
+    );
+  }
+
+  const roleIds = await fetchGuildMemberRoleIds(member.discordId);
+  if (roleIds === null) {
+    return {
+      hasRose: false,
+      notInGuild: true,
+      status: member.status,
+      updated: false,
+    };
+  }
+
+  const roseRoleId = await resolveRoseRoleId();
+  if (!roseRoleId) {
+    throw new Error(
+      "Could not resolve the ROSE role. Set DISCORD_ROSE_ROLE_ID or create a role named ROSE in the Discord server.",
+    );
+  }
+
+  const hasRose = rolesIncludeRose(roleIds, roseRoleId);
+  const targetStatus = verificationStatusFromRose(hasRose);
+  const previousStatus = member.status;
+  const statusChanged = previousStatus !== targetStatus;
+
+  const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+  const { invalidateMemberAuthCache } = await import("./member-auth.server");
+  const supabase = getSupabaseAdmin();
+
+  const updatePayload: Record<string, unknown> = {
+    discord_not_in_guild_strikes: 0,
+    discord_sync_paused_at: null,
+  };
+  if (statusChanged) {
+    updatePayload.status = targetStatus;
+  }
+
+  const { error: updateError } = await supabase
+    .from("members")
+    .update(updatePayload)
+    .eq("id", member.id);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  invalidateMemberAuthCache(member.id);
+
+  return {
+    hasRose,
+    notInGuild: false,
+    status: targetStatus,
+    updated: statusChanged,
+  };
+}
+
 /**
  * Check whether the signing-in user already has ROSE on Discord.
  * Uses OAuth `guilds.members.read` first (one call, scales at login), then bot REST as fallback.
@@ -210,6 +289,7 @@ function verificationStatusFromRose(hasRoseRole: boolean): MemberVerificationSta
 export async function syncMemberVerificationFromDiscordRole(
   member: AdminMember,
   accessToken?: string,
+  options?: { strict?: boolean },
 ): Promise<AdminMember> {
   if (!member.discordId) {
     return member;
@@ -230,6 +310,9 @@ export async function syncMemberVerificationFromDiscordRole(
     await applyVerificationByDiscordId(member.discordId, hasRoseRole);
     return { ...member, status: targetStatus };
   } catch (err) {
+    if (options?.strict) {
+      throw err instanceof Error ? err : new Error(String(err));
+    }
     console.warn("[discord] Login role sync failed:", err instanceof Error ? err.message : err);
     return member;
   }

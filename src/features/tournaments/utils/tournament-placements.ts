@@ -4,8 +4,10 @@ import { inferPublicBracketSide, inferRoundIdFromMatchId } from "./bracket-displ
 import {
   GRAND_FINAL_MATCH_ID,
   GRAND_FINAL_RESET_MATCH_ID,
+  DEFAULT_GRAND_FINAL_MODE,
   resolveGrandFinalChampion,
   resolveGrandFinalRunnerUp,
+  type GrandFinalMode,
 } from "@/features/admin/features/tournament-details/utils/grand-final";
 import type { ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import type { SwissBracketState } from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
@@ -182,14 +184,28 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
   return placements;
 }
 
-export function deriveDoubleElimPlacements(matches: ManagedMatch[]): TournamentPlacement[] {
-  const champion = resolveGrandFinalChampion(matches);
+export function deriveDoubleElimPlacements(
+  matches: ManagedMatch[],
+  grandFinalMode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
+): TournamentPlacement[] {
+  const champion = resolveGrandFinalChampion(matches, grandFinalMode);
   if (!champion) return [];
 
   const placements: TournamentPlacement[] = [{ rank: 1, label: "Champion", team: champion }];
 
-  const runnerUp = resolveGrandFinalRunnerUp(matches);
+  const runnerUp = resolveGrandFinalRunnerUp(matches, grandFinalMode);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
+
+  if (grandFinalMode === "none") {
+    const lowerFinal = matches.find(
+      (match) => match.roundId === "lb-f" && match.confirmed && !!match.winner,
+    );
+    const thirdPlace = lowerFinal ? loserOf(lowerFinal) : null;
+    if (thirdPlace) {
+      placements.push({ rank: 3, label: "3rd Place", team: thirdPlace });
+    }
+    return placements;
+  }
 
   const grandFinal = matches.find(
     (match) =>
@@ -221,12 +237,13 @@ export function deriveManagedPlacements(
   matches: ManagedMatch[],
   swiss?: SwissBracketState | null,
   teamNames?: string[],
+  grandFinalMode?: GrandFinalMode,
 ): TournamentPlacement[] {
   if (isSwissFormat(format) && swiss) {
     return deriveSwissPlacements(matches, swiss);
   }
   if (isDoubleEliminationFormat(format)) {
-    return deriveDoubleElimPlacements(matches);
+    return deriveDoubleElimPlacements(matches, grandFinalMode);
   }
   return deriveSingleElimPlacements(matches);
 }

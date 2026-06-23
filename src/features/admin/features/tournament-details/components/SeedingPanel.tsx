@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { Shield, Swords, Users2 } from "lucide-react";
+import { Shield, Shuffle, Swords, Users2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
 import { bracketCapacity, byeCount, isPowerOfTwo } from "../utils/bracket-field";
@@ -7,6 +15,13 @@ import {
   roundOnePairingsForSeedingMode,
   roundOneSeedingPairings,
 } from "@/features/tournaments/utils/tournament-seeding";
+import {
+  protectedSeedCountOptions,
+  seedingFormatDescription,
+  type SeedingFormat,
+} from "@/features/tournaments/utils/seeding-format";
+import { CommitteeSeedList } from "./CommitteeSeedList";
+import { TierSeedingPanel } from "./TierSeedingPanel";
 import { SeedingTeamPicker } from "./SeedingTeamPicker";
 
 interface SeedingPanelProps {
@@ -17,6 +32,13 @@ interface SeedingPanelProps {
   hasSwissByeSlot: boolean;
   isSwiss?: boolean;
   isDoubleElim?: boolean;
+  seedingFormat?: SeedingFormat;
+  protectedSeedCount?: number;
+  tierByTeamId?: Record<string, "elite" | "contender" | "open" | undefined>;
+  onProtectedSeedCountChange?: (count: number) => void;
+  onApplyTierSeeding?: () => void;
+  onRandomFillRemaining?: () => void;
+  onTierChange?: (teamId: string, tier: "elite" | "contender" | "open") => void;
   /** @deprecated Play-in seeding removed — byes are used instead. */
   directSeedCount?: number;
   /** @deprecated Play-in seeding removed — byes are used instead. */
@@ -195,6 +217,13 @@ export function SeedingPanel({
   hasSwissByeSlot,
   isSwiss = false,
   isDoubleElim = false,
+  seedingFormat = "committee",
+  protectedSeedCount = 0,
+  tierByTeamId = {},
+  onProtectedSeedCountChange,
+  onApplyTierSeeding,
+  onRandomFillRemaining,
+  onTierChange,
   directSeedCount = 0,
   playInMatchCount = 0,
   disabled = false,
@@ -224,28 +253,6 @@ export function SeedingPanel({
     if (isSwiss) return roundOnePairingsForSeedingMode(bracketSize);
     return roundOneSeedingPairings(bracketSize);
   }, [bracketSize, isSwiss]);
-
-  const readyMatches = useMemo(() => {
-    let ready = 0;
-    const matchCount = isSwiss ? seedingMatchCount : roundOnePairings.length;
-    for (let i = 0; i < matchCount; i++) {
-      const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
-      const pairing = roundOnePairings[i];
-      if (!pairing && !isByeSlot) continue;
-
-      if (isSwiss && isByeSlot) {
-        if (assignments[bracketSize - 1]) ready++;
-        continue;
-      }
-
-      if (!pairing) continue;
-      const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
-      const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
-      if (teamA && teamB) ready++;
-      else if (teamA || teamB) ready++;
-    }
-    return ready;
-  }, [assignments, bracketSize, hasSwissByeSlot, isSwiss, roundOnePairings, seedingMatchCount]);
 
   const standardMatches = useMemo(() => {
     return roundOnePairings.map((pairing, index) => {
@@ -282,12 +289,28 @@ export function SeedingPanel({
     });
   }, [bracketSize, hasSwissByeSlot, isElimination, isSwiss, roundOnePairings]);
 
-  const useProtectedSeedSection = isElimination && elimByes > 0;
+  const useProtectedSeedSection =
+    isElimination && (elimByes > 0 || seedingFormat === "protected_random");
 
-  const protectedSeedNumbers = useMemo(
-    () =>
-      useProtectedSeedSection ? Array.from({ length: elimByes }, (_, index) => index + 1) : [],
-    [useProtectedSeedSection, elimByes],
+  const protectedSeedNumbers = useMemo(() => {
+    if (!useProtectedSeedSection) return [];
+    const count =
+      seedingFormat === "protected_random"
+        ? Math.min(Math.max(1, protectedSeedCount), bracketSize - 1)
+        : elimByes;
+    return Array.from({ length: count }, (_, index) => index + 1);
+  }, [bracketSize, elimByes, protectedSeedCount, seedingFormat, useProtectedSeedSection]);
+
+  const remainingSeedNumbers = useMemo(() => {
+    if (seedingFormat !== "protected_random") return [];
+    const start = protectedSeedNumbers.length;
+    return Array.from({ length: bracketSize - start }, (_, index) => start + index + 1);
+  }, [bracketSize, protectedSeedNumbers.length, seedingFormat]);
+
+  const formatHelp = seedingFormatDescription(
+    seedingFormat,
+    bracketSize,
+    protectedSeedNumbers.length || protectedSeedCount,
   );
 
   const openingMatches = useMemo(
@@ -298,13 +321,92 @@ export function SeedingPanel({
     [standardMatches, useProtectedSeedSection],
   );
 
+  const readyMatches = useMemo(() => {
+    if (isSwiss) {
+      let ready = 0;
+      for (let i = 0; i < seedingMatchCount; i++) {
+        const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
+        const pairing = roundOnePairings[i];
+        if (!pairing && !isByeSlot) continue;
+
+        if (isByeSlot) {
+          if (assignments[bracketSize - 1]) ready++;
+          continue;
+        }
+
+        if (!pairing) continue;
+        const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
+        const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
+        if (teamA && teamB) ready++;
+        else if (teamA || teamB) ready++;
+      }
+      return ready;
+    }
+
+    if (useProtectedSeedSection) {
+      let ready = protectedSeedNumbers.filter((seed) => assignments[seed - 1]).length;
+      for (const match of openingMatches) {
+        const teamA = assignments[match.teamAIdx];
+        const teamB = assignments[match.teamBIdx];
+        if (match.byeSide === "none") {
+          if (teamA && teamB) ready++;
+          else if (teamA || teamB) ready++;
+        } else if (match.byeSide === "teamA") {
+          if (teamB) ready++;
+        } else if (teamA) {
+          ready++;
+        }
+      }
+      return ready;
+    }
+
+    let ready = 0;
+    for (const pairing of roundOnePairings) {
+      const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
+      const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
+      if (teamA && teamB) ready++;
+      else if (teamA || teamB) ready++;
+    }
+    return ready;
+  }, [
+    assignments,
+    bracketSize,
+    hasSwissByeSlot,
+    isSwiss,
+    openingMatches,
+    protectedSeedNumbers,
+    roundOnePairings,
+    seedingMatchCount,
+    useProtectedSeedSection,
+  ]);
+
+  const showCommitteeList =
+    isElimination && seedingFormat === "committee" && !useProtectedSeedSection;
+
+  const showTierPanel = isElimination && seedingFormat === "tier";
+
+  const showMatchPreview =
+    isSwiss ||
+    seedingFormat === "random" ||
+    (isElimination && seedingFormat === "tier" && assignedCount > 0) ||
+    (isElimination && seedingFormat === "protected_random") ||
+    (isElimination && seedingFormat === "committee" && useProtectedSeedSection);
+
   const openingMatchCount = openingMatches.length;
 
   const totalMatchCount = isSwiss
     ? seedingMatchCount
     : useProtectedSeedSection
-      ? openingMatchCount + elimByes
+      ? openingMatchCount + protectedSeedNumbers.length
       : roundOnePairings.length;
+
+  const seedingBodyDisabled = disabled || seedingFormat === "random";
+
+  const matchesForPreview = useMemo(() => {
+    if (seedingFormat === "protected_random" && elimByes === 0) return standardMatches;
+    if (useProtectedSeedSection) return openingMatches;
+    return standardMatches;
+  }, [elimByes, openingMatches, seedingFormat, standardMatches, useProtectedSeedSection]);
 
   return (
     <div className="border-b border-border p-8">
@@ -346,10 +448,9 @@ export function SeedingPanel({
           </div>
         </div>
 
-        {isElimination && elimByes > 0 && (
+        {isElimination && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            {bracketSize} teams → {elimCapacity}-team bracket. Assign protected seeds (round-one
-            byes) first, then fill opening matches.
+            {formatHelp}
           </div>
         )}
 
@@ -365,9 +466,48 @@ export function SeedingPanel({
           </div>
         )}
 
-        {isElimination && elimByes === 0 && (
+        {isElimination && seedingFormat === "protected_random" && onProtectedSeedCountChange && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-border bg-secondary/10 px-5 py-3">
+            <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+              Protected top seeds
+            </span>
+            <Select
+              value={String(protectedSeedNumbers.length)}
+              onValueChange={(value) => onProtectedSeedCountChange(Number(value))}
+              disabled={disabled}
+            >
+              <SelectTrigger className="h-8 w-28 bg-background/50 font-tech text-[10px] uppercase tracking-wider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {protectedSeedCountOptions(bracketSize).map((count) => (
+                  <SelectItem key={count} value={String(count)}>
+                    Top {count}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {onRandomFillRemaining && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={disabled}
+                onClick={onRandomFillRemaining}
+                className="gap-1.5 font-tech text-[10px] uppercase tracking-wider text-amber-400 hover:text-amber-300"
+              >
+                <Shuffle className="h-3.5 w-3.5" />
+                Random fill remaining
+              </Button>
+            )}
+          </div>
+        )}
+
+        {isElimination && seedingFormat === "random" && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            Round 1 uses standard bracket seeding (1 vs {elimCapacity}, 2 vs {elimCapacity - 1}, …).
+            Teams are shuffled into seed slots when you click{" "}
+            <span className="text-foreground">Generate Bracket</span>. Use Random seed in the
+            toolbar for an early preview.
           </div>
         )}
 
@@ -400,7 +540,27 @@ export function SeedingPanel({
         )}
       </div>
 
-      {useProtectedSeedSection ? (
+      {showTierPanel && onApplyTierSeeding && onTierChange && (
+        <TierSeedingPanel
+          teams={teams}
+          tierByTeamId={tierByTeamId}
+          disabled={disabled}
+          onTierChange={onTierChange}
+          onApply={onApplyTierSeeding}
+        />
+      )}
+
+      {showCommitteeList && (
+        <CommitteeSeedList
+          teamCount={bracketSize}
+          assignments={assignments}
+          teams={teams}
+          disabled={disabled}
+          onTeamSelect={onTeamSelect}
+        />
+      )}
+
+      {useProtectedSeedSection && (
         <div className="space-y-8">
           <div>
             <div className="mb-4 flex items-center gap-3">
@@ -410,12 +570,13 @@ export function SeedingPanel({
                   strokeWidth={1.5}
                   aria-hidden
                 />
-                Protected seeds
+                {seedingFormat === "protected_random" ? "Protected top seeds" : "Protected seeds"}
               </span>
               <span className="h-px flex-1 bg-border" />
               <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-                {protectedSeedNumbers.length} round-one bye
-                {protectedSeedNumbers.length === 1 ? "" : "s"}
+                {seedingFormat === "protected_random"
+                  ? `Seeds 1–${protectedSeedNumbers.length}`
+                  : `${protectedSeedNumbers.length} round-one bye${protectedSeedNumbers.length === 1 ? "" : "s"}`}
               </span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -433,19 +594,63 @@ export function SeedingPanel({
             </div>
           </div>
 
-          {openingMatches.length > 0 && (
+          {seedingFormat === "protected_random" && remainingSeedNumbers.length > 0 && (
             <div>
               <div className="mb-4 flex items-center gap-3">
                 <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-                  Round 1 matches
+                  Remaining seeds
                 </span>
                 <span className="h-px flex-1 bg-border" />
                 <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {openingMatches.length} opening match{openingMatches.length === 1 ? "" : "es"}
+                  Seeds {remainingSeedNumbers[0]}–
+                  {remainingSeedNumbers[remainingSeedNumbers.length - 1]}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {remainingSeedNumbers.map((seed) => (
+                  <div
+                    key={`remaining-seed-${seed}`}
+                    className={cn(
+                      "border bg-card p-4 transition-colors",
+                      assignments[seed - 1] ? "border-amber-400/30" : "border-border",
+                    )}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Random slot
+                      </span>
+                      <span className="font-display text-xs tracking-wider text-muted-foreground/80">
+                        Seed {seed}
+                      </span>
+                    </div>
+                    <SeedingTeamPicker
+                      label=""
+                      seed={seed}
+                      value={assignments[seed - 1]}
+                      teams={teams}
+                      usedTeamIds={usedTeamIds}
+                      onChange={(teamId) => onTeamSelect(seed - 1, teamId)}
+                      disabled={seedingBodyDisabled}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showMatchPreview && matchesForPreview.length > 0 && (
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
+                  Round 1 preview
+                </span>
+                <span className="h-px flex-1 bg-border" />
+                <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {matchesForPreview.length} match{matchesForPreview.length === 1 ? "" : "es"}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {openingMatches.map((match, displayIndex) => (
+                {matchesForPreview.map((match, displayIndex) => (
                   <SeedingMatchCard
                     key={match.key}
                     matchIndex={displayIndex}
@@ -457,7 +662,7 @@ export function SeedingPanel({
                     seedLabel={match.seedLabel}
                     teams={teams}
                     usedTeamIds={usedTeamIds}
-                    disabled={disabled}
+                    disabled={seedingBodyDisabled}
                     onTeamSelect={onTeamSelect}
                   />
                 ))}
@@ -465,7 +670,9 @@ export function SeedingPanel({
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {showMatchPreview && !useProtectedSeedSection && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {standardMatches.map((match) => (
             <SeedingMatchCard
@@ -479,10 +686,28 @@ export function SeedingPanel({
               seedLabel={match.seedLabel}
               teams={teams}
               usedTeamIds={usedTeamIds}
-              disabled={disabled}
+              disabled={seedingBodyDisabled}
               onTeamSelect={onTeamSelect}
             />
           ))}
+        </div>
+      )}
+
+      {showTierPanel && assignedCount > 0 && (
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
+              Seed order preview
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <CommitteeSeedList
+            teamCount={bracketSize}
+            assignments={assignments}
+            teams={teams}
+            disabled
+            onTeamSelect={onTeamSelect}
+          />
         </div>
       )}
     </div>

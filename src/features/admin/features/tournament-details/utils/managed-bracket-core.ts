@@ -3,6 +3,10 @@
  */
 
 import { roundFlowRank } from "@/features/tournaments/utils/bracket-round-order";
+import {
+  DEFAULT_GRAND_FINAL_MODE,
+  type GrandFinalMode,
+} from "./grand-final";
 
 export interface BuildBracketOptions {
   /** Opening play-in field (e.g. 24 teams) — play-in losers wait in LB R1 for UB R2 losers. */
@@ -10,6 +14,8 @@ export interface BuildBracketOptions {
   playInMatchCount?: number;
   /** Semifinal losers play a dedicated 3rd-place match (single elim / play-in main bracket). */
   includeThirdPlaceMatch?: boolean;
+  /** Double elimination grand final policy (default: bracket reset). */
+  grandFinalMode?: GrandFinalMode;
 }
 
 export type BestOfFormat = "BO1" | "BO3" | "BO5";
@@ -149,7 +155,20 @@ function grandFinalMatch(matches: ManagedMatch[]): ManagedMatch | undefined {
 export function applyGrandFinalResetState(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
+  grandFinalMode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
 ): { matches: ManagedMatch[]; roundMetas: BracketRoundMeta[] } {
+  if (grandFinalMode !== "two_matches") {
+    const hasResetMatch = matches.some((match) => match.roundId === "gf-reset");
+    const hasResetMeta = roundMetas.some((meta) => meta.id === "gf-reset");
+    if (!hasResetMatch && !hasResetMeta) {
+      return { matches, roundMetas };
+    }
+    return {
+      matches: matches.filter((match) => match.roundId !== "gf-reset"),
+      roundMetas: roundMetas.filter((meta) => meta.id !== "gf-reset"),
+    };
+  }
+
   const gf = grandFinalMatch(matches);
   const resetMetaIndex = roundMetas.findIndex((meta) => meta.id === "gf-reset");
   const hasResetMeta = resetMetaIndex >= 0;
@@ -213,8 +232,9 @@ export function applyGrandFinalResetState(
 export function applyBracketProgression(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
+  grandFinalMode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
 ): { matches: ManagedMatch[]; roundMetas: BracketRoundMeta[] } {
-  return applyGrandFinalResetState(recomputeAdvancements(matches), roundMetas);
+  return applyGrandFinalResetState(recomputeAdvancements(matches), roundMetas, grandFinalMode);
 }
 
 function placeTeam(

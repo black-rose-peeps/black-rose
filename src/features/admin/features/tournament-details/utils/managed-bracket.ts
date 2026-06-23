@@ -33,3 +33,8 @@ export {
 } from "./managed-single-elims-bracket";
 
 export { buildDoubleElimMatches } from "./managed-double-elims-bracket";
+export {
+  DEFAULT_GRAND_FINAL_MODE,
+  GRAND_FINAL_MODE_OPTIONS,
+  type GrandFinalMode,
+} from "./grand-final";
