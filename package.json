@@ -13,7 +13,15 @@
     "discord-sync:dev": "npm run dev --prefix workers/discord-sync",
     "discord-sync:deploy": "npm run deploy --prefix workers/discord-sync",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e:install": "npm install --prefix e2e",
+    "test:e2e:install-browsers": "npm --prefix e2e exec playwright install",
+    "test:e2e": "npm --prefix e2e run test",
+    "test:e2e:smoke": "npm --prefix e2e run test:smoke",
+    "test:e2e:ui": "npm --prefix e2e run test:ui",
+    "test:e2e:headed": "npm --prefix e2e run test:headed",
+    "test:e2e:debug": "npm --prefix e2e run test:debug",
+    "test:e2e:report": "npm --prefix e2e run report"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
