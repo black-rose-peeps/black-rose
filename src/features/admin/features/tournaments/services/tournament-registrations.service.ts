@@ -23,6 +23,7 @@ import {
   syncTournamentTeamCount,
 } from "./tournaments.service";
 import type { MockTeam } from "@/lib/mock-data";
+import { registrationNeedsReview } from "@/features/admin/features/participants/constants/registration-status";
 
 export {
   assertMemberAvailableForTournament,
@@ -409,6 +410,67 @@ export async function fetchTournamentRegistrations(tournamentId: string): Promis
   const tournament = await fetchTournamentById(tournamentId);
   const gameById = new Map<string, string>(tournament ? [[tournamentId, tournament.game]] : []);
   return enrichRegistrationsWithLiveData(teams, gameById);
+}
+
+async function loadTournamentStatusById(tournamentIds: string[]): Promise<Map<string, string>> {
+  if (!tournamentIds.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("id, status")
+    .in("id", tournamentIds);
+
+  if (error) throw new Error(error.message);
+  return new Map((data ?? []).map((row) => [row.id as string, row.status as string]));
+}
+
+function filterRegistrationsNeedingReview(
+  regs: Record<string, unknown>[],
+  tournamentStatusById: Map<string, string>,
+): Record<string, unknown>[] {
+  return regs.filter((reg) =>
+    registrationNeedsReview(
+      reg.status as MockTeam["status"],
+      tournamentStatusById.get(reg.tournament_id as string) ?? null,
+    ),
+  );
+}
+
+/** Dashboard slice — registration rows only, no player roster payload. */
+export async function fetchPendingRegistrationsForDashboard(limit = 20): Promise<MockTeam[]> {
+  const { data: regs, error: regsErr } = await supabase
+    .from("tournament_registrations")
+    .select(REGISTRATION_READ_COLUMNS)
+    .in("status", ["Pending", "Previously Competed"])
+    .order("registration_date", { ascending: false })
+    .limit(Math.max(limit * 3, limit));
+
+  if (regsErr) throw new Error(regsErr.message);
+  if (!regs?.length) return [];
+
+  const tournamentStatusById = await loadTournamentStatusById([
+    ...new Set(regs.map((reg) => reg.tournament_id as string)),
+  ]);
+
+  return filterRegistrationsNeedingReview(regs, tournamentStatusById)
+    .slice(0, limit)
+    .map((reg) => rowToMockTeam(reg, []));
+}
+
+export async function countPendingRegistrationsNeedingReview(): Promise<number> {
+  const { data: regs, error: regsErr } = await supabase
+    .from("tournament_registrations")
+    .select("id, status, tournament_id")
+    .in("status", ["Pending", "Previously Competed"]);
+
+  if (regsErr) throw new Error(regsErr.message);
+  if (!regs?.length) return 0;
+
+  const tournamentStatusById = await loadTournamentStatusById([
+    ...new Set(regs.map((reg) => reg.tournament_id as string)),
+  ]);
+
+  return filterRegistrationsNeedingReview(regs, tournamentStatusById).length;
 }
 
 export async function fetchAllRegistrations(): Promise<MockTeam[]> {

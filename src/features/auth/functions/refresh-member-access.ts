@@ -26,8 +26,8 @@ export const refreshMemberAccess = createServerFn({ method: "POST" })
     const { assertRequestMemberId } = await import("../server/member-session-request.server");
     assertRequestMemberId(data.memberId);
 
-    const { findMemberById } = await import("../server/member-auth.server");
-    const member = await findMemberById(data.memberId);
+    const { findMemberAccessById } = await import("../server/member-auth.server");
+    const member = await findMemberAccessById(data.memberId);
     if (!member) {
       throw new Error("Member account not found. Please sign in with Discord again.");
     }
@@ -38,6 +38,6 @@ export const refreshMemberAccess = createServerFn({ method: "POST" })
       discordUsername: member.discordUsername,
       discordId: member.discordId ?? null,
       status: member.status,
-      registeredAt: member.createdAt,
+      registeredAt: member.registeredAt,
     };
   });

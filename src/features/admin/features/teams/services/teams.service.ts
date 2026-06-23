@@ -331,6 +331,14 @@ async function fetchTeamWithMembers(teamId: string): Promise<Team> {
 
 // ── Service functions ─────────────────────────────────────────────────────────
 
+export async function countTeams(): Promise<number> {
+  const { count, error } = await supabase
+    .from("teams")
+    .select("id", { count: "exact", head: true });
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function fetchTeams(): Promise<Team[]> {
   const { data: teamRows, error: teamsErr } = await supabase
     .from("teams")

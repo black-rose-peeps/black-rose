@@ -1,10 +1,15 @@
-import { fetchTournaments } from "@/features/admin/features/tournaments/services/tournaments.service";
+import { fetchTournamentsForNotifications } from "@/features/admin/features/tournaments/services/tournaments.service";
 import {
   fetchActiveMemberTeams,
   fetchRegistrationsForTeam,
 } from "@/features/tournaments/services/team-registration.service";
 import type { MockTeam } from "@/lib/mock-data";
-import { getNotifications, isNotificationRead, mergeRegistrationStatusNotifications, notifyListeners } from "../store";
+import {
+  getNotifications,
+  isNotificationRead,
+  mergeRegistrationStatusNotifications,
+  notifyListeners,
+} from "../store";
 import type { AppNotification } from "../types";
 
 const SNAPSHOT_KEY_PREFIX = "br_registration_status_snapshot:";
@@ -88,7 +93,7 @@ export async function syncTournamentRegistrationNotifications(
     return [];
   }
 
-  const tournaments = await fetchTournaments();
+  const tournaments = await fetchTournamentsForNotifications();
   const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
   const previousSnapshot = loadStatusSnapshot(userId);
   const nextSnapshot: Record<string, string> = {};
@@ -98,9 +103,7 @@ export async function syncTournamentRegistrationNotifications(
   const readById = new Map(
     existingNotifications.filter((n) => n.read).map((n) => [n.id, true] as const),
   );
-  const createdAtById = new Map(
-    existingNotifications.map((n) => [n.id, n.createdAt] as const),
-  );
+  const createdAtById = new Map(existingNotifications.map((n) => [n.id, n.createdAt] as const));
 
   const notifications: AppNotification[] = [];
 
@@ -121,8 +124,7 @@ export async function syncTournamentRegistrationNotifications(
         }-${registration.id}`;
         const alreadyRead = isNotificationRead(notificationId);
         const unread =
-          !alreadyRead &&
-          shouldMarkUnread(previousSnapshot[registration.id], registration.status);
+          !alreadyRead && shouldMarkUnread(previousSnapshot[registration.id], registration.status);
         const read = unread
           ? false
           : readById.has(notificationId) || isNotificationRead(notificationId);

@@ -1,14 +1,10 @@
-import { fetchTournaments } from "@/features/admin/features/tournaments/services/tournaments.service";
+import { fetchTournamentsForNotifications } from "@/features/admin/features/tournaments/services/tournaments.service";
 import {
   fetchActiveMemberTeams,
   fetchRegistrationsForTeam,
 } from "@/features/tournaments/services/team-registration.service";
 import type { MockTeam } from "@/lib/mock-data";
-import {
-  isNotificationRead,
-  mergeTournamentLiveNotifications,
-  notifyListeners,
-} from "../store";
+import { isNotificationRead, mergeTournamentLiveNotifications, notifyListeners } from "../store";
 import type { AppNotification } from "../types";
 
 const SNAPSHOT_KEY_PREFIX = "br_tournament_live_snapshot:";
@@ -61,7 +57,7 @@ function notificationForLiveTournament(
 /** Notify roster members when a registered tournament goes live. */
 export async function syncTournamentLiveNotifications(userId: string): Promise<AppNotification[]> {
   const memberTeams = await fetchActiveMemberTeams(userId);
-  const tournaments = await fetchTournaments();
+  const tournaments = await fetchTournamentsForNotifications();
   const liveById = new Map(
     tournaments.filter((t) => t.status === "Live").map((t) => [t.id, t] as const),
   );
@@ -107,7 +103,10 @@ export async function syncTournamentLiveNotifications(userId: string): Promise<A
 
     for (const result of results) {
       if (result.status === "rejected") {
-        console.warn("[notifications] Failed to sync live tournament registrations:", result.reason);
+        console.warn(
+          "[notifications] Failed to sync live tournament registrations:",
+          result.reason,
+        );
       }
     }
   }
