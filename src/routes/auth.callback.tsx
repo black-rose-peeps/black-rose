@@ -5,11 +5,13 @@ import { getDiscordRedirectUri } from "@/lib/app-url";
 import {
   clearDiscordLinked,
   clearStoredOAuthState,
+  readStoredOAuthCodeVerifier,
   readStoredOAuthRedirectUri,
   retryDiscordOAuthAfterConsentRequired,
   shouldRetryDiscordWithConsent,
   validateOAuthState,
 } from "@/features/auth/services/discord";
+import { isDiscordNativeRedirectUri } from "@/lib/discord-mobile-oauth";
 import { setSession } from "@/features/auth/store/session";
 import { getPostAuthPath } from "@/features/auth/utils/routes";
 import brLogo from "@/assets/BR Text white.png";
@@ -28,11 +30,17 @@ function isDevServerFnRaceError(err: unknown): boolean {
 
 async function exchangeDiscordCode(code: string, redirectUri: string) {
   const maxAttempts = import.meta.env.DEV ? 3 : 1;
+  const codeVerifier = readStoredOAuthCodeVerifier();
+  const needsVerifier = isDiscordNativeRedirectUri(redirectUri);
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       return await completeDiscordAuth({
-        data: { code, redirectUri },
+        data: {
+          code,
+          redirectUri,
+          codeVerifier: needsVerifier ? (codeVerifier ?? undefined) : undefined,
+        },
       });
     } catch (err) {
       const canRetry =

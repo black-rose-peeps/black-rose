@@ -34,7 +34,10 @@ import {
 import {
   bracketCapacity,
   isEvenBracketFieldSize,
+  openingPlayableMatchCount,
+  usesCompressedPreliminaryField,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
+import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
 import {
   BRACKET_CARD_W,
   BRACKET_COL_GAP,
@@ -62,6 +65,7 @@ interface BracketTabProps {
   teamNames?: string[];
   seedByTeam?: Map<string, number>;
   tournamentStatus?: string;
+  grandFinalMode?: GrandFinalMode | null;
 }
 
 export function BracketTab({
@@ -72,6 +76,7 @@ export function BracketTab({
   teamNames,
   seedByTeam,
   tournamentStatus,
+  grandFinalMode: grandFinalModeProp,
 }: BracketTabProps) {
   const [viewMode, setViewMode] = useState<DoubleElimViewMode>("full");
   const [splitSide, setSplitSide] = useState<SplitBracketSide>("upper");
@@ -114,6 +119,12 @@ export function BracketTab({
     ? bracketCapacity(bracketTeamCount)
     : 0;
   const hasRoundOneByes = bracketCapacitySize > 0 && bracketCapacitySize > bracketTeamCount;
+  const compressedPreliminary =
+    hasRoundOneByes && usesCompressedPreliminaryField(bracketTeamCount);
+  const openingMatches =
+    compressedPreliminary && isEvenBracketFieldSize(bracketTeamCount)
+      ? openingPlayableMatchCount(bracketTeamCount)
+      : 0;
   const matchById = new Map(
     bracket.flatMap((round) => round.matches.map((match) => [match.id, match] as const)),
   );
@@ -156,6 +167,7 @@ export function BracketTab({
             teamCount={teamCount}
             variant="bye"
             bracketCapacity={bracketCapacitySize}
+            openingMatchCount={openingMatches > 0 ? openingMatches : undefined}
           />
         )}
         {sectionHasLegacyPlayIn && <OpeningPlayInGuide teamCount={teamCount} variant="single" />}
@@ -213,6 +225,7 @@ export function BracketTab({
                         }
                       : null
                   }
+                  grandFinalMode={grandFinalModeProp ?? undefined}
                   formatLabel={format}
                   renderMatch={(match, variant) => {
                     const publicMatch = matchById.get(match.id);
@@ -311,6 +324,8 @@ export function BracketTab({
           isDoubleElim
           hasLegacyPlayIn={legacyOpeningPlayIn}
           hasRoundOneByes={hasRoundOneByes}
+          compressedPreliminary={compressedPreliminary}
+          openingMatchCount={openingMatches}
         />
       </div>
     );
@@ -357,7 +372,12 @@ export function BracketTab({
           }}
         />
       )}
-      <BracketFooter hasLegacyPlayIn={legacyOpeningPlayIn} hasRoundOneByes={hasRoundOneByes} />
+      <BracketFooter
+        hasLegacyPlayIn={legacyOpeningPlayIn}
+        hasRoundOneByes={hasRoundOneByes}
+        compressedPreliminary={compressedPreliminary}
+        openingMatchCount={openingMatches}
+      />
     </div>
   );
 }
@@ -397,10 +417,14 @@ function BracketFooter({
   isDoubleElim = false,
   hasLegacyPlayIn = false,
   hasRoundOneByes = false,
+  compressedPreliminary = false,
+  openingMatchCount = 0,
 }: {
   isDoubleElim?: boolean;
   hasLegacyPlayIn?: boolean;
   hasRoundOneByes?: boolean;
+  compressedPreliminary?: boolean;
+  openingMatchCount?: number;
 }) {
   if (isDoubleElim && hasLegacyPlayIn) {
     return (
@@ -423,8 +447,9 @@ function BracketFooter({
   if (hasRoundOneByes) {
     return (
       <p className="font-tech text-[10px] font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
-        Top seeds received round-one byes on a {isDoubleElim ? "double" : "single"}-elimination
-        tree. Bye slots auto-advance; remaining rounds follow standard bracket progression.
+        {compressedPreliminary
+          ? `Top seeds received round-one byes on a ${isDoubleElim ? "double" : "single"}-elimination tree. ${openingMatchCount} opening matches decide the remaining upper-bracket slots.`
+          : `Top seeds received round-one byes on a ${isDoubleElim ? "double" : "single"}-elimination tree. Bye slots auto-advance; remaining rounds follow standard bracket progression.`}
       </p>
     );
   }

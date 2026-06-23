@@ -35,6 +35,25 @@ export function usesFullFieldRoundOne(teamCount: number): boolean {
   return isEvenBracketFieldSize(teamCount) && byeCount(teamCount) === 0;
 }
 
+/**
+ * 64-slot fields with more than 32 teams (e.g. 34–62 on a 64 capacity).
+ * Uses Challonge-style compressed preliminary lower-bracket routing.
+ * Smaller brackets (≤32 on a 32 slot) keep the existing bye-field wiring.
+ */
+export function usesCompressedPreliminaryField(teamCount: number): boolean {
+  if (!isEvenBracketFieldSize(teamCount) || usesFullFieldRoundOne(teamCount)) {
+    return false;
+  }
+  const capacity = bracketCapacity(teamCount);
+  return capacity >= 64 && teamCount > 32;
+}
+
+/** Opening upper-round matches with both teams present (e.g. 6 for 38 teams on 64). */
+export function openingPlayableMatchCount(teamCount: number): number {
+  const capacity = bracketCapacity(teamCount);
+  return teamCount - capacity / 2;
+}
+
 /** Opening play-in is no longer used — non-Po2 fields use byes instead. */
 export function needsOpeningPlayIn(_teamCount: number): boolean {
   return false;

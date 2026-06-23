@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import favicon from "@/assets/black-rose-emblem-black.png";
+import { CapacitorOAuthBridge } from "@/features/auth/components/CapacitorOAuthBridge";
 import { NotFoundPage } from "@/features/shared/components/NotFoundPage";
 import { ErrorPage } from "@/features/shared/components/ErrorPage";
 import { DEFAULT_OG_TITLE, defaultOgMeta } from "@/lib/site-meta";
@@ -70,6 +71,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <CapacitorOAuthBridge />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>

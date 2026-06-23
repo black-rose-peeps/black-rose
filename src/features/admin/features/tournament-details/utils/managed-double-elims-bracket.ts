@@ -7,12 +7,15 @@ import {
   isEvenBracketFieldSize,
   isPowerOfTwo,
   powerOfTwoElimRoundMatchCounts,
+  usesCompressedPreliminaryField,
   usesFullFieldRoundOne,
 } from "./bracket-field";
 import {
-  DEFAULT_GRAND_FINAL_MODE,
-  type GrandFinalMode,
-} from "./grand-final";
+  buildLowerBracketScheduleCompressedPreliminary,
+  wireLowerBracketWinnersCompressedPreliminary,
+  wireUpperLosersToLowerCompressedPreliminary,
+} from "./compressed-preliminary-double-elim";
+import { DEFAULT_GRAND_FINAL_MODE, type GrandFinalMode } from "./grand-final";
 import {
   type BracketRoundMeta,
   type BuildBracketOptions,
@@ -283,11 +286,13 @@ interface DoubleElimWiring {
   buildLowerBracketSchedule: (
     ubRounds: number,
     bracketSize: number,
+    registeredCount: number,
   ) => { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] };
   wireLowerBracketWinners: (
     matches: ManagedMatch[],
     lbRoundIds: string[],
     lbMatchCounts: number[],
+    registeredCount: number,
   ) => void;
   wireUpperLosersToLower: (
     matches: ManagedMatch[],
@@ -300,21 +305,42 @@ interface DoubleElimWiring {
 }
 
 const FULL_FIELD_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
-  buildLowerBracketSchedule: buildLowerBracketScheduleFullField,
-  wireLowerBracketWinners: wireLowerBracketWinnersFullField,
-  wireUpperLosersToLower: wireUpperLosersToLowerFullField,
+  buildLowerBracketSchedule: (ubRounds, bracketSize) =>
+    buildLowerBracketScheduleFullField(ubRounds, bracketSize),
+  wireLowerBracketWinners: (matches, lbRoundIds, lbMatchCounts) =>
+    wireLowerBracketWinnersFullField(matches, lbRoundIds, lbMatchCounts),
+  wireUpperLosersToLower: (matches, lbRoundIds, ubRoundIds, ubMatchCounts) =>
+    wireUpperLosersToLowerFullField(matches, lbRoundIds, ubRoundIds, ubMatchCounts),
 };
 
 const BYE_FIELD_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
   buildLowerBracketSchedule: buildLowerBracketScheduleByeField,
-  wireLowerBracketWinners: wireLowerBracketWinnersByeField,
+  wireLowerBracketWinners: (matches, lbRoundIds, lbMatchCounts) =>
+    wireLowerBracketWinnersByeField(matches, lbRoundIds, lbMatchCounts),
   wireUpperLosersToLower: wireUpperLosersToLowerByeField,
 };
 
+const COMPRESSED_PRELIMINARY_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
+  buildLowerBracketSchedule: (ubRounds, bracketSize, registeredCount) =>
+    buildLowerBracketScheduleCompressedPreliminary(ubRounds, bracketSize, registeredCount),
+  wireLowerBracketWinners: (matches, lbRoundIds, lbMatchCounts, registeredCount) =>
+    wireLowerBracketWinnersCompressedPreliminary(
+      matches,
+      lbRoundIds,
+      lbMatchCounts,
+      registeredCount,
+    ),
+  wireUpperLosersToLower: wireUpperLosersToLowerCompressedPreliminary,
+};
+
 function doubleElimWiringForTeamCount(teamCount: number): DoubleElimWiring {
-  return usesFullFieldRoundOne(teamCount)
-    ? FULL_FIELD_DOUBLE_ELIM_WIRING
-    : BYE_FIELD_DOUBLE_ELIM_WIRING;
+  if (usesFullFieldRoundOne(teamCount)) {
+    return FULL_FIELD_DOUBLE_ELIM_WIRING;
+  }
+  if (usesCompressedPreliminaryField(teamCount)) {
+    return COMPRESSED_PRELIMINARY_DOUBLE_ELIM_WIRING;
+  }
+  return BYE_FIELD_DOUBLE_ELIM_WIRING;
 }
 
 function buildDoubleElimPowerOfTwo(
@@ -399,6 +425,7 @@ function buildDoubleElimPowerOfTwo(
   const { lbRoundCount, lbRoundIds, lbMatchCounts } = wiring.buildLowerBracketSchedule(
     ubRounds,
     capacity,
+    n,
   );
 
   for (let r = 0; r < lbRoundCount; r++) {
@@ -434,7 +461,7 @@ function buildDoubleElimPowerOfTwo(
 
   wiring.wireUpperLosersToLower(matches, lbRoundIds, ubRoundIds, ubMatchCounts, n, roundMetas);
 
-  wiring.wireLowerBracketWinners(matches, lbRoundIds, lbMatchCounts);
+  wiring.wireLowerBracketWinners(matches, lbRoundIds, lbMatchCounts, n);
 
   if (includeGrandFinal) {
     link(matches, lbFinalId, "gf-m0", "teamB");

@@ -71,6 +71,7 @@ async function discordFetch(url: string, init?: RequestInit): Promise<Response> 
 export async function exchangeDiscordCodeForToken(
   code: string,
   redirectUri: string,
+  options?: { codeVerifier?: string },
 ): Promise<string> {
   if (!isAllowedDiscordRedirectUri(redirectUri)) {
     throw new Error("Invalid Discord redirect URI.");
@@ -83,6 +84,11 @@ export async function exchangeDiscordCodeForToken(
     code,
     redirect_uri: redirectUri,
   });
+
+  const codeVerifier = options?.codeVerifier?.trim();
+  if (codeVerifier) {
+    body.set("code_verifier", codeVerifier);
+  }
 
   const response = await discordFetch(`${DISCORD_API_BASE}/oauth2/token`, {
     method: "POST",

@@ -181,6 +181,7 @@ function TournamentDetailPage() {
     bracket: liveBracket,
     prizeBreakdown: livePrizeBreakdown,
     assignmentTeamIds,
+    grandFinalMode: liveGrandFinalMode,
     isLoading: bracketLoading,
   } = useLiveBracket(tournament.id);
 
@@ -367,6 +368,7 @@ function TournamentDetailPage() {
                 teamNames={displayTeams.map((team) => team.name)}
                 seedByTeam={seedByTeam}
                 tournamentStatus={liveDetail.status}
+                grandFinalMode={liveGrandFinalMode}
               />
             </div>
           )}

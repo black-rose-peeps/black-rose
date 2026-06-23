@@ -1,6 +1,8 @@
 import {
   bracketCapacity,
   byeCount,
+  openingPlayableMatchCount,
+  usesCompressedPreliminaryField,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 
 /** How teams are assigned to seed numbers before bracket generation. */
@@ -252,14 +254,22 @@ export function seedingFormatDescription(
   protectedCount: number,
 ): string {
   const capacity = bracketCapacity(teamCount);
+  const byes = byeCount(teamCount);
+  const byeNote =
+    byes > 0
+      ? usesCompressedPreliminaryField(teamCount)
+        ? ` Top ${byes} seeds skip to round two; ${openingPlayableMatchCount(teamCount)} opening matches on a ${capacity}-slot tree.`
+        : ` Top ${byes} seeds receive round-one byes on a ${capacity}-slot tree.`
+      : "";
+
   switch (format) {
     case "committee":
-      return `Assign seeds 1–${teamCount} manually. Bracket uses standard paths on a ${capacity}-team field.`;
+      return `Assign seeds 1–${teamCount} manually. Bracket paths follow standard ${capacity}-slot placement.${byeNote}`;
     case "tier":
-      return "Elite teams receive the highest seeds, then Contender, then Open. Tier order is applied when you generate the bracket.";
+      return `Elite teams receive the highest seeds, then Contender, then Open. Tier order is applied when you generate the bracket.${byeNote}`;
     case "protected_random":
-      return `Rank seeds 1–${protectedCount} manually, then remaining seeds are randomized on generate.`;
+      return `Rank seeds 1–${protectedCount} manually, then remaining seeds are randomized on generate.${byeNote}`;
     case "random":
-      return "All teams are shuffled into seed slots when you generate the bracket.";
+      return `All teams are shuffled into seed slots when you generate the bracket.${byeNote}`;
   }
 }
