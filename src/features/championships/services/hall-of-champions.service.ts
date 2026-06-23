@@ -10,6 +10,7 @@ import {
   derivePublicPlacements,
   type TournamentPlacement,
 } from "@/features/tournaments/utils/tournament-placements";
+import { resolveStoredGrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
 import { supabase } from "@/lib/supabase";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import type { HallOfChampionRecord } from "../types";
@@ -55,6 +56,11 @@ function resolveChampionPlacements(
       tournament.format,
       payload.admin.managedMatches,
       payload.admin.swiss,
+      undefined,
+      resolveStoredGrandFinalMode(
+        payload.admin.roundMetas?.map((meta) => meta.id) ?? [],
+        payload.admin.grandFinalMode,
+      ),
     );
     const prizeTiers = payload.prizeBreakdown?.length
       ? payload.prizeBreakdown

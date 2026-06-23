@@ -149,6 +149,7 @@ export function syncQueueTierBadgeVariant(
 export {
   countMembersBySyncQueueFilter,
   getMemberSyncQueueTier,
+  getSyncQueueFilterDescription,
   matchesSyncQueueFilter,
   memberIsStaleSyncCandidate,
   memberNeedsSyncQueueReset,

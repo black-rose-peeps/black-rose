@@ -2,6 +2,7 @@ import type { Env } from "./env";
 import { getBoostWindowMinutes, getSyncQueueConfig } from "./env";
 import { getBoostUntilMs, setBoostUntilMs } from "./boost";
 import { syncRoseRoles, type SyncSummary } from "./sync";
+import { syncMemberByDiscordId } from "./sync-member";
 
 export default {
   async scheduled(
@@ -27,6 +28,37 @@ export default {
       ctx.waitUntil(promise);
       const summary = await promise;
       return Response.json({ ...summary, queueConfig: getSyncQueueConfig(env) });
+    }
+
+    if (url.pathname === "/sync/member" && request.method === "POST") {
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
+
+      let discordId = "";
+      let clearSyncState = false;
+      try {
+        const body = (await request.json()) as {
+          discordId?: string;
+          clearSyncState?: boolean;
+        };
+        discordId = body.discordId?.trim() ?? "";
+        clearSyncState = body.clearSyncState === true;
+      } catch {
+        return new Response("Invalid JSON body.", { status: 400 });
+      }
+
+      if (!discordId) {
+        return new Response("Missing discordId.", { status: 400 });
+      }
+
+      const result = await syncMemberByDiscordId(env, discordId, { clearSyncState });
+      return Response.json({
+        discordId: result.discordId,
+        status: result.status,
+        updated: result.updated,
+        hasRose: result.hasRose,
+        notInGuild: result.notInGuild,
+        syncPaused: result.syncPaused,
+      });
     }
 
     if (url.pathname === "/sync/status" && request.method === "GET") {

@@ -16,10 +16,12 @@ interface MemberMobileListProps {
   hotDays: number;
   updatingId: string | null;
   resettingId: string | null;
+  syncingMemberId: string | null;
   isDeleting: boolean;
   onPageChange: (page: number) => void;
   onOpen: (memberId: string) => void;
   onUnpause: (member: AdminMember) => void;
+  onSyncMember: (member: AdminMember) => void;
   onRemoveStale: (member: AdminMember) => void;
   onVerify: (member: AdminMember) => void;
   onUnverify: (member: AdminMember) => void;
@@ -40,10 +42,12 @@ export function MemberMobileList({
   hotDays,
   updatingId,
   resettingId,
+  syncingMemberId,
   isDeleting,
   onPageChange,
   onOpen,
   onUnpause,
+  onSyncMember,
   onRemoveStale,
   onVerify,
   onUnverify,
@@ -87,9 +91,11 @@ export function MemberMobileList({
                   member={member}
                   updatingId={updatingId}
                   resettingId={resettingId}
+                  syncingMemberId={syncingMemberId}
                   isDeleting={isDeleting}
                   showUnpause={memberNeedsSyncQueueReset(member)}
                   showRemoveStale={memberIsStaleSyncCandidate(member, hotDays)}
+                  onSyncMember={() => onSyncMember(member)}
                   onUnpause={() => onUnpause(member)}
                   onRemoveStale={() => onRemoveStale(member)}
                   onVerify={() => onVerify(member)}

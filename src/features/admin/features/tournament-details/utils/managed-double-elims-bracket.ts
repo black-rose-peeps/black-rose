@@ -4,11 +4,15 @@
 
 import {
   bracketCapacity,
-  byeCount,
   isEvenBracketFieldSize,
   isPowerOfTwo,
   powerOfTwoElimRoundMatchCounts,
+  usesFullFieldRoundOne,
 } from "./bracket-field";
+import {
+  DEFAULT_GRAND_FINAL_MODE,
+  type GrandFinalMode,
+} from "./grand-final";
 import {
   type BracketRoundMeta,
   type BuildBracketOptions,
@@ -96,10 +100,35 @@ function lowerRoundId(lbRoundIndex: number, lbRoundCount: number): string {
 }
 
 /**
- * Challonge lower-bracket match counts for a Po2 tree (e.g. 24 teams / 32 cap):
+ * Challonge lower-bracket match counts for a full Po2 field (e.g. 16 teams):
+ * [4, 4, 2, 2, 1, 1] — LR1 pairs UR1 losers; LR2 receives UR2 losers; alternate consolidate / drop.
+ */
+function buildLowerBracketScheduleFullField(
+  ubRounds: number,
+  bracketSize: number,
+): { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] } {
+  const lbRoundCount = 2 * (ubRounds - 1);
+  const lbRoundIds: string[] = [];
+  const lbMatchCounts: number[] = [];
+
+  let matchCount = bracketSize / 4;
+
+  for (let r = 0; r < lbRoundCount; r++) {
+    lbRoundIds.push(lowerRoundId(r, lbRoundCount));
+    lbMatchCounts.push(matchCount);
+    if (r % 2 === 1) {
+      matchCount = Math.max(1, matchCount / 2);
+    }
+  }
+
+  return { lbRoundCount, lbRoundIds, lbMatchCounts };
+}
+
+/**
+ * Lower-bracket schedule for bye fields (e.g. 24 teams / 32 cap):
  * [8, 4, 4, 2, 2, 1, 1] — LR1 merges UR1+UR2 losers, then alternate advance / drop.
  */
-function buildLowerBracketSchedule(
+function buildLowerBracketScheduleByeField(
   ubRounds: number,
   bracketSize: number,
 ): { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] } {
@@ -120,8 +149,38 @@ function buildLowerBracketSchedule(
   return { lbRoundCount, lbRoundIds, lbMatchCounts };
 }
 
-/** Wire LB winners forward — odd rounds advance (pair), even rounds incoming (→ teamA). */
-function wireLowerBracketWinners(
+/** Wire LB winners forward — full Po2 field (same-count rounds advance 1:1; halving rounds pair). */
+function wireLowerBracketWinnersFullField(
+  matches: ManagedMatch[],
+  lbRoundIds: string[],
+  lbMatchCounts: number[],
+): void {
+  for (let r = 1; r < lbRoundIds.length; r++) {
+    const prevId = lbRoundIds[r - 1];
+    const currId = lbRoundIds[r];
+    const prevCount = lbMatchCounts[r - 1] ?? 0;
+    const currCount = lbMatchCounts[r] ?? 0;
+
+    if (prevCount === currCount) {
+      for (let i = 0; i < prevCount; i++) {
+        link(matches, `${prevId}-m${i}`, `${currId}-m${i}`, "teamA");
+      }
+      continue;
+    }
+
+    for (let i = 0; i < prevCount; i++) {
+      link(
+        matches,
+        `${prevId}-m${i}`,
+        `${currId}-m${Math.floor(i / 2)}`,
+        i % 2 === 0 ? "teamA" : "teamB",
+      );
+    }
+  }
+}
+
+/** Wire LB winners forward — bye field (odd rounds pair, even rounds incoming → teamA). */
+function wireLowerBracketWinnersByeField(
   matches: ManagedMatch[],
   lbRoundIds: string[],
   lbMatchCounts: number[],
@@ -149,7 +208,41 @@ function wireLowerBracketWinners(
   }
 }
 
-function wireUpperLosersToLower(
+/** Upper losers → lower — full Po2 field (8 / 16 / 32 registered teams). */
+function wireUpperLosersToLowerFullField(
+  matches: ManagedMatch[],
+  lbRoundIds: string[],
+  ubRoundIds: string[],
+  ubMatchCounts: number[],
+): void {
+  const lbR1Id = lbRoundIds[0];
+  const ubR1Count = ubMatchCounts[0] ?? 0;
+
+  for (let i = 0; i < ubR1Count; i++) {
+    link(
+      matches,
+      `${ubRoundIds[0]}-m${i}`,
+      `${lbR1Id}-m${Math.floor(i / 2)}`,
+      i % 2 === 0 ? "teamA" : "teamB",
+      true,
+    );
+  }
+
+  for (let ubRoundIndex = 1; ubRoundIndex <= ubRoundIds.length - 2; ubRoundIndex++) {
+    const lbRoundIndex = 2 * ubRoundIndex - 1;
+    if (lbRoundIndex >= lbRoundIds.length) continue;
+
+    const ubCount = ubMatchCounts[ubRoundIndex] ?? 0;
+    const lbId = lbRoundIds[lbRoundIndex];
+    for (let i = 0; i < ubCount; i++) {
+      const lbMatchIndex = ubCount - 1 - i;
+      link(matches, `${ubRoundIds[ubRoundIndex]}-m${i}`, `${lbId}-m${lbMatchIndex}`, "teamB", true);
+    }
+  }
+}
+
+/** Upper losers → lower — bye field (18 / 20 / 22 / 24 / … registered teams). */
+function wireUpperLosersToLowerByeField(
   matches: ManagedMatch[],
   lbRoundIds: string[],
   ubRoundIds: string[],
@@ -157,31 +250,19 @@ function wireUpperLosersToLower(
   registeredCount: number,
   roundMetas: BracketRoundMeta[],
 ): void {
-  const hasRoundOneByes = byeCount(registeredCount) > 0;
   const ubR1Meta = roundMetas.find((meta) => meta.id === ubRoundIds[0]);
   const lbR1Id = lbRoundIds[0];
   const lbR1Count = roundMetas.find((meta) => meta.id === lbR1Id)?.matchIds.length ?? 0;
 
-  if (hasRoundOneByes && ubR1Meta) {
+  if (ubR1Meta) {
     wireOpeningPlayableLosersToLowerRoundOne(matches, ubR1Meta, registeredCount);
+  }
 
-    if (ubRoundIds.length > 1 && lbR1Count > 0) {
-      const ubR2Id = ubRoundIds[1];
-      const ubR2Count = ubMatchCounts[1] ?? 0;
-      for (let i = 0; i < ubR2Count && i < lbR1Count; i++) {
-        link(matches, `${ubR2Id}-m${i}`, `${lbR1Id}-m${i}`, "teamA", true);
-      }
-    }
-  } else {
-    const ubR1Count = ubMatchCounts[0] ?? 0;
-    for (let i = 0; i < ubR1Count; i++) {
-      link(
-        matches,
-        `${ubRoundIds[0]}-m${i}`,
-        `${lbR1Id}-m${Math.floor(i / 2)}`,
-        i % 2 === 0 ? "teamA" : "teamB",
-        true,
-      );
+  if (ubRoundIds.length > 1 && lbR1Count > 0) {
+    const ubR2Id = ubRoundIds[1];
+    const ubR2Count = ubMatchCounts[1] ?? 0;
+    for (let i = 0; i < ubR2Count && i < lbR1Count; i++) {
+      link(matches, `${ubR2Id}-m${i}`, `${lbR1Id}-m${i}`, "teamA", true);
     }
   }
 
@@ -196,6 +277,44 @@ function wireUpperLosersToLower(
       link(matches, `${ubRoundIds[ubRoundIndex]}-m${i}`, `${lbId}-m${lbMatchIndex}`, "teamB", true);
     }
   }
+}
+
+interface DoubleElimWiring {
+  buildLowerBracketSchedule: (
+    ubRounds: number,
+    bracketSize: number,
+  ) => { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] };
+  wireLowerBracketWinners: (
+    matches: ManagedMatch[],
+    lbRoundIds: string[],
+    lbMatchCounts: number[],
+  ) => void;
+  wireUpperLosersToLower: (
+    matches: ManagedMatch[],
+    lbRoundIds: string[],
+    ubRoundIds: string[],
+    ubMatchCounts: number[],
+    registeredCount: number,
+    roundMetas: BracketRoundMeta[],
+  ) => void;
+}
+
+const FULL_FIELD_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
+  buildLowerBracketSchedule: buildLowerBracketScheduleFullField,
+  wireLowerBracketWinners: wireLowerBracketWinnersFullField,
+  wireUpperLosersToLower: wireUpperLosersToLowerFullField,
+};
+
+const BYE_FIELD_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
+  buildLowerBracketSchedule: buildLowerBracketScheduleByeField,
+  wireLowerBracketWinners: wireLowerBracketWinnersByeField,
+  wireUpperLosersToLower: wireUpperLosersToLowerByeField,
+};
+
+function doubleElimWiringForTeamCount(teamCount: number): DoubleElimWiring {
+  return usesFullFieldRoundOne(teamCount)
+    ? FULL_FIELD_DOUBLE_ELIM_WIRING
+    : BYE_FIELD_DOUBLE_ELIM_WIRING;
 }
 
 function buildDoubleElimPowerOfTwo(
@@ -251,6 +370,8 @@ function buildDoubleElimPowerOfTwo(
 
   const ubMatchCounts = powerOfTwoElimRoundMatchCounts(capacity);
   const ubRounds = ubMatchCounts.length;
+  const grandFinalMode: GrandFinalMode = options?.grandFinalMode ?? DEFAULT_GRAND_FINAL_MODE;
+  const includeGrandFinal = grandFinalMode !== "none";
 
   const hasOpeningPlayIn = options?.openingPlayIn ?? false;
 
@@ -270,9 +391,15 @@ function buildDoubleElimPowerOfTwo(
     addRound(id, label, "upper", count, r === ubRounds - 1 ? () => "Upper Final" : undefined);
   }
 
-  addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
+  if (includeGrandFinal) {
+    addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
+  }
 
-  const { lbRoundCount, lbRoundIds, lbMatchCounts } = buildLowerBracketSchedule(ubRounds, capacity);
+  const wiring = doubleElimWiringForTeamCount(n);
+  const { lbRoundCount, lbRoundIds, lbMatchCounts } = wiring.buildLowerBracketSchedule(
+    ubRounds,
+    capacity,
+  );
 
   for (let r = 0; r < lbRoundCount; r++) {
     const id = lbRoundIds[r];
@@ -296,14 +423,22 @@ function buildDoubleElimPowerOfTwo(
     }
   }
 
-  link(matches, "ub-f-m0", "gf-m0", "teamA");
-  link(matches, "ub-f-m0", `${lbRoundIds[lbRoundCount - 1]}-m0`, "teamB", true);
+  const lbFinalId = `${lbRoundIds[lbRoundCount - 1]}-m0`;
 
-  wireUpperLosersToLower(matches, lbRoundIds, ubRoundIds, ubMatchCounts, n, roundMetas);
+  if (includeGrandFinal) {
+    link(matches, "ub-f-m0", "gf-m0", "teamA");
+    link(matches, "ub-f-m0", lbFinalId, "teamB", true);
+  } else {
+    link(matches, "ub-f-m0", lbFinalId, "teamB", true);
+  }
 
-  wireLowerBracketWinners(matches, lbRoundIds, lbMatchCounts);
+  wiring.wireUpperLosersToLower(matches, lbRoundIds, ubRoundIds, ubMatchCounts, n, roundMetas);
 
-  link(matches, `${lbRoundIds[lbRoundCount - 1]}-m0`, "gf-m0", "teamB");
+  wiring.wireLowerBracketWinners(matches, lbRoundIds, lbMatchCounts);
+
+  if (includeGrandFinal) {
+    link(matches, lbFinalId, "gf-m0", "teamB");
+  }
 
   const ubR1 = matches.filter((m) => m.roundId === "ub-r1");
   placeBracketRoundOne(ubR1, teamNames, n);
@@ -317,12 +452,14 @@ function buildDoubleElimPowerOfTwo(
 /** Minimal 4-team double elimination (upper R1 → upper F; lower R1 → lower F → GF). */
 function buildFourTeamDoubleElim(
   teamNames: string[],
-  options?: { hasPlayInLosersPool?: boolean; teamCount?: number },
+  options?: { hasPlayInLosersPool?: boolean; teamCount?: number; grandFinalMode?: GrandFinalMode },
 ): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
 } {
   const hasPlayInLosersPool = options?.hasPlayInLosersPool ?? false;
+  const grandFinalMode = options?.grandFinalMode ?? DEFAULT_GRAND_FINAL_MODE;
+  const includeGrandFinal = grandFinalMode !== "none";
   const matches: ManagedMatch[] = [];
   const roundMetas: BracketRoundMeta[] = [];
 
@@ -367,7 +504,9 @@ function buildFourTeamDoubleElim(
   addRound("lb-f", hasPlayInLosersPool ? "Lower — Reset" : "Lower — Final", "lower", 1, () =>
     hasPlayInLosersPool ? "Lower Reset" : "Lower Final",
   );
-  addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
+  if (includeGrandFinal) {
+    addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
+  }
 
   link(matches, "ub-r1-m0", "ub-f-m0", "teamA");
   link(matches, "ub-r1-m1", "ub-f-m0", "teamB");
@@ -384,9 +523,13 @@ function buildFourTeamDoubleElim(
     link(matches, "ub-r1-m1", "lb-r1-m0", "teamB", true);
     link(matches, "lb-r1-m0", "lb-f-m0", "teamA");
   }
-  link(matches, "ub-f-m0", "gf-m0", "teamA");
-  link(matches, "ub-f-m0", "lb-f-m0", "teamB", true);
-  link(matches, "lb-f-m0", "gf-m0", "teamB");
+  if (includeGrandFinal) {
+    link(matches, "ub-f-m0", "gf-m0", "teamA");
+    link(matches, "ub-f-m0", "lb-f-m0", "teamB", true);
+    link(matches, "lb-f-m0", "gf-m0", "teamB");
+  } else {
+    link(matches, "ub-f-m0", "lb-f-m0", "teamB", true);
+  }
 
   const ubR1 = matches.filter((m) => m.id.startsWith("ub-r1-"));
   const teamCount = options?.teamCount ?? teamNames.length;
@@ -414,7 +557,9 @@ export function buildDoubleElimMatches(
   }
 
   if (n === 4) {
-    return buildFourTeamDoubleElim(teamNames);
+    return buildFourTeamDoubleElim(teamNames, {
+      grandFinalMode: options?.grandFinalMode,
+    });
   }
 
   const capacity = bracketCapacity(n);

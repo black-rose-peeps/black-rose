@@ -33,7 +33,7 @@ import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
 import { OpeningPlayInGuide } from "@/features/tournaments/components/OpeningPlayInGuide";
 import { getLockedFormatRoundIds } from "./RoundFormatPanel";
-import { resolveGrandFinalChampion } from "@/features/admin/features/tournament-details/utils/grand-final";
+import { resolveGrandFinalChampion, type GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
 
 interface ManagedBracketViewProps {
   matches: ManagedMatch[];
@@ -41,6 +41,7 @@ interface ManagedBracketViewProps {
   roundFormats: Record<string, BestOfFormat>;
   teams: TournamentTeam[];
   isDoubleElim: boolean;
+  grandFinalMode?: GrandFinalMode;
   readOnly?: boolean;
   onFormatChange: (roundId: string, format: BestOfFormat) => void;
   onApplyRecommendedFormats?: () => void;
@@ -54,6 +55,7 @@ export function ManagedBracketView({
   roundFormats,
   teams,
   isDoubleElim,
+  grandFinalMode,
   readOnly = false,
   onFormatChange,
   onApplyRecommendedFormats,
@@ -72,7 +74,7 @@ export function ManagedBracketView({
   }
 
   const teamByName = new Map(teams.map((team) => [team.name, team]));
-  const championship = findChampionship(matches);
+  const championship = findChampionship(matches, grandFinalMode);
   const layoutMatches = managedToLayoutMatches(matches, roundMetas);
   const matchById = new Map(matches.map((match) => [match.id, match]));
   const slotHints = buildMatchSlotHints(matches, roundMetas);
@@ -343,7 +345,11 @@ export function ManagedBracketView({
             : ""}
           {showLowerGuide
             ? "Lower Round 1 pairs each play-in loser with an upper Round 2 loser — no immediate rematches among play-in losers."
-            : "Grand Final: upper-bracket winner vs lower-bracket winner. If the lower-bracket team wins, a bracket-reset match is added automatically."}
+            : grandFinalMode === "none"
+              ? "No Grand Final — the upper-bracket winner is crowned when they win the upper final."
+              : grandFinalMode === "one_match"
+                ? "Grand Final: one match between the upper- and lower-bracket winners decides the champion."
+                : "Grand Final: upper-bracket winner vs lower-bracket winner. If the lower-bracket team wins, a bracket-reset match is added automatically."}
         </p>
       </div>
     );
@@ -388,8 +394,9 @@ function toRoundColumns(roundMetas: BracketRoundMeta[]): BracketRoundColumn[] {
 
 function findChampionship(
   matches: ManagedMatch[],
+  grandFinalMode?: GrandFinalMode,
 ): { winner: string; variant: "grand" | "final" } | null {
-  const grand = resolveGrandFinalChampion(matches);
+  const grand = resolveGrandFinalChampion(matches, grandFinalMode);
   if (grand) return { winner: grand, variant: "grand" };
 
   const final = matches.find(

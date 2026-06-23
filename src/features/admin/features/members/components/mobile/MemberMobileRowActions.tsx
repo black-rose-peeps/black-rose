@@ -1,4 +1,4 @@
-import { Loader2, Pencil, RotateCcw, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import { Loader2, Pencil, RotateCcw, ShieldCheck, ShieldOff, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,9 +13,11 @@ interface MemberMobileRowActionsProps {
   member: AdminMember;
   updatingId: string | null;
   resettingId: string | null;
+  syncingMemberId: string | null;
   isDeleting: boolean;
   showUnpause: boolean;
   showRemoveStale: boolean;
+  onSyncMember: () => void;
   onUnpause: () => void;
   onRemoveStale: () => void;
   onVerify: () => void;
@@ -28,9 +30,11 @@ export function MemberMobileRowActions({
   member,
   updatingId,
   resettingId,
+  syncingMemberId,
   isDeleting,
   showUnpause,
   showRemoveStale,
+  onSyncMember,
   onUnpause,
   onRemoveStale,
   onVerify,
@@ -38,8 +42,9 @@ export function MemberMobileRowActions({
   onEdit,
   onDelete,
 }: MemberMobileRowActionsProps) {
-  const busy = updatingId !== null || resettingId !== null || isDeleting;
+  const busy = updatingId !== null || resettingId !== null || syncingMemberId !== null || isDeleting;
   const isResetting = resettingId === member.id;
+  const isSyncingMember = syncingMemberId === member.id;
 
   return (
     <DropdownMenu>
@@ -66,6 +71,16 @@ export function MemberMobileRowActions({
             Unverify
           </DropdownMenuItem>
         )}
+        {member.status === "Not Verified" && member.discordId ? (
+          <DropdownMenuItem disabled={busy} onClick={onSyncMember}>
+            {isSyncingMember ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Zap className="mr-2 h-4 w-4" />
+            )}
+            Sync Discord
+          </DropdownMenuItem>
+        ) : null}
         {showUnpause ? (
           <DropdownMenuItem disabled={busy} onClick={onUnpause}>
             {isResetting ? (

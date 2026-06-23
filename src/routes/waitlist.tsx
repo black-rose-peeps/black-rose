@@ -6,6 +6,7 @@ import { getSession, clearSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
   DISCORD_SERVER_INVITE,
+  DISCORD_FOR_BRIEFING_ROLE_LABEL,
   DISCORD_TOURNA_ROLES_CHANNEL_LABEL,
   DISCORD_TOURNA_ROLES_CHANNEL_URL,
   DISCORD_VERIFICATION_CHANNEL_URL,
@@ -13,8 +14,8 @@ import {
 } from "@/features/auth/constants";
 import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
 import { DiscordIcon } from "@/features/shared/components/DiscordIcon";
-import { isDiscordPhoneOrTablet } from "@/lib/device";
 import { StepNum } from "@/features/waitlist/components/StepNum";
+import { WaitlistStepDetails } from "@/features/waitlist/components/WaitlistStepDetails";
 import { WAITLIST_TEMPLATES } from "@/features/waitlist/constants";
 import brLogo from "@/assets/BR Text white.png";
 
@@ -100,16 +101,14 @@ function WaitlistPage() {
   }
 
   return (
-    // Full-screen, no scroll when templates are collapsed
+    // Full-screen waitlist layout
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground">
       {/* Subtle background */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(255,255,255,0.05),transparent)]" />
 
       {/* Centred content — fills screen vertically when collapsed */}
-      <div
-        className={`relative mx-auto flex w-full max-w-md flex-col px-6 ${showTemplates ? "py-16" : "my-auto py-8"}`}
-      >
+      <div className="relative mx-auto flex w-full max-w-md flex-col px-6 py-8 sm:py-12">
         {/* BR Text logo */}
         <div className="mb-8 flex justify-center">
           <img
@@ -149,9 +148,9 @@ function WaitlistPage() {
           <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
             <StepNum n="1" />
             <div className="min-w-0">
-              <p className="text-sm font-medium">Join our Discord</p>
+              <p className="text-sm font-medium">Join Discord</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                All operations happen here. You'll need to be in the server.
+                All verification happens on our Discord server.
               </p>
               <DiscordAppAnchor
                 discordUrl={DISCORD_SERVER_INVITE}
@@ -160,36 +159,24 @@ function WaitlistPage() {
                 <DiscordIcon className="h-3.5 w-3.5 shrink-0" />
                 Join Discord
               </DiscordAppAnchor>
-              {!isDiscordPhoneOrTablet() && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  No app?{" "}
-                  <a
-                    href={DISCORD_SERVER_INVITE}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-foreground underline-offset-2 hover:underline"
-                  >
-                    Open invite in browser
-                  </a>
-                </p>
-              )}
             </div>
           </div>
 
-          {/* Step 2 — with inline collapsible templates */}
+          {/* Step 2 */}
           <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
             <StepNum n="2" />
             <div className="min-w-0 w-full">
-              <p className="text-sm font-medium">Post your application</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                In{" "}
+              <p className="text-sm font-medium">
+                Post in{" "}
                 <DiscordAppAnchor
                   discordUrl={DISCORD_VERIFICATION_CHANNEL_URL}
                   className="cursor-pointer text-foreground underline-offset-2 hover:underline"
                 >
                   #{DISCORD_VERIFICATION_CHANNEL_LABEL}
                 </DiscordAppAnchor>
-                , copy the format for your game, fill it out, and post it.
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Copy a format, fill it out, and post your application.
               </p>
               <button
                 id={templatesToggleId}
@@ -199,10 +186,15 @@ function WaitlistPage() {
                 aria-controls={templatesPanelId}
                 className="mt-3 inline-flex h-11 items-center gap-2 border border-white/10 px-4 font-tech text-label-readable uppercase text-muted-foreground transition hover:border-white/25 hover:text-foreground"
               >
-                {showTemplates ? "Hide" : "View"} Application Formats
+                {showTemplates ? "Hide" : "View"} Formats
               </button>
+              <WaitlistStepDetails>
+                <p>
+                  Staff review applications in this channel. Everyone starts with the Guest role.
+                  Please wait while your application is being reviewed for additional roles.
+                </p>
+              </WaitlistStepDetails>
 
-              {/* Templates — inline under step 2 */}
               {showTemplates && (
                 <div
                   id={templatesPanelId}
@@ -248,25 +240,10 @@ function WaitlistPage() {
           <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
             <StepNum n="3" />
             <div className="min-w-0">
-              <p className="text-sm font-medium">Get your ROSE role</p>
+              <p className="text-sm font-medium">Get ROSE on Discord</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Once your application is approved, head to{" "}
-                <DiscordAppAnchor
-                  discordUrl={DISCORD_TOURNA_ROLES_CHANNEL_URL}
-                  className="cursor-pointer text-foreground underline-offset-2 hover:underline"
-                >
-                  #{DISCORD_TOURNA_ROLES_CHANNEL_LABEL}
-                </DiscordAppAnchor>{" "}
-                and react for the ROSE role.
-              </p>
-              <ul className="mt-2.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
-                <li>
-                  <span className="font-medium text-foreground">ROSE</span> — unlocks website access
-                  and member channels.
-                </li>
-              </ul>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Staff may still schedule a briefing later if needed.
+                When approved (with the {DISCORD_FOR_BRIEFING_ROLE_LABEL} role), react with ROSE in
+                #{DISCORD_TOURNA_ROLES_CHANNEL_LABEL}.
               </p>
               <DiscordAppAnchor
                 discordUrl={DISCORD_TOURNA_ROLES_CHANNEL_URL}
@@ -274,6 +251,16 @@ function WaitlistPage() {
               >
                 Open #{DISCORD_TOURNA_ROLES_CHANNEL_LABEL}
               </DiscordAppAnchor>
+              <WaitlistStepDetails>
+                <p>
+                  Approved members receive{" "}
+                  <span className="font-medium text-foreground">
+                    {DISCORD_FOR_BRIEFING_ROLE_LABEL}
+                  </span>
+                  , which unlocks #{DISCORD_TOURNA_ROLES_CHANNEL_LABEL}. React with ROSE there — it
+                  is required for full website access.
+                </p>
+              </WaitlistStepDetails>
             </div>
           </div>
 
@@ -281,10 +268,9 @@ function WaitlistPage() {
           <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
             <StepNum n="4" />
             <div className="min-w-0">
-              <p className="text-sm font-medium">Check your verification status</p>
+              <p className="text-sm font-medium">Verify here</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                After receiving the ROSE role, return here and click{" "}
-                <span className="font-medium text-foreground">Check verification status</span>.
+                We sync your ROSE role from Discord to unlock the site.
               </p>
               <button
                 type="button"
@@ -298,7 +284,7 @@ function WaitlistPage() {
                     Checking…
                   </>
                 ) : (
-                  "Check verification status"
+                  "Check status"
                 )}
               </button>
               {checkError && <p className="mt-2 text-xs text-destructive">{checkError}</p>}
