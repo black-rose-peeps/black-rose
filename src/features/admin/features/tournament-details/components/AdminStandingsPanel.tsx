@@ -131,6 +131,7 @@ export function AdminStandingsPanel({
       placements={placements}
       isLoading={isLoading}
       eyebrowSuffix="Admin Console"
+      isAdmin
     />
   );
 }

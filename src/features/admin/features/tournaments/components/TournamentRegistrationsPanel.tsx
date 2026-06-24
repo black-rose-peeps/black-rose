@@ -379,7 +379,7 @@ export function TournamentRegistrationsPanel({
         </div>
 
         {teams.length > 0 && (
-          <div className="border-t border-white/[0.06] px-4 sm:px-6">
+          <div className="px-4 sm:px-6">
             <AdminTablePagination
               page={page}
               totalPages={totalPages}

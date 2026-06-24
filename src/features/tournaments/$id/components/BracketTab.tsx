@@ -410,6 +410,7 @@ export function BracketTab({
           bracketFocus={bracketFocus}
           availableTopSizes={availableTopSizes}
           onBracketFocusChange={setBracketFocus}
+          hasLowerBracket={lowerRounds.length > 0}
         />
         {viewMode === "full" ? (
           renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)

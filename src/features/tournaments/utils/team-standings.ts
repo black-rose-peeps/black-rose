@@ -125,9 +125,13 @@ function collectTeams(registeredTeams: string[], matches: FlatMatch[]): string[]
   return [...teams];
 }
 
-function teamsInPendingMatches(matches: FlatMatch[]): Set<string> {
+function teamsInPendingMatches(
+  matches: FlatMatch[],
+  hiddenMatchIds: Set<string>,
+): Set<string> {
   const pending = new Set<string>();
   for (const match of matches) {
+    if (hiddenMatchIds.has(match.id)) continue;
     if (match.winner) continue;
     if (match.teamA) pending.add(match.teamA);
     if (match.teamB) pending.add(match.teamB);
@@ -243,7 +247,7 @@ function computeEliminationStandings(
 ): EliminationStandingEntry[] {
   const hiddenMatchIds = options?.hiddenMatchIds ?? new Set<string>();
   const teams = collectTeams(registeredTeams, matches);
-  const pendingTeams = teamsInPendingMatches(matches);
+  const pendingTeams = teamsInPendingMatches(matches, hiddenMatchIds);
   const placementByTeam = new Map(
     (options?.placements ?? []).map((placement) => [placement.team, placement]),
   );

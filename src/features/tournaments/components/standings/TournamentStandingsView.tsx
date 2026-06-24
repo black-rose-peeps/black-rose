@@ -14,6 +14,7 @@ interface TournamentStandingsViewProps {
   placements?: TournamentPlacement[];
   isLoading?: boolean;
   eyebrowSuffix?: string;
+  isAdmin?: boolean;
 }
 
 export function TournamentStandingsView({
@@ -25,6 +26,7 @@ export function TournamentStandingsView({
   placements,
   isLoading = false,
   eyebrowSuffix = "Black Rose Arena",
+  isAdmin = false,
 }: TournamentStandingsViewProps) {
   const snapshot = useMemo(
     () =>
@@ -42,7 +44,6 @@ export function TournamentStandingsView({
   }
 
   if (!snapshot.hasBracketData || !snapshot.eliminationStandings) {
-    const isAdmin = eyebrowSuffix === "Admin Console";
     return (
       <StandingsEmptyState
         eyebrow={`${format} · ${eyebrowSuffix}`}

@@ -4,7 +4,10 @@ import { formatRegistrationDateTime } from "@/features/admin/utils/registration-
 const STATUS_SORT = ["Approved", "Pending", "Previously Competed", "Rejected"] as const;
 
 function csvCell(value: string | number | null | undefined): string {
-  const text = value == null ? "" : String(value);
+  let text = value == null ? "" : String(value);
+  if (/^[=+\-@]/.test(text)) {
+    text = `'${text}`;
+  }
   if (/[",\n\r]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }

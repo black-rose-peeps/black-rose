@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Crown, Minus, Plus, Shield } from "lucide-react";
 import { ChampionBanner } from "./ChampionBanner";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,14 @@ export function ManagedBracketView({
     () => getAvailableTopBracketSizes(teams.length),
     [teams.length],
   );
+
+  useEffect(() => {
+    setBracketFocus((current) => {
+      if (current === "all") return current;
+      if (availableTopSizes.includes(current)) return current;
+      return "all";
+    });
+  }, [availableTopSizes]);
 
   if (roundMetas.length === 0) {
     return (
@@ -443,6 +451,7 @@ export function ManagedBracketView({
           bracketFocus={bracketFocus}
           availableTopSizes={availableTopSizes}
           onBracketFocusChange={setBracketFocus}
+          hasLowerBracket={lowerRounds.length > 0}
         />
         {viewMode === "full" ? (
           renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)

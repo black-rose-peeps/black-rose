@@ -38,7 +38,10 @@ export function EliminationStandingsTable({
 
   const stats = useMemo(() => {
     const active = standings.filter(
-      (entry) => entry.status === "active" || entry.status === "champion",
+      (entry) =>
+        entry.status === "active" ||
+        entry.status === "champion" ||
+        entry.status === "advanced",
     ).length;
     const eliminated = standings.filter((entry) => entry.status === "eliminated").length;
     return [

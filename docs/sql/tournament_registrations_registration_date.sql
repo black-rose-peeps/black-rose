@@ -28,5 +28,9 @@ alter table public.tournament_registrations
 alter table public.tournament_registrations
   alter column registration_date set default now();
 
+update public.tournament_registrations
+set registration_date = now()
+where registration_date is null;
+
 alter table public.tournament_registrations
   alter column registration_date set not null;

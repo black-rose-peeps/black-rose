@@ -1,6 +1,5 @@
 import {
   bracketCapacity,
-  byeCount,
   isEvenBracketFieldSize,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import {
@@ -58,9 +57,7 @@ export function computeBracketSliceStartIndices(
   }
 
   const ratio = capacity / topN;
-  const baseSkip = Math.log2(ratio);
-  const extraSkip = byeCount(teamCount) > 0 ? 1 : 0;
-  const upperStartIndex = baseSkip + extraSkip;
+  const upperStartIndex = Math.log2(ratio);
   const lowerStartIndex = Math.max(0, 2 * upperStartIndex - 3);
 
   return { upperStartIndex, lowerStartIndex };

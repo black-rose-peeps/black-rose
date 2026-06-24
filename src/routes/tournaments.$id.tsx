@@ -326,6 +326,12 @@ function TournamentDetailPage() {
 
   const showStandingsTab = supportsEliminationStandings(tournament.format);
 
+  useEffect(() => {
+    if (!showStandingsTab && activeTab === "standings") {
+      setActiveTab("overview");
+    }
+  }, [showStandingsTab, activeTab]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />

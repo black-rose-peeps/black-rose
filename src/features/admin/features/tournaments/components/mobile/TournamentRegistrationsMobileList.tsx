@@ -59,7 +59,11 @@ export function TournamentRegistrationsMobileList({
                 </div>
                 {soloEvent ? (
                   <p className="mt-1 text-sm text-white/45">
-                    {row.soloDiscord ? `@${row.soloDiscord}` : "Member registration"}
+                    {row.soloDiscord
+                      ? row.soloDiscord.startsWith("@")
+                        ? row.soloDiscord
+                        : `@${row.soloDiscord}`
+                      : "Member registration"}
                   </p>
                 ) : (
                   <p className="mt-1 text-sm text-white/45">
@@ -103,17 +107,15 @@ export function TournamentRegistrationsMobileList({
           </li>
         ))}
       </ul>
-      <div className="border-t border-white/[0.06] px-4">
-        <AdminTablePagination
+      <AdminTablePagination
           page={page}
           totalPages={totalPages}
           total={total}
           rangeStart={rangeStart}
           rangeEnd={rangeEnd}
-          onPageChange={onPageChange}
-          className="px-0"
-        />
-      </div>
+        onPageChange={onPageChange}
+        className="px-0"
+      />
     </div>
   );
 }

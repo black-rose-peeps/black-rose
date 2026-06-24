@@ -530,6 +530,7 @@ function buildFourTeamDoubleElim(
   const ubR1 = matches.filter((m) => m.id.startsWith("ub-r1-"));
   const teamCount = options?.teamCount ?? teamNames.length;
   placeStandardFirstRound(ubR1, teamNames, teamCount, 4);
+  applyOpeningRoundMatchLabels(matches, roundMetas, teamCount);
   applyGlobalMatchLabels(matches, roundMetas, "double");
 
   return { matches, roundMetas };

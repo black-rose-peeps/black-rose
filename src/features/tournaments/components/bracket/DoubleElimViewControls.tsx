@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { BracketFocusSize } from "@/features/tournaments/utils/bracket-top-slice";
@@ -14,6 +15,7 @@ interface DoubleElimViewControlsProps {
   bracketFocus?: BracketFocusSize;
   availableTopSizes?: number[];
   onBracketFocusChange?: (focus: BracketFocusSize) => void;
+  hasLowerBracket?: boolean;
   className?: string;
 }
 
@@ -25,9 +27,17 @@ export function DoubleElimViewControls({
   bracketFocus = "all",
   availableTopSizes = [],
   onBracketFocusChange,
+  hasLowerBracket = true,
   className,
 }: DoubleElimViewControlsProps) {
   const showFocusControls = availableTopSizes.length > 0 && onBracketFocusChange;
+  const showLowerToggle = hasLowerBracket;
+
+  useEffect(() => {
+    if (!showLowerToggle && splitSide === "lower") {
+      onSplitSideChange("upper");
+    }
+  }, [showLowerToggle, splitSide, onSplitSideChange]);
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -52,7 +62,7 @@ export function DoubleElimViewControls({
           </ToggleGroupItem>
         </ToggleGroup>
 
-        {viewMode === "split" && (
+        {viewMode === "split" && showLowerToggle && (
           <ToggleGroup
             type="single"
             value={splitSide}
