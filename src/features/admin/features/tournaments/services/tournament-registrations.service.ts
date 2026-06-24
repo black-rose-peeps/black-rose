@@ -438,23 +438,35 @@ function filterRegistrationsNeedingReview(
 
 /** Dashboard slice — registration rows only, no player roster payload. */
 export async function fetchPendingRegistrationsForDashboard(limit = 20): Promise<MockTeam[]> {
-  const { data: regs, error: regsErr } = await supabase
-    .from("tournament_registrations")
-    .select(REGISTRATION_READ_COLUMNS)
-    .in("status", ["Pending", "Previously Competed"])
-    .order("registration_date", { ascending: false })
-    .limit(Math.max(limit * 3, limit));
+  const batchSize = Math.max(limit, 20);
+  const filtered: Record<string, unknown>[] = [];
+  let offset = 0;
 
-  if (regsErr) throw new Error(regsErr.message);
-  if (!regs?.length) return [];
+  while (filtered.length < limit) {
+    const { data: regs, error: regsErr } = await supabase
+      .from("tournament_registrations")
+      .select(REGISTRATION_READ_COLUMNS)
+      .in("status", ["Pending", "Previously Competed"])
+      .order("registration_date", { ascending: false })
+      .range(offset, offset + batchSize - 1);
 
-  const tournamentStatusById = await loadTournamentStatusById([
-    ...new Set(regs.map((reg) => reg.tournament_id as string)),
-  ]);
+    if (regsErr) throw new Error(regsErr.message);
+    if (!regs?.length) break;
 
-  return filterRegistrationsNeedingReview(regs, tournamentStatusById)
-    .slice(0, limit)
-    .map((reg) => rowToMockTeam(reg, []));
+    const tournamentStatusById = await loadTournamentStatusById([
+      ...new Set(regs.map((reg) => reg.tournament_id as string)),
+    ]);
+
+    for (const reg of filterRegistrationsNeedingReview(regs, tournamentStatusById)) {
+      filtered.push(reg);
+      if (filtered.length >= limit) break;
+    }
+
+    if (regs.length < batchSize) break;
+    offset += batchSize;
+  }
+
+  return filtered.slice(0, limit).map((reg) => rowToMockTeam(reg, []));
 }
 
 export async function countPendingRegistrationsNeedingReview(): Promise<number> {

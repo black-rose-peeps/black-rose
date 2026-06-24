@@ -70,6 +70,8 @@ export const refreshVerificationFromDiscord = createServerFn({ method: "POST" })
       const workerResult = await triggerWorkerMemberSync(member.discordId, {
         clearSyncState: true,
       });
+      const { invalidateMemberAuthCache } = await import("../server/member-auth.server");
+      invalidateMemberAuthCache(data.memberId);
       const refreshed = await findMemberById(data.memberId);
       const status = refreshed?.status ?? workerResult.status;
       return {

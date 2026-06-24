@@ -3,7 +3,7 @@ export const MEMBER_READ_COLUMNS =
 
 /** Slimmer read for background access / verification polling. */
 export const MEMBER_ACCESS_COLUMNS =
-  "id, username, discord_username, discord_id, status, created_at";
+  "id, username, discord_username, discord_id, status, registered_at, created_at";
 
 export const PROFILE_READ_COLUMNS =
   "id, member_id, slug, display_name, headline, bio, main_game, main_role, region, valorant_game_name, valorant_tagline, avatar_url, banner_url, is_public, created_at, updated_at";

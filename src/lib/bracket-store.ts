@@ -72,7 +72,6 @@ function _normalizePayload(payload: PersistedBracketPayload): PersistedBracketPa
 
 function _resolveGrandFinalMode(payload: PersistedBracketPayload): GrandFinalMode | null {
   const roundIds = payload.rounds.map((round) => round.id).filter((id): id is string => !!id);
-  if (!roundIds.includes("gf")) return null;
   return resolveStoredGrandFinalMode(roundIds, payload.admin?.grandFinalMode);
 }
 

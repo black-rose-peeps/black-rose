@@ -63,7 +63,7 @@ function rowToMemberAccessRecord(row: Record<string, unknown>): MemberAccessReco
     discordUsername: row.discord_username as string,
     discordId: (row.discord_id as string | null) ?? null,
     status: (row.status as MemberVerificationStatus) ?? "Not Verified",
-    registeredAt: (row.created_at as string) ?? (row.registered_at as string),
+    registeredAt: (row.registered_at as string) ?? (row.created_at as string),
   };
 }
 

@@ -1,5 +1,5 @@
 /**
- * Double-elim wiring for large-bye 64-slot fields (34–62 teams).
+ * Double-elim wiring for fields with capacity ≥ 64 slots (34+ teams below full capacity).
  * Play-in upper losers pair with their upper-R2 path in LR1; remaining upper-R2
  * losers split between LR2 singles (with LR1 winners) and direct pairs.
  */
@@ -93,7 +93,7 @@ function buildCompressedPreliminaryRouting(registeredCount: number): CompressedP
     .sort((a, b) => b - a);
 
   const directCount = lr2DirectPairs.length;
-  const directSlotIndices = computeLr2DirectSlotIndices(lr2SingleUpperOrdered.length, directCount);
+  const directSlotIndices = computeLr2DirectSlotIndices(openingPlayable, directCount);
   const directSlotSet = new Set(directSlotIndices);
   const lr2SingleSlotIndices: number[] = [];
   const totalLr2 = openingPlayable + directCount;

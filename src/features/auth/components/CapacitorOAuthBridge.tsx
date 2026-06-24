@@ -25,9 +25,11 @@ export function CapacitorOAuthBridge() {
   useEffect(() => {
     if (!isCapacitorNative()) return;
 
+    let active = true;
     let removeListener: (() => void) | undefined;
 
     const handleUrlOpen = (event: URLOpenListenerEvent) => {
+      if (!active) return;
       const search = parseNativeOAuthCallback(event.url);
       if (!search) return;
 
@@ -39,16 +41,21 @@ export function CapacitorOAuthBridge() {
     };
 
     void App.addListener("appUrlOpen", handleUrlOpen).then((handle) => {
+      if (!active) {
+        void handle.remove();
+        return;
+      }
       removeListener = () => void handle.remove();
     });
 
     void App.getLaunchUrl().then((result) => {
-      if (result?.url) {
+      if (active && result?.url) {
         handleUrlOpen({ url: result.url });
       }
     });
 
     return () => {
+      active = false;
       removeListener?.();
     };
   }, [navigate]);

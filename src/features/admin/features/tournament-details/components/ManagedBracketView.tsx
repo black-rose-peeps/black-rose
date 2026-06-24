@@ -27,7 +27,13 @@ import {
 import { sortBracketRoundsByFlow } from "@/features/tournaments/utils/bracket-round-order";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import { winsRequired } from "../utils/managed-bracket";
-import { bracketCapacity, byeCount, isEvenBracketFieldSize, openingPlayableMatchCount, usesCompressedPreliminaryField } from "../utils/bracket-field";
+import {
+  bracketCapacity,
+  byeCount,
+  isEvenBracketFieldSize,
+  openingPlayableMatchCount,
+  usesCompressedPreliminaryField,
+} from "../utils/bracket-field";
 import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket-bye-markers";
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";

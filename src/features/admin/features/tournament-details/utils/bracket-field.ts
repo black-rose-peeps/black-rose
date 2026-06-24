@@ -36,7 +36,7 @@ export function usesFullFieldRoundOne(teamCount: number): boolean {
 }
 
 /**
- * 64-slot fields with more than 32 teams (e.g. 34–62 on a 64 capacity).
+ * Fields with capacity ≥ 64 slots (34+ teams below full capacity).
  * Uses Challonge-style compressed preliminary lower-bracket routing.
  * Smaller brackets (≤32 on a 32 slot) keep the existing bye-field wiring.
  */

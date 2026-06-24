@@ -10,7 +10,13 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
-import { bracketCapacity, byeCount, isPowerOfTwo, openingPlayableMatchCount, usesCompressedPreliminaryField } from "../utils/bracket-field";
+import {
+  bracketCapacity,
+  byeCount,
+  isPowerOfTwo,
+  openingPlayableMatchCount,
+  usesCompressedPreliminaryField,
+} from "../utils/bracket-field";
 import {
   roundOnePairingsForSeedingMode,
   roundOneSeedingPairings,
@@ -686,7 +692,7 @@ export function SeedingPanel({
 
       {showMatchPreview && !useProtectedSeedSection && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {standardMatches.map((match) => (
+          {matchesForPreview.map((match) => (
             <SeedingMatchCard
               key={match.key}
               matchIndex={match.matchIndex}

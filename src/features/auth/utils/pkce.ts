@@ -1,8 +1,7 @@
 /** OAuth2 PKCE (RFC 7636) helpers for Discord mobile native sign-in. */
 
 const PKCE_VERIFIER_LENGTH = 64;
-const PKCE_CHARSET =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+const PKCE_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
 function createPkceVerifier(): string {
   const randomValues = crypto.getRandomValues(new Uint8Array(PKCE_VERIFIER_LENGTH));

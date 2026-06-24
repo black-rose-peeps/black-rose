@@ -154,6 +154,10 @@ function persistOAuthRequest(state: string, redirectUri: string, codeVerifier?: 
   if (codeVerifier) {
     try {
       localStorage.setItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY, codeVerifier);
+    } catch {
+      // Ignore — sessionStorage may still work.
+    }
+    try {
       sessionStorage.setItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY, codeVerifier);
     } catch {
       // Ignore
@@ -282,7 +286,9 @@ export function shouldRetryDiscordWithConsent(errorCode: string | undefined): bo
 /** Platform-aware OAuth entry — native PKCE in Capacitor, browser on mobile web, app on desktop. */
 export function startDiscordOAuth(options?: PrepareDiscordOAuthOptions): void {
   if (isCapacitorNative()) {
-    void startDiscordOAuthNative(options);
+    startDiscordOAuthNative(options).catch((err) => {
+      console.error("[auth] Native Discord OAuth failed:", err);
+    });
     return;
   }
   if (isDiscordPhoneOrTablet()) {
@@ -295,7 +301,9 @@ export function startDiscordOAuth(options?: PrepareDiscordOAuthOptions): void {
 /** Retry OAuth after consent_required — same platform rules as startDiscordOAuth. */
 export function retryDiscordOAuthAfterConsentRequired(): void {
   if (isCapacitorNative()) {
-    void startDiscordOAuthNative({ requireConsent: true });
+    startDiscordOAuthNative({ requireConsent: true }).catch((err) => {
+      console.error("[auth] Native Discord OAuth retry failed:", err);
+    });
     return;
   }
   startDiscordOAuth({ requireConsent: true });
