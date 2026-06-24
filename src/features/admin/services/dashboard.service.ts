@@ -1,8 +1,17 @@
-import { registrationNeedsReview } from "@/features/admin/features/participants/constants/registration-status";
-import { fetchMembers } from "@/features/admin/features/members/services/members.service";
-import { fetchAllRegistrations } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
-import { fetchTournaments } from "@/features/admin/features/tournaments/services/tournaments.service";
-import { fetchTeams } from "@/features/admin/features/teams/services/teams.service";
+import {
+  countMembers,
+  countVerifiedMembers,
+} from "@/features/admin/features/members/services/members.service";
+import {
+  countPendingRegistrationsNeedingReview,
+  fetchPendingRegistrationsForDashboard,
+} from "@/features/admin/features/tournaments/services/tournament-registrations.service";
+import {
+  fetchActiveTournamentsForDashboard,
+} from "@/features/admin/features/tournaments/services/tournaments.service";
+import { countTeams } from "@/features/admin/features/teams/services/teams.service";
+import type { MockTournament } from "@/lib/mock-data";
+import type { MockTeam } from "@/lib/mock-data";
 
 export interface AdminDashboardStats {
   totalMembers: number;
@@ -14,36 +23,36 @@ export interface AdminDashboardStats {
 
 export interface AdminDashboardData {
   stats: AdminDashboardStats;
-  activeTournaments: Awaited<ReturnType<typeof fetchTournaments>>;
-  pendingRegistrations: Awaited<ReturnType<typeof fetchAllRegistrations>>;
+  activeTournaments: MockTournament[];
+  pendingRegistrations: MockTeam[];
 }
 
 export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
-  const [members, teams, tournaments, registrations] = await Promise.all([
-    fetchMembers(),
-    fetchTeams(),
-    fetchTournaments(),
-    fetchAllRegistrations(),
+  const [
+    totalMembers,
+    verifiedMembers,
+    totalTeams,
+    pendingRegistrations,
+    activeTournamentRows,
+    pendingRegistrationRows,
+  ] = await Promise.all([
+    countMembers(),
+    countVerifiedMembers(),
+    countTeams(),
+    countPendingRegistrationsNeedingReview(),
+    fetchActiveTournamentsForDashboard(),
+    fetchPendingRegistrationsForDashboard(20),
   ]);
-
-  const activeTournaments = tournaments.filter(
-    (t) => t.status === "Live" || t.status === "Registration Open",
-  );
-  const tournamentStatusById = new Map(tournaments.map((t) => [t.id, t.status]));
-  const pendingRegistrations = registrations.filter((r) =>
-    registrationNeedsReview(r.status, tournamentStatusById.get(r.tournamentId) ?? "Draft"),
-  );
-  const verifiedMembers = members.filter((m) => m.status === "Verified").length;
 
   return {
     stats: {
-      totalMembers: members.length,
-      totalTeams: teams.length,
-      activeTournaments: activeTournaments.length,
-      pendingRegistrations: pendingRegistrations.length,
+      totalMembers,
+      totalTeams,
+      activeTournaments: activeTournamentRows.length,
+      pendingRegistrations,
       verifiedMembers,
     },
-    activeTournaments,
-    pendingRegistrations,
+    activeTournaments: activeTournamentRows,
+    pendingRegistrations: pendingRegistrationRows,
   };
 }

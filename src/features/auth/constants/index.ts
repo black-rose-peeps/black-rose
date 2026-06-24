@@ -36,6 +36,9 @@ export const BLACK_ROSE_STAFF_CONTACT_SUMMARY =
 export const BLACK_ROSE_STAFF_CONTACT_DETAIL =
   "All tournament questions, disputes, and staff support happen on the Black Rose official Discord server. Reach admins or Valorant Operations there.";
 
+/** OAuth2 PKCE code_verifier — required for mobile native deep-link callback. */
+export const DISCORD_OAUTH_PKCE_VERIFIER_KEY = "br_discord_oauth_pkce_verifier";
+
 /** OAuth2 CSRF state — stored in localStorage and sessionStorage for cross-tab OAuth. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";
 

@@ -17,6 +17,7 @@ import {
 } from "@/features/auth/services/discord";
 import { DiscordAppLinkDialog } from "@/features/shared/components/DiscordAppLinkDialog";
 import { useDiscordAppLink } from "@/features/shared/hooks/useDiscordAppLink";
+import { isCapacitorNative } from "@/lib/capacitor";
 import { isDiscordPhoneOrTablet } from "@/lib/device";
 import { openDiscordAppFromUserGesture } from "@/lib/discord-url";
 
@@ -48,6 +49,7 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [lanRedirectWarning, setLanRedirectWarning] = useState<string | null>(null);
   const isMobileLogin = isDiscordPhoneOrTablet();
+  const isNativeApp = isCapacitorNative();
   const {
     pending: discordLinkPending,
     requestDiscordAppLink,
@@ -99,6 +101,11 @@ function LoginPage() {
       return;
     }
     try {
+      if (isNativeApp) {
+        void startDiscordOAuth();
+        return;
+      }
+
       if (isMobileLogin) {
         startDiscordOAuth();
         return;
@@ -164,12 +171,16 @@ function LoginPage() {
 
         <div className="flex flex-col gap-4">
           <DiscordButton onClick={handleDiscordAuth} label="Continue with Discord" />
-          {isMobileLogin && (
+          {isNativeApp ? (
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              On mobile, Discord sign-in opens in your browser. Make sure you&apos;re logged into
-              the Discord account you want to use there.
+              Opens the Discord app to sign in with your account, then returns to Black Rose.
             </p>
-          )}
+          ) : isMobileLogin ? (
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
+              On mobile web, Discord sign-in opens in your browser. Make sure you&apos;re logged
+              into the Discord account you want to use there.
+            </p>
+          ) : null}
           {lanRedirectWarning && (
             <p className="text-center text-xs leading-relaxed text-amber-200/80">
               {lanRedirectWarning}
@@ -191,7 +202,7 @@ function LoginPage() {
         </p>
       </AuthShell>
 
-      {!isMobileLogin && (
+      {!isMobileLogin && !isNativeApp && (
         <DiscordAppLinkDialog
           pending={discordLinkPending}
           onConfirm={confirmDiscordAppLink}

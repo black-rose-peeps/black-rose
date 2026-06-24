@@ -6,7 +6,7 @@ import { hasFullMemberAccess } from "../utils/routes";
 import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
 import { useMemberSession } from "./useMemberSession";
 
-const FALLBACK_POLL_INTERVAL_MS = 120_000;
+const FALLBACK_POLL_INTERVAL_MS = 300_000;
 
 /** Redirect verified members to the waitlist if the Discord bot revokes their ROSE role. */
 export function useMemberAccessSync() {

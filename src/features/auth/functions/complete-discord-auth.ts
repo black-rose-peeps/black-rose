@@ -1,11 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { isAllowedDiscordRedirectUri } from "@/lib/app-url";
+import { isDiscordNativeRedirectUri } from "@/lib/discord-mobile-oauth";
 import type { AppUser } from "../types";
 import { buildDiscordAvatarUrl, memberStatusToUserRole } from "../utils/discord";
 
 export interface CompleteDiscordAuthInput {
   code: string;
   redirectUri: string;
+  /** Required when redirectUri is a Discord mobile deep link (`discord-{CLIENT_ID}:/authorize/callback`). */
+  codeVerifier?: string;
 }
 
 export interface CompleteDiscordAuthResult {
@@ -21,7 +24,11 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
     if (!isAllowedDiscordRedirectUri(redirectUri)) {
       throw new Error("Invalid Discord redirect URI.");
     }
-    return { code: data.code.trim(), redirectUri };
+    const codeVerifier = data.codeVerifier?.trim() || undefined;
+    if (isDiscordNativeRedirectUri(redirectUri) && !codeVerifier) {
+      throw new Error("Missing PKCE code verifier for mobile Discord sign-in.");
+    }
+    return { code: data.code.trim(), redirectUri, codeVerifier };
   })
   .handler(async ({ data }): Promise<CompleteDiscordAuthResult> => {
     const { exchangeDiscordCodeForToken, fetchDiscordUser, fetchDiscordConnections } =
@@ -29,7 +36,9 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
     const { upsertMemberFromDiscord } = await import("../server/member-auth.server");
     const { ensureMemberProfile } = await import("@/features/member/server/profile.server");
 
-    const accessToken = await exchangeDiscordCodeForToken(data.code, data.redirectUri);
+    const accessToken = await exchangeDiscordCodeForToken(data.code, data.redirectUri, {
+      codeVerifier: data.codeVerifier,
+    });
     const discordUser = await fetchDiscordUser(accessToken);
 
     const { resolveHasRoseRoleAtLogin } = await import("../server/discord-guild.server");

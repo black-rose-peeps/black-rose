@@ -14,6 +14,7 @@ import {
   isRegistrationDeadlineExtended,
   isRegistrationDeadlinePassed,
   isTournamentConcluded,
+  resolveTournamentStatus,
   withResolvedTournamentStatus,
 } from "@/features/tournaments/utils/tournament-status";
 import type { PrizeTier } from "@/features/tournaments/types";
@@ -157,6 +158,58 @@ async function hydrateTournament(tournament: MockTournament): Promise<MockTourna
 
 const TOURNAMENT_LIST_COLUMNS =
   "id, name, game, status, prize_pool, prize_breakdown, start_date, registration_deadline, teams_registered, team_cap, format, region, participation_type, wwm_mode";
+
+const TOURNAMENT_NOTIFICATION_COLUMNS = "id, name, status";
+
+export async function fetchTournamentsLite(): Promise<MockTournament[]> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select(TOURNAMENT_LIST_COLUMNS)
+    .order("start_date", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => withResolvedTournamentStatus(rowToTournament(row)));
+}
+
+/** Minimal tournament rows for notification sync — skips per-row hydrate/reconcile. */
+export async function fetchTournamentsForNotifications(): Promise<
+  Pick<MockTournament, "id" | "name" | "status">[]
+> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select(TOURNAMENT_NOTIFICATION_COLUMNS)
+    .order("start_date", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    status: row.status as MockTournament["status"],
+  }));
+}
+
+function isActiveDashboardTournament(tournament: MockTournament): boolean {
+  const status = resolveTournamentStatus(tournament);
+  return status === "Live" || status === "Registration Open";
+}
+
+export async function fetchActiveTournamentsForDashboard(): Promise<MockTournament[]> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select(TOURNAMENT_LIST_COLUMNS)
+    .in("status", ["Live", "Registration Open"])
+    .order("start_date", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .map((row) => withResolvedTournamentStatus(rowToTournament(row)))
+    .filter(isActiveDashboardTournament);
+}
+
+export async function countActiveTournaments(): Promise<number> {
+  const tournaments = await fetchActiveTournamentsForDashboard();
+  return tournaments.length;
+}
 
 export async function fetchTournaments(): Promise<MockTournament[]> {
   const { data, error } = await supabase

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowDown, Crown, Shield, Swords, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
 import { BracketSectionHeader } from "./BracketSectionHeader";
 
 export interface GrandFinalStageMatch {
@@ -15,6 +16,9 @@ export interface GrandFinalStageMatch {
 interface GrandFinalStageProps {
   primaryMatch: GrandFinalStageMatch;
   resetMatch?: GrandFinalStageMatch | null;
+  /** When false (single grand final), hide bracket-reset copy and deciding match UI. */
+  allowsBracketReset?: boolean;
+  grandFinalMode?: GrandFinalMode;
   formatLabel?: string;
   formatControl?: ReactNode;
   renderMatch: (match: GrandFinalStageMatch, variant: "primary" | "reset") => ReactNode;
@@ -65,15 +69,28 @@ function PathBadge({
 export function GrandFinalStage({
   primaryMatch,
   resetMatch,
+  allowsBracketReset,
+  grandFinalMode,
   formatLabel,
   formatControl,
   renderMatch,
   className,
 }: GrandFinalStageProps) {
+  const bracketResetEnabled =
+    allowsBracketReset ??
+    (grandFinalMode === "one_match" || grandFinalMode === "none"
+      ? false
+      : grandFinalMode === "two_matches" || grandFinalMode == null);
   const primaryDecided = primaryMatch.confirmed && !!primaryMatch.winner;
   const lowerWonPrimary =
     primaryDecided && !!primaryMatch.teamB && primaryMatch.winner === primaryMatch.teamB;
-  const showReset = !!resetMatch || lowerWonPrimary;
+  const showReset = bracketResetEnabled && (!!resetMatch || lowerWonPrimary);
+
+  const stageSubtitle = !bracketResetEnabled
+    ? "Single grand final — winner takes the title"
+    : "Upper bracket advantage · Lower bracket must win twice";
+
+  const primaryMatchLabel = bracketResetEnabled ? "Grand Final 1" : "Grand Final";
 
   return (
     <section className={cn("space-y-5", className)}>
@@ -91,7 +108,7 @@ export function GrandFinalStage({
                   Championship Stage
                 </p>
                 <p className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Upper bracket advantage · Lower bracket must win twice
+                  {stageSubtitle}
                 </p>
               </div>
             </div>
@@ -121,7 +138,7 @@ export function GrandFinalStage({
                 VS
               </span>
               <span className="font-tech text-[9px] uppercase tracking-wider text-muted-foreground">
-                Grand Final 1
+                {primaryMatchLabel}
               </span>
             </div>
             <PathBadge

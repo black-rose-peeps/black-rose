@@ -27,7 +27,13 @@ import {
 import { sortBracketRoundsByFlow } from "@/features/tournaments/utils/bracket-round-order";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import { winsRequired } from "../utils/managed-bracket";
-import { bracketCapacity, byeCount, isEvenBracketFieldSize } from "../utils/bracket-field";
+import {
+  bracketCapacity,
+  byeCount,
+  isEvenBracketFieldSize,
+  openingPlayableMatchCount,
+  usesCompressedPreliminaryField,
+} from "../utils/bracket-field";
 import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket-bye-markers";
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
@@ -214,6 +220,11 @@ export function ManagedBracketView({
             teamCount={teams.length}
             variant="bye"
             bracketCapacity={elimCapacity}
+            openingMatchCount={
+              usesCompressedPreliminaryField(teams.length)
+                ? openingPlayableMatchCount(teams.length)
+                : undefined
+            }
           />
         )}
         {columns.length > 0 && (
@@ -265,6 +276,7 @@ export function ManagedBracketView({
               <GrandFinalStage
                 primaryMatch={primaryMatch}
                 resetMatch={resetMatch}
+                grandFinalMode={grandFinalMode}
                 formatLabel={readOnly ? primaryFormat : undefined}
                 formatControl={
                   !readOnly ? (

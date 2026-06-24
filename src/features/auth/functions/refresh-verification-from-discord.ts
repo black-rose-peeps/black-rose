@@ -67,7 +67,11 @@ export const refreshVerificationFromDiscord = createServerFn({ method: "POST" })
 
     // Fallback when Vercel has no bot token but the sync worker is configured.
     if (isDiscordWorkerSyncConfigured()) {
-      const workerResult = await triggerWorkerMemberSync(member.discordId);
+      const workerResult = await triggerWorkerMemberSync(member.discordId, {
+        clearSyncState: true,
+      });
+      const { invalidateMemberAuthCache } = await import("../server/member-auth.server");
+      invalidateMemberAuthCache(data.memberId);
       const refreshed = await findMemberById(data.memberId);
       const status = refreshed?.status ?? workerResult.status;
       return {

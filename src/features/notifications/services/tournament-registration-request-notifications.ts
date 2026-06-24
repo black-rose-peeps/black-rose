@@ -1,11 +1,17 @@
-import { fetchTournaments } from "@/features/admin/features/tournaments/services/tournaments.service";
 import { fetchTeamById } from "@/features/admin/features/teams/services/teams.service";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
+import { fetchTournamentsForNotificationsCached } from "@/features/member/queries/member-data-queries";
+import type { MockTournament } from "@/lib/mock-data";
 import {
   fetchPendingRegistrationRequestsForCaptain,
   type TournamentRegistrationRequest,
 } from "@/features/tournaments/services/tournament-registration-requests.service";
-import { getNotifications, isNotificationRead, mergeRegistrationRequestNotifications, notifyListeners } from "../store";
+import {
+  getNotifications,
+  isNotificationRead,
+  mergeRegistrationRequestNotifications,
+  notifyListeners,
+} from "../store";
 import type { AppNotification } from "../types";
 
 function notificationForRequest(
@@ -30,6 +36,7 @@ function notificationForRequest(
 /** Pull pending member registration requests addressed to this captain. */
 export async function syncTournamentRegistrationRequestNotifications(
   captainUserId: string,
+  tournaments?: Pick<MockTournament, "id" | "name" | "status">[],
 ): Promise<AppNotification[]> {
   const requests = await fetchPendingRegistrationRequestsForCaptain(captainUserId);
   if (!requests.length) {
@@ -38,15 +45,13 @@ export async function syncTournamentRegistrationRequestNotifications(
     return [];
   }
 
-  const tournaments = await fetchTournaments();
-  const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
+  const tournamentRows = tournaments ?? (await fetchTournamentsForNotificationsCached());
+  const tournamentById = new Map(tournamentRows.map((t) => [t.id, t]));
   const existingNotifications = getNotifications().filter((n) => n.type === "registration_request");
   const readById = new Map(
     existingNotifications.filter((n) => n.read).map((n) => [n.id, true] as const),
   );
-  const createdAtById = new Map(
-    existingNotifications.map((n) => [n.id, n.createdAt] as const),
-  );
+  const createdAtById = new Map(existingNotifications.map((n) => [n.id, n.createdAt] as const));
 
   const notifications = await Promise.all(
     requests.map(async (request) => {
@@ -62,8 +67,7 @@ export async function syncTournamentRegistrationRequestNotifications(
         requester?.username ?? "A teammate",
         createdAtById.get(notificationId),
       );
-      notification.read =
-        isNotificationRead(notificationId) || readById.has(notificationId);
+      notification.read = isNotificationRead(notificationId) || readById.has(notificationId);
       return notification;
     }),
   );

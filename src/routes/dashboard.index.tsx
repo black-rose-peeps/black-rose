@@ -1,7 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { syncSessionFromDatabase } from "@/features/auth/services/sync-session";
-import { getPostAuthPath, hasFullMemberAccess } from "@/features/auth/utils/routes";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import {
   Trophy,
   ExternalLink,
@@ -23,51 +21,19 @@ import { QuickStat, DashboardSection } from "@/features/member/components/Dashbo
 import { ProfileCompletionPanel } from "@/features/member/components/ProfileCompletionPanel";
 import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
 import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
+import { useMemberDashboardPage } from "@/features/member/hooks/useMemberDashboardPage";
 import { MemberDashboardSkeleton } from "@/features/member/components/MemberDashboardSkeleton";
 import { MemberHeroBanner, MemberPageLayout } from "@/features/member/components/MemberShell";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
-import { getSession } from "@/features/auth/store/session";
 import { SOCIAL_PLATFORM_LABELS } from "@/features/member/constants";
-import { fetchMemberProfileById } from "@/features/member/services/member-profile.service";
-import { fetchMemberChampionships } from "@/features/championships/services/championship.service";
 import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
 import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
-import type { ChampionshipTitle } from "@/features/championships/types";
-import { fetchMemberTournamentDashboard } from "@/features/member/services/member-dashboard.service";
+import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { isProfileComplete } from "@/features/member/utils/profile-completion";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
-import type { AppUser } from "@/features/auth/types";
-import type { MemberProfile } from "@/features/member/types";
 
 const SECTION_LINK_CLASS =
   "touch-target inline-flex min-h-11 items-center rounded-none px-1 font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground";
-
-function profileFallbackFromSession(session: AppUser): MemberProfile {
-  const initials = session.displayName.slice(0, 2).toUpperCase();
-  return {
-    memberId: session.id,
-    slug: session.profileSlug ?? session.username,
-    displayName: session.displayName,
-    username: session.username,
-    discordUsername: session.discordUsername ?? session.username,
-    headline: "Black Rose Member",
-    bio: "",
-    avatarInitials: initials,
-    avatarUrl: session.avatarUrl,
-    mainGame: "",
-    mainRole: "",
-    region: "",
-    isVerified: true,
-    isPublic: true,
-    socialLinks: [],
-    valorantGameName: "",
-    valorantTagline: "",
-    tournamentHistory: [],
-    activeRegistrations: [],
-    upcomingMatches: [],
-    profileCompletion: 0,
-  };
-}
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -77,125 +43,16 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function DashboardPage() {
-  const navigate = useNavigate();
-  const [session, setLocalSession] = useState(() => getSession());
-  const [profile, setProfile] = useState<MemberProfile | null>(null);
-  const [isSyncing, setIsSyncing] = useState(true);
-  const [championships, setChampionships] = useState<ChampionshipTitle[]>([]);
+  const { session, profile, championships, isLoading } = useMemberDashboardPage();
   const { celebrationOpen, celebrateIfUnseen, openCelebration, dismissCelebration } =
     useProfileCompleteCelebration(session?.id);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      const current = getSession();
-      if (!current) {
-        navigate({ to: "/login" });
-        return;
-      }
-
-      try {
-        const updated = await syncSessionFromDatabase();
-        if (cancelled) return;
-
-        if (!updated) {
-          navigate({ to: "/login" });
-          return;
-        }
-
-        setLocalSession(updated);
-
-        if (!hasFullMemberAccess(updated.role)) {
-          navigate({ to: getPostAuthPath(updated.role) });
-          return;
-        }
-
-        const [memberProfile, tournamentDashboard] = await Promise.all([
-          fetchMemberProfileById(updated.id),
-          fetchMemberTournamentDashboard(updated.id),
-        ]);
-        if (!cancelled) {
-          const base = memberProfile ?? profileFallbackFromSession(updated);
-          setProfile({
-            ...base,
-            activeRegistrations: tournamentDashboard.activeRegistrations,
-            upcomingMatches: tournamentDashboard.upcomingMatches,
-            tournamentHistory: tournamentDashboard.tournamentHistory,
-          });
-        }
-        if (!cancelled) {
-          try {
-            const titles = await fetchMemberChampionships(updated.id);
-            if (!cancelled) setChampionships(titles);
-          } catch {
-            if (!cancelled) setChampionships([]);
-          }
-        }
-      } catch {
-        if (cancelled) return;
-        if (!hasFullMemberAccess(current.role)) {
-          navigate({ to: getPostAuthPath(current.role) });
-          return;
-        }
-        setLocalSession(current);
-        setProfile(profileFallbackFromSession(current));
-      } finally {
-        if (!cancelled) setIsSyncing(false);
-      }
-    }
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate]);
-
-  useEffect(() => {
-    if (!profile || isSyncing) return;
+    if (!profile || isLoading) return;
     celebrateIfUnseen(profile.profileCompletion);
-  }, [profile, isSyncing, celebrateIfUnseen]);
+  }, [profile, isLoading, celebrateIfUnseen]);
 
-  useEffect(() => {
-    if (!session?.id || !hasFullMemberAccess(session.role)) return;
-
-    const memberId = session.id;
-
-    async function refreshTournamentData() {
-      try {
-        const tournamentDashboard = await fetchMemberTournamentDashboard(memberId);
-        setProfile((current) =>
-          current
-            ? {
-                ...current,
-                activeRegistrations: tournamentDashboard.activeRegistrations,
-                upcomingMatches: tournamentDashboard.upcomingMatches,
-                tournamentHistory: tournamentDashboard.tournamentHistory,
-              }
-            : current,
-        );
-      } catch {
-        // Keep last loaded tournament dashboard data
-      }
-
-      try {
-        const titles = await fetchMemberChampionships(memberId);
-        setChampionships(titles);
-      } catch {
-        // Keep last loaded championships
-      }
-    }
-
-    function handleFocus() {
-      void refreshTournamentData();
-    }
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [session?.id, session?.role]);
-
-  if (!session || isSyncing) return <MemberDashboardSkeleton />;
+  if (!session || isLoading) return <MemberDashboardSkeleton />;
   if (!hasFullMemberAccess(session.role) || !profile) return <MemberDashboardSkeleton />;
 
   const p = profile;

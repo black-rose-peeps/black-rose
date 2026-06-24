@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshVerificationFromDiscord } from "../functions/refresh-verification-from-discord";
 import { DISCORD_FOR_BRIEFING_ROLE_LABEL, DISCORD_TOURNA_ROLES_CHANNEL_LABEL } from "../constants";
 import { syncMemberAccessFromDatabase } from "../services/sync-session";
-import { getSession } from "../store/session";
+import { getSession, setSession } from "../store/session";
 import { hasFullMemberAccess } from "../utils/routes";
+import { applyMemberAccessToSession } from "../utils/session";
 import { useMemberVerificationRealtime } from "./useMemberVerificationRealtime";
 
 /** DB-only fallback if Realtime is unavailable. */
@@ -64,11 +65,29 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
       const result = await refreshVerificationFromDiscord({ data: { memberId: session.id } });
       let verified = await applySessionUpdate();
 
-      if (!verified && result.hasRose && result.status === "Verified") {
-        verified = await applySessionUpdate();
+      if (!verified && result.hasRose && result.status === "Verified" && !result.notInGuild) {
+        const current = getSession();
+        if (current) {
+          const optimistic = applyMemberAccessToSession(current, {
+            username: current.username,
+            discordUsername: current.discordUsername,
+            discordId: current.discordId,
+            status: "Verified",
+            registeredAt: current.registeredAt,
+          });
+          setSession(optimistic);
+          if (hasFullMemberAccess(optimistic.role)) {
+            onVerifiedRef.current();
+            verified = true;
+          }
+        }
+
+        if (!verified) {
+          verified = await applySessionUpdate();
+        }
       }
 
-      if (verified || (result.hasRose && result.status === "Verified")) {
+      if (verified) {
         setCheckError(null);
         return true;
       }

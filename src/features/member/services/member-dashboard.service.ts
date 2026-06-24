@@ -1,6 +1,6 @@
 import { fetchPublishedBracketPayload } from "@/features/admin/features/tournament-details/services/bracket.service";
-import { fetchTournaments } from "@/features/admin/features/tournaments/services/tournaments.service";
 import { fetchTeamsForUser } from "@/features/admin/features/teams/services/teams.service";
+import { fetchTournamentsLite } from "@/features/admin/features/tournaments/services/tournaments.service";
 import { fetchRegistrationsForTeam } from "@/features/tournaments/services/team-registration.service";
 import type { BracketRound } from "@/features/tournaments/types";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
@@ -75,15 +75,19 @@ export async function fetchMemberTournamentDashboard(
 ): Promise<MemberTournamentDashboard> {
   const [teams, tournaments] = await Promise.all([
     fetchTeamsForUser(memberId),
-    fetchTournaments(),
+    fetchTournamentsLite(),
   ]);
 
   const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
   const registrationRows: MockTeam[] = [];
+  const liveTeamsById = new Map(teams.map((team) => [team.id, team]));
 
   await Promise.all(
     teams.map(async (team) => {
-      const regs = await fetchRegistrationsForTeam(team.id);
+      const regs = await fetchRegistrationsForTeam(team.id, {
+        tournaments,
+        liveTeamsById,
+      });
       registrationRows.push(...regs);
     }),
   );
