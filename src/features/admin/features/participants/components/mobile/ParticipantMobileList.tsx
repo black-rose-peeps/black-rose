@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
-import { registrationStatusVariant } from "../../utils";
+import { formatParticipantRegistrationDate, registrationStatusVariant } from "../../utils";
 import type { ParticipantRow } from "../../types";
 import {
   canBulkApproveParticipant,
@@ -111,8 +111,12 @@ export function ParticipantMobileList({
                       Captain ·{" "}
                       <span className="break-words text-foreground/90">{participant.captain}</span>
                     </p>
-                    <p className="mt-1 font-tech text-label-readable uppercase text-muted-foreground">
-                      {participant.members.length} players · {participant.registrationDate}
+                    <p
+                      className="mt-1 font-tech text-label-readable uppercase text-muted-foreground"
+                      title={participant.registrationDate}
+                    >
+                      {participant.members.length} players ·{" "}
+                      {formatParticipantRegistrationDate(participant.registrationDate)}
                     </p>
                   </div>
                 </div>

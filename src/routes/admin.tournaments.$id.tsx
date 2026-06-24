@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { formatRegistrationDateTime } from "@/features/admin/utils/registration-date";
 import {
   AdminManagementTable,
   adminTableCellClip,
@@ -792,8 +793,8 @@ function TournamentDetailPage() {
                                   </TableCell>
                                 </>
                               )}
-                              <TableCell className="text-muted-foreground">
-                                {team.registrationDate}
+                              <TableCell className="text-muted-foreground" title={team.registrationDate}>
+                                {formatRegistrationDateTime(team.registrationDate)}
                               </TableCell>
                               <TableCell>
                                 <Badge variant={registrationStatusVariant(team.status)}>

@@ -1,4 +1,5 @@
 import type { MockPlayer, MockTeam, MockTournament } from "@/lib/mock-data";
+import { formatRegistrationDateTime } from "@/features/admin/utils/registration-date";
 
 const STATUS_SORT = ["Approved", "Pending", "Previously Competed", "Rejected"] as const;
 
@@ -20,16 +21,6 @@ function slugifyFilename(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 48);
-}
-
-function formatSimpleDate(value: string | null | undefined): string {
-  if (!value?.trim()) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value.trim();
-  const day = String(parsed.getDate()).padStart(2, "0");
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const year = parsed.getFullYear();
-  return `${day}/${month}/${year}`;
 }
 
 function sortRegistrations(registrations: MockTeam[]): MockTeam[] {
@@ -63,11 +54,11 @@ export function buildTournamentRegistrationsCsv(
   const lines: string[] = [];
 
   lines.push(csvRow(["Tournament", tournament.name]));
-  lines.push(csvRow(["Exported", formatSimpleDate(new Date().toISOString())]));
+  lines.push(csvRow(["Exported", formatRegistrationDateTime(new Date().toISOString())]));
   lines.push("");
 
   if (soloEvent) {
-    lines.push(csvRow(["Status", "Player Name", "Tag", "Player", "Date Registered"]));
+    lines.push(csvRow(["Status", "Player Name", "Tag", "Player", "Date & Time Registered"]));
 
     for (const registration of sorted) {
       const player = registration.members[0];
@@ -85,7 +76,7 @@ export function buildTournamentRegistrationsCsv(
           registration.name,
           registration.tag,
           playerEntry,
-          formatSimpleDate(registration.registrationDate),
+          formatRegistrationDateTime(registration.registrationDate),
         ]),
       );
     }
@@ -96,7 +87,7 @@ export function buildTournamentRegistrationsCsv(
         "Team Name",
         "Tag",
         "Captain",
-        "Date Registered",
+        "Date & Time Registered",
         "Players (IGN — Discord)",
       ]),
     );
@@ -108,7 +99,7 @@ export function buildTournamentRegistrationsCsv(
           registration.name,
           registration.tag,
           registration.captain,
-          formatSimpleDate(registration.registrationDate),
+          formatRegistrationDateTime(registration.registrationDate),
           formatPlayersColumn(registration.members),
         ]),
       );

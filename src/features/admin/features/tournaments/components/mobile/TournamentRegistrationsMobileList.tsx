@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
+import { formatRegistrationDateTime } from "@/features/admin/utils/registration-date";
 import { cn } from "@/lib/utils";
 
 export interface TournamentRegistrationMobileRow {
@@ -65,8 +66,11 @@ export function TournamentRegistrationsMobileList({
                     {row.captain} · {row.memberCount} {row.memberCount === 1 ? "player" : "players"}
                   </p>
                 )}
-                <p className="mt-1 font-tech text-label-readable uppercase text-muted-foreground">
-                  Registered {row.registrationDate}
+                <p
+                  className="mt-1 font-tech text-label-readable uppercase text-muted-foreground"
+                  title={row.registrationDate}
+                >
+                  Registered {formatRegistrationDateTime(row.registrationDate)}
                 </p>
               </div>
             </div>

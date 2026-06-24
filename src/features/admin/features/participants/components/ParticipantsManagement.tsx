@@ -37,7 +37,11 @@ import {
   registrationNeedsReview,
 } from "../constants/registration-status";
 import { TeamModal } from "@/features/admin/components/TeamModal";
-import { registrationStatusVariant } from "../utils";
+import {
+  compareRegistrationDates,
+  formatParticipantRegistrationDate,
+  registrationStatusVariant,
+} from "../utils";
 
 export function ParticipantsManagement() {
   const isMobile = useIsMobile();
@@ -71,7 +75,7 @@ export function ParticipantsManagement() {
         compareStrings(a.tournamentName, b.tournamentName),
 
       registered: (a: ParticipantRow, b: ParticipantRow) =>
-        compareStrings(a.registrationDate, b.registrationDate),
+        compareRegistrationDates(a.registrationDate, b.registrationDate),
 
       status: (a: ParticipantRow, b: ParticipantRow) =>
         compareByOrder(registrationStatusOrder, a.status, b.status),
@@ -519,8 +523,11 @@ export function ParticipantsManagement() {
                               <span className={adminTableTextTruncate}>{team.captain}</span>
                             </TableCell>
 
-                            <TableCell className="text-sm text-muted-foreground">
-                              {team.registrationDate}
+                            <TableCell
+                              className="text-sm text-muted-foreground"
+                              title={team.registrationDate}
+                            >
+                              {formatParticipantRegistrationDate(team.registrationDate)}
                             </TableCell>
 
                             <TableCell>
