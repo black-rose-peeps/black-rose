@@ -28,6 +28,23 @@ function throwMemberUniqueViolation(error: { message: string }): never {
   throw new Error(msg);
 }
 
+export async function countMembers(): Promise<number> {
+  const { count, error } = await supabase
+    .from("members")
+    .select("id", { count: "exact", head: true });
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function countVerifiedMembers(): Promise<number> {
+  const { count, error } = await supabase
+    .from("members")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "Verified");
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function fetchMembers(): Promise<AdminMember[]> {
   const { data, error } = await supabase
     .from("members")

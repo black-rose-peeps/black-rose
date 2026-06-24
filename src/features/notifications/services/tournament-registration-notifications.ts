@@ -1,10 +1,11 @@
-import { fetchTournaments } from "@/features/admin/features/tournaments/services/tournaments.service";
-import {
-  fetchActiveMemberTeams,
-  fetchRegistrationsForTeam,
-} from "@/features/tournaments/services/team-registration.service";
 import type { MockTeam } from "@/lib/mock-data";
-import { getNotifications, isNotificationRead, mergeRegistrationStatusNotifications, notifyListeners } from "../store";
+import type { MemberTournamentNotificationContext } from "@/features/member/queries/member-data-queries";
+import {
+  getNotifications,
+  isNotificationRead,
+  mergeRegistrationStatusNotifications,
+  notifyListeners,
+} from "../store";
 import type { AppNotification } from "../types";
 
 const SNAPSHOT_KEY_PREFIX = "br_registration_status_snapshot:";
@@ -79,8 +80,19 @@ function notificationForRegistration(
 /** Pull approved/declined tournament registrations for the member's teams into notifications. */
 export async function syncTournamentRegistrationNotifications(
   userId: string,
+  context?: MemberTournamentNotificationContext,
 ): Promise<AppNotification[]> {
-  const memberTeams = await fetchActiveMemberTeams(userId);
+  if (!context) {
+    const { loadMemberTournamentNotificationContext } = await import(
+      "@/features/member/queries/member-data-queries"
+    );
+    return syncTournamentRegistrationNotifications(
+      userId,
+      await loadMemberTournamentNotificationContext(userId),
+    );
+  }
+
+  const { memberTeams, tournaments, registrationsByTeamId } = context;
   if (!memberTeams.length) {
     mergeRegistrationStatusNotifications([]);
     saveStatusSnapshot(userId, {});
@@ -88,7 +100,6 @@ export async function syncTournamentRegistrationNotifications(
     return [];
   }
 
-  const tournaments = await fetchTournaments();
   const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
   const previousSnapshot = loadStatusSnapshot(userId);
   const nextSnapshot: Record<string, string> = {};
@@ -98,46 +109,41 @@ export async function syncTournamentRegistrationNotifications(
   const readById = new Map(
     existingNotifications.filter((n) => n.read).map((n) => [n.id, true] as const),
   );
-  const createdAtById = new Map(
-    existingNotifications.map((n) => [n.id, n.createdAt] as const),
-  );
+  const createdAtById = new Map(existingNotifications.map((n) => [n.id, n.createdAt] as const));
 
   const notifications: AppNotification[] = [];
 
-  await Promise.all(
-    memberTeams.map(async (team) => {
-      const registrations = await fetchRegistrationsForTeam(team.id);
-      for (const registration of registrations) {
-        nextSnapshot[registration.id] = registration.status;
+  for (const team of memberTeams) {
+    const registrations = registrationsByTeamId.get(team.id) ?? [];
+    for (const registration of registrations) {
+      nextSnapshot[registration.id] = registration.status;
 
-        if (!isTerminalStatus(registration.status)) continue;
+      if (!isTerminalStatus(registration.status)) continue;
 
-        const tournament = tournamentById.get(registration.tournamentId);
-        if (!tournament) continue;
-        if (tournament.status === "Completed" || tournament.status === "Archived") continue;
+      const tournament = tournamentById.get(registration.tournamentId);
+      if (!tournament) continue;
+      if (tournament.status === "Completed" || tournament.status === "Archived") continue;
 
-        const notificationId = `registration-${
-          registration.status === "Approved" ? "approved" : "rejected"
-        }-${registration.id}`;
-        const alreadyRead = isNotificationRead(notificationId);
-        const unread =
-          !alreadyRead &&
-          shouldMarkUnread(previousSnapshot[registration.id], registration.status);
-        const read = unread
-          ? false
-          : readById.has(notificationId) || isNotificationRead(notificationId);
-        notifications.push({
-          ...notificationForRegistration(
-            registration,
-            tournament.name,
-            unread,
-            createdAtById.get(notificationId),
-          ),
-          read,
-        });
-      }
-    }),
-  );
+      const notificationId = `registration-${
+        registration.status === "Approved" ? "approved" : "rejected"
+      }-${registration.id}`;
+      const alreadyRead = isNotificationRead(notificationId);
+      const unread =
+        !alreadyRead && shouldMarkUnread(previousSnapshot[registration.id], registration.status);
+      const read = unread
+        ? false
+        : readById.has(notificationId) || isNotificationRead(notificationId);
+      notifications.push({
+        ...notificationForRegistration(
+          registration,
+          tournament.name,
+          unread,
+          createdAtById.get(notificationId),
+        ),
+        read,
+      });
+    }
+  }
 
   saveStatusSnapshot(userId, nextSnapshot);
   mergeRegistrationStatusNotifications(notifications);

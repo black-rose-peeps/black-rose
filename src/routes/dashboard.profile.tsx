@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, Loader2, User, Gamepad2, Share2, Eye, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +25,13 @@ import {
   techFieldClass,
 } from "@/features/member/components/MemberShell";
 import { MemberDashboardSkeleton } from "@/features/member/components/MemberDashboardSkeleton";
-import { getSession, setSession } from "@/features/auth/store/session";
+import { useSyncedMemberSession } from "@/features/auth/hooks/useSyncedMemberSession";
+import { setSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
+import {
+  useMemberProfileQuery,
+} from "@/features/member/queries/member-profile-queries";
+import { queryKeys } from "@/lib/query-keys";
 import {
   PROFILE_GAME_OPTIONS,
   PROFILE_REGION_OPTIONS,
@@ -33,7 +39,6 @@ import {
   SOCIAL_PLATFORM_ORDER,
 } from "@/features/member/constants";
 import {
-  fetchMemberProfileById,
   updateMemberProfile,
 } from "@/features/member/services/member-profile.service";
 import { profileCompletionHint, isProfileComplete } from "@/features/member/utils/profile-completion";
@@ -103,13 +108,43 @@ function socialsFromProfile(profile: MemberProfile): SocialFormState {
   return state;
 }
 
+function applyProfileToForm(
+  data: MemberProfile,
+  setters: {
+    setDisplayName: (v: string) => void;
+    setHeadline: (v: string) => void;
+    setBio: (v: string) => void;
+    setMainGame: (v: string) => void;
+    setMainRole: (v: string) => void;
+    setRegion: (v: string) => void;
+    setValorantGameName: (v: string) => void;
+    setValorantTagline: (v: string) => void;
+    setIsPublic: (v: boolean) => void;
+    setSocials: (v: SocialFormState) => void;
+  },
+): void {
+  const normalizedGame = normalizeGameKey(data.mainGame) ?? "";
+  setters.setDisplayName(data.displayName);
+  setters.setHeadline(data.headline);
+  setters.setBio(data.bio);
+  setters.setMainGame(normalizedGame);
+  setters.setMainRole(data.mainRole);
+  setters.setRegion(data.region.trim());
+  setters.setValorantGameName(data.valorantGameName);
+  setters.setValorantTagline(data.valorantTagline);
+  setters.setIsPublic(data.isPublic);
+  setters.setSocials(socialsFromProfile(data));
+}
+
 function ProfileEditPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { tab } = Route.useSearch();
-  const session = getSession();
+  const { session, isSyncing } = useSyncedMemberSession();
   const memberId = session?.id;
+  const profileQuery = useMemberProfileQuery(memberId);
   const [profile, setProfile] = useState<MemberProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [formInitialized, setFormInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,57 +186,47 @@ function ProfileEditPage() {
   }, [mainRole, roleOptions]);
 
   useEffect(() => {
-    if (!memberId) {
-      navigate({ to: "/login" });
-      return;
+    setFormInitialized(false);
+    setProfile(null);
+  }, [memberId]);
+
+  useEffect(() => {
+    if (!profileQuery.data || formInitialized) return;
+
+    const data = profileQuery.data;
+    setProfile(data);
+    applyProfileToForm(data, {
+      setDisplayName,
+      setHeadline,
+      setBio,
+      setMainGame,
+      setMainRole,
+      setRegion,
+      setValorantGameName,
+      setValorantTagline,
+      setIsPublic,
+      setSocials,
+    });
+    setFormInitialized(true);
+  }, [profileQuery.data, formInitialized]);
+
+  useEffect(() => {
+    if (profileQuery.isError && !formInitialized) {
+      setError(
+        profileQuery.error instanceof Error
+          ? profileQuery.error.message
+          : "Failed to load profile.",
+      );
     }
+  }, [profileQuery.isError, profileQuery.error, formInitialized]);
 
-    const currentSession = getSession();
-    if (!currentSession || !hasFullMemberAccess(currentSession.role)) {
-      navigate({ to: "/waitlist" });
-      return;
+  useEffect(() => {
+    if (profileQuery.isSuccess && !profileQuery.data && !formInitialized) {
+      setError("Profile not found. Try signing in again.");
     }
+  }, [profileQuery.isSuccess, profileQuery.data, formInitialized]);
 
-    const currentMemberId = memberId;
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const data = await fetchMemberProfileById(currentMemberId);
-        if (cancelled) return;
-        if (!data) {
-          setError("Profile not found. Try signing in again.");
-          return;
-        }
-
-        const normalizedGame = normalizeGameKey(data.mainGame) ?? "";
-
-        setProfile(data);
-        setDisplayName(data.displayName);
-        setHeadline(data.headline);
-        setBio(data.bio);
-        setMainGame(normalizedGame);
-        setMainRole(data.mainRole);
-        setRegion(data.region.trim());
-        setValorantGameName(data.valorantGameName);
-        setValorantTagline(data.valorantTagline);
-        setIsPublic(data.isPublic);
-        setSocials(socialsFromProfile(data));
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load profile.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate, memberId]);
+  const loading = isSyncing || profileQuery.isPending;
 
   if (!session || !hasFullMemberAccess(session.role)) return null;
   if (loading) return <MemberDashboardSkeleton />;
@@ -243,6 +268,7 @@ function ProfileEditPage() {
 
       setProfile(updated);
       setSocials(socialsFromProfile(updated));
+      queryClient.setQueryData(queryKeys.memberProfile(session.id), updated);
       maybeCelebrate(previousCompletion, updated.profileCompletion);
       setSession({
         ...session,

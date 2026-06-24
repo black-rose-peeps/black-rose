@@ -1,6 +1,12 @@
 import { rowToAdminMember } from "@/features/admin/features/members/utils";
-import type { AdminMember, MemberVerificationStatus } from "@/features/admin/features/members/types";
-import { MEMBER_READ_COLUMNS } from "@/features/member/server/profile-select-columns";
+import type {
+  AdminMember,
+  MemberVerificationStatus,
+} from "@/features/admin/features/members/types";
+import {
+  MEMBER_ACCESS_COLUMNS,
+  MEMBER_READ_COLUMNS,
+} from "@/features/member/server/profile-select-columns";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { createInflightDeduper, createTtlCache } from "@/lib/server-ttl-cache";
 import type { DiscordOAuthUser } from "./discord-api.server";
@@ -9,8 +15,21 @@ const MEMBER_AUTH_CACHE_TTL_MS = 30_000;
 const memberAuthCache = createTtlCache<AdminMember>(MEMBER_AUTH_CACHE_TTL_MS);
 const memberAuthLoadDeduper = createInflightDeduper<AdminMember | null>();
 
+export interface MemberAccessRecord {
+  id: string;
+  username: string;
+  discordUsername: string;
+  discordId: string | null;
+  status: MemberVerificationStatus;
+  registeredAt: string;
+}
+
+const memberAccessCache = createTtlCache<MemberAccessRecord>(MEMBER_AUTH_CACHE_TTL_MS);
+const memberAccessLoadDeduper = createInflightDeduper<MemberAccessRecord | null>();
+
 export function invalidateMemberAuthCache(memberId: string): void {
   memberAuthCache.delete(memberId);
+  memberAccessCache.delete(memberId);
 }
 
 export async function findMemberById(id: string): Promise<AdminMember | null> {
@@ -34,6 +53,42 @@ export async function findMemberById(id: string): Promise<AdminMember | null> {
     const member = rowToAdminMember(data);
     memberAuthCache.set(id, member);
     return member;
+  });
+}
+
+function rowToMemberAccessRecord(row: Record<string, unknown>): MemberAccessRecord {
+  return {
+    id: row.id as string,
+    username: row.username as string,
+    discordUsername: row.discord_username as string,
+    discordId: (row.discord_id as string | null) ?? null,
+    status: (row.status as MemberVerificationStatus) ?? "Not Verified",
+    registeredAt: (row.registered_at as string) ?? (row.created_at as string),
+  };
+}
+
+/** Lightweight member read for verification polling — no profile join. */
+export async function findMemberAccessById(id: string): Promise<MemberAccessRecord | null> {
+  const cached = memberAccessCache.get(id);
+  if (cached) return cached;
+
+  return memberAccessLoadDeduper.run(`access:${id}`, async () => {
+    const freshCached = memberAccessCache.get(id);
+    if (freshCached) return freshCached;
+
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("members")
+      .select(MEMBER_ACCESS_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+
+    const record = rowToMemberAccessRecord(data);
+    memberAccessCache.set(id, record);
+    return record;
   });
 }
 

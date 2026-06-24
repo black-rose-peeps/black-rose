@@ -10,7 +10,13 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
-import { bracketCapacity, byeCount, isPowerOfTwo } from "../utils/bracket-field";
+import {
+  bracketCapacity,
+  byeCount,
+  isPowerOfTwo,
+  openingPlayableMatchCount,
+  usesCompressedPreliminaryField,
+} from "../utils/bracket-field";
 import {
   roundOnePairingsForSeedingMode,
   roundOneSeedingPairings,
@@ -289,17 +295,13 @@ export function SeedingPanel({
     });
   }, [bracketSize, hasSwissByeSlot, isElimination, isSwiss, roundOnePairings]);
 
-  const useProtectedSeedSection =
-    isElimination && (elimByes > 0 || seedingFormat === "protected_random");
+  const useProtectedSeedSection = isElimination && seedingFormat === "protected_random";
 
   const protectedSeedNumbers = useMemo(() => {
     if (!useProtectedSeedSection) return [];
-    const count =
-      seedingFormat === "protected_random"
-        ? Math.min(Math.max(1, protectedSeedCount), bracketSize - 1)
-        : elimByes;
+    const count = Math.min(Math.max(1, protectedSeedCount), bracketSize - 1);
     return Array.from({ length: count }, (_, index) => index + 1);
-  }, [bracketSize, elimByes, protectedSeedCount, seedingFormat, useProtectedSeedSection]);
+  }, [bracketSize, protectedSeedCount, useProtectedSeedSection]);
 
   const remainingSeedNumbers = useMemo(() => {
     if (seedingFormat !== "protected_random") return [];
@@ -307,19 +309,20 @@ export function SeedingPanel({
     return Array.from({ length: bracketSize - start }, (_, index) => start + index + 1);
   }, [bracketSize, protectedSeedNumbers.length, seedingFormat]);
 
+  const playableOpeningMatches = useMemo(
+    () => standardMatches.filter((match) => match.byeSide === "none"),
+    [standardMatches],
+  );
+
+  const openingMatches = playableOpeningMatches;
+
   const formatHelp = seedingFormatDescription(
     seedingFormat,
     bracketSize,
     protectedSeedNumbers.length || protectedSeedCount,
   );
 
-  const openingMatches = useMemo(
-    () =>
-      useProtectedSeedSection
-        ? standardMatches.filter((m) => m.byeSide === "none")
-        : standardMatches,
-    [standardMatches, useProtectedSeedSection],
-  );
+  const compressedPreliminary = isElimination && usesCompressedPreliminaryField(bracketSize);
 
   const readyMatches = useMemo(() => {
     if (isSwiss) {
@@ -380,8 +383,7 @@ export function SeedingPanel({
     useProtectedSeedSection,
   ]);
 
-  const showCommitteeList =
-    isElimination && seedingFormat === "committee" && !useProtectedSeedSection;
+  const showCommitteeList = isElimination && seedingFormat === "committee";
 
   const showTierPanel = isElimination && seedingFormat === "tier";
 
@@ -390,7 +392,7 @@ export function SeedingPanel({
     seedingFormat === "random" ||
     (isElimination && seedingFormat === "tier" && assignedCount > 0) ||
     (isElimination && seedingFormat === "protected_random") ||
-    (isElimination && seedingFormat === "committee" && useProtectedSeedSection);
+    (isElimination && seedingFormat === "committee" && elimByes > 0);
 
   const openingMatchCount = openingMatches.length;
 
@@ -405,8 +407,18 @@ export function SeedingPanel({
   const matchesForPreview = useMemo(() => {
     if (seedingFormat === "protected_random" && elimByes === 0) return standardMatches;
     if (useProtectedSeedSection) return openingMatches;
+    if (elimByes > 0 && (seedingFormat === "committee" || seedingFormat === "tier")) {
+      return playableOpeningMatches;
+    }
     return standardMatches;
-  }, [elimByes, openingMatches, seedingFormat, standardMatches, useProtectedSeedSection]);
+  }, [
+    elimByes,
+    openingMatches,
+    playableOpeningMatches,
+    seedingFormat,
+    standardMatches,
+    useProtectedSeedSection,
+  ]);
 
   return (
     <div className="border-b border-border p-8">
@@ -451,6 +463,12 @@ export function SeedingPanel({
         {isElimination && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
             {formatHelp}
+            {compressedPreliminary && (
+              <span className="mt-1 block text-foreground/75">
+                {openingPlayableMatchCount(bracketSize)} opening upper matches on a {elimCapacity}
+                -slot tree; seeds 1–{elimByes} skip to upper round two.
+              </span>
+            )}
           </div>
         )}
 
@@ -674,7 +692,7 @@ export function SeedingPanel({
 
       {showMatchPreview && !useProtectedSeedSection && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {standardMatches.map((match) => (
+          {matchesForPreview.map((match) => (
             <SeedingMatchCard
               key={match.key}
               matchIndex={match.matchIndex}

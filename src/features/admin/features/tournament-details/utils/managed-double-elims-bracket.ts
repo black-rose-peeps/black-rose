@@ -7,18 +7,25 @@ import {
   isEvenBracketFieldSize,
   isPowerOfTwo,
   powerOfTwoElimRoundMatchCounts,
+  usesCompressedPreliminaryField,
   usesFullFieldRoundOne,
 } from "./bracket-field";
 import {
-  DEFAULT_GRAND_FINAL_MODE,
-  type GrandFinalMode,
-} from "./grand-final";
+  buildLowerBracketScheduleCompressedPreliminary,
+  wireLowerBracketWinnersCompressedPreliminary,
+  wireUpperLosersToLowerCompressedPreliminary,
+} from "./compressed-preliminary-double-elim";
+import { DEFAULT_GRAND_FINAL_MODE, type GrandFinalMode } from "./grand-final";
 import {
   type BracketRoundMeta,
   type BuildBracketOptions,
   type ManagedMatch,
   recomputeAdvancements,
 } from "./managed-bracket-core";
+import {
+  buildLowerBracketScheduleByeField,
+  lowerRoundId,
+} from "./lower-bracket-schedule";
 import {
   applyOpeningRoundMatchLabels,
   applySequentialMatchLabels,
@@ -92,13 +99,6 @@ function lowerRoundMeta(
   };
 }
 
-function lowerRoundId(lbRoundIndex: number, lbRoundCount: number): string {
-  if (lbRoundIndex === lbRoundCount - 1) return "lb-f";
-  if (lbRoundIndex === lbRoundCount - 2) return "lb-sf";
-  if (lbRoundIndex === 0) return "lb-r1";
-  return `lb-r${lbRoundIndex + 1}`;
-}
-
 /**
  * Challonge lower-bracket match counts for a full Po2 field (e.g. 16 teams):
  * [4, 4, 2, 2, 1, 1] — LR1 pairs UR1 losers; LR2 receives UR2 losers; alternate consolidate / drop.
@@ -117,31 +117,6 @@ function buildLowerBracketScheduleFullField(
     lbRoundIds.push(lowerRoundId(r, lbRoundCount));
     lbMatchCounts.push(matchCount);
     if (r % 2 === 1) {
-      matchCount = Math.max(1, matchCount / 2);
-    }
-  }
-
-  return { lbRoundCount, lbRoundIds, lbMatchCounts };
-}
-
-/**
- * Lower-bracket schedule for bye fields (e.g. 24 teams / 32 cap):
- * [8, 4, 4, 2, 2, 1, 1] — LR1 merges UR1+UR2 losers, then alternate advance / drop.
- */
-function buildLowerBracketScheduleByeField(
-  ubRounds: number,
-  bracketSize: number,
-): { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] } {
-  const lbRoundCount = 2 * (ubRounds - 1) - 1;
-  const lbRoundIds: string[] = [];
-  const lbMatchCounts: number[] = [];
-
-  let matchCount = bracketSize / 4;
-
-  for (let r = 0; r < lbRoundCount; r++) {
-    lbRoundIds.push(lowerRoundId(r, lbRoundCount));
-    lbMatchCounts.push(matchCount);
-    if (r % 2 === 0) {
       matchCount = Math.max(1, matchCount / 2);
     }
   }
@@ -283,11 +258,13 @@ interface DoubleElimWiring {
   buildLowerBracketSchedule: (
     ubRounds: number,
     bracketSize: number,
+    registeredCount: number,
   ) => { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] };
   wireLowerBracketWinners: (
     matches: ManagedMatch[],
     lbRoundIds: string[],
     lbMatchCounts: number[],
+    registeredCount: number,
   ) => void;
   wireUpperLosersToLower: (
     matches: ManagedMatch[],
@@ -300,21 +277,42 @@ interface DoubleElimWiring {
 }
 
 const FULL_FIELD_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
-  buildLowerBracketSchedule: buildLowerBracketScheduleFullField,
-  wireLowerBracketWinners: wireLowerBracketWinnersFullField,
-  wireUpperLosersToLower: wireUpperLosersToLowerFullField,
+  buildLowerBracketSchedule: (ubRounds, bracketSize) =>
+    buildLowerBracketScheduleFullField(ubRounds, bracketSize),
+  wireLowerBracketWinners: (matches, lbRoundIds, lbMatchCounts) =>
+    wireLowerBracketWinnersFullField(matches, lbRoundIds, lbMatchCounts),
+  wireUpperLosersToLower: (matches, lbRoundIds, ubRoundIds, ubMatchCounts) =>
+    wireUpperLosersToLowerFullField(matches, lbRoundIds, ubRoundIds, ubMatchCounts),
 };
 
 const BYE_FIELD_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
   buildLowerBracketSchedule: buildLowerBracketScheduleByeField,
-  wireLowerBracketWinners: wireLowerBracketWinnersByeField,
+  wireLowerBracketWinners: (matches, lbRoundIds, lbMatchCounts) =>
+    wireLowerBracketWinnersByeField(matches, lbRoundIds, lbMatchCounts),
   wireUpperLosersToLower: wireUpperLosersToLowerByeField,
 };
 
+const COMPRESSED_PRELIMINARY_DOUBLE_ELIM_WIRING: DoubleElimWiring = {
+  buildLowerBracketSchedule: (ubRounds, bracketSize, registeredCount) =>
+    buildLowerBracketScheduleCompressedPreliminary(ubRounds, bracketSize, registeredCount),
+  wireLowerBracketWinners: (matches, lbRoundIds, lbMatchCounts, registeredCount) =>
+    wireLowerBracketWinnersCompressedPreliminary(
+      matches,
+      lbRoundIds,
+      lbMatchCounts,
+      registeredCount,
+    ),
+  wireUpperLosersToLower: wireUpperLosersToLowerCompressedPreliminary,
+};
+
 function doubleElimWiringForTeamCount(teamCount: number): DoubleElimWiring {
-  return usesFullFieldRoundOne(teamCount)
-    ? FULL_FIELD_DOUBLE_ELIM_WIRING
-    : BYE_FIELD_DOUBLE_ELIM_WIRING;
+  if (usesFullFieldRoundOne(teamCount)) {
+    return FULL_FIELD_DOUBLE_ELIM_WIRING;
+  }
+  if (usesCompressedPreliminaryField(teamCount)) {
+    return COMPRESSED_PRELIMINARY_DOUBLE_ELIM_WIRING;
+  }
+  return BYE_FIELD_DOUBLE_ELIM_WIRING;
 }
 
 function buildDoubleElimPowerOfTwo(
@@ -399,6 +397,7 @@ function buildDoubleElimPowerOfTwo(
   const { lbRoundCount, lbRoundIds, lbMatchCounts } = wiring.buildLowerBracketSchedule(
     ubRounds,
     capacity,
+    n,
   );
 
   for (let r = 0; r < lbRoundCount; r++) {
@@ -434,7 +433,7 @@ function buildDoubleElimPowerOfTwo(
 
   wiring.wireUpperLosersToLower(matches, lbRoundIds, ubRoundIds, ubMatchCounts, n, roundMetas);
 
-  wiring.wireLowerBracketWinners(matches, lbRoundIds, lbMatchCounts);
+  wiring.wireLowerBracketWinners(matches, lbRoundIds, lbMatchCounts, n);
 
   if (includeGrandFinal) {
     link(matches, lbFinalId, "gf-m0", "teamB");

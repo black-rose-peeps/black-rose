@@ -69,10 +69,7 @@ export async function syncRoseRoles(
   const strikeLimit = getNotInGuildStrikeLimit(env);
   const baselineIntervalMinutes = getBaselineIntervalMinutes(env);
   const coldSweepIntervalMinutes = getColdSweepIntervalMinutes(env);
-  const coldSweepEveryNRuns = runsPerColdSweep(
-    coldSweepIntervalMinutes,
-    baselineIntervalMinutes,
-  );
+  const coldSweepEveryNRuns = runsPerColdSweep(coldSweepIntervalMinutes, baselineIntervalMinutes);
 
   const summary: SyncSummary = {
     checked: 0,
@@ -117,7 +114,7 @@ export async function syncRoseRoles(
   summary.notVerifiedQueued = queueCounts.hot;
 
   const hotPages = Math.max(1, Math.ceil(queueCounts.hot / batchSize));
-  const hotPage = 0;
+  const hotPage = priorityNotVerified ? 0 : rotationTick % hotPages;
   const hotFrom = hotPage * batchSize;
   const hotTo = hotFrom + batchSize - 1;
 
@@ -147,12 +144,7 @@ export async function syncRoseRoles(
       const coldFrom = coldPage * remainingSlots;
       const coldTo = coldFrom + remainingSlots - 1;
 
-      const coldRows = await fetchColdNotVerifiedPage(
-        supabase,
-        cutoffIso,
-        coldFrom,
-        coldTo,
-      );
+      const coldRows = await fetchColdNotVerifiedPage(supabase, cutoffIso, coldFrom, coldTo);
       summary.subrequestsUsed += 1;
       summary.queueTier = members.length > 0 ? "mixed" : "cold";
       members.push(...coldRows);
@@ -163,11 +155,7 @@ export async function syncRoseRoles(
       const pausedFrom = pausedPage * remainingSlots;
       const pausedTo = pausedFrom + remainingSlots - 1;
 
-      const pausedRows = await fetchPausedNotVerifiedPage(
-        supabase,
-        pausedFrom,
-        pausedTo,
-      );
+      const pausedRows = await fetchPausedNotVerifiedPage(supabase, pausedFrom, pausedTo);
       summary.subrequestsUsed += 1;
       summary.queueTier = members.length > 0 ? "mixed" : "paused-recovery";
       members.push(...pausedRows);
@@ -267,9 +255,7 @@ export async function syncRoseRoles(
 
       if (summary.subrequestsUsed + 1 > subrequestLimit) {
         summary.deferred += 1;
-        console.warn(
-          `[discord-sync] Deferred ${discordId} update (subrequest budget)`,
-        );
+        console.warn(`[discord-sync] Deferred ${discordId} update (subrequest budget)`);
         continue;
       }
 
@@ -313,9 +299,7 @@ export async function syncRoseRoles(
         parts.push(`not-in-guild strike ${strikeUpdate.strikes}/${strikeLimit}`);
       }
 
-      console.info(
-        `[discord-sync] ${discordId}${parts.length > 0 ? ` ${parts.join("; ")}` : ""}`,
-      );
+      console.info(`[discord-sync] ${discordId}${parts.length > 0 ? ` ${parts.join("; ")}` : ""}`);
     } catch (err) {
       summary.errors += 1;
       console.error(
