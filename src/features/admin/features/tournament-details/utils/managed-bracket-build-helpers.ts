@@ -211,7 +211,7 @@ function matchIdSlotIndex(matchId: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function orderedMatchIdsForLabeling(matches: ManagedMatch[], matchIds: string[]): string[] {
+export function orderedMatchIdsForLabeling(matches: ManagedMatch[], matchIds: string[]): string[] {
   const roundMatches = matchIds
     .map((id) => matches.find((entry) => entry.id === id))
     .filter((entry): entry is ManagedMatch => !!entry);

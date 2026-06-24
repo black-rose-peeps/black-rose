@@ -20,12 +20,12 @@ import {
 } from "./managed-bracket-core";
 import {
   applyOpeningRoundMatchLabels,
-  applySequentialMatchLabels,
   attachThirdPlaceMatchFromSemifinals,
   link,
   linkWinnerAdvancementPath,
   placeBracketRoundOne,
 } from "./managed-bracket-build-helpers";
+import { applyGlobalMatchLabels } from "@/features/tournaments/utils/bracket-global-match-labels";
 
 /** True when the main bracket has semifinals (≥4 teams in the main field). */
 export function canIncludeSingleElimThirdPlace(teamCount: number): boolean {
@@ -86,7 +86,7 @@ export function buildSingleElimMatches(
   const r1 = matches.filter((m) => m.roundId === "se-r0");
   placeBracketRoundOne(r1, teamNames, n);
   applyOpeningRoundMatchLabels(matches, roundMetas, n);
-  applySequentialMatchLabels(matches, roundMetas);
+  applyGlobalMatchLabels(matches, roundMetas, "single");
 
   if (options?.includeThirdPlaceMatch) {
     attachThirdPlaceMatchFromSemifinals(matches, roundMetas, {

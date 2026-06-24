@@ -29,6 +29,8 @@ import type {
   ManagedMatch,
   PlayoffRound1Pairing,
 } from "../utils/managed-bracket";
+import { applyGlobalMatchLabels } from "@/features/tournaments/utils/bracket-global-match-labels";
+import { applyOpeningRoundMatchLabels } from "../utils/managed-bracket-build-helpers";
 import {
   buildDoubleElimMatches,
   buildSingleElimMatches,
@@ -92,6 +94,23 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { BracketManagerMobileNav } from "@/features/admin/features/tournaments/components/mobile";
 
 /** Convert admin ManagedMatch[] + roundMetas into the public BracketRound[] shape. */
+function relabelEliminationMatches(
+  matches: ManagedMatch[],
+  roundMetas: BracketRoundMeta[],
+  format: string,
+  teamCount: number,
+): void {
+  if (isSwissFormat(format)) return;
+  applyOpeningRoundMatchLabels(matches, roundMetas, teamCount);
+  if (isDoubleEliminationFormat(format)) {
+    applyGlobalMatchLabels(matches, roundMetas, "double");
+    return;
+  }
+  if (isSingleEliminationFormat(format)) {
+    applyGlobalMatchLabels(matches, roundMetas, "single");
+  }
+}
+
 function managedMatchesToPublicRounds(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
@@ -436,6 +455,10 @@ export function BracketManager({
           }
 
           const mergedFormats = { ...defaultRoundFormats(restoredMetas), ...admin.roundFormats };
+
+          if (!isSwissFormat(format)) {
+            relabelEliminationMatches(restoredMatches, restoredMetas, format, teams.length);
+          }
 
           setManagedMatches(restoredMatches);
           setRoundMetas(restoredMetas);

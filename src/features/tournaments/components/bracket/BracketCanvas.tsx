@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Maximize2, Minus, Plus } from "lucide-react";
+import { Expand, Minus, Plus, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const INTERACTIVE_SELECTOR =
@@ -9,10 +9,18 @@ interface BracketCanvasProps {
   children: ReactNode;
   className?: string;
   minHeight?: number;
+  enableFullscreen?: boolean;
 }
 
-export function BracketCanvas({ children, className, minHeight = 480 }: BracketCanvasProps) {
+export function BracketCanvas({
+  children,
+  className,
+  minHeight = 480,
+  enableFullscreen = true,
+}: BracketCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [scale, setScale] = useState(1);
   const scaleRef = useRef(scale);
   const [tx, setTx] = useState(0);
@@ -63,6 +71,28 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
     setTx(0);
     setTy(0);
   };
+
+  const toggleFullscreen = async () => {
+    const element = containerRef.current;
+    if (!element) return;
+    try {
+      if (document.fullscreenElement === element) {
+        await document.exitFullscreen();
+      } else {
+        await element.requestFullscreen();
+      }
+    } catch {
+      // Fullscreen may be blocked by the browser.
+    }
+  };
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -133,11 +163,13 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         "relative overflow-hidden border border-border bg-card/40 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]",
+        isFullscreen && "fixed inset-0 z-[200] h-screen w-screen border-0 bg-background",
         className,
       )}
-      style={{ minHeight }}
+      style={isFullscreen ? undefined : { minHeight }}
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.28]"
@@ -151,7 +183,7 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
       <div
         ref={viewportRef}
         className="relative h-full w-full cursor-grab touch-none active:cursor-grabbing [&_[data-bracket-interactive]_button]:cursor-pointer"
-        style={{ minHeight }}
+        style={{ minHeight: isFullscreen ? "100%" : minHeight }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -196,12 +228,28 @@ export function BracketCanvas({ children, className, minHeight = 480 }: BracketC
         </button>
         <div className="mx-1 h-5 w-px bg-border" />
         <button type="button" onClick={reset} className={zoomButtonClass} aria-label="Reset view">
-          <Maximize2 className="h-4 w-4" />
+          <RotateCcw className="h-4 w-4" />
         </button>
+        {enableFullscreen && (
+          <>
+            <div className="mx-1 h-5 w-px bg-border" />
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className={zoomButtonClass}
+              aria-label={isFullscreen ? "Exit full screen" : "Full screen"}
+            >
+              <Expand className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-6rem)] border border-border bg-popover/85 px-3 py-1.5 font-tech text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur">
-        <span className="hidden sm:inline">Drag to pan · Ctrl+scroll to zoom</span>
+      <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[calc(100%-6rem)] border border-border bg-popover/85 px-3 py-1.5 font-tech text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur">
+        <span className="hidden sm:inline">
+          Drag to pan · Ctrl+scroll to zoom
+          {enableFullscreen ? " · Full screen available" : ""}
+        </span>
         <span className="sm:hidden">Drag to pan · Pinch to zoom</span>
       </div>
     </div>
