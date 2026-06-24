@@ -38,7 +38,7 @@ export function MemberPageLayout({
   maxWidth?: string;
 }) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen pb-10 bg-background text-foreground">
       <MemberNav />
       <div className="pointer-events-none fixed inset-0 grid-bg opacity-25" />
       <div

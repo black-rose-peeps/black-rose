@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
+import { setAppQueryClient } from "@/lib/app-query";
 
 import appCss from "../styles.css?url";
 import favicon from "@/assets/black-rose-emblem-black.png";
@@ -68,6 +69,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    setAppQueryClient(queryClient);
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>

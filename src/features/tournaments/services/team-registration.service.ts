@@ -3,8 +3,8 @@ import {
   fetchTeamTournamentRegistration,
   requestCaptainTeamRegistration,
 } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
-import { fetchTournaments } from "@/features/admin/features/tournaments/services/tournaments.service";
 import { fetchTeamsForUser } from "@/features/admin/features/teams/services/teams.service";
+import { fetchTournamentsLiteCached } from "@/features/member/queries/member-data-queries";
 import { isActiveMember } from "@/features/teams/utils/membership";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
 import { isRegistrationOpen } from "@/features/tournaments/utils/tournament-status";
@@ -16,6 +16,7 @@ export {
   fetchTeamTournamentRegistration,
   requestCaptainTeamRegistration,
 };
+export type { FetchRegistrationsForTeamOptions } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 
 export async function fetchCaptainTeams(memberId: string): Promise<Team[]> {
   const teams = await fetchTeamsForUser(memberId);
@@ -29,7 +30,7 @@ export async function fetchActiveMemberTeams(memberId: string): Promise<Team[]> 
 }
 
 export async function fetchOpenTeamTournaments(game?: Team["game"]): Promise<MockTournament[]> {
-  const tournaments = await fetchTournaments();
+  const tournaments = await fetchTournamentsLiteCached();
   return tournaments.filter((tournament) => {
     if (!isRegistrationOpen(tournament)) return false;
     if (isSoloTournament(tournament)) return false;

@@ -1,9 +1,5 @@
-import { fetchTournamentsForNotifications } from "@/features/admin/features/tournaments/services/tournaments.service";
-import {
-  fetchActiveMemberTeams,
-  fetchRegistrationsForTeam,
-} from "@/features/tournaments/services/team-registration.service";
 import type { MockTeam } from "@/lib/mock-data";
+import type { MemberTournamentNotificationContext } from "@/features/member/queries/member-data-queries";
 import { isNotificationRead, mergeTournamentLiveNotifications, notifyListeners } from "../store";
 import type { AppNotification } from "../types";
 
@@ -55,9 +51,21 @@ function notificationForLiveTournament(
 }
 
 /** Notify roster members when a registered tournament goes live. */
-export async function syncTournamentLiveNotifications(userId: string): Promise<AppNotification[]> {
-  const memberTeams = await fetchActiveMemberTeams(userId);
-  const tournaments = await fetchTournamentsForNotifications();
+export async function syncTournamentLiveNotifications(
+  userId: string,
+  context?: MemberTournamentNotificationContext,
+): Promise<AppNotification[]> {
+  if (!context) {
+    const { loadMemberTournamentNotificationContext } = await import(
+      "@/features/member/queries/member-data-queries"
+    );
+    return syncTournamentLiveNotifications(
+      userId,
+      await loadMemberTournamentNotificationContext(userId),
+    );
+  }
+
+  const { memberTeams, tournaments, registrationsByTeamId } = context;
   const liveById = new Map(
     tournaments.filter((t) => t.status === "Live").map((t) => [t.id, t] as const),
   );
@@ -70,43 +78,32 @@ export async function syncTournamentLiveNotifications(userId: string): Promise<A
   const seenTournamentIds = new Set<string>();
 
   if (memberTeams.length > 0 && liveById.size > 0) {
-    const results = await Promise.allSettled(
-      memberTeams.map(async (team) => {
-        const registrations = await fetchRegistrationsForTeam(team.id);
-        for (const registration of registrations) {
-          if (!isRegisteredForLive(registration)) continue;
+    for (const team of memberTeams) {
+      const registrations = registrationsByTeamId.get(team.id) ?? [];
+      for (const registration of registrations) {
+        if (!isRegisteredForLive(registration)) continue;
 
-          const tournament = liveById.get(registration.tournamentId);
-          if (!tournament || seenTournamentIds.has(tournament.id)) continue;
+        const tournament = liveById.get(registration.tournamentId);
+        if (!tournament || seenTournamentIds.has(tournament.id)) continue;
 
-          seenTournamentIds.add(tournament.id);
-          const notificationId = `tournament-live-${tournament.id}`;
-          const wasLive = previousSnapshot[tournament.id] === "Live";
-          const alreadyRead = isNotificationRead(notificationId, userId);
-          const unread = !wasLive && !alreadyRead;
+        seenTournamentIds.add(tournament.id);
+        const notificationId = `tournament-live-${tournament.id}`;
+        const wasLive = previousSnapshot[tournament.id] === "Live";
+        const alreadyRead = isNotificationRead(notificationId, userId);
+        const unread = !wasLive && !alreadyRead;
 
-          notifications.push({
-            ...notificationForLiveTournament(
-              tournament.id,
-              tournament.name,
-              registration,
-              unread,
-              createdAtById.get(notificationId),
-            ),
-            read: unread ? false : alreadyRead,
-          });
+        notifications.push({
+          ...notificationForLiveTournament(
+            tournament.id,
+            tournament.name,
+            registration,
+            unread,
+            createdAtById.get(notificationId),
+          ),
+          read: unread ? false : alreadyRead,
+        });
 
-          nextSnapshot[tournament.id] = "Live";
-        }
-      }),
-    );
-
-    for (const result of results) {
-      if (result.status === "rejected") {
-        console.warn(
-          "[notifications] Failed to sync live tournament registrations:",
-          result.reason,
-        );
+        nextSnapshot[tournament.id] = "Live";
       }
     }
   }

@@ -7,7 +7,6 @@ import {
   fetchPendingRegistrationsForDashboard,
 } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import {
-  countActiveTournaments,
   fetchActiveTournamentsForDashboard,
 } from "@/features/admin/features/tournaments/services/tournaments.service";
 import { countTeams } from "@/features/admin/features/teams/services/teams.service";
@@ -33,7 +32,6 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
     totalMembers,
     verifiedMembers,
     totalTeams,
-    activeTournaments,
     pendingRegistrations,
     activeTournamentRows,
     pendingRegistrationRows,
@@ -41,7 +39,6 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
     countMembers(),
     countVerifiedMembers(),
     countTeams(),
-    countActiveTournaments(),
     countPendingRegistrationsNeedingReview(),
     fetchActiveTournamentsForDashboard(),
     fetchPendingRegistrationsForDashboard(20),
@@ -51,7 +48,7 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
     stats: {
       totalMembers,
       totalTeams,
-      activeTournaments,
+      activeTournaments: activeTournamentRows.length,
       pendingRegistrations,
       verifiedMembers,
     },

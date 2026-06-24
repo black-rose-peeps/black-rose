@@ -604,11 +604,9 @@ export async function fetchTeamsForUser(userId: string): Promise<Team[]> {
   if (!data?.length) return [];
 
   const teamIds = [...new Set(data.map((row) => row.team_id as string))];
-  const teams = await Promise.all(teamIds.map((teamId) => fetchTeamById(teamId)));
+  const teams = await fetchTeamsByIds(teamIds);
 
-  return teams
-    .filter((team): team is Team => team !== null)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return teams.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function fetchTeamForUser(userId: string): Promise<Team | null> {

@@ -5,6 +5,7 @@
  */
 
 import { bracketCapacity, openingPlayableMatchCount } from "./bracket-field";
+import { buildLowerBracketScheduleByeField } from "./lower-bracket-schedule";
 import { bracketRoundOnePairings } from "@/features/tournaments/utils/tournament-seeding";
 import { type BracketRoundMeta, type ManagedMatch } from "./managed-bracket-core";
 import { link } from "./managed-bracket-build-helpers";
@@ -119,7 +120,7 @@ export function buildLowerBracketScheduleCompressedPreliminary(
   bracketSize: number,
   registeredCount: number,
 ): { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] } {
-  const byeSchedule = buildLowerBracketScheduleByeFieldReference(ubRounds, bracketSize);
+  const byeSchedule = buildLowerBracketScheduleByeField(ubRounds, bracketSize);
   const openingPlayable = openingPlayableMatchCount(registeredCount);
   const lbMatchCounts = [openingPlayable, ...byeSchedule.lbMatchCounts.slice(1)];
   return {
@@ -127,33 +128,6 @@ export function buildLowerBracketScheduleCompressedPreliminary(
     lbRoundIds: byeSchedule.lbRoundIds,
     lbMatchCounts,
   };
-}
-
-function buildLowerBracketScheduleByeFieldReference(
-  ubRounds: number,
-  bracketSize: number,
-): { lbRoundCount: number; lbRoundIds: string[]; lbMatchCounts: number[] } {
-  const lbRoundCount = 2 * (ubRounds - 1) - 1;
-  const lbRoundIds: string[] = [];
-  const lbMatchCounts: number[] = [];
-  let matchCount = bracketSize / 4;
-
-  for (let r = 0; r < lbRoundCount; r++) {
-    lbRoundIds.push(lowerRoundIdReference(r, lbRoundCount));
-    lbMatchCounts.push(matchCount);
-    if (r % 2 === 0) {
-      matchCount = Math.max(1, matchCount / 2);
-    }
-  }
-
-  return { lbRoundCount, lbRoundIds, lbMatchCounts };
-}
-
-function lowerRoundIdReference(lbRoundIndex: number, lbRoundCount: number): string {
-  if (lbRoundIndex === lbRoundCount - 1) return "lb-f";
-  if (lbRoundIndex === lbRoundCount - 2) return "lb-sf";
-  if (lbRoundIndex === 0) return "lb-r1";
-  return `lb-r${lbRoundIndex + 1}`;
 }
 
 export function wireUpperLosersToLowerCompressedPreliminary(
