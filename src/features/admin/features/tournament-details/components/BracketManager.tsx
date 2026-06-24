@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BracketEngine } from "../types/bracket-engine";
 import type { BracketStatus } from "../../../types";
@@ -16,6 +17,7 @@ import {
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { BracketActionDialog } from "./BracketActionDialog";
 import { BracketManagerHeader } from "./BracketManagerHeader";
+import { BracketManagerSubTabs } from "./BracketManagerSubTabs";
 import { ManagedBracketView } from "./ManagedBracketView";
 import { PlayoffPairingDialog } from "./PlayoffPairingDialog";
 import { SeedingPanel } from "./SeedingPanel";
@@ -90,8 +92,7 @@ import {
   type SeedingTier,
 } from "@/features/tournaments/utils/seeding-format";
 import type { MockTournament } from "@/lib/mock-data";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { BracketManagerMobileNav } from "@/features/admin/features/tournaments/components/mobile";
+import { FeatureEmptyState } from "@/features/shared/components/FeaturePanelShell";
 
 /** Convert admin ManagedMatch[] + roundMetas into the public BracketRound[] shape. */
 function relabelEliminationMatches(
@@ -303,7 +304,6 @@ export function BracketManager({
   prizeBreakdown = [],
   onTournamentStatusChange,
 }: BracketManagerProps) {
-  const isMobile = useIsMobile();
   const fieldSize = teams.length;
 
   const bracketEngine = useMemo(() => {
@@ -1217,14 +1217,13 @@ export function BracketManager({
   }
 
   return (
-    <div className="flex flex-col text-foreground">
+    <div className="flex flex-col text-foreground pb-6">
       {saveError && (
         <div className="border-b border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive md:px-8">
           {saveError}
         </div>
       )}
       <BracketManagerHeader
-        tournamentName={tournamentName}
         game={game}
         region={region}
         format={format}
@@ -1257,48 +1256,22 @@ export function BracketManager({
         onReset={requestReset}
         onPublish={requestPublish}
         onMarkComplete={requestMarkComplete}
+        subTabs={
+          <BracketManagerSubTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            bracketGenerated={bracketGenerated}
+          />
+        }
       />
 
-      {/* Section Tabs — desktop */}
-      <div className="hidden border-b border-border px-4 md:flex md:px-8">
-        <button
-          onClick={() => setActiveTab("seeding")}
-          className={`touch-target px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
-            activeTab === "seeding"
-              ? "text-white border-white"
-              : "text-muted-foreground border-transparent hover:text-gray-400"
-          }`}
-        >
-          Team Seeding
-        </button>
-        <button
-          onClick={() => setActiveTab("bracket")}
-          className={`touch-target px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
-            activeTab === "bracket"
-              ? "text-white border-white"
-              : "text-muted-foreground border-transparent hover:text-gray-400"
-          }`}
-        >
-          {bracketGenerated ? "Manage Bracket" : "Bracket Preview"}
-        </button>
-        <button
-          onClick={() => setActiveTab("validation")}
-          className={`touch-target px-5 py-3 font-display text-xs uppercase tracking-wider border-b-2 transition-colors ${
-            activeTab === "validation"
-              ? "text-white border-white"
-              : "text-muted-foreground border-transparent hover:text-gray-400"
-          }`}
-        >
-          Validation
-        </button>
-      </div>
       {/* Tab Content */}
       <div className="flex-1">
         {/* Team Seeding Tab */}
         {activeTab === "seeding" && (
-          <div className="space-y-6">
+          <div className="space-y-0">
             {!isSwiss && (
-              <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
+              <div className="border-b border-white/6 px-4 py-6 md:px-6">
                 <SeedingFormatOption
                   value={seedingFormat}
                   onChange={handleSeedingFormatChange}
@@ -1316,7 +1289,7 @@ export function BracketManager({
               </div>
             )}
             {isDoubleElim && (
-              <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
+              <div className="border-b border-white/6 px-4 py-6 md:px-6">
                 <GrandFinalOption
                   value={grandFinalMode}
                   onChange={handleGrandFinalModeChange}
@@ -1334,7 +1307,7 @@ export function BracketManager({
               </div>
             )}
             {canIncludeThirdPlaceMatch && (
-              <div className="border-b border-border px-4 pb-6 pt-6 md:px-8">
+              <div className="border-b border-white/6 px-4 py-6 md:px-6">
                 <ThirdPlaceMatchOption
                   enabled={includeThirdPlaceMatch}
                   onToggle={handleIncludeThirdPlaceMatchToggle}
@@ -1374,55 +1347,41 @@ export function BracketManager({
         )}
         {/* Bracket Preview Tab */}
         {activeTab === "bracket" && (
-          <div className="p-8 flex-1">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3 text-muted-foreground font-display text-sm uppercase tracking-wider">
-                <span>{isPublished ? "Live Bracket" : "Bracket Management"}</span>
-                <div className="flex-1 h-px bg-border"></div>
-              </div>
-              {!seedingLocked && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="font-tech text-xs uppercase tracking-wider"
-                  onClick={() => setActiveTab("seeding")}
-                >
-                  ← Back to Seeding
-                </Button>
-              )}
-            </div>
-
+          <div className="flex-1 px-4 py-6 md:px-6">
             {!bracketGenerated ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="text-4xl text-border mb-2">⬡</div>
-                <div className="font-display text-lg uppercase tracking-wider text-muted-foreground mb-2">
-                  No Bracket Generated
-                </div>
-                <div className="text-sm text-muted-foreground max-w-80">
-                  Assign all teams in the seeding panel, then click Generate Bracket to manage
-                  matches and results.
-                </div>
-              </div>
+              <FeatureEmptyState
+                title="No bracket generated"
+                message="Assign all teams in the seeding panel, then click Generate Bracket to manage matches and results."
+                action={
+                  !seedingLocked ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="font-tech text-xs uppercase tracking-wider"
+                      onClick={() => setActiveTab("seeding")}
+                    >
+                      Go to seeding
+                    </Button>
+                  ) : undefined
+                }
+              />
             ) : roundMetas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="font-display text-lg uppercase tracking-wider text-muted-foreground mb-2">
-                  Bracket data missing
-                </div>
-                <div className="text-sm text-muted-foreground max-w-md">
-                  Seeding is loaded but match data was not built. Click Generate Bracket again or
-                  use Auto Seed then Generate Bracket.
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 font-tech text-xs uppercase tracking-wider"
-                  onClick={() => setActiveTab("seeding")}
-                >
-                  Go to Seeding
-                </Button>
-              </div>
+              <FeatureEmptyState
+                title="Bracket data missing"
+                message="Seeding is loaded but match data was not built. Click Generate Bracket again or use Auto Seed then Generate Bracket."
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="font-tech text-xs uppercase tracking-wider"
+                    onClick={() => setActiveTab("seeding")}
+                  >
+                    Go to seeding
+                  </Button>
+                }
+              />
             ) : (
               <div className="space-y-10">
                 {isSwiss && swissState ? (
@@ -1523,18 +1482,21 @@ export function BracketManager({
 
         {/* Validation Tab */}
         {activeTab === "validation" && (
-          <div className="p-8">
-            <div className="flex items-center gap-3 mb-4 text-muted-foreground font-display text-sm uppercase tracking-wider">
-              <span>Validation Checklist</span>
-              <div className="flex-1 h-px bg-border"></div>
-            </div>
-
-            <div className="bg-card border border-border p-5">
-              <div className="font-display text-xs uppercase tracking-wider text-muted-foreground mb-3">
-                Pre-Publish Requirements
+          <div className="px-4 py-6 md:px-6">
+            <div className="overflow-hidden border border-white/8 bg-[oklch(0.06_0_0)]">
+              <div className="border-b border-white/8 bg-white/2 px-5 py-4">
+                <p className="font-tech text-[10px] uppercase tracking-[0.18em] text-white/45">
+                  Pre-publish
+                </p>
+                <h3 className="mt-1 font-display text-lg tracking-display text-white">
+                  Validation checklist
+                </h3>
+                <p className="mt-1 text-sm text-white/45">
+                  Confirm seeding and bracket structure before publishing to the public page.
+                </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 px-5 py-5">
                 <ValidationItem
                   label="No duplicate teams"
                   passed={
@@ -1556,28 +1518,22 @@ export function BracketManager({
                   passed={seedingReadiness.ready && bracketGenerated && allAssigned}
                 />
               </div>
-            </div>
 
-            <div className="mt-4">
-              <button
-                onClick={requestPublish}
-                disabled={!canPublish || isPublished || isSaving}
-                className="btn btn-primary font-display text-xs uppercase tracking-wider px-4 py-2 border border-border bg-white text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {isSaving ? "Saving…" : "↑ Publish Bracket"}
-              </button>
+              <div className="border-t border-white/6 px-5 py-4">
+                <Button
+                  type="button"
+                  disabled={!canPublish || isPublished || isSaving}
+                  onClick={requestPublish}
+                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {isSaving ? "Saving…" : "Publish bracket"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
       </div>
-
-      {isMobile ? (
-        <BracketManagerMobileNav
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          bracketGenerated={bracketGenerated}
-        />
-      ) : null}
 
       <BracketActionDialog
         open={bracketDialog !== null}
@@ -1607,15 +1563,15 @@ export function BracketManager({
 
 function ValidationItem({ label, passed }: { label: string; passed: boolean }) {
   return (
-    <div className="flex items-center gap-3 font-display text-sm tracking-wider">
+    <div className="flex items-center gap-3 border border-white/6 bg-white/2 px-4 py-3">
       <span
-        className={`text-sm font-bold w-4 text-center ${
-          passed ? "text-green-400" : "text-red-400"
+        className={`flex h-5 w-5 shrink-0 items-center justify-center font-mono text-xs font-bold ${
+          passed ? "text-emerald-400" : "text-red-400"
         }`}
       >
         {passed ? "✓" : "✗"}
       </span>
-      <span className={passed ? "text-white" : "text-muted-foreground"}>{label}</span>
+      <span className={passed ? "text-white/85" : "text-white/40"}>{label}</span>
     </div>
   );
 }

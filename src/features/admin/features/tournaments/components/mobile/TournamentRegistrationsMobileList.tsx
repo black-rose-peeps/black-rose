@@ -45,29 +45,30 @@ export function TournamentRegistrationsMobileList({
 }: TournamentRegistrationsMobileListProps) {
   return (
     <div className="md:hidden">
-      <ul className="divide-y divide-white/8">
+      <ul className="divide-y divide-white/[0.06]">
         {rows.map((row) => (
           <li key={row.id} className="px-4 py-4">
             <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-secondary font-tech text-[10px]">
+              <div className="grid h-10 w-10 shrink-0 place-items-center border border-white/15 bg-white/[0.04] font-tech text-[10px] text-white/70">
                 {row.tag}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-display text-base tracking-wider-2">{row.name}</p>
+                  <p className="font-display text-base tracking-wider-2 text-white">{row.name}</p>
                   <Badge variant={registrationStatusVariant(row.status)}>{row.status}</Badge>
                 </div>
                 {soloEvent ? (
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-sm text-white/45">
                     {row.soloDiscord ? `@${row.soloDiscord}` : "Member registration"}
                   </p>
                 ) : (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {row.captain} · {row.memberCount} {row.memberCount === 1 ? "player" : "players"}
+                  <p className="mt-1 text-sm text-white/45">
+                    {row.captain} · {row.memberCount}{" "}
+                    {row.memberCount === 1 ? "player" : "players"}
                   </p>
                 )}
                 <p
-                  className="mt-1 font-tech text-label-readable uppercase text-muted-foreground"
+                  className="mt-1 font-tech text-[10px] uppercase tracking-wider text-white/35"
                   title={row.registrationDate}
                 >
                   Registered {formatRegistrationDateTime(row.registrationDate)}
@@ -79,7 +80,7 @@ export function TournamentRegistrationsMobileList({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="min-h-11 flex-1 gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                className="min-h-11 flex-1 gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider hover:bg-white/[0.05]"
                 onClick={() => onView(row.id)}
               >
                 <Eye className="h-3.5 w-3.5" />
@@ -90,8 +91,8 @@ export function TournamentRegistrationsMobileList({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "min-h-11 flex-1 gap-1.5 font-tech text-[10px] uppercase tracking-wider",
-                  "text-destructive hover:text-destructive",
+                  "min-h-11 flex-1 gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider",
+                  "text-red-400 hover:bg-red-950/20 hover:text-red-300",
                 )}
                 onClick={() => onRemove(row)}
               >
@@ -102,15 +103,17 @@ export function TournamentRegistrationsMobileList({
           </li>
         ))}
       </ul>
-      <AdminTablePagination
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        rangeStart={rangeStart}
-        rangeEnd={rangeEnd}
-        onPageChange={onPageChange}
-        className="px-0"
-      />
+      <div className="border-t border-white/[0.06] px-4">
+        <AdminTablePagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={onPageChange}
+          className="px-0"
+        />
+      </div>
     </div>
   );
 }

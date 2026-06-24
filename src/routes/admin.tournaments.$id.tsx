@@ -3,57 +3,35 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
   ArrowLeft,
+  BarChart3,
   Calendar,
   CalendarClock,
   Coins,
   Gamepad2,
   Pencil,
-  Plus,
-  RefreshCw,
-  Download,
   Trash2,
   Trophy,
   UserRound,
   Users,
   Users2,
 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { formatRegistrationDateTime } from "@/features/admin/utils/registration-date";
-import {
-  AdminManagementTable,
-  adminTableCellClip,
-  adminTableTextTruncate,
-} from "@/features/admin/components/AdminManagementTable";
 import { AdminTopbar } from "@/features/admin/components/AdminTopbar";
 import { AdminPageContent } from "@/features/admin/components/AdminPageContent";
-import { SortableTableHead } from "@/features/admin/components/SortableTableHead";
-import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
-import {
-  TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS,
-  TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS,
-} from "@/features/admin/constants/table-columns";
+import { StatusPill } from "@/features/admin/components/ui";
 import { TournamentMetaStrip } from "@/features/admin/components/TournamentMetaStrip";
-import { Panel, StatusPill } from "@/features/admin/components/ui";
 import { BracketManager } from "@/features/admin/features/tournament-details/components/BracketManager";
+import { AdminStandingsPanel } from "@/features/admin/features/tournament-details/components/AdminStandingsPanel";
 import { TeamModal } from "@/features/admin/components/TeamModal";
 import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import { AddMembersToTournamentDialog } from "@/features/admin/features/tournaments/components/AddMembersToTournamentDialog";
 import { AddTeamToTournamentDialog } from "@/features/admin/features/tournaments/components/AddTeamToTournamentDialog";
 import { EditTournamentModal } from "@/features/admin/features/tournaments/components/EditTournamentModal";
 import { PrizeDistributionPanel } from "@/features/admin/features/tournaments/components/PrizeDistributionPanel";
+import { TournamentRegistrationsPanel } from "@/features/admin/features/tournaments/components/TournamentRegistrationsPanel";
 import { useTournamentRegistrations } from "@/features/admin/features/tournaments/hooks";
 import { useDeleteTournament } from "@/features/admin/features/tournaments/hooks/useDeleteTournament";
 import {
@@ -77,17 +55,17 @@ import {
   registrationActionsEnabled,
   tournamentHasUnresolvedRegistrations,
 } from "@/features/admin/features/participants/constants/registration-status";
-import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
 import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { compareByOrder } from "@/features/admin/utils/sort-comparators";
+import { compareRegistrationDates } from "@/features/admin/utils/registration-date";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
+import { supportsEliminationStandings } from "@/features/tournaments/constants/formats";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   TournamentDetailMobileNav,
   TournamentMobileActionsMenu,
   TournamentMobileMetaStrip,
-  TournamentRegistrationsMobileList,
   type TournamentDetailTab,
 } from "@/features/admin/features/tournaments/components/mobile";
 import type { TournamentMetaItem } from "@/features/admin/components/TournamentMetaStrip";
@@ -182,6 +160,8 @@ function TournamentDetailPage() {
   const registrationStatusOrder = useMemo(() => REGISTRATION_STATUS_SORT_ORDER, []);
   const teamSortComparators = useMemo(
     () => ({
+      registered: (a: MockTeam, b: MockTeam) =>
+        compareRegistrationDates(a.registrationDate, b.registrationDate),
       status: (a: MockTeam, b: MockTeam) =>
         compareByOrder(registrationStatusOrder, a.status, b.status),
     }),
@@ -268,6 +248,7 @@ function TournamentDetailPage() {
       (isTournamentConcluded(tournament.status) &&
         computedTeams.length >= 2 &&
         computedTeams.length % 2 === 0));
+  const showStandingsTab = supportsEliminationStandings(tournament.format);
   const soloEvent = isSoloTournament(tournament);
   const capLabel = registrationCapLabel(tournament.participationType);
   const wwmLabel = wwmModeLabel(tournament.wwmMode);
@@ -317,6 +298,10 @@ function TournamentDetailPage() {
     },
   ];
 
+  const pendingCount = teams.filter(
+    (team) => team.status === "Pending" || team.status === "Previously Competed",
+  ).length;
+
   const mobileRegistrationRows = teamsPagination.paginatedItems.map((team) => ({
     id: team.id,
     name: team.name,
@@ -328,58 +313,48 @@ function TournamentDetailPage() {
     status: team.status,
   }));
 
-  const teamsPanelHeader = (
-    <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-      <div>
-        <p className="font-tech text-label-readable uppercase text-muted-foreground">
-          Registrations
-        </p>
-        <h2 className="font-display text-xl font-bold tracking-wider-2">
-          {soloEvent ? "Registered Players" : "Registered Teams"}
-        </h2>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 [&_button]:min-h-11 sm:[&_button]:min-h-9">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2 font-tech text-[10px] uppercase tracking-wider"
-          disabled={teamsLoading || teams.length === 0}
-          onClick={() => downloadTournamentRegistrationsCsv(tournament, teams, soloEvent)}
-        >
-          <Download className="h-3.5 w-3.5" />
-          Download CSV
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2 font-tech text-[10px] uppercase tracking-wider"
-          disabled={teamsLoading}
-          onClick={() => refetchRegistrations()}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          className="gap-2 font-tech uppercase tracking-wider"
-          disabled={approvedCount >= tournament.teamCap}
-          title={
-            approvedCount >= tournament.teamCap
-              ? `${capLabel} reached`
-              : soloEvent
-                ? "Register members directly"
-                : "Add a roster from Teams"
-          }
-          onClick={() => (soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true))}
-        >
-          <Plus className="h-4 w-4" />
-          {soloEvent ? "Add Players" : "Add Teams"}
-        </Button>
-      </div>
-    </div>
+  const teamsPanelContent = (
+    <TournamentRegistrationsPanel
+      tournament={tournament}
+      teams={teams}
+      teamsLoading={teamsLoading}
+      teamsError={teamsError}
+      soloEvent={soloEvent}
+      capLabel={capLabel}
+      approvedCount={approvedCount}
+      displayedEntrantCount={displayedEntrantCount}
+      totalPlayers={totalPlayers}
+      pendingCount={pendingCount}
+      mobileRows={mobileRegistrationRows}
+      paginatedTeams={teamsPagination.paginatedItems}
+      page={teamsPagination.page}
+      totalPages={teamsPagination.totalPages}
+      total={teamsPagination.total}
+      rangeStart={teamsPagination.rangeStart}
+      rangeEnd={teamsPagination.rangeEnd}
+      onPageChange={teamsPagination.setPage}
+      teamSortKey={teamSortKey}
+      teamSortDirection={teamSortDirection}
+      onToggleTeamSort={toggleTeamSort}
+      onRefresh={() => refetchRegistrations()}
+      onDownloadCsv={() => downloadTournamentRegistrationsCsv(tournament, teams, soloEvent)}
+      onAdd={() => (soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true))}
+      onViewTeam={setOpenTeam}
+      onRemoveTeam={(team) => {
+        setRemoveError(null);
+        setRemovingRegistration(team);
+      }}
+    />
+  );
+
+  const standingsPanelContent = (
+    <AdminStandingsPanel
+      tournamentId={tournament.id}
+      format={tournament.format}
+      teams={teams}
+      tournamentStatus={tournament.status}
+      prizeBreakdown={tournament.prizeBreakdown}
+    />
   );
 
   const bracketPanelContent = supportsBracketManager ? (
@@ -489,58 +464,7 @@ function TournamentDetailPage() {
 
         {isMobile ? (
           <>
-            {mobileTab === "teams" ? (
-              <Panel>
-                {teamsPanelHeader}
-                {teamsError && (
-                  <div className="px-4 pt-4">
-                    <Alert variant="destructive">
-                      <AlertDescription>{teamsError}</AlertDescription>
-                    </Alert>
-                  </div>
-                )}
-                <div className="pt-2">
-                  {teamsLoading && teams.length === 0 ? (
-                    <ul className="divide-y divide-white/8">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <li key={i} className="space-y-2 px-4 py-4">
-                          <Skeleton className="h-5 w-2/3" />
-                          <Skeleton className="h-4 w-1/2" />
-                        </li>
-                      ))}
-                    </ul>
-                  ) : teams.length === 0 ? (
-                    <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      {soloEvent
-                        ? "No players registered yet. Use Add Players to register members directly."
-                        : "No teams registered yet. Use Add Teams to register rosters from Teams."}
-                    </p>
-                  ) : (
-                    <TournamentRegistrationsMobileList
-                      rows={mobileRegistrationRows}
-                      soloEvent={soloEvent}
-                      page={teamsPagination.page}
-                      totalPages={teamsPagination.totalPages}
-                      total={teamsPagination.total}
-                      rangeStart={teamsPagination.rangeStart}
-                      rangeEnd={teamsPagination.rangeEnd}
-                      onPageChange={teamsPagination.setPage}
-                      onView={(id) => {
-                        const team = teams.find((entry) => entry.id === id);
-                        if (team) setOpenTeam(team);
-                      }}
-                      onRemove={(row) => {
-                        const team = teams.find((entry) => entry.id === row.id);
-                        if (team) {
-                          setRemoveError(null);
-                          setRemovingRegistration(team);
-                        }
-                      }}
-                    />
-                  )}
-                </div>
-              </Panel>
-            ) : null}
+            {mobileTab === "teams" ? teamsPanelContent : null}
 
             {mobileTab === "prizes" ? (
               <PrizeDistributionPanel
@@ -549,18 +473,10 @@ function TournamentDetailPage() {
               />
             ) : null}
 
+            {showStandingsTab && mobileTab === "standings" ? standingsPanelContent : null}
+
             {mobileTab === "bracket" ? (
-              <Panel>
-                <div className="border-b border-border px-4 py-4">
-                  <p className="font-tech text-label-readable uppercase text-muted-foreground">
-                    Admin
-                  </p>
-                  <h2 className="font-display text-xl font-bold tracking-wider-2">
-                    Bracket Management
-                  </h2>
-                </div>
-                <div className="px-0 py-4">{bracketPanelContent}</div>
-              </Panel>
+              <div className="overflow-hidden">{bracketPanelContent}</div>
             ) : null}
 
             <TournamentDetailMobileNav
@@ -568,6 +484,7 @@ function TournamentDetailPage() {
               onTabChange={setMobileTab}
               teamsLabel={soloEvent ? "Players" : "Teams"}
               teamsCount={teams.length}
+              showStandings={showStandingsTab}
               bracketDisabled={!supportsBracketManager}
               bracketDisabledReason={bracketNotice || "Bracket unavailable"}
             />
@@ -609,6 +526,16 @@ function TournamentDetailPage() {
                   <span className="sm:hidden">Bracket</span>
                   <span className="hidden sm:inline">Bracket Management</span>
                 </TabsTrigger>
+                {showStandingsTab && (
+                  <TabsTrigger
+                    value="standings"
+                    className="touch-target shrink-0 gap-2 rounded-none border-b-2 border-transparent px-4 py-3 font-tech text-xs uppercase tracking-wider-2 data-[state=active]:border-foreground data-[state=active]:bg-card data-[state=active]:shadow-none sm:px-6"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="sm:hidden">Standings</span>
+                    <span className="hidden sm:inline">Standings</span>
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
 
@@ -620,244 +547,18 @@ function TournamentDetailPage() {
             </TabsContent>
 
             <TabsContent value="teams" className="mt-0">
-              <Panel>
-                {teamsPanelHeader}
-
-                {teamsError && (
-                  <div className="px-6 pt-4">
-                    <Alert variant="destructive">
-                      <AlertDescription>{teamsError}</AlertDescription>
-                    </Alert>
-                  </div>
-                )}
-
-                <div className="p-6 pt-4">
-                  <AdminManagementTable
-                    columnWidths={
-                      soloEvent
-                        ? TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS
-                        : TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS
-                    }
-                  >
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                          {soloEvent ? "Player" : "Team"}
-                        </TableHead>
-                        {soloEvent ? (
-                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                            Discord
-                          </TableHead>
-                        ) : (
-                          <>
-                            <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                              Captain
-                            </TableHead>
-                            <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                              Members
-                            </TableHead>
-                          </>
-                        )}
-                        <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                          Registered
-                        </TableHead>
-                        <SortableTableHead
-                          label="Status"
-                          sortKey="status"
-                          activeKey={teamSortKey}
-                          direction={teamSortDirection}
-                          onSort={toggleTeamSort}
-                        />
-                        <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {teamsLoading && teams.length === 0 ? (
-                        Array.from({ length: 5 }).map((_, i) => (
-                          <TableRow key={i} className="hover:bg-transparent">
-                            <TableCell className={adminTableCellClip}>
-                              <div className="flex min-w-0 items-center gap-3">
-                                <Skeleton className="h-9 w-9 shrink-0" />
-                                <div className="min-w-0 flex-1 space-y-1.5">
-                                  <Skeleton className="h-4 w-full max-w-32" />
-                                  <Skeleton className="h-3 w-full max-w-20" />
-                                </div>
-                              </div>
-                            </TableCell>
-                            {soloEvent ? (
-                              <TableCell className={adminTableCellClip}>
-                                <Skeleton className="h-4 w-full max-w-24" />
-                              </TableCell>
-                            ) : (
-                              <>
-                                <TableCell className={adminTableCellClip}>
-                                  <Skeleton className="h-4 w-full max-w-20" />
-                                </TableCell>
-                                <TableCell className={adminTableCellClip}>
-                                  <Skeleton className="h-4 w-full max-w-16" />
-                                </TableCell>
-                              </>
-                            )}
-                            <TableCell>
-                              <Skeleton className="h-4 w-20" />
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-5 w-16 rounded-full" />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Skeleton className="ml-auto h-7 w-14 rounded-md" />
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : teams.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={soloEvent ? 5 : 6}
-                            className="py-12 text-center text-muted-foreground"
-                          >
-                            {soloEvent
-                              ? "No players registered yet. Use Add Players to register members directly."
-                              : "No teams registered yet. Use Add Teams to register rosters from the Teams tab."}
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        teamsPagination.paginatedItems.map((team) => {
-                          const soloDiscord = team.members[0]?.discord ?? team.captain ?? undefined;
-
-                          return (
-                            <TableRow
-                              key={team.id}
-                              className="transition-colors hover:bg-secondary/40"
-                            >
-                              <TableCell className={adminTableCellClip}>
-                                <div className="flex min-w-0 items-center gap-3">
-                                  <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech">
-                                    {team.tag}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div
-                                      className={cn(
-                                        "font-display text-base tracking-wider-2",
-                                        adminTableTextTruncate,
-                                      )}
-                                      title={team.name}
-                                    >
-                                      {team.name}
-                                    </div>
-                                    {soloEvent ? (
-                                      <div
-                                        className={cn(
-                                          "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
-                                          adminTableTextTruncate,
-                                        )}
-                                      >
-                                        Member registration
-                                      </div>
-                                    ) : (
-                                      <div
-                                        className={cn(
-                                          "text-[10px] font-tech uppercase tracking-wider text-muted-foreground",
-                                          adminTableTextTruncate,
-                                        )}
-                                      >
-                                        {team.members.length}{" "}
-                                        {team.members.length === 1 ? "player" : "players"}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </TableCell>
-                              {soloEvent ? (
-                                <TableCell
-                                  className={cn("text-muted-foreground", adminTableCellClip)}
-                                >
-                                  <span className={adminTableTextTruncate} title={soloDiscord}>
-                                    {soloDiscord
-                                      ? soloDiscord.startsWith("@")
-                                        ? soloDiscord
-                                        : `@${soloDiscord}`
-                                      : "—"}
-                                  </span>
-                                </TableCell>
-                              ) : (
-                                <>
-                                  <TableCell className={cn("text-sm", adminTableCellClip)}>
-                                    <span className={adminTableTextTruncate} title={team.captain}>
-                                      {team.captain}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="text-muted-foreground">
-                                    {team.members.length} members
-                                  </TableCell>
-                                </>
-                              )}
-                              <TableCell className="text-muted-foreground" title={team.registrationDate}>
-                                {formatRegistrationDateTime(team.registrationDate)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={registrationStatusVariant(team.status)}>
-                                  {team.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="font-tech text-[10px] uppercase tracking-wider"
-                                    onClick={() => setOpenTeam(team)}
-                                  >
-                                    View
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      setRemoveError(null);
-                                      setRemovingRegistration(team);
-                                    }}
-                                  >
-                                    Remove
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </AdminManagementTable>
-                </div>
-
-                <AdminTablePagination
-                  page={teamsPagination.page}
-                  totalPages={teamsPagination.totalPages}
-                  total={teamsPagination.total}
-                  rangeStart={teamsPagination.rangeStart}
-                  rangeEnd={teamsPagination.rangeEnd}
-                  onPageChange={teamsPagination.setPage}
-                />
-              </Panel>
+              {teamsPanelContent}
             </TabsContent>
 
             <TabsContent value="bracket" className="mt-0">
-              <Panel>
-                <div className="border-b border-border px-6 py-4">
-                  <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                    Admin
-                  </p>
-                  <h2 className="font-display text-xl font-bold tracking-wider-2">
-                    Bracket Management
-                  </h2>
-                </div>
-                <div className="px-6 py-6">{bracketPanelContent}</div>
-              </Panel>
+              {bracketPanelContent}
             </TabsContent>
+
+            {showStandingsTab && (
+              <TabsContent value="standings" className="mt-0">
+                {standingsPanelContent}
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </AdminPageContent>
