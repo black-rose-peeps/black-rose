@@ -10,6 +10,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Download,
   Trash2,
   Trophy,
   UserRound,
@@ -66,6 +67,7 @@ import {
   formatBracketAvailability,
   supportsBracketManager as canUseBracketManager,
 } from "@/features/admin/features/tournaments/utils";
+import { downloadTournamentRegistrationsCsv } from "@/features/admin/features/tournaments/utils/export-tournament-registrations-csv";
 import {
   isBracketSeedingStatus,
   countSlotFilledRegistrations,
@@ -341,6 +343,17 @@ function TournamentDetailPage() {
           variant="outline"
           size="sm"
           className="gap-2 font-tech text-[10px] uppercase tracking-wider"
+          disabled={teamsLoading || teams.length === 0}
+          onClick={() => downloadTournamentRegistrationsCsv(tournament, teams, soloEvent)}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Download CSV
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2 font-tech text-[10px] uppercase tracking-wider"
           disabled={teamsLoading}
           onClick={() => refetchRegistrations()}
         >
@@ -378,7 +391,6 @@ function TournamentDetailPage() {
       format={tournament.format}
       teamCap={tournament.teamCap}
       teams={computedTeams}
-      initialBracket={tournament.bracket ?? []}
       tournamentStatus={tournament.status}
       prizeBreakdown={tournament.prizeBreakdown}
       onTournamentStatusChange={(status) => patchTournament({ ...tournament, status })}
@@ -608,48 +620,7 @@ function TournamentDetailPage() {
 
             <TabsContent value="teams" className="mt-0">
               <Panel>
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4">
-                  <div>
-                    <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                      Registrations
-                    </p>
-                    <h2 className="font-display text-xl font-bold tracking-wider-2">
-                      {soloEvent ? "Registered Players" : "Registered Teams"}
-                    </h2>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 font-tech text-[10px] uppercase tracking-wider"
-                      disabled={teamsLoading}
-                      onClick={() => refetchRegistrations()}
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Refresh
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="gap-2 font-tech uppercase tracking-wider"
-                      disabled={approvedCount >= tournament.teamCap}
-                      title={
-                        approvedCount >= tournament.teamCap
-                          ? `${capLabel} reached`
-                          : soloEvent
-                            ? "Register members directly"
-                            : "Add a roster from Teams"
-                      }
-                      onClick={() =>
-                        soloEvent ? setIsAddPlayersOpen(true) : setIsAddTeamOpen(true)
-                      }
-                    >
-                      <Plus className="h-4 w-4" />
-                      {soloEvent ? "Add Players" : "Add Teams"}
-                    </Button>
-                  </div>
-                </div>
+                {teamsPanelHeader}
 
                 {teamsError && (
                   <div className="px-6 pt-4">
