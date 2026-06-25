@@ -245,7 +245,7 @@ export function BracketCanvas({
         )}
       </div>
 
-      <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[calc(100%-6rem)] border border-border bg-popover/85 px-3 py-1.5 font-tech text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur">
+      <div className="pointer-events-none absolute left-3 bottom-3 z-10 max-w-[calc(100%-6rem)] border border-border bg-popover/85 px-3 py-1.5 font-tech text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur">
         <span className="hidden sm:inline">
           Drag to pan · Ctrl+scroll to zoom
           {enableFullscreen ? " · Full screen available" : ""}

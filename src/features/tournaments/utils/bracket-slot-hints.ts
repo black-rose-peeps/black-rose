@@ -85,6 +85,12 @@ function feederLabel(
     return `Seed ${protectedSeed[1]} · protected`;
   }
 
+  const globalMatch = match.label.match(/^Match\s+(\d+)$/i);
+  if (globalMatch) {
+    const roleWord = role === "winner" ? "winner" : "loser";
+    return `M${globalMatch[1]} ${roleWord}`;
+  }
+
   const matchRef = compactMatchRef(match.label);
   const round = displayHintRoundLabel(match.roundId, match.roundLabel, labelByRoundId);
   const roleWord = role === "winner" ? "winner" : "loser";

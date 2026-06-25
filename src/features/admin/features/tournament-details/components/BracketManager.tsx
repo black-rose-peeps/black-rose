@@ -31,8 +31,7 @@ import type {
   ManagedMatch,
   PlayoffRound1Pairing,
 } from "../utils/managed-bracket";
-import { applyGlobalMatchLabels } from "@/features/tournaments/utils/bracket-global-match-labels";
-import { applyOpeningRoundMatchLabels } from "../utils/managed-bracket-build-helpers";
+import { relabelEliminationMatches } from "@/features/tournaments/utils/bracket-payload-normalize";
 import {
   buildDoubleElimMatches,
   buildSingleElimMatches,
@@ -95,23 +94,6 @@ import type { MockTournament } from "@/lib/mock-data";
 import { FeatureEmptyState } from "@/features/shared/components/FeaturePanelShell";
 
 /** Convert admin ManagedMatch[] + roundMetas into the public BracketRound[] shape. */
-function relabelEliminationMatches(
-  matches: ManagedMatch[],
-  roundMetas: BracketRoundMeta[],
-  format: string,
-  teamCount: number,
-): void {
-  if (isSwissFormat(format)) return;
-  applyOpeningRoundMatchLabels(matches, roundMetas, teamCount);
-  if (isDoubleEliminationFormat(format)) {
-    applyGlobalMatchLabels(matches, roundMetas, "double");
-    return;
-  }
-  if (isSingleEliminationFormat(format)) {
-    applyGlobalMatchLabels(matches, roundMetas, "single");
-  }
-}
-
 function managedMatchesToPublicRounds(
   matches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
