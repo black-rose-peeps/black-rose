@@ -3,6 +3,7 @@ import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/a
 import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
+import { normalizePublishedBracketPayload } from "@/features/tournaments/utils/bracket-payload-normalize";
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
 import type { GrandFinalMode } from "../utils/grand-final";
 import type { SeedingFormat, SeedingTier } from "@/features/tournaments/utils/seeding-format";
@@ -92,7 +93,7 @@ export async function fetchPublishedBracketPayload(
   if (!state || state.status !== "published" || !state.payload?.rounds.length) {
     return null;
   }
-  return state.payload;
+  return normalizePublishedBracketPayload(state.payload);
 }
 
 export async function savePublishedBracket(

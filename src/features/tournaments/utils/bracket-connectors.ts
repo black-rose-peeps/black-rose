@@ -85,6 +85,7 @@ export function publicToLayoutMatches(rounds: BracketRound[]): LayoutInputMatch[
 export function enrichPublicRounds(
   rounds: BracketRound[],
   managedMatches?: ManagedMatch[],
+  roundMetas?: BracketRoundMeta[],
 ): BracketRound[] {
   if (!managedMatches?.length) return rounds;
 
@@ -97,7 +98,7 @@ export function enrichPublicRounds(
       },
     ]),
   );
-  const slotHints = buildMatchSlotHints(managedMatches);
+  const slotHints = buildMatchSlotHints(managedMatches, roundMetas, rounds);
 
   const withLinks = rounds.map((round) => ({
     ...round,
