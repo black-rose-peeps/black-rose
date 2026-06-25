@@ -9,15 +9,13 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import {
-  enrichPublicRounds,
-} from "@/features/tournaments/utils/bracket-connectors";
-import {
   fetchPublishedBracketPayload,
   type PersistedBracketPayload,
   resetBracketState,
   savePublishedBracket,
   updatePublishedBracket,
 } from "@/features/admin/features/tournament-details/services/bracket.service";
+import { normalizePublishedBracketPayload } from "@/features/tournaments/utils/bracket-payload-normalize";
 import {
   resolveStoredGrandFinalMode,
   type GrandFinalMode,
@@ -66,8 +64,7 @@ function _payloadFromUnknown(payload: unknown): PersistedBracketPayload | null {
 }
 
 function _normalizePayload(payload: PersistedBracketPayload): PersistedBracketPayload {
-  const rounds = enrichPublicRounds(payload.rounds, payload.admin?.managedMatches);
-  return { ...payload, rounds };
+  return normalizePublishedBracketPayload(payload);
 }
 
 function _resolveGrandFinalMode(payload: PersistedBracketPayload): GrandFinalMode | null {
@@ -220,11 +217,12 @@ export function useLiveBracket(tournamentId: string): LiveBracketState {
         if (cancelled) return;
         if (published?.rounds?.length) {
           _setLocal(tournamentId, published);
-          setBracket(published.rounds);
-          setPlacements(published.placements ?? null);
-          setPrizeBreakdown(published.prizeBreakdown ?? null);
-          setAssignmentTeamIds(published.admin?.assignmentTeamIds ?? null);
-          setGrandFinalMode(_resolveGrandFinalMode(published));
+          const stored = _snapshotLocal(tournamentId);
+          setBracket(stored?.rounds ?? null);
+          setPlacements(stored?.placements ?? null);
+          setPrizeBreakdown(stored?.prizeBreakdown ?? null);
+          setAssignmentTeamIds(stored?.assignmentTeamIds ?? null);
+          setGrandFinalMode(stored?.grandFinalMode ?? null);
         } else {
           _clearLocal(tournamentId);
           setBracket(null);
@@ -277,11 +275,12 @@ export function useLiveBracket(tournamentId: string): LiveBracketState {
             const parsed = _payloadFromUnknown(row.bracket_data);
             if (parsed?.rounds?.length) {
               _setLocal(tournamentId, parsed, row.updated_at as string);
-              setBracket(parsed.rounds);
-              setPlacements(parsed.placements ?? null);
-              setPrizeBreakdown(parsed.prizeBreakdown ?? null);
-              setAssignmentTeamIds(parsed.admin?.assignmentTeamIds ?? null);
-              setGrandFinalMode(_resolveGrandFinalMode(parsed));
+              const stored = _snapshotLocal(tournamentId);
+              setBracket(stored?.rounds ?? null);
+              setPlacements(stored?.placements ?? null);
+              setPrizeBreakdown(stored?.prizeBreakdown ?? null);
+              setAssignmentTeamIds(stored?.assignmentTeamIds ?? null);
+              setGrandFinalMode(stored?.grandFinalMode ?? null);
             } else {
               _clearLocal(tournamentId);
               setBracket(null);

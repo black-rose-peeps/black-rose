@@ -11,19 +11,18 @@ function isProtectedSeedLabel(label: string): boolean {
   return /^Seed \d+ · protected$/i.test(label);
 }
 
+/** Singleton labels that keep a fixed title instead of global Match N numbering. */
+function isPreservedSingletonLabel(label: string): boolean {
+  return /^3rd\s+Place\s+Match$/i.test(label.trim());
+}
+
 function shouldGloballyNumberMatch(
   match: ManagedMatch,
   roundId: string,
   roundMatchCount: number,
 ): boolean {
   if (isProtectedSeedLabel(match.label)) return false;
-  if (
-    roundMatchCount === 1 &&
-    match.label.trim() &&
-    !/^Match \d+$/i.test(match.label.trim())
-  ) {
-    return false;
-  }
+  if (roundMatchCount === 1 && isPreservedSingletonLabel(match.label)) return false;
   if (OPENING_ELIM_ROUND_IDS.has(roundId) && roundId === "ub-r1") {
     return Boolean(match.teamA?.trim() && match.teamB?.trim());
   }
