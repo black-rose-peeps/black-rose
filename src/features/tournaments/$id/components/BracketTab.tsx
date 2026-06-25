@@ -5,20 +5,28 @@
  * with Black Rose styling. Mirrors admin ManagedBracketView structure.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
 import {
+  BracketFocusControls,
   BracketSectionHeader,
   DoubleElimViewControls,
   EliminationBracketCanvas,
   EliminationChampionshipStage,
   GrandFinalStage,
+  type BracketCanvasBand,
+  type BracketFocusSize,
   type BracketRoundColumn,
   type DoubleElimViewMode,
   type SplitBracketSide,
 } from "@/features/tournaments/components/bracket";
+import {
+  applyBracketFocusToDoubleElim,
+  getAvailableTopBracketSizes,
+  sliceEliminationRoundsForTopN,
+} from "@/features/tournaments/utils/bracket-top-slice";
 import {
   publicToLayoutMatches,
   splitGrandFinalRounds,
@@ -80,6 +88,15 @@ export function BracketTab({
 }: BracketTabProps) {
   const [viewMode, setViewMode] = useState<DoubleElimViewMode>("full");
   const [splitSide, setSplitSide] = useState<SplitBracketSide>("upper");
+  const [bracketFocus, setBracketFocus] = useState<BracketFocusSize>("all");
+  const bracketTeamCount = useMemo(() => countBracketTeams(bracket), [bracket]);
+  const availableTopSizes = useMemo(
+    () =>
+      isEvenBracketFieldSize(bracketTeamCount)
+        ? getAvailableTopBracketSizes(bracketTeamCount)
+        : [],
+    [bracketTeamCount],
+  );
 
   if (isLoading) {
     return <BracketSkeleton />;
@@ -114,13 +131,11 @@ export function BracketTab({
 
   const isDoubleElim = isDoubleEliminationFormat(format);
   const legacyOpeningPlayIn = hasLegacyOpeningPlayIn(bracket);
-  const bracketTeamCount = countBracketTeams(bracket);
   const bracketCapacitySize = isEvenBracketFieldSize(bracketTeamCount)
     ? bracketCapacity(bracketTeamCount)
     : 0;
   const hasRoundOneByes = bracketCapacitySize > 0 && bracketCapacitySize > bracketTeamCount;
-  const compressedPreliminary =
-    hasRoundOneByes && usesCompressedPreliminaryField(bracketTeamCount);
+  const compressedPreliminary = hasRoundOneByes && usesCompressedPreliminaryField(bracketTeamCount);
   const openingMatches =
     compressedPreliminary && isEvenBracketFieldSize(bracketTeamCount)
       ? openingPlayableMatchCount(bracketTeamCount)
@@ -129,52 +144,152 @@ export function BracketTab({
     bracket.flatMap((round) => round.matches.map((match) => [match.id, match] as const)),
   );
 
-  const renderSection = (
-    title: string | undefined,
-    accent: "primary" | "accent" | "warning",
-    rounds: BracketRound[],
-    options?: { splitChampionship?: boolean },
-  ) => {
-    const splitChampionship = options?.splitChampionship ?? !isDoubleElim;
-    const { bracketRounds: flowRounds, championshipRounds: stagedChampionship } = splitChampionship
-      ? partitionPublicChampionshipRounds(rounds)
-      : { bracketRounds: rounds, championshipRounds: [] as BracketRound[] };
+  const renderGrandFinalStage = (grandRounds: BracketRound[]) => {
+    if (grandRounds.length === 0 || !isDoubleElim) return null;
 
-    const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, (round) =>
-      isGrandFinalRound(round.label),
+    const gfRound =
+      grandRounds.find(
+        (round) => /grand final/i.test(round.label) && !/reset/i.test(round.label),
+      ) ?? grandRounds[0];
+    const resetRound = grandRounds.find((round) => /reset/i.test(round.label));
+    const primaryMatch = gfRound?.matches[0];
+    if (!primaryMatch) return null;
+
+    return (
+      <GrandFinalStage
+        primaryMatch={{
+          id: primaryMatch.id,
+          teamA: primaryMatch.teamA ?? null,
+          teamB: primaryMatch.teamB ?? null,
+          winner: primaryMatch.winner ?? null,
+          confirmed: !!primaryMatch.winner,
+          label: primaryMatch.label,
+        }}
+        resetMatch={
+          resetRound?.matches[0]
+            ? {
+                id: resetRound.matches[0].id,
+                teamA: resetRound.matches[0].teamA ?? null,
+                teamB: resetRound.matches[0].teamB ?? null,
+                winner: resetRound.matches[0].winner ?? null,
+                confirmed: !!resetRound.matches[0].winner,
+                label: resetRound.matches[0].label,
+              }
+            : null
+        }
+        grandFinalMode={grandFinalModeProp ?? undefined}
+        formatLabel={format}
+        renderMatch={(match, variant) => {
+          const publicMatch = matchById.get(match.id);
+          if (!publicMatch) return null;
+          const round = bracket.find((item) =>
+            item.matches.some((entry) => entry.id === match.id),
+          );
+          return (
+            <PublicMatchCard
+              match={publicMatch}
+              roundLabel={round?.label}
+              teamTags={teamTags}
+              isGrand={variant === "primary"}
+            />
+          );
+        }}
+      />
     );
-    const columns = toPublicRoundColumns(bracketRounds);
-    const sectionLayoutMatches = publicToLayoutMatches(flowRounds);
-    const sectionByeMarkers = buildByeAdvancementMarkersFromRounds(flowRounds);
+  };
+
+  const renderSectionGuides = (rounds: BracketRound[]) => {
     const sectionHasLowerPlayIn =
-      isDoubleElim &&
-      legacyOpeningPlayIn &&
-      rounds.some((round) => isLowerBracketRound(round.label));
+      isDoubleElim && legacyOpeningPlayIn && rounds.some((round) => isLowerBracketRound(round.label));
     const sectionHasByeGuide =
       !legacyOpeningPlayIn &&
       hasRoundOneByes &&
       rounds.some((round) => round.id === "se-r0" || round.id === "ub-r1");
     const sectionHasLegacyPlayIn =
       !isDoubleElim && legacyOpeningPlayIn && rounds.some((round) => round.id === "pi-r1");
-    const teamCount = bracketTeamCount;
 
     return (
-      <div className="space-y-4">
-        {title && <BracketSectionHeader title={title} accent={accent} />}
-        {sectionHasLowerPlayIn && <LowerBracketPlayInGuide teamCount={teamCount} />}
+      <>
+        {sectionHasLowerPlayIn && <LowerBracketPlayInGuide teamCount={bracketTeamCount} />}
         {sectionHasByeGuide && (
           <OpeningPlayInGuide
-            teamCount={teamCount}
+            teamCount={bracketTeamCount}
             variant="bye"
             bracketCapacity={bracketCapacitySize}
             openingMatchCount={openingMatches > 0 ? openingMatches : undefined}
           />
         )}
-        {sectionHasLegacyPlayIn && <OpeningPlayInGuide teamCount={teamCount} variant="single" />}
-        {columns.length > 0 && (
+        {sectionHasLegacyPlayIn && (
+          <OpeningPlayInGuide teamCount={bracketTeamCount} variant="single" />
+        )}
+      </>
+    );
+  };
+
+  const renderPublicBracketCanvas = (
+    columns: BracketRoundColumn[],
+    sectionLayoutMatches: ReturnType<typeof publicToLayoutMatches>,
+    sectionByeMarkers: ReturnType<typeof buildByeAdvancementMarkersFromRounds>,
+  ) => {
+    if (columns.length === 0) return null;
+
+    return (
+      <EliminationBracketCanvas
+        rounds={columns}
+        layoutMatches={sectionLayoutMatches}
+        renderMatch={(matchId, context) => {
+          const match = matchById.get(matchId);
+          if (!match) return null;
+          const round = bracket.find((item) => item.matches.some((entry) => entry.id === matchId));
+          return (
+            <PublicMatchCard
+              match={match}
+              roundLabel={round?.label}
+              displayLabel={context?.displayLabel}
+              teamTags={teamTags}
+              byeMarkers={sectionByeMarkers.get(matchId)}
+            />
+          );
+        }}
+      />
+    );
+  };
+
+  const renderUnifiedDoubleElim = (
+    upperSectionRounds: BracketRound[],
+    lowerSectionRounds: BracketRound[],
+  ) => {
+    const { bracketRounds: upperBracketRounds, grandRounds } = splitGrandFinalRounds(
+      upperSectionRounds,
+      (round) => isGrandFinalRound(round.label),
+    );
+    const { bracketRounds: lowerBracketRounds } = splitGrandFinalRounds(
+      lowerSectionRounds,
+      (round) => isGrandFinalRound(round.label),
+    );
+    const upperColumns = toPublicRoundColumns(upperBracketRounds);
+    const lowerColumns = toPublicRoundColumns(lowerBracketRounds);
+    const allSectionRounds = [...upperSectionRounds, ...lowerSectionRounds];
+    const sectionLayoutMatches = publicToLayoutMatches(allSectionRounds);
+    const sectionByeMarkers = buildByeAdvancementMarkersFromRounds(allSectionRounds);
+
+    const bands: BracketCanvasBand[] = [
+      ...(upperColumns.length > 0
+        ? [{ title: "Upper Bracket", accent: "primary" as const, rounds: upperColumns }]
+        : []),
+      ...(lowerColumns.length > 0
+        ? [{ title: "Lower Bracket", accent: "accent" as const, rounds: lowerColumns }]
+        : []),
+    ];
+
+    return (
+      <div className="space-y-4">
+        {renderSectionGuides(allSectionRounds)}
+        {bands.length > 0 && (
           <EliminationBracketCanvas
-            rounds={columns}
+            bands={bands}
             layoutMatches={sectionLayoutMatches}
+            minHeight={720}
             renderMatch={(matchId, context) => {
               const match = matchById.get(matchId);
               if (!match) return null;
@@ -193,73 +308,50 @@ export function BracketTab({
             }}
           />
         )}
-        {isDoubleElim && grandRounds.length > 0
-          ? (() => {
-              const gfRound =
-                grandRounds.find(
-                  (round) => /grand final/i.test(round.label) && !/reset/i.test(round.label),
-                ) ?? grandRounds[0];
-              const resetRound = grandRounds.find((round) => /reset/i.test(round.label));
-              const primaryMatch = gfRound?.matches[0];
-              if (!primaryMatch) return null;
+        {renderGrandFinalStage(grandRounds)}
+      </div>
+    );
+  };
 
-              return (
-                <GrandFinalStage
-                  primaryMatch={{
-                    id: primaryMatch.id,
-                    teamA: primaryMatch.teamA ?? null,
-                    teamB: primaryMatch.teamB ?? null,
-                    winner: primaryMatch.winner ?? null,
-                    confirmed: !!primaryMatch.winner,
-                    label: primaryMatch.label,
-                  }}
-                  resetMatch={
-                    resetRound?.matches[0]
-                      ? {
-                          id: resetRound.matches[0].id,
-                          teamA: resetRound.matches[0].teamA ?? null,
-                          teamB: resetRound.matches[0].teamB ?? null,
-                          winner: resetRound.matches[0].winner ?? null,
-                          confirmed: !!resetRound.matches[0].winner,
-                          label: resetRound.matches[0].label,
-                        }
-                      : null
-                  }
-                  grandFinalMode={grandFinalModeProp ?? undefined}
-                  formatLabel={format}
-                  renderMatch={(match, variant) => {
-                    const publicMatch = matchById.get(match.id);
-                    if (!publicMatch) return null;
-                    const round = bracket.find((item) =>
-                      item.matches.some((entry) => entry.id === match.id),
-                    );
-                    return (
-                      <PublicMatchCard
-                        match={publicMatch}
-                        roundLabel={round?.label}
-                        teamTags={teamTags}
-                        isGrand={variant === "primary"}
-                      />
-                    );
-                  }}
+  const renderSection = (
+    title: string | undefined,
+    accent: "primary" | "accent" | "warning",
+    rounds: BracketRound[],
+    options?: { splitChampionship?: boolean },
+  ) => {
+    const splitChampionship = options?.splitChampionship ?? !isDoubleElim;
+    const { bracketRounds: flowRounds, championshipRounds: stagedChampionship } = splitChampionship
+      ? partitionPublicChampionshipRounds(rounds)
+      : { bracketRounds: rounds, championshipRounds: [] as BracketRound[] };
+
+    const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, (round) =>
+      isGrandFinalRound(round.label),
+    );
+    const columns = toPublicRoundColumns(bracketRounds);
+    const sectionLayoutMatches = publicToLayoutMatches(flowRounds);
+    const sectionByeMarkers = buildByeAdvancementMarkersFromRounds(flowRounds);
+    return (
+      <div className="space-y-4">
+        {title && <BracketSectionHeader title={title} accent={accent} />}
+        {renderSectionGuides(rounds)}
+        {renderPublicBracketCanvas(columns, sectionLayoutMatches, sectionByeMarkers)}
+        {renderGrandFinalStage(grandRounds)}
+        {!isDoubleElim &&
+          grandRounds.map((round) => {
+            const grandMatch = round.matches[0];
+            if (!grandMatch) return null;
+
+            return (
+              <div key={round.id ?? round.label} className="mx-auto w-full max-w-md">
+                <PublicMatchCard
+                  match={grandMatch}
+                  roundLabel={round.label}
+                  teamTags={teamTags}
+                  isGrand={grandMatch.id === "gf-m0"}
                 />
-              );
-            })()
-          : grandRounds.map((round) => {
-              const grandMatch = round.matches[0];
-              if (!grandMatch) return null;
-
-              return (
-                <div key={round.id ?? round.label} className="mx-auto w-full max-w-md">
-                  <PublicMatchCard
-                    match={grandMatch}
-                    roundLabel={round.label}
-                    teamTags={teamTags}
-                    isGrand={grandMatch.id === "gf-m0"}
-                  />
-                </div>
-              );
-            })}
+              </div>
+            );
+          })}
         {!isDoubleElim && stagedChampionship.length > 0 && (
           <EliminationChampionshipStage
             rounds={stagedChampionship.map((round) => ({
@@ -300,6 +392,12 @@ export function BracketTab({
 
   if (isDoubleElim) {
     const { upperRounds, lowerRounds, hasOpeningPlayIn } = partitionDoubleElimRounds(bracket);
+    const focusedRounds = applyBracketFocusToDoubleElim(
+      upperRounds,
+      lowerRounds,
+      bracketTeamCount,
+      bracketFocus,
+    );
 
     return (
       <div className="flex flex-col gap-10">
@@ -309,16 +407,18 @@ export function BracketTab({
           splitSide={splitSide}
           onViewModeChange={setViewMode}
           onSplitSideChange={setSplitSide}
+          bracketFocus={bracketFocus}
+          availableTopSizes={availableTopSizes}
+          onBracketFocusChange={setBracketFocus}
+          hasLowerBracket={lowerRounds.length > 0}
         />
         {viewMode === "full" ? (
-          <>
-            {renderSection("Upper Bracket", "primary", upperRounds)}
-            {lowerRounds.length > 0 && renderSection("Lower Bracket", "accent", lowerRounds)}
-          </>
+          renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)
         ) : splitSide === "upper" ? (
-          renderSection("Upper Bracket", "primary", upperRounds)
+          renderSection("Upper Bracket", "primary", focusedRounds.upperRounds)
         ) : (
-          lowerRounds.length > 0 && renderSection("Lower Bracket", "accent", lowerRounds)
+          focusedRounds.lowerRounds.length > 0 &&
+          renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
         )}
         <BracketFooter
           isDoubleElim
@@ -333,11 +433,20 @@ export function BracketTab({
 
   const sorted = sortPublicBracketRounds(bracket);
   const { bracketRounds, championshipRounds } = partitionPublicChampionshipRounds(sorted);
+  const focusedBracketRounds =
+    bracketFocus === "all"
+      ? bracketRounds
+      : sliceEliminationRoundsForTopN(bracketRounds, bracketTeamCount, bracketFocus);
 
   return (
     <div className="flex flex-col gap-10">
       <BracketHeader format={format} />
-      {renderSection(undefined, "primary", bracketRounds, { splitChampionship: false })}
+      <BracketFocusControls
+        bracketFocus={bracketFocus}
+        availableTopSizes={availableTopSizes}
+        onBracketFocusChange={setBracketFocus}
+      />
+      {renderSection(undefined, "primary", focusedBracketRounds, { splitChampionship: false })}
       {championshipRounds.length > 0 && (
         <EliminationChampionshipStage
           rounds={championshipRounds.map((round) => ({

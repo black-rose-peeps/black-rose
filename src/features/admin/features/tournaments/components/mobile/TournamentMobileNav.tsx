@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type TournamentDetailTab = "teams" | "prizes" | "bracket";
+export type TournamentDetailTab = "teams" | "prizes" | "standings" | "bracket";
 
 interface TournamentDetailMobileNavProps {
   activeTab: TournamentDetailTab;
   onTabChange: (tab: TournamentDetailTab) => void;
   teamsLabel: string;
   teamsCount: number;
+  showStandings?: boolean;
   bracketDisabled?: boolean;
   bracketDisabledReason?: string;
 }
@@ -18,6 +19,7 @@ export function TournamentDetailMobileNav({
   onTabChange,
   teamsLabel,
   teamsCount,
+  showStandings = false,
   bracketDisabled = false,
   bracketDisabledReason,
 }: TournamentDetailMobileNavProps) {
@@ -36,6 +38,7 @@ export function TournamentDetailMobileNav({
       disabled: bracketDisabled,
       title: bracketDisabledReason,
     },
+    ...(showStandings ? [{ id: "standings" as const, label: "Standings" }] : []),
   ];
 
   return (
@@ -43,7 +46,9 @@ export function TournamentDetailMobileNav({
       aria-label="Tournament sections"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[oklch(0.06_0_0)]/95 backdrop-blur md:hidden"
     >
-      <div className="grid grid-cols-3 safe-bottom">
+      <div
+        className={cn("grid safe-bottom", showStandings ? "grid-cols-4" : "grid-cols-3")}
+      >
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -54,7 +59,7 @@ export function TournamentDetailMobileNav({
               title={tab.title}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "touch-target flex min-h-14 flex-col items-center justify-center gap-0.5 px-2 py-2 font-tech text-[10px] uppercase tracking-wider transition",
+                "touch-target flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-2 font-tech text-[10px] uppercase tracking-wider transition",
                 active ? "bg-white/8 text-foreground" : "text-muted-foreground",
                 tab.disabled && "cursor-not-allowed opacity-40",
               )}
@@ -65,53 +70,6 @@ export function TournamentDetailMobileNav({
                   {tab.badge}
                 </span>
               ) : null}
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
-export type BracketManagerTab = "seeding" | "bracket" | "validation";
-
-interface BracketManagerMobileNavProps {
-  activeTab: BracketManagerTab;
-  onTabChange: (tab: BracketManagerTab) => void;
-  bracketGenerated: boolean;
-}
-
-/** Fixed bottom navigation inside Bracket Manager on mobile. */
-export function BracketManagerMobileNav({
-  activeTab,
-  onTabChange,
-  bracketGenerated,
-}: BracketManagerMobileNavProps) {
-  const tabs: { id: BracketManagerTab; label: string }[] = [
-    { id: "seeding", label: "Seeding" },
-    { id: "bracket", label: bracketGenerated ? "Matches" : "Preview" },
-    { id: "validation", label: "Validate" },
-  ];
-
-  return (
-    <nav
-      aria-label="Bracket manager sections"
-      className="sticky bottom-0 z-20 border-t border-white/10 bg-[oklch(0.07_0_0)]/95 backdrop-blur md:hidden"
-    >
-      <div className="grid grid-cols-3 safe-bottom">
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onTabChange(tab.id)}
-              className={cn(
-                "touch-target flex min-h-12 flex-col items-center justify-center px-2 py-2 font-tech text-[10px] uppercase tracking-wider transition",
-                active ? "bg-white/8 text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {tab.label}
             </button>
           );
         })}

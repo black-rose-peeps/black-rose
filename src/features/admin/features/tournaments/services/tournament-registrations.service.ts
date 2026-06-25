@@ -33,6 +33,10 @@ export {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function currentRegistrationTimestamp(): string {
+  return new Date().toISOString();
+}
+
 /** Mark approved entrants as veterans once their event is concluded. */
 export async function concludeTournamentRegistrations(tournamentId: string): Promise<void> {
   const { error } = await supabase
@@ -792,7 +796,10 @@ export async function requestCaptainTeamRegistration(
       await resyncRegistrationRoster(existing.id);
       const { error: updateErr } = await supabase
         .from("tournament_registrations")
-        .update({ status: "Pending" })
+        .update({
+          status: "Pending",
+          registration_date: currentRegistrationTimestamp(),
+        })
         .eq("id", existing.id);
       if (updateErr) throw new Error(updateErr.message);
       const registrationCount = await countTournamentRegistrations(tournamentId);
@@ -814,6 +821,7 @@ export async function requestCaptainTeamRegistration(
       tag: rosterTeam.tag,
       captain: teamCaptainDisplayName(rosterTeam),
       status: "Pending",
+      registration_date: currentRegistrationTimestamp(),
       history: [],
     })
     .select()
@@ -856,6 +864,7 @@ export async function addTeamToTournament(
       tag: rosterTeam.tag,
       captain: teamCaptainDisplayName(rosterTeam),
       status: registrationStatus,
+      registration_date: currentRegistrationTimestamp(),
       history: [],
     })
     .select()
@@ -936,6 +945,7 @@ export async function addMemberToTournament(
       tag,
       captain: soloIgn,
       status: registrationStatus,
+      registration_date: currentRegistrationTimestamp(),
       history: [],
     })
     .select()

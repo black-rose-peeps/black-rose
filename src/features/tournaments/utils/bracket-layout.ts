@@ -14,6 +14,8 @@ export const BRACKET_ROW_GAP = 24;
 export const BRACKET_COL_GAP = 72;
 export const BRACKET_PAD_V = 24;
 export const BRACKET_HEADER_H = 44;
+export const BRACKET_BAND_GAP = 72;
+export const BRACKET_BAND_TITLE_H = 40;
 
 export interface PositionedLayoutMatch extends LayoutInputMatch {
   x: number;

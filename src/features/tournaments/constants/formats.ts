@@ -35,3 +35,8 @@ export function isDoubleEliminationFormat(format: string): boolean {
 export function isSwissFormat(format: string): boolean {
   return format === "Swiss System" || format.toLowerCase().includes("swiss");
 }
+
+/** Win-loss standings tab applies to elimination brackets only (not Swiss). */
+export function supportsEliminationStandings(format: string): boolean {
+  return isSingleEliminationFormat(format) || isDoubleEliminationFormat(format);
+}

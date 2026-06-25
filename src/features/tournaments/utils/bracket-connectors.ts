@@ -1,6 +1,9 @@
 import { inferRoundIdFromMatchId } from "./bracket-display";
 import type { BracketRound } from "../types";
-import type { BracketRoundMeta, ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type {
+  BracketRoundMeta,
+  ManagedMatch,
+} from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import { buildMatchSlotHints } from "./bracket-slot-hints";
 
 export type ConnectorStatus = "upcoming" | "completed" | "live";
@@ -9,6 +12,7 @@ export interface LayoutInputMatch {
   id: string;
   roundIndex: number;
   roundId?: string;
+  label?: string;
   nextWinnerMatchId?: string | null;
   connectorStatus: ConnectorStatus;
   teamA?: string | null;
@@ -43,6 +47,7 @@ export function managedToLayoutMatches(
   return matches.map((match) => ({
     id: match.id,
     roundId: match.roundId,
+    label: match.label,
     roundIndex: roundIndex.get(match.roundId) ?? 0,
     nextWinnerMatchId: match.winnerNext?.matchId ?? null,
     connectorStatus: match.confirmed && match.winner ? "completed" : "upcoming",
@@ -62,9 +67,9 @@ export function publicToLayoutMatches(rounds: BracketRound[]): LayoutInputMatch[
       layoutMatches.push({
         id: match.id,
         roundId: round.id ?? inferRoundIdFromMatchId(match.id) ?? undefined,
+        label: match.label,
         roundIndex,
-        nextWinnerMatchId:
-          match.winnerAdvancesTo ?? inferredLinks.get(match.id) ?? null,
+        nextWinnerMatchId: match.winnerAdvancesTo ?? inferredLinks.get(match.id) ?? null,
         connectorStatus: match.winner ? "completed" : "upcoming",
         teamA: match.teamA,
         teamB: match.teamB,

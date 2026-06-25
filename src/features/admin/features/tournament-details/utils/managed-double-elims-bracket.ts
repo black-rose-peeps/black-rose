@@ -22,13 +22,9 @@ import {
   type ManagedMatch,
   recomputeAdvancements,
 } from "./managed-bracket-core";
-import {
-  buildLowerBracketScheduleByeField,
-  lowerRoundId,
-} from "./lower-bracket-schedule";
+import { buildLowerBracketScheduleByeField, lowerRoundId } from "./lower-bracket-schedule";
 import {
   applyOpeningRoundMatchLabels,
-  applySequentialMatchLabels,
   assertUniqueFeederSlots,
   competitionUpperRoundIds,
   link,
@@ -37,6 +33,7 @@ import {
   placeStandardFirstRound,
   wireOpeningPlayableLosersToLowerRoundOne,
 } from "./managed-bracket-build-helpers";
+import { applyGlobalMatchLabels } from "@/features/tournaments/utils/bracket-global-match-labels";
 
 function upperRoundLabel(
   roundIndex: number,
@@ -442,7 +439,7 @@ function buildDoubleElimPowerOfTwo(
   const ubR1 = matches.filter((m) => m.roundId === "ub-r1");
   placeBracketRoundOne(ubR1, teamNames, n);
   applyOpeningRoundMatchLabels(matches, roundMetas, n);
-  applySequentialMatchLabels(matches, roundMetas);
+  applyGlobalMatchLabels(matches, roundMetas, "double");
 
   assertUniqueFeederSlots(matches);
   return { matches: recomputeAdvancements(matches), roundMetas };
@@ -533,6 +530,8 @@ function buildFourTeamDoubleElim(
   const ubR1 = matches.filter((m) => m.id.startsWith("ub-r1-"));
   const teamCount = options?.teamCount ?? teamNames.length;
   placeStandardFirstRound(ubR1, teamNames, teamCount, 4);
+  applyOpeningRoundMatchLabels(matches, roundMetas, teamCount);
+  applyGlobalMatchLabels(matches, roundMetas, "double");
 
   return { matches, roundMetas };
 }

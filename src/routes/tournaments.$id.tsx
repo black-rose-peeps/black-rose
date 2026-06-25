@@ -9,6 +9,7 @@ import { TournamentTabs } from "@/features/tournaments/$id/components/Tournament
 import { OverviewTab } from "@/features/tournaments/$id/components/OverviewTab";
 import { TeamsTab } from "@/features/tournaments/$id/components/TeamsTab";
 import { BracketTab } from "@/features/tournaments/$id/components/BracketTab";
+import { StandingsTab } from "@/features/tournaments/$id/components/StandingsTab";
 import { RulesTab } from "@/features/tournaments/$id/components/RulesTab";
 import { useTournamentRegistrations } from "@/features/tournaments/hooks";
 import {
@@ -26,6 +27,7 @@ import { countDisplayedTournamentEntrants } from "@/features/admin/features/part
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
 import { TournamentRegisterCTA } from "@/features/tournaments/components/TournamentRegisterCTA";
+import { supportsEliminationStandings } from "@/features/tournaments/constants/formats";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
 import { fetchTournamentById } from "@/features/tournaments/services";
 import { getSession } from "@/features/auth/store/session";
@@ -322,6 +324,14 @@ function TournamentDetailPage() {
     );
   }
 
+  const showStandingsTab = supportsEliminationStandings(tournament.format);
+
+  useEffect(() => {
+    if (!showStandingsTab && activeTab === "standings") {
+      setActiveTab("overview");
+    }
+  }, [showStandingsTab, activeTab]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
@@ -340,7 +350,12 @@ function TournamentDetailPage() {
         }
       />
 
-      <TournamentTabs active={activeTab} onChange={setActiveTab} teamCount={displayTeams.length} />
+      <TournamentTabs
+        active={activeTab}
+        onChange={setActiveTab}
+        teamCount={displayTeams.length}
+        showStandings={showStandingsTab}
+      />
 
       <main className="relative bg-[oklch(0.05_0_0)]">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
@@ -356,6 +371,19 @@ function TournamentDetailPage() {
           {activeTab === "teams" && (
             <div role="tabpanel" id="tab-panel-teams" aria-labelledby="tab-teams">
               <TeamsTab teams={displayTeams} isLoading={teamsLoading} />
+            </div>
+          )}
+          {showStandingsTab && activeTab === "standings" && (
+            <div role="tabpanel" id="tab-panel-standings" aria-labelledby="tab-standings">
+              <StandingsTab
+                format={tournament.format}
+                bracket={displayBracket}
+                teamNames={displayTeams.map((team) => team.name)}
+                teamTags={teamTagMap}
+                seedByTeam={seedByTeam}
+                placements={displayPlacements}
+                isLoading={bracketLoading}
+              />
             </div>
           )}
           {activeTab === "bracket" && (

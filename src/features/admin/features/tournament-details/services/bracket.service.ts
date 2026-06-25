@@ -99,26 +99,46 @@ export async function savePublishedBracket(
   tournamentId: string,
   payload: PersistedBracketPayload,
 ): Promise<TournamentBracketState> {
+  return upsertBracketState(tournamentId, payload, "published", true);
+}
+
+export async function saveDraftBracket(
+  tournamentId: string,
+  payload: PersistedBracketPayload,
+  seedingLocked: boolean,
+): Promise<TournamentBracketState> {
+  return upsertBracketState(tournamentId, payload, "draft", seedingLocked);
+}
+
+async function upsertBracketState(
+  tournamentId: string,
+  payload: PersistedBracketPayload,
+  status: BracketStateStatus,
+  seedingLocked: boolean,
+): Promise<TournamentBracketState> {
   const { data, error } = await supabase.rpc("upsert_tournament_bracket_state", {
     p_tournament_id: tournamentId,
-    p_status: "published",
-    p_seeding_locked: true,
+    p_status: status,
+    p_seeding_locked: seedingLocked,
     p_bracket_data: payload,
   });
 
   if (error) throw new Error(error.message);
 
-  const tournamentName = await fetchTournamentNameForAudit(tournamentId);
-  void logAdminAction({
-    action: ADMIN_AUDIT_ACTIONS.BRACKET_PUBLISHED,
-    entityType: "tournament",
-    entityId: tournamentId,
-    metadata: {
-      tournamentName,
-      format: payload.admin?.format ?? null,
-      roundCount: payload.rounds.length,
-    },
-  });
+  if (status === "published") {
+    const tournamentName = await fetchTournamentNameForAudit(tournamentId);
+    void logAdminAction({
+      action: ADMIN_AUDIT_ACTIONS.BRACKET_PUBLISHED,
+      entityType: "tournament",
+      entityId: tournamentId,
+      metadata: {
+        tournamentName,
+        format: payload.admin?.format ?? null,
+        roundCount: payload.rounds.length,
+      },
+    });
+  }
+
   return rowToState(data as Record<string, unknown>);
 }
 

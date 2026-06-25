@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Crown, Minus, Plus, Shield } from "lucide-react";
 import { ChampionBanner } from "./ChampionBanner";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,19 @@ import {
   EliminationBracketCanvas,
   EliminationChampionshipStage,
   GrandFinalStage,
+  type BracketCanvasBand,
   type BracketRoundColumn,
   type ChampionshipStageRound,
+  BracketFocusControls,
+  type BracketFocusSize,
   type DoubleElimViewMode,
   type SplitBracketSide,
 } from "@/features/tournaments/components/bracket";
+import {
+  applyBracketFocusToDoubleElim,
+  getAvailableTopBracketSizes,
+  sliceEliminationRoundsForTopN,
+} from "@/features/tournaments/utils/bracket-top-slice";
 import {
   managedToLayoutMatches,
   splitGrandFinalRounds,
@@ -39,7 +47,10 @@ import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
 import { OpeningPlayInGuide } from "@/features/tournaments/components/OpeningPlayInGuide";
 import { getLockedFormatRoundIds } from "./RoundFormatPanel";
-import { resolveGrandFinalChampion, type GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
+import {
+  resolveGrandFinalChampion,
+  type GrandFinalMode,
+} from "@/features/admin/features/tournament-details/utils/grand-final";
 
 interface ManagedBracketViewProps {
   matches: ManagedMatch[];
@@ -70,6 +81,19 @@ export function ManagedBracketView({
 }: ManagedBracketViewProps) {
   const [viewMode, setViewMode] = useState<DoubleElimViewMode>("full");
   const [splitSide, setSplitSide] = useState<SplitBracketSide>("upper");
+  const [bracketFocus, setBracketFocus] = useState<BracketFocusSize>("all");
+  const availableTopSizes = useMemo(
+    () => getAvailableTopBracketSizes(teams.length),
+    [teams.length],
+  );
+
+  useEffect(() => {
+    setBracketFocus((current) => {
+      if (current === "all") return current;
+      if (availableTopSizes.includes(current)) return current;
+      return "all";
+    });
+  }, [availableTopSizes]);
 
   if (roundMetas.length === 0) {
     return (
@@ -182,22 +206,61 @@ export function ManagedBracketView({
     );
   };
 
-  const renderSection = (
-    title: string | undefined,
-    accent: "primary" | "accent" | "warning",
-    sectionRounds: BracketRoundMeta[],
-    options?: { splitChampionship?: boolean },
-  ) => {
-    const splitChampionship = options?.splitChampionship ?? !isDoubleElim;
-    const { bracketRounds: flowRounds, championshipRounds: stagedChampionship } = splitChampionship
-      ? partitionChampionshipRounds(sectionRounds)
-      : { bracketRounds: sectionRounds, championshipRounds: [] as BracketRoundMeta[] };
+  const renderGrandFinalStage = (grandRounds: BracketRoundMeta[]) => {
+    if (grandRounds.length === 0 || !isDoubleElim) return null;
 
-    const { bracketRounds, grandRounds } = splitGrandFinalRounds(
-      flowRounds,
-      (round) => round.side === "grand",
+    const gfRound = grandRounds.find((round) => round.id === "gf");
+    const resetRound = grandRounds.find((round) => round.id === "gf-reset");
+    const primaryMatch = gfRound?.matchIds
+      .map((id) => matchById.get(id))
+      .find((match): match is ManagedMatch => !!match);
+    if (!primaryMatch) return null;
+
+    const resetMatch = resetRound?.matchIds
+      .map((id) => matchById.get(id))
+      .find((match): match is ManagedMatch => !!match);
+    const primaryFormat = roundFormats.gf ?? "BO5";
+    const resetFormat = roundFormats["gf-reset"] ?? primaryFormat;
+
+    return (
+      <GrandFinalStage
+        primaryMatch={primaryMatch}
+        resetMatch={resetMatch}
+        grandFinalMode={grandFinalMode}
+        formatLabel={readOnly ? primaryFormat : undefined}
+        formatControl={
+          !readOnly ? (
+            <div className="flex flex-wrap gap-2">
+              {!lockedFormatRoundIds.has("gf") && renderGrandFormatSelect("gf", primaryFormat)}
+              {resetMatch &&
+                !lockedFormatRoundIds.has("gf-reset") &&
+                renderGrandFormatSelect("gf-reset", resetFormat)}
+            </div>
+          ) : undefined
+        }
+        renderMatch={(match, variant) => {
+          const roundFormat = variant === "reset" ? resetFormat : primaryFormat;
+          const managed = matchById.get(match.id);
+          if (!managed) return null;
+          return (
+            <ManagedMatchCard
+              match={managed}
+              format={roundFormat}
+              teamByName={teamByName}
+              readOnly={readOnly}
+              isGrand
+              slotHints={slotHints.get(managed.id)}
+              byeMarkers={byeMarkers.get(managed.id)}
+              onScoreChange={onScoreChange}
+              onPickWinner={onPickWinner}
+            />
+          );
+        }}
+      />
     );
-    const columns = toRoundColumns(bracketRounds);
+  };
+
+  const renderSectionGuides = (sectionRounds: BracketRoundMeta[]) => {
     const sectionHasLowerPlayIn =
       showLowerGuide && sectionRounds.some((round) => round.side === "lower");
     const sectionHasByeGuide =
@@ -210,8 +273,7 @@ export function ManagedBracketView({
       roundMetas.some((round) => round.id === "pi-r1");
 
     return (
-      <div className="space-y-4">
-        {title && <BracketSectionHeader title={title} accent={accent} />}
+      <>
         {sectionHasLegacyPlayIn && sectionHasLowerPlayIn && (
           <LowerBracketPlayInGuide teamCount={teams.length} />
         )}
@@ -227,14 +289,81 @@ export function ManagedBracketView({
             }
           />
         )}
-        {columns.length > 0 && (
+      </>
+    );
+  };
+
+  const renderBracketCanvas = (columns: BracketRoundColumn[]) => {
+    if (columns.length === 0) return null;
+
+    return (
+      <EliminationBracketCanvas
+        rounds={columns}
+        layoutMatches={layoutMatches}
+        roundFormats={roundFormats}
+        lockedFormatRoundIds={lockedFormatRoundIds}
+        readOnlyFormats={readOnly}
+        onFormatChange={onFormatChange}
+        renderMatch={(matchId, context) => {
+          const match = matchById.get(matchId);
+          if (!match) return null;
+          const roundFormat = roundFormats[match.roundId] ?? "BO3";
+          return (
+            <ManagedMatchCard
+              key={`${match.id}-${roundFormat}`}
+              match={match}
+              format={roundFormat}
+              displayLabel={context?.displayLabel}
+              teamByName={teamByName}
+              readOnly={readOnly}
+              slotHints={slotHints.get(match.id)}
+              byeMarkers={byeMarkers.get(match.id)}
+              onScoreChange={onScoreChange}
+              onPickWinner={onPickWinner}
+            />
+          );
+        }}
+      />
+    );
+  };
+
+  const renderUnifiedDoubleElim = (
+    upperSectionRounds: BracketRoundMeta[],
+    lowerSectionRounds: BracketRoundMeta[],
+  ) => {
+    const { bracketRounds: upperBracketRounds, grandRounds } = splitGrandFinalRounds(
+      upperSectionRounds,
+      (round) => round.side === "grand",
+    );
+    const { bracketRounds: lowerBracketRounds } = splitGrandFinalRounds(
+      lowerSectionRounds,
+      (round) => round.side === "grand",
+    );
+    const upperColumns = toRoundColumns(upperBracketRounds);
+    const lowerColumns = toRoundColumns(lowerBracketRounds);
+    const allSectionRounds = [...upperSectionRounds, ...lowerSectionRounds];
+
+    const bands: BracketCanvasBand[] = [
+      ...(upperColumns.length > 0
+        ? [{ title: "Upper Bracket", accent: "primary" as const, rounds: upperColumns }]
+        : []),
+      ...(lowerColumns.length > 0
+        ? [{ title: "Lower Bracket", accent: "accent" as const, rounds: lowerColumns }]
+        : []),
+    ];
+
+    return (
+      <div className="space-y-4">
+        {renderSectionGuides(allSectionRounds)}
+        {bands.length > 0 && (
           <EliminationBracketCanvas
-            rounds={columns}
+            bands={bands}
             layoutMatches={layoutMatches}
             roundFormats={roundFormats}
             lockedFormatRoundIds={lockedFormatRoundIds}
             readOnlyFormats={readOnly}
             onFormatChange={onFormatChange}
+            minHeight={720}
             renderMatch={(matchId, context) => {
               const match = matchById.get(matchId);
               if (!match) return null;
@@ -256,60 +385,33 @@ export function ManagedBracketView({
             }}
           />
         )}
-        {grandRounds.length > 0 &&
-          isDoubleElim &&
-          (() => {
-            const gfRound = grandRounds.find((round) => round.id === "gf");
-            const resetRound = grandRounds.find((round) => round.id === "gf-reset");
-            const primaryMatch = gfRound?.matchIds
-              .map((id) => matchById.get(id))
-              .find((match): match is ManagedMatch => !!match);
-            if (!primaryMatch) return null;
+        {renderGrandFinalStage(grandRounds)}
+      </div>
+    );
+  };
 
-            const resetMatch = resetRound?.matchIds
-              .map((id) => matchById.get(id))
-              .find((match): match is ManagedMatch => !!match);
-            const primaryFormat = roundFormats.gf ?? "BO5";
-            const resetFormat = roundFormats["gf-reset"] ?? primaryFormat;
+  const renderSection = (
+    title: string | undefined,
+    accent: "primary" | "accent" | "warning",
+    sectionRounds: BracketRoundMeta[],
+    options?: { splitChampionship?: boolean },
+  ) => {
+    const splitChampionship = options?.splitChampionship ?? !isDoubleElim;
+    const { bracketRounds: flowRounds, championshipRounds: stagedChampionship } = splitChampionship
+      ? partitionChampionshipRounds(sectionRounds)
+      : { bracketRounds: sectionRounds, championshipRounds: [] as BracketRoundMeta[] };
 
-            return (
-              <GrandFinalStage
-                primaryMatch={primaryMatch}
-                resetMatch={resetMatch}
-                grandFinalMode={grandFinalMode}
-                formatLabel={readOnly ? primaryFormat : undefined}
-                formatControl={
-                  !readOnly ? (
-                    <div className="flex flex-wrap gap-2">
-                      {!lockedFormatRoundIds.has("gf") &&
-                        renderGrandFormatSelect("gf", primaryFormat)}
-                      {resetMatch &&
-                        !lockedFormatRoundIds.has("gf-reset") &&
-                        renderGrandFormatSelect("gf-reset", resetFormat)}
-                    </div>
-                  ) : undefined
-                }
-                renderMatch={(match, variant) => {
-                  const roundFormat = variant === "reset" ? resetFormat : primaryFormat;
-                  const managed = matchById.get(match.id);
-                  if (!managed) return null;
-                  return (
-                    <ManagedMatchCard
-                      match={managed}
-                      format={roundFormat}
-                      teamByName={teamByName}
-                      readOnly={readOnly}
-                      isGrand
-                      slotHints={slotHints.get(managed.id)}
-                      byeMarkers={byeMarkers.get(managed.id)}
-                      onScoreChange={onScoreChange}
-                      onPickWinner={onPickWinner}
-                    />
-                  );
-                }}
-              />
-            );
-          })()}
+    const { bracketRounds, grandRounds } = splitGrandFinalRounds(
+      flowRounds,
+      (round) => round.side === "grand",
+    );
+    const columns = toRoundColumns(bracketRounds);
+    return (
+      <div className="space-y-4">
+        {title && <BracketSectionHeader title={title} accent={accent} />}
+        {renderSectionGuides(sectionRounds)}
+        {renderBracketCanvas(columns)}
+        {renderGrandFinalStage(grandRounds)}
         {!isDoubleElim && renderChampionshipStage(stagedChampionship)}
       </div>
     );
@@ -321,6 +423,12 @@ export function ManagedBracketView({
     );
     const lowerRounds = sortBracketRoundsByFlow(
       roundMetas.filter((round) => round.side === "lower"),
+    );
+    const focusedRounds = applyBracketFocusToDoubleElim(
+      upperRounds,
+      lowerRounds,
+      teams.length,
+      bracketFocus,
     );
 
     return (
@@ -340,16 +448,17 @@ export function ManagedBracketView({
           splitSide={splitSide}
           onViewModeChange={setViewMode}
           onSplitSideChange={setSplitSide}
+          bracketFocus={bracketFocus}
+          availableTopSizes={availableTopSizes}
+          onBracketFocusChange={setBracketFocus}
+          hasLowerBracket={lowerRounds.length > 0}
         />
         {viewMode === "full" ? (
-          <>
-            {renderSection("Upper Bracket", "primary", upperRounds)}
-            {renderSection("Lower Bracket", "accent", lowerRounds)}
-          </>
+          renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)
         ) : splitSide === "upper" ? (
-          renderSection("Upper Bracket", "primary", upperRounds)
+          renderSection("Upper Bracket", "primary", focusedRounds.upperRounds)
         ) : (
-          renderSection("Lower Bracket", "accent", lowerRounds)
+          renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
         )}
         <p className="text-xs text-muted-foreground">
           {elimByes > 0
@@ -368,6 +477,10 @@ export function ManagedBracketView({
   }
 
   const { bracketRounds, championshipRounds } = partitionChampionshipRounds(roundMetas);
+  const focusedBracketRounds =
+    bracketFocus === "all"
+      ? bracketRounds
+      : sliceEliminationRoundsForTopN(bracketRounds, teams.length, bracketFocus);
 
   return (
     <div className="space-y-4">
@@ -381,7 +494,14 @@ export function ManagedBracketView({
       {!readOnly && onApplyRecommendedFormats && (
         <BracketFormatToolbar onApplyRecommended={onApplyRecommendedFormats} />
       )}
-      {renderSection(undefined, "primary", bracketRounds, { splitChampionship: false })}
+      {availableTopSizes.length > 0 && (
+        <BracketFocusControls
+          bracketFocus={bracketFocus}
+          availableTopSizes={availableTopSizes}
+          onBracketFocusChange={setBracketFocus}
+        />
+      )}
+      {renderSection(undefined, "primary", focusedBracketRounds, { splitChampionship: false })}
       {renderChampionshipStage(championshipRounds)}
       {!readOnly && (
         <p className="text-xs text-muted-foreground">

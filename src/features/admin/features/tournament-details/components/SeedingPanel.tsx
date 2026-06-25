@@ -61,7 +61,7 @@ function SeedingProtectedSlot({ seed }: { seed: number }) {
         Seed {seed} · Protected
       </label>
       <div
-        className="flex h-10 w-full items-center gap-2 border border-dashed border-border/80 bg-muted/15 px-3 text-muted-foreground"
+        className="flex h-10 w-full items-center gap-2 border border-dashed border-white/15 bg-white/[0.02] px-3 text-white/40"
         title="Round-one bye — no opponent"
       >
         <Shield className="h-3.5 w-3.5 shrink-0 opacity-40" strokeWidth={1.5} aria-hidden />
@@ -109,12 +109,12 @@ function SeedingMatchCard({
       className={cn(
         "relative overflow-hidden border transition-colors",
         isComplete
-          ? "border-amber-400/35 bg-amber-400/[0.03]"
-          : "border-border bg-card hover:border-border-bright",
+          ? "border-amber-400/35 bg-amber-400/[0.04]"
+          : "border-white/[0.08] bg-[oklch(0.06_0_0)] hover:border-white/15",
       )}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-linear-to-b from-white/[0.03] to-transparent" />
-      <div className="relative flex items-center justify-between border-b border-border px-4 py-2.5">
+      <div className="relative flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
         <p className="font-display text-sm tracking-wider">
           Match {String(matchIndex + 1).padStart(2, "0")}
         </p>
@@ -189,8 +189,8 @@ function ProtectedSeedSlot({
   return (
     <div
       className={cn(
-        "border bg-card p-4 transition-colors",
-        isComplete ? "border-amber-400/30" : "border-border",
+        "border bg-[oklch(0.06_0_0)] p-4 transition-colors",
+        isComplete ? "border-amber-400/30" : "border-white/[0.08]",
       )}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -421,22 +421,24 @@ export function SeedingPanel({
   ]);
 
   return (
-    <div className="border-b border-border p-8">
-      <div className="mb-6 overflow-hidden border border-border bg-card">
-        <div className="border-b border-border px-5 py-4">
+    <div className="border-b border-white/[0.06] px-4 py-6 md:px-6">
+      <div className="overflow-hidden border border-white/[0.08] bg-[oklch(0.06_0_0)]">
+        <div className="border-b border-white/[0.08] bg-white/[0.02] px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+              <p className="font-tech text-[10px] uppercase tracking-[0.18em] text-white/45">
                 Bracket seeding
               </p>
-              <h3 className="mt-1 font-display text-lg tracking-wider">Seed assignments</h3>
+              <h3 className="mt-1 font-display text-lg tracking-display text-white">
+                Seed assignments
+              </h3>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 border border-border bg-secondary/30 px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 border border-white/10 bg-white/[0.03] px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-white/45">
                 <Users2 className="h-3.5 w-3.5" />
                 {assignedCount}/{teams.length} teams
               </span>
-              <span className="inline-flex items-center gap-1.5 border border-border bg-secondary/30 px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 border border-white/10 bg-white/[0.03] px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-white/45">
                 <Swords className="h-3.5 w-3.5" />
                 {readyMatches}/{totalMatchCount} slots ready
               </span>
@@ -444,15 +446,15 @@ export function SeedingPanel({
           </div>
 
           <div className="mt-4">
-            <div className="mb-1.5 flex items-center justify-between font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1.5 flex items-center justify-between font-tech text-[10px] uppercase tracking-wider text-white/40">
               <span>Progress</span>
               <span>{progress}%</span>
             </div>
-            <div className="h-1.5 overflow-hidden bg-secondary">
+            <div className="h-1.5 overflow-hidden bg-white/[0.06]">
               <div
                 className={cn(
                   "h-full transition-all duration-300",
-                  progress === 100 ? "bg-amber-400" : "bg-foreground/70",
+                  progress === 100 ? "bg-amber-400" : "bg-white/50",
                 )}
                 style={{ width: `${progress}%` }}
               />
@@ -461,7 +463,7 @@ export function SeedingPanel({
         </div>
 
         {isElimination && (
-          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="border-b border-white/[0.06] bg-white/[0.02] px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-white/40">
             {formatHelp}
             {compressedPreliminary && (
               <span className="mt-1 block text-foreground/75">
