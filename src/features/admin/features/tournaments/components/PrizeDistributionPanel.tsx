@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Coins, Plus, Save, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Panel } from "@/features/admin/components/ui";
 import {
   formatPrizeDigits,
   formatPrizePool,
@@ -12,6 +11,8 @@ import {
   prizeDigitsToNumber,
 } from "@/lib/currency";
 import { DEFAULT_PRIZE_TIERS } from "@/features/tournaments/utils/tournament-placements";
+import { FeaturePanelShell } from "@/features/shared/components/FeaturePanelShell";
+import { cn } from "@/lib/utils";
 import { updateTournamentPrizeBreakdown } from "../services/tournaments.service";
 import type { MockTournament } from "@/lib/mock-data";
 
@@ -79,6 +80,8 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
   );
   const overAllocated = poolTotal > 0 && allocatedTotal > poolTotal;
   const canSave = !overAllocated && tiers.some((tier) => tier.place.trim() || tier.prize.trim());
+  const remaining =
+    poolTotal > 0 ? Math.max(0, poolTotal - allocatedTotal) : null;
 
   function allocatedExcludingTier(id: string): number {
     return tiers
@@ -95,8 +98,8 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
     const digits = parsePrizeDigits(raw);
     let amount = prizeDigitsToNumber(digits);
     if (poolTotal > 0) {
-      const remaining = Math.max(0, poolTotal - allocatedExcludingTier(id));
-      amount = Math.min(amount, remaining);
+      const remainingForTier = Math.max(0, poolTotal - allocatedExcludingTier(id));
+      amount = Math.min(amount, remainingForTier);
     }
     updateTier(id, {
       prize: amount > 0 ? formatPrizePool(String(amount), currency) : "",
@@ -135,19 +138,31 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
   }
 
   return (
-    <Panel>
-      <div className="border-b border-border px-6 py-4">
-        <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-          Economy
-        </p>
-        <h2 className="font-display text-xl font-bold tracking-wider-2">Prize Distribution</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Define podium slots for this event. The bracket podium only shows these placements —
-          default tiers are Champion, Runner-up, and 3rd Place.
-        </p>
-      </div>
-
-      <div className="space-y-4 px-6 py-5">
+    <FeaturePanelShell
+      unified
+      eyebrow="Admin Console · Economy"
+      title="Prize Distribution"
+      subtitle="Define podium slots for this event. The bracket podium only shows these placements — default tiers are Champion, Runner-up, and 3rd Place."
+      stats={[
+        { label: "Pool", value: tournament.prizePool || "—", accent: true },
+        { label: "Allocated", value: allocatedTotal > 0 ? formatPrizePool(String(allocatedTotal), currency) : "—" },
+        { label: "Tiers", value: tiers.length },
+        ...(remaining !== null ? [{ label: "Remaining", value: formatPrizePool(String(remaining), currency) }] : []),
+      ]}
+      headerExtra={
+        overAllocated ? (
+          <span className="inline-flex items-center border border-red-400/35 bg-red-400/10 px-2.5 py-1 font-tech text-[9px] uppercase tracking-wider text-red-300">
+            Over allocated
+          </span>
+        ) : saved ? (
+          <span className="inline-flex items-center border border-emerald-400/35 bg-emerald-400/10 px-2.5 py-1 font-tech text-[9px] uppercase tracking-wider text-emerald-300">
+            Saved
+          </span>
+        ) : null
+      }
+      contentClassName="bg-[oklch(0.06_0_0)]"
+    >
+      <div className="space-y-4 px-4 py-5 sm:px-6">
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -163,30 +178,42 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
           </Alert>
         )}
 
+        <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3 font-tech text-[10px] uppercase tracking-[0.18em] text-white/45">
+          <Coins className="h-3.5 w-3.5" />
+          Prize tiers
+        </div>
+
         <div className="space-y-3">
-          {tiers.map((tier) => (
+          {tiers.map((tier, index) => (
             <div
               key={tier.id}
-              className="grid gap-3 border border-border bg-card/40 p-4 md:grid-cols-[1fr_180px_auto]"
+              className="grid gap-3 border border-white/[0.08] bg-[oklch(0.05_0_0)] p-4 md:grid-cols-[1fr_180px_auto]"
             >
-              <div>
-                <label className="mb-1.5 block text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                  Placement label
-                </label>
-                <Input
-                  value={tier.place}
-                  onChange={(event) => updateTier(tier.id, { place: event.target.value })}
-                  placeholder="Champion, Runner-up, 3rd Place…"
-                />
+              <div className="flex items-start gap-3 md:col-span-1">
+                <span className="mt-2 font-mono text-xs tabular-nums text-white/30">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <label className="mb-1.5 block font-tech text-[10px] uppercase tracking-[0.18em] text-white/40">
+                    Placement label
+                  </label>
+                  <Input
+                    value={tier.place}
+                    onChange={(event) => updateTier(tier.id, { place: event.target.value })}
+                    placeholder="Champion, Runner-up, 3rd Place…"
+                    className="border-white/10 bg-white/[0.03]"
+                  />
+                </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
+                <label className="mb-1.5 block font-tech text-[10px] uppercase tracking-[0.18em] text-white/40">
                   Prize amount
                 </label>
                 <Input
                   value={formatPrizeDigits(parsePrizeDigits(tier.prize))}
                   onChange={(event) => updateTierPrize(tier.id, event.target.value)}
                   placeholder="0"
+                  className="border-white/10 bg-white/[0.03] font-mono"
                 />
               </div>
               <div className="flex items-end">
@@ -194,7 +221,7 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="shrink-0"
+                  className="shrink-0 border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:text-red-300"
                   disabled={tiers.length <= 1}
                   onClick={() => removeTier(tier.id)}
                 >
@@ -205,13 +232,13 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <div className="text-sm text-muted-foreground">
-            <span className="font-tech text-[10px] uppercase tracking-wider-2">Allocated</span>
-            <div className="font-display text-xl tracking-display">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+          <div className="text-sm text-white/45">
+            <span className="font-tech text-[10px] uppercase tracking-[0.18em]">Allocated total</span>
+            <div className="font-display text-xl tracking-display text-white">
               {allocatedTotal > 0 ? formatPrizePool(String(allocatedTotal), currency) : "—"}
               {poolTotal > 0 && (
-                <span className="ml-2 text-sm text-muted-foreground">/ {tournament.prizePool}</span>
+                <span className="ml-2 text-sm text-white/40">/ {tournament.prizePool}</span>
               )}
             </div>
           </div>
@@ -221,7 +248,7 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
               type="button"
               variant="outline"
               size="sm"
-              className="gap-2 font-tech uppercase tracking-wider"
+              className="gap-2 border-white/10 bg-white/[0.02] font-tech uppercase tracking-wider hover:bg-white/[0.05]"
               onClick={addTier}
             >
               <Plus className="h-4 w-4" />
@@ -230,7 +257,10 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
             <Button
               type="button"
               size="sm"
-              className="gap-2 font-tech uppercase tracking-wider"
+              className={cn(
+                "gap-2 font-tech uppercase tracking-wider",
+                saved && "border-emerald-400/40 bg-emerald-950/30",
+              )}
               disabled={isSaving || !canSave}
               onClick={() => void handleSave()}
             >
@@ -240,6 +270,6 @@ export function PrizeDistributionPanel({ tournament, onUpdated }: PrizeDistribut
           </div>
         </div>
       </div>
-    </Panel>
+    </FeaturePanelShell>
   );
 }

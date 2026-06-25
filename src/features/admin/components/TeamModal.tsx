@@ -35,6 +35,7 @@ import {
   type RegistrationHistoryEntry,
 } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
+import { formatRegistrationDateTime } from "@/features/admin/utils/registration-date";
 import {
   isReviewQueueStatus,
   registrationActionsEnabled,
@@ -104,7 +105,7 @@ function TournamentHistoryList({ entries }: { entries: RegistrationHistoryEntry[
               {entry.tournamentName}
             </Link>
             <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-              {entry.registrationDate}
+              {formatRegistrationDateTime(entry.registrationDate)}
               {entry.tournamentStatus ? ` · ${entry.tournamentStatus}` : ""}
             </p>
           </div>
@@ -377,7 +378,9 @@ export function TeamModal({
                 </div>
                 <div>
                   <span className="text-muted-foreground/70">Registered </span>
-                  <span className="text-foreground/90">{team.registrationDate}</span>
+                  <span className="text-foreground/90" title={team.registrationDate}>
+                    {formatRegistrationDateTime(team.registrationDate)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground/70">Roster </span>
