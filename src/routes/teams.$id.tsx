@@ -27,6 +27,7 @@ import {
   fetchTeamById,
   leaveTeam,
   removeMemberFromTeam,
+  rosterActorFromMemberSession,
   transferTeamCaptain,
   updateTeamMemberRole,
 } from "@/features/admin/features/teams/services/teams.service";
@@ -77,6 +78,8 @@ function TeamDetailPage() {
   const [transferring, setTransferring] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [respondingInvite, setRespondingInvite] = useState(false);
   const [registrations, setRegistrations] = useState<MockTeam[]>([]);
@@ -212,13 +215,27 @@ function TeamDetailPage() {
   const approvedReg = approvedRegistration(registrations);
   const hasBlockingRegistration = Boolean(approvedReg || pendingRegs.length > 0);
 
-  async function handleRemove(member: TeamMember) {
+  function requestRemoveMember(member: TeamMember) {
+    setActionError(null);
+    setRemoveTarget(member);
+  }
+
+  async function confirmRemoveMember() {
+    if (!removeTarget || !team) return;
+    setRemoving(true);
     setActionError(null);
     try {
-      const updated = await removeMemberFromTeam(team!.id, member.userId);
+      const updated = await removeMemberFromTeam(
+        team.id,
+        removeTarget.userId,
+        rosterActorFromMemberSession(),
+      );
       setTeam(updated);
+      setRemoveTarget(null);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to remove member.");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -253,7 +270,7 @@ function TeamDetailPage() {
     setLeaving(true);
     setActionError(null);
     try {
-      await leaveTeam(team.id, memberId);
+      await leaveTeam(team.id, memberId, rosterActorFromMemberSession());
       setLeaveOpen(false);
       void syncTeamMembershipNotifications(memberId).catch((err) => {
         console.warn("[teams] Failed to sync membership notifications:", err);
@@ -296,7 +313,7 @@ function TeamDetailPage() {
     setActionError(null);
     setRespondingInvite(true);
     try {
-      const updated = await acceptTeamInvite(team!.id, memberId);
+      const updated = await acceptTeamInvite(team!.id, memberId, rosterActorFromMemberSession());
       setTeam(updated);
       markTeamInviteRead(team!.id);
       if (memberId) {
@@ -488,7 +505,7 @@ function TeamDetailPage() {
         isEditable={!isPublicView && isCaptain && !isInvited}
         canInvite={canInvite}
         onInvite={() => setInviteOpen(true)}
-        onRemove={isCaptain ? handleRemove : undefined}
+        onRemove={isCaptain ? requestRemoveMember : undefined}
         onTransferCaptain={isCaptain ? setTransferTarget : undefined}
         onRoleChange={
           !isPublicView && isMember && !isInvited ? handleRoleChange : undefined
@@ -601,6 +618,23 @@ function TeamDetailPage() {
             }}
             onConfirm={() => void handleTransferCaptain()}
           />
+          {removeTarget ? (
+            <ConfirmDeleteDialog
+              open
+              title={removeTarget.status === "invited" ? "Cancel invite?" : "Remove member?"}
+              description={
+                removeTarget.status === "invited"
+                  ? `Cancel the invite for ${removeTarget.displayName || removeTarget.username}? They will no longer be able to join ${team.name} [${team.tag}].`
+                  : `Remove ${removeTarget.displayName || removeTarget.username} from ${team.name} [${team.tag}]? They can only rejoin if you invite them again.`
+              }
+              confirmLabel={removeTarget.status === "invited" ? "Cancel invite" : "Remove member"}
+              isDeleting={removing}
+              onClose={() => {
+                if (!removing) setRemoveTarget(null);
+              }}
+              onConfirm={() => void confirmRemoveMember()}
+            />
+          ) : null}
         </>
       )}
     </MemberPageLayout>

@@ -1,5 +1,10 @@
 import { supabase } from "@/lib/supabase";
-import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  logAuditAction,
+  type RosterChangeActor,
+} from "@/features/admin/services/audit-log.service";
+import { fetchBracketState } from "@/features/admin/features/tournament-details/services/bracket.service";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 import {
@@ -1040,7 +1045,133 @@ export async function addTeamsToTournament(
   return { added, failed };
 }
 
-async function resyncRegistrationRoster(registrationId: string): Promise<MockTeam> {
+type RegistrationRosterSnapshot = {
+  ign: string;
+  discord: string;
+  role: string;
+  memberName: string;
+};
+
+function registrationRosterPlayerKey(player: Pick<RegistrationRosterSnapshot, "ign" | "discord">): string {
+  const discord = player.discord.trim().replace(/^@/, "").toLowerCase();
+  if (discord) return `discord:${discord}`;
+  return `ign:${player.ign.trim().toLowerCase()}`;
+}
+
+function snapshotFromRegistrationPlayer(row: Record<string, unknown>): RegistrationRosterSnapshot {
+  const ign = String(row.ign ?? "").trim();
+  const discord = String(row.discord ?? "").trim();
+  const role = String(row.role ?? "").trim();
+  const memberName = discord.replace(/^@/, "") || ign || "Player";
+  return { ign, discord, role, memberName };
+}
+
+function snapshotFromTeamMember(member: Team["members"][number]): RegistrationRosterSnapshot {
+  const ign = member.ign?.trim() || "";
+  const discord = (member.discordUsername || member.username || "").trim();
+  const role = member.role?.trim() || "";
+  const memberName = member.displayName?.trim() || member.username?.trim() || ign || "Player";
+  return { ign, discord, role, memberName };
+}
+
+function shouldAuditRegistrationRosterChanges(
+  tournamentStatus: string,
+  registrationStatus: string,
+  bracketPublished: boolean,
+): boolean {
+  if (registrationStatus !== "Approved") return false;
+  if (
+    tournamentStatus === "Draft" ||
+    tournamentStatus === "Registration Open" ||
+    tournamentStatus === "Registration Closed" ||
+    tournamentStatus === "Archived" ||
+    tournamentStatus === "Completed"
+  ) {
+    return false;
+  }
+  return tournamentStatus === "Live" || bracketPublished;
+}
+
+async function isTournamentBracketPublished(tournamentId: string): Promise<boolean> {
+  try {
+    const state = await fetchBracketState(tournamentId);
+    return state?.status === "published";
+  } catch {
+    return false;
+  }
+}
+
+function logLiveRegistrationRosterChanges(
+  registrationId: string,
+  tournament: { id: string; name: string; status: string },
+  team: Pick<Team, "name" | "tag">,
+  before: RegistrationRosterSnapshot[],
+  after: RegistrationRosterSnapshot[],
+  bracketPublished: boolean,
+  actor?: RosterChangeActor,
+): void {
+  const beforeKeys = new Set(before.map((player) => registrationRosterPlayerKey(player)));
+  const afterKeys = new Set(after.map((player) => registrationRosterPlayerKey(player)));
+  const actorKind = actor?.kind ?? "captain";
+  const changedAt = new Date().toISOString();
+  const baseMetadata = {
+    teamName: team.name,
+    teamTag: team.tag,
+    tournamentId: tournament.id,
+    tournamentName: tournament.name,
+    tournamentStatus: tournament.status,
+    bracketPublished,
+    changedAt,
+    actorKind,
+    ...(actor?.kind === "captain" && actor.displayName
+      ? { actorDisplayName: actor.displayName }
+      : {}),
+    ...(actor?.kind === "captain" && actor.discordUsername
+      ? { actorDiscordUsername: actor.discordUsername }
+      : {}),
+  };
+
+  for (const player of after) {
+    if (beforeKeys.has(registrationRosterPlayerKey(player))) continue;
+    void logAuditAction({
+      action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_ADDED,
+      entityType: "registration",
+      entityId: registrationId,
+      actorUsername: actor?.username,
+      metadata: {
+        ...baseMetadata,
+        memberName: player.memberName,
+        ign: player.ign,
+        role: player.role,
+      },
+    });
+  }
+
+  for (const player of before) {
+    if (afterKeys.has(registrationRosterPlayerKey(player))) continue;
+    void logAuditAction({
+      action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_REMOVED,
+      entityType: "registration",
+      entityId: registrationId,
+      actorUsername: actor?.username,
+      metadata: {
+        ...baseMetadata,
+        memberName: player.memberName,
+        ign: player.ign,
+        role: player.role,
+      },
+    });
+  }
+}
+
+export interface ResyncRegistrationRosterOptions {
+  actor?: RosterChangeActor;
+}
+
+async function resyncRegistrationRoster(
+  registrationId: string,
+  options?: ResyncRegistrationRosterOptions,
+): Promise<MockTeam> {
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
     .select(REGISTRATION_READ_COLUMNS)
@@ -1051,6 +1182,27 @@ async function resyncRegistrationRoster(registrationId: string): Promise<MockTea
 
   const rosterTeamId = reg.roster_team_id as string | null;
   if (!rosterTeamId) return fetchRegistrationWithPlayers(registrationId);
+
+  const tournamentId = reg.tournament_id as string;
+  const registrationStatus = reg.status as string;
+
+  const { data: beforePlayers, error: beforePlayersErr } = await supabase
+    .from("tournament_registration_players")
+    .select(REGISTRATION_PLAYER_COLUMNS)
+    .eq("registration_id", registrationId);
+
+  if (beforePlayersErr) throw new Error(beforePlayersErr.message);
+
+  const beforeSnapshots = (beforePlayers ?? []).map((row) =>
+    snapshotFromRegistrationPlayer(row as Record<string, unknown>),
+  );
+
+  let tournament: Awaited<ReturnType<typeof fetchTournamentById>> | null = null;
+  try {
+    tournament = await fetchTournamentById(tournamentId);
+  } catch {
+    // Tournament lookup for audit logging is optional.
+  }
 
   const allTeams = await fetchTeams();
   const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
@@ -1096,11 +1248,39 @@ async function resyncRegistrationRoster(registrationId: string): Promise<MockTea
     if (playersErr) throw new Error(playersErr.message);
   }
 
+  const afterSnapshots = activePlayers.map((member) => snapshotFromTeamMember(member));
+
+  const bracketPublished = tournament
+    ? await isTournamentBracketPublished(tournament.id)
+    : false;
+
+  if (
+    tournament &&
+    shouldAuditRegistrationRosterChanges(
+      tournament.status,
+      registrationStatus,
+      bracketPublished,
+    )
+  ) {
+    logLiveRegistrationRosterChanges(
+      registrationId,
+      { id: tournament.id, name: tournament.name, status: tournament.status },
+      rosterTeam,
+      beforeSnapshots,
+      afterSnapshots,
+      bracketPublished,
+      options?.actor,
+    );
+  }
+
   return fetchRegistrationWithPlayers(registrationId);
 }
 
 /** Refresh tournament registration snapshots from live team rosters. */
-export async function resyncRegistrationsForTeam(rosterTeamId: string): Promise<MockTeam[]> {
+export async function resyncRegistrationsForTeam(
+  rosterTeamId: string,
+  options?: ResyncRegistrationRosterOptions,
+): Promise<MockTeam[]> {
   const { data: regs, error } = await supabase
     .from("tournament_registrations")
     .select("id")
@@ -1111,7 +1291,7 @@ export async function resyncRegistrationsForTeam(rosterTeamId: string): Promise<
 
   const updated: MockTeam[] = [];
   for (const reg of regs) {
-    updated.push(await resyncRegistrationRoster(reg.id as string));
+    updated.push(await resyncRegistrationRoster(reg.id as string, options));
   }
   return updated;
 }

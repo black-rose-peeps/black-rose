@@ -1,5 +1,8 @@
 import { supabase } from "@/lib/supabase";
-import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction, type RosterChangeActor } from "@/features/admin/services/audit-log.service";
+import { getAdminConsoleUser } from "@/features/admin/auth/admin-session";
+import { getSession } from "@/features/auth/store/session";
+import { resyncRegistrationsForTeam } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
 import { deleteTeamAdminFn } from "../functions/delete-team.functions";
 import { deleteTeamCaptainFn } from "../functions/delete-team-captain.functions";
 import { transferTeamCaptainFn } from "../functions/transfer-team-captain.functions";
@@ -13,6 +16,53 @@ import { adminMemberToTeamMember } from "../utils";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+export function rosterActorFromMemberSession(): RosterChangeActor | undefined {
+  const session = getSession();
+  const username = session?.username?.trim();
+  if (!username) return undefined;
+
+  const discordUsername = session.discordUsername?.trim() || username;
+  const displayName = session.displayName?.trim() || discordUsername;
+
+  return {
+    username,
+    displayName,
+    discordUsername,
+    kind: "captain",
+  };
+}
+
+export function rosterActorFromAdminConsole(): RosterChangeActor | undefined {
+  const admin = getAdminConsoleUser()?.trim();
+  if (!admin) return undefined;
+  return {
+    username: admin,
+    kind: "admin",
+  };
+}
+
+function resolveRosterChangeActor(explicit?: RosterChangeActor): RosterChangeActor | undefined {
+  return explicit ?? rosterActorFromAdminConsole() ?? rosterActorFromMemberSession();
+}
+
+/** Team-level roster audits are admin-console actions only; captain changes use registration roster audits when live/published. */
+function isAdminRosterActor(explicit?: RosterChangeActor): boolean {
+  if (explicit) return explicit.kind === "admin";
+  return Boolean(rosterActorFromAdminConsole());
+}
+
+async function syncTournamentRegistrationsAfterRosterChange(
+  teamId: string,
+  actor?: RosterChangeActor,
+): Promise<void> {
+  const resolvedActor = resolveRosterChangeActor(actor);
+  try {
+    await resyncRegistrationsForTeam(teamId, { actor: resolvedActor });
+  } catch (err) {
+    console.error("[teams] Tournament registration roster resync failed:", err);
+  }
+}
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -455,7 +505,10 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
   return team;
 }
 
-export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> {
+export async function addMemberToTeam(
+  input: AddTeamMemberInput,
+  actor?: RosterChangeActor,
+): Promise<Team> {
   const member = await fetchMemberById(input.memberId);
   if (!member) throw new Error("Member not found.");
 
@@ -485,19 +538,28 @@ export async function addMemberToTeam(input: AddTeamMemberInput): Promise<Team> 
     member.username,
   );
 
-  void logAdminAction({
-    action: ADMIN_AUDIT_ACTIONS.TEAM_MEMBER_ADDED,
-    entityType: "team",
-    entityId: input.teamId,
-    metadata: {
-      teamName: team.name,
-      teamTag: team.tag,
-      memberId: member.id,
-      memberName: member.username,
-      role: memberRole,
-      game: team.game,
-    },
-  });
+  if (isAdminRosterActor(actor)) {
+    void logAdminAction({
+      action: ADMIN_AUDIT_ACTIONS.TEAM_MEMBER_ADDED,
+      entityType: "team",
+      entityId: input.teamId,
+      actorUsername: actor?.username ?? rosterActorFromAdminConsole()?.username,
+      metadata: {
+        teamName: team.name,
+        teamTag: team.tag,
+        memberId: member.id,
+        memberName: member.username,
+        role: memberRole,
+        game: team.game,
+        actorKind: "admin",
+      },
+    });
+  }
+
+  await syncTournamentRegistrationsAfterRosterChange(
+    input.teamId,
+    actor ?? rosterActorFromAdminConsole(),
+  );
 
   return fetchTeamWithMembers(input.teamId);
 }
@@ -516,13 +578,14 @@ export interface AddMembersToTeamResult {
 export async function addMembersToTeam(
   teamId: string,
   memberIds: string[],
+  actor?: RosterChangeActor,
 ): Promise<AddMembersToTeamResult> {
   const added: string[] = [];
   const failed: AddMembersToTeamFailure[] = [];
 
   for (const memberId of memberIds) {
     try {
-      await addMemberToTeam({ teamId, memberId });
+      await addMemberToTeam({ teamId, memberId }, actor);
       added.push(memberId);
     } catch (err) {
       failed.push({
@@ -673,7 +736,11 @@ export async function updateTeam(
   return updated;
 }
 
-export async function acceptTeamInvite(teamId: string, userId: string): Promise<Team> {
+export async function acceptTeamInvite(
+  teamId: string,
+  userId: string,
+  actor?: RosterChangeActor,
+): Promise<Team> {
   const team = await fetchTeamWithMembers(teamId);
   await assertMemberAvailableForGame(userId, team.game, teamId);
 
@@ -687,6 +754,10 @@ export async function acceptTeamInvite(teamId: string, userId: string): Promise<
 
   if (error) throw new Error(error.message);
   if (!updated?.length) throw new Error("No pending invite found for this team.");
+  await syncTournamentRegistrationsAfterRosterChange(
+    teamId,
+    actor ?? rosterActorFromMemberSession(),
+  );
   return fetchTeamWithMembers(teamId);
 }
 
@@ -703,7 +774,11 @@ export async function declineTeamInvite(teamId: string, userId: string): Promise
   if (!updated?.length) throw new Error("No pending invite found for this team.");
 }
 
-export async function removeMemberFromTeam(teamId: string, userId: string): Promise<Team> {
+export async function removeMemberFromTeam(
+  teamId: string,
+  userId: string,
+  actor?: RosterChangeActor,
+): Promise<Team> {
   const team = await fetchTeamWithMembers(teamId);
   const member = team.members.find((m) => m.userId === userId);
   if (!member) throw new Error("Member not found on this team.");
@@ -719,19 +794,25 @@ export async function removeMemberFromTeam(teamId: string, userId: string): Prom
 
   if (error) throw new Error(error.message);
 
-  void logAdminAction({
-    action: ADMIN_AUDIT_ACTIONS.TEAM_MEMBER_REMOVED,
-    entityType: "team",
-    entityId: teamId,
-    metadata: {
-      teamName: team.name,
-      teamTag: team.tag,
-      memberId: userId,
-      memberName: member.displayName || member.username,
-      role: member.role,
-      game: team.game,
-    },
-  });
+  if (isAdminRosterActor(actor)) {
+    void logAdminAction({
+      action: ADMIN_AUDIT_ACTIONS.TEAM_MEMBER_REMOVED,
+      entityType: "team",
+      entityId: teamId,
+      actorUsername: actor?.username ?? rosterActorFromAdminConsole()?.username,
+      metadata: {
+        teamName: team.name,
+        teamTag: team.tag,
+        memberId: userId,
+        memberName: member.displayName || member.username,
+        role: member.role,
+        game: team.game,
+        actorKind: "admin",
+      },
+    });
+  }
+
+  await syncTournamentRegistrationsAfterRosterChange(teamId, actor);
 
   return fetchTeamWithMembers(teamId);
 }
@@ -789,7 +870,11 @@ export async function transferTeamCaptain(
   return fetchTeamWithMembers(teamId);
 }
 
-export async function leaveTeam(teamId: string, actingUserId: string): Promise<void> {
+export async function leaveTeam(
+  teamId: string,
+  actingUserId: string,
+  actor?: RosterChangeActor,
+): Promise<void> {
   const team = await fetchTeamWithMembers(teamId);
   if (team.captainUserId === actingUserId) {
     throw new Error("Captains must transfer captaincy before leaving the team.");
@@ -801,6 +886,10 @@ export async function leaveTeam(teamId: string, actingUserId: string): Promise<v
   }
 
   await leaveTeamFn({ data: { teamId } });
+  await syncTournamentRegistrationsAfterRosterChange(
+    teamId,
+    actor ?? rosterActorFromMemberSession(),
+  );
 }
 
 export async function deleteTeam(teamId: string): Promise<void> {

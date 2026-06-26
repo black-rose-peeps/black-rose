@@ -37,13 +37,14 @@ export function validateValorantIdentityInput(
 
   if (name.length < 3 || name.length > 16) return "IGN must be 3–16 characters.";
   if (name.includes("#")) return "IGN should not include # — use the tagline field.";
-  if (!/^[a-zA-Z0-9 ]+$/.test(name)) {
-    return "IGN can only contain letters, numbers, and spaces.";
+  if (/[\r\n\u0000-\u001F\u007F]/.test(name)) {
+    return "IGN cannot include line breaks or control characters.";
   }
 
   if (tag.length < 3 || tag.length > 6) return "Tagline must be 3–6 characters.";
-  if (!/^[\p{L}\p{N}]+$/u.test(tag)) {
-    return "Tagline can only contain letters and numbers (including non-Latin characters).";
+  if (tag.includes("#")) return "Tagline should not include #.";
+  if (/[\r\n\u0000-\u001F\u007F]/.test(tag)) {
+    return "Tagline cannot include line breaks or control characters.";
   }
 
   return null;
