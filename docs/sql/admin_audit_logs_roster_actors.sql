@@ -1,42 +1,10 @@
--- =============================================================================
--- Admin audit logs — run once in Supabase → SQL Editor
--- Tracks admin console actions (approvals, deletions, status changes, etc.)
+-- Allow team-captain roster audit entries (non-admin actors) for live tournament registrations.
+-- Run in Supabase SQL Editor after deploying the app update.
 --
 -- Note: actor username is caller-supplied (best-effort audit trail). Members authenticate via
 -- app session, not Supabase Auth JWT, so this RPC cannot resolve trusted identity in SQL alone.
 -- For stronger attribution, move audit writes behind a server function with service role.
--- =============================================================================
 
-create table if not exists public.admin_audit_logs (
-  id uuid primary key default gen_random_uuid(),
-  actor_admin_username text not null,
-  action text not null,
-  entity_type text not null,
-  entity_id text,
-  metadata_json jsonb,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists admin_audit_logs_created_at_idx
-  on public.admin_audit_logs (created_at desc);
-
-create index if not exists admin_audit_logs_action_idx
-  on public.admin_audit_logs (action);
-
-create index if not exists admin_audit_logs_entity_idx
-  on public.admin_audit_logs (entity_type, entity_id);
-
-alter table public.admin_audit_logs enable row level security;
-
-drop policy if exists "Admin console read audit logs" on public.admin_audit_logs;
-
-create policy "Admin console read audit logs"
-  on public.admin_audit_logs
-  for select
-  to anon, authenticated
-  using (true);
-
--- Inserts only via RPC (not open INSERT policy)
 create or replace function public.insert_admin_audit_log(
   p_actor_admin_username text,
   p_action text,

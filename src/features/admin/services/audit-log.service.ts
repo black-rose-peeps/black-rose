@@ -1,5 +1,6 @@
 import { getAdminConsoleUser } from "@/features/admin/auth/admin-session";
 import { supabase } from "@/lib/supabase";
+import { formatRegistrationDateTime } from "@/features/admin/utils/registration-date";
 
 export const ADMIN_AUDIT_ACTIONS = {
   REGISTRATION_APPROVED: "registration.approved",
@@ -17,6 +18,8 @@ export const ADMIN_AUDIT_ACTIONS = {
   TEAM_MEMBER_REMOVED: "team.member_removed",
   REGISTRATION_ADDED: "registration.added",
   REGISTRATION_REMOVED: "registration.removed",
+  REGISTRATION_ROSTER_MEMBER_ADDED: "registration.roster_member_added",
+  REGISTRATION_ROSTER_MEMBER_REMOVED: "registration.roster_member_removed",
   TOURNAMENT_CREATED: "tournament.created",
   TOURNAMENT_UPDATED: "tournament.updated",
   TOURNAMENT_PRIZE_UPDATED: "tournament.prize_updated",
@@ -56,6 +59,8 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<string, string> = {
   [ADMIN_AUDIT_ACTIONS.TEAM_MEMBER_REMOVED]: "Removed member from team",
   [ADMIN_AUDIT_ACTIONS.REGISTRATION_ADDED]: "Added to tournament",
   [ADMIN_AUDIT_ACTIONS.REGISTRATION_REMOVED]: "Removed from tournament",
+  [ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_ADDED]: "Added player to registered team",
+  [ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_REMOVED]: "Removed player from registered team",
   [ADMIN_AUDIT_ACTIONS.TOURNAMENT_CREATED]: "Created tournament",
   [ADMIN_AUDIT_ACTIONS.TOURNAMENT_UPDATED]: "Updated tournament",
   [ADMIN_AUDIT_ACTIONS.TOURNAMENT_PRIZE_UPDATED]: "Updated prize distribution",
@@ -67,11 +72,79 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<string, string> = {
   [ADMIN_AUDIT_ACTIONS.DISCORD_SYNC_TRIGGERED]: "Triggered Discord sync",
 };
 
+export interface RosterChangeActor {
+  username: string;
+  displayName?: string;
+  discordUsername?: string;
+  kind: "admin" | "captain";
+}
+
 interface LogAdminActionInput {
   action: AdminAuditAction | string;
   entityType: string;
   entityId?: string | null;
   metadata?: Record<string, unknown> | null;
+  /** When set, used instead of the admin console session (e.g. team captain roster changes). */
+  actorUsername?: string;
+}
+
+function resolveAuditActor(explicit?: string): string | null {
+  const trimmed = explicit?.trim();
+  if (trimmed) return trimmed;
+  return getAdminConsoleUser();
+}
+
+function formatMemberActorLabel(displayName: string, discordUsername: string): string {
+  const name = displayName.trim();
+  const discord = discordUsername.trim().replace(/^@/, "");
+  const discordLabel = discord ? `@${discord}` : "";
+
+  if (name && discordLabel) return `${name} · ${discordLabel}`;
+  return name || discordLabel || "—";
+}
+
+export function formatAuditLogActor(log: AdminAuditLog): string {
+  const meta = log.metadata ?? {};
+
+  if (meta.actorKind === "captain") {
+    const displayName = readMetadataString(meta, ["actorDisplayName", "actor_display_name"]);
+    const discordUsername =
+      readMetadataString(meta, ["actorDiscordUsername", "actor_discord_username"]) ??
+      log.actorAdminUsername?.trim();
+    return formatMemberActorLabel(displayName ?? "", discordUsername ?? "");
+  }
+
+  const displayName = readMetadataString(meta, ["actorDisplayName", "actor_display_name"]);
+  if (displayName) return displayName;
+
+  return log.actorAdminUsername?.trim() || "—";
+}
+
+/** Best-effort audit write — never throws; mutations must not fail if logging fails. */
+export async function logAuditAction(input: LogAdminActionInput): Promise<void> {
+  try {
+    const actor = resolveAuditActor(input.actorUsername);
+    if (!actor) return;
+
+    const { error } = await supabase.rpc("insert_admin_audit_log", {
+      p_actor_admin_username: actor,
+      p_action: input.action,
+      p_entity_type: input.entityType,
+      p_entity_id: input.entityId ?? null,
+      p_metadata: input.metadata ?? null,
+    });
+
+    if (error) {
+      console.warn("[audit-log] insert failed:", error.message);
+    }
+  } catch (err) {
+    console.warn("[audit-log] insert failed:", err);
+  }
+}
+
+/** @deprecated Prefer logAuditAction — alias kept for existing call sites. */
+export async function logAdminAction(input: LogAdminActionInput): Promise<void> {
+  return logAuditAction(input);
 }
 
 function readMetadataString(
@@ -130,28 +203,6 @@ function rowToAuditLog(row: Record<string, unknown>): AdminAuditLog {
     metadata: normalizeAuditMetadata(row.metadata_json),
     createdAt: row.created_at as string,
   };
-}
-
-/** Best-effort audit write — never throws; mutations must not fail if logging fails. */
-export async function logAdminAction(input: LogAdminActionInput): Promise<void> {
-  try {
-    const actor = getAdminConsoleUser();
-    if (!actor) return;
-
-    const { error } = await supabase.rpc("insert_admin_audit_log", {
-      p_actor_admin_username: actor,
-      p_action: input.action,
-      p_entity_type: input.entityType,
-      p_entity_id: input.entityId ?? null,
-      p_metadata: input.metadata ?? null,
-    });
-
-    if (error) {
-      console.warn("[audit-log] insert failed:", error.message);
-    }
-  } catch (err) {
-    console.warn("[audit-log] insert failed:", err);
-  }
 }
 
 async function hydrateTournamentNames(logs: AdminAuditLog[]): Promise<AdminAuditLog[]> {
@@ -266,6 +317,21 @@ export function formatAuditLogDetails(log: AdminAuditLog): string {
   if (!meta || Object.keys(meta).length === 0) return "—";
 
   const parts: string[] = [];
+  const isRosterAudit =
+    log.action === ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_ADDED ||
+    log.action === ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_REMOVED;
+
+  if (isRosterAudit) {
+    const changedAt = typeof meta.changedAt === "string" ? meta.changedAt : log.createdAt;
+    parts.push(formatRegistrationDateTime(changedAt));
+
+    if (typeof meta.tournamentStatus === "string") {
+      parts.push(meta.tournamentStatus);
+    }
+    if (meta.bracketPublished === true) {
+      parts.push("Published bracket");
+    }
+  }
 
   if (typeof meta.previousStatus === "string" && typeof meta.newStatus === "string") {
     parts.push(`${meta.previousStatus} → ${meta.newStatus}`);
@@ -307,6 +373,10 @@ export function formatAuditLogDetails(log: AdminAuditLog): string {
 
   if (typeof meta.role === "string") {
     parts.push(meta.role);
+  }
+
+  if (meta.actorKind === "captain") {
+    parts.push("Team captain action");
   }
 
   if (typeof meta.game === "string") {
