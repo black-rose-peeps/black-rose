@@ -1,7 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Loader2, User, Gamepad2, Share2, Eye, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle,
+  Loader2,
+  User,
+  Gamepad2,
+  Share2,
+  Eye,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,9 +37,7 @@ import { MemberDashboardSkeleton } from "@/features/member/components/MemberDash
 import { useSyncedMemberSession } from "@/features/auth/hooks/useSyncedMemberSession";
 import { setSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
-import {
-  useMemberProfileQuery,
-} from "@/features/member/queries/member-profile-queries";
+import { useMemberProfileQuery } from "@/features/member/queries/member-profile-queries";
 import { queryKeys } from "@/lib/query-keys";
 import {
   PROFILE_GAME_OPTIONS,
@@ -38,10 +45,11 @@ import {
   SOCIAL_PLATFORM_LABELS,
   SOCIAL_PLATFORM_ORDER,
 } from "@/features/member/constants";
+import { updateMemberProfile } from "@/features/member/services/member-profile.service";
 import {
-  updateMemberProfile,
-} from "@/features/member/services/member-profile.service";
-import { profileCompletionHint, isProfileComplete } from "@/features/member/utils/profile-completion";
+  profileCompletionHint,
+  isProfileComplete,
+} from "@/features/member/utils/profile-completion";
 import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
 import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
@@ -159,11 +167,8 @@ function ProfileEditPage() {
   const [valorantTagline, setValorantTagline] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [socials, setSocials] = useState<SocialFormState>(() => socialsFromProfile(EMPTY_PROFILE));
-  const {
-    celebrationOpen,
-    maybeCelebrate,
-    dismissCelebration,
-  } = useProfileCompleteCelebration(memberId);
+  const { celebrationOpen, maybeCelebrate, dismissCelebration } =
+    useProfileCompleteCelebration(memberId);
 
   const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
 
@@ -441,7 +446,10 @@ function ProfileEditPage() {
                   onChange={(e) => setBio(e.target.value)}
                   rows={5}
                   placeholder="Tell the community about yourself…"
-                  className={cn(techFieldClass, "custom-scrollbar max-h-48 resize-y overflow-y-auto")}
+                  className={cn(
+                    techFieldClass,
+                    "custom-scrollbar max-h-48 resize-y overflow-y-auto",
+                  )}
                 />
                 <p className="text-xs text-muted-foreground">
                   Any bio text counts toward profile completion.
@@ -530,6 +538,7 @@ function ProfileEditPage() {
                     value={valorantGameName}
                     onChange={(e) => setValorantGameName(e.target.value)}
                     placeholder="PlayerName"
+                    maxLength={16}
                     className={techFieldClass}
                   />
                 </div>
@@ -554,8 +563,7 @@ function ProfileEditPage() {
               </div>
               {hasValorantIdentity(valorantGameName, valorantTagline) && valorantRiotId && (
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Preview:{" "}
-                  <span className="font-medium text-foreground">{valorantRiotId}</span>
+                  Preview: <span className="font-medium text-foreground">{valorantRiotId}</span>
                 </p>
               )}
             </TechPanel>

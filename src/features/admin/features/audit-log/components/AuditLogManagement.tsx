@@ -24,6 +24,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   fetchAdminAuditLogs,
   formatAuditLogAction,
+  formatAuditLogActor,
   formatAuditLogDetails,
   formatAuditLogTarget,
   type AdminAuditLog,
@@ -38,6 +39,7 @@ function matchesAuditLogSearch(query: string, log: AdminAuditLog): boolean {
 
   return [
     log.actorAdminUsername,
+    formatAuditLogActor(log),
     log.action,
     formatAuditLogAction(log.action),
     log.entityType,
@@ -91,7 +93,7 @@ export function AuditLogManagement() {
     () => ({
       createdAt: (a: AdminAuditLog, b: AdminAuditLog) => compareStrings(a.createdAt, b.createdAt),
       actor: (a: AdminAuditLog, b: AdminAuditLog) =>
-        compareStrings(a.actorAdminUsername, b.actorAdminUsername),
+        compareStrings(formatAuditLogActor(a), formatAuditLogActor(b)),
       action: (a: AdminAuditLog, b: AdminAuditLog) => compareStrings(a.action, b.action),
       target: (a: AdminAuditLog, b: AdminAuditLog) =>
         compareStrings(formatAuditLogTarget(a), formatAuditLogTarget(b)),
@@ -104,7 +106,7 @@ export function AuditLogManagement() {
   const auditSortOptions = useMemo(
     () => [
       { key: "createdAt", label: "When" },
-      { key: "actor", label: "Admin" },
+      { key: "actor", label: "Actor" },
       { key: "action", label: "Action" },
       { key: "target", label: "Target" },
       { key: "details", label: "Details" },
@@ -251,7 +253,7 @@ export function AuditLogManagement() {
                       onSort={toggleSort}
                     />
                     <SortableTableHead
-                      label="Admin"
+                      label="Actor"
                       sortKey="actor"
                       activeKey={sortKey}
                       direction={direction}
@@ -289,7 +291,7 @@ export function AuditLogManagement() {
                         </span>
                       </TableCell>
                       <TableCell className={adminTableCellClip}>
-                        <span className={adminTableTextTruncate}>{log.actorAdminUsername}</span>
+                        <span className={adminTableTextTruncate}>{formatAuditLogActor(log)}</span>
                       </TableCell>
                       <TableCell className={adminTableCellClip}>
                         <span className={adminTableTextTruncate}>

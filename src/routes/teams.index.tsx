@@ -7,6 +7,7 @@ import {
   acceptTeamInvite,
   declineTeamInvite,
   fetchTeamsForUser,
+  rosterActorFromMemberSession,
 } from "@/features/admin/features/teams/services/teams.service";
 import {
   MemberHeroBanner,
@@ -172,7 +173,7 @@ function TeamsIndexPage() {
     if (!memberId) return;
     setRespondingTeamId(teamId);
     try {
-      await acceptTeamInvite(teamId, memberId);
+      await acceptTeamInvite(teamId, memberId, rosterActorFromMemberSession());
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Failed to accept invite.");
       return;

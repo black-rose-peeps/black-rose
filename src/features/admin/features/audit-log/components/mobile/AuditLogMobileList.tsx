@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import {
   formatAuditLogAction,
+  formatAuditLogActor,
   formatAuditLogTarget,
   type AdminAuditLog,
 } from "@/features/admin/services/audit-log.service";
@@ -46,7 +47,8 @@ export function AuditLogMobileList({
             </div>
 
             <p className="mt-2 text-sm text-muted-foreground">
-              Admin · <span className="text-foreground/90">{log.actorAdminUsername}</span>
+              {log.metadata?.actorKind === "captain" ? "Captain" : "Admin"} ·{" "}
+              <span className="text-foreground/90">{formatAuditLogActor(log)}</span>
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               Target ·{" "}
