@@ -1,5 +1,9 @@
 -- Allow team-captain roster audit entries (non-admin actors) for live tournament registrations.
 -- Run in Supabase SQL Editor after deploying the app update.
+--
+-- Note: actor username is caller-supplied (best-effort audit trail). Members authenticate via
+-- app session, not Supabase Auth JWT, so this RPC cannot resolve trusted identity in SQL alone.
+-- For stronger attribution, move audit writes behind a server function with service role.
 
 create or replace function public.insert_admin_audit_log(
   p_actor_admin_username text,

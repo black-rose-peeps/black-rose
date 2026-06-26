@@ -1,6 +1,10 @@
 -- =============================================================================
 -- Admin audit logs — run once in Supabase → SQL Editor
 -- Tracks admin console actions (approvals, deletions, status changes, etc.)
+--
+-- Note: actor username is caller-supplied (best-effort audit trail). Members authenticate via
+-- app session, not Supabase Auth JWT, so this RPC cannot resolve trusted identity in SQL alone.
+-- For stronger attribution, move audit writes behind a server function with service role.
 -- =============================================================================
 
 create table if not exists public.admin_audit_logs (

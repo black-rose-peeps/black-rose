@@ -772,9 +772,7 @@ export async function fetchRegistrationsForTeam(
     playersByReg.get(registrationId)!.push(player);
   }
 
-  const teams = data.map((row) =>
-    rowToMockTeam(row, playersByReg.get(row.id as string) ?? []),
-  );
+  const teams = data.map((row) => rowToMockTeam(row, playersByReg.get(row.id as string) ?? []));
   const tournaments = options?.tournaments ?? (await fetchTournamentsLite());
   const gameById = new Map(tournaments.map((t) => [t.id, t.game]));
   return enrichRegistrationsWithLiveData(teams, gameById, options?.liveTeamsById);
@@ -1052,7 +1050,9 @@ type RegistrationRosterSnapshot = {
   memberName: string;
 };
 
-function registrationRosterPlayerKey(player: Pick<RegistrationRosterSnapshot, "ign" | "discord">): string {
+function registrationRosterPlayerKey(
+  player: Pick<RegistrationRosterSnapshot, "ign" | "discord">,
+): string {
   const discord = player.discord.trim().replace(/^@/, "").toLowerCase();
   if (discord) return `discord:${discord}`;
   return `ign:${player.ign.trim().toLowerCase()}`;
@@ -1250,17 +1250,11 @@ async function resyncRegistrationRoster(
 
   const afterSnapshots = activePlayers.map((member) => snapshotFromTeamMember(member));
 
-  const bracketPublished = tournament
-    ? await isTournamentBracketPublished(tournament.id)
-    : false;
+  const bracketPublished = tournament ? await isTournamentBracketPublished(tournament.id) : false;
 
   if (
     tournament &&
-    shouldAuditRegistrationRosterChanges(
-      tournament.status,
-      registrationStatus,
-      bracketPublished,
-    )
+    shouldAuditRegistrationRosterChanges(tournament.status, registrationStatus, bracketPublished)
   ) {
     logLiveRegistrationRosterChanges(
       registrationId,

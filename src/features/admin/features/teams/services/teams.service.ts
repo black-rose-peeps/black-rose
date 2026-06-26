@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabase";
-import { ADMIN_AUDIT_ACTIONS, logAdminAction, type RosterChangeActor } from "@/features/admin/services/audit-log.service";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  logAdminAction,
+  type RosterChangeActor,
+} from "@/features/admin/services/audit-log.service";
 import { getAdminConsoleUser } from "@/features/admin/auth/admin-session";
 import { getSession } from "@/features/auth/store/session";
 import { resyncRegistrationsForTeam } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
@@ -57,11 +61,7 @@ async function syncTournamentRegistrationsAfterRosterChange(
   actor?: RosterChangeActor,
 ): Promise<void> {
   const resolvedActor = resolveRosterChangeActor(actor);
-  try {
-    await resyncRegistrationsForTeam(teamId, { actor: resolvedActor });
-  } catch (err) {
-    console.error("[teams] Tournament registration roster resync failed:", err);
-  }
+  await resyncRegistrationsForTeam(teamId, { actor: resolvedActor });
 }
 
 function initialsFromName(name: string): string {

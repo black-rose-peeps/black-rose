@@ -322,10 +322,7 @@ export function formatAuditLogDetails(log: AdminAuditLog): string {
     log.action === ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_REMOVED;
 
   if (isRosterAudit) {
-    const changedAt =
-      typeof meta.changedAt === "string"
-        ? meta.changedAt
-        : log.createdAt;
+    const changedAt = typeof meta.changedAt === "string" ? meta.changedAt : log.createdAt;
     parts.push(formatRegistrationDateTime(changedAt));
 
     if (typeof meta.tournamentStatus === "string") {
