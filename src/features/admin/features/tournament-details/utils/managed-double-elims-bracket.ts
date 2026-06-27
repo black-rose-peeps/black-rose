@@ -82,10 +82,20 @@ function lowerRoundMeta(
   totalLowerRounds: number,
 ): { id: string; label: string } {
   const id = lowerRoundId(roundIndex, totalLowerRounds);
-  return {
-    id,
-    label: `Lower — Round ${roundIndex + 1}`,
-  };
+  const roundNumber = roundIndex + 1;
+
+  if (totalLowerRounds >= 2 && roundIndex >= totalLowerRounds - 2) {
+    return { id, label: "Lower — Semifinals" };
+  }
+  if (
+    totalLowerRounds >= 4 &&
+    roundIndex >= totalLowerRounds - 4 &&
+    roundIndex < totalLowerRounds - 2
+  ) {
+    return { id, label: "Lower — Quarterfinals" };
+  }
+
+  return { id, label: `Lower — Round ${roundNumber}` };
 }
 
 /** Recompute double-elim round column labels (new brackets + published payload normalize). */
@@ -500,16 +510,24 @@ function buildFourTeamDoubleElim(
 
   addRound("ub-r1", "Upper — Quarterfinals", "upper", 2);
   addRound("ub-f", "Upper — Semifinals", "upper", 1);
-  addRound("lb-r1", "Lower — Round 1", "lower", hasPlayInLosersPool ? 2 : 1);
-  if (hasPlayInLosersPool) {
-    addRound("lb-r2", "Lower — Round 2", "lower", 1);
+
+  const lowerRoundPlan = hasPlayInLosersPool
+    ? [
+        { id: "lb-r1", count: 2 },
+        { id: "lb-r2", count: 1 },
+        { id: "lb-f", count: 1 },
+      ]
+    : [
+        { id: "lb-r1", count: 1 },
+        { id: "lb-f", count: 1 },
+      ];
+
+  for (let r = 0; r < lowerRoundPlan.length; r++) {
+    const plan = lowerRoundPlan[r];
+    const { label } = lowerRoundMeta(r, lowerRoundPlan.length);
+    addRound(plan.id, label, "lower", plan.count);
   }
-  addRound(
-    "lb-f",
-    hasPlayInLosersPool ? "Lower — Round 3" : "Lower — Round 2",
-    "lower",
-    1,
-  );
+
   if (includeGrandFinal) {
     addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
   }

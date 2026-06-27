@@ -46,6 +46,7 @@ import {
   usesCompressedPreliminaryField,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
+import { getGrandFinalBracketGuide } from "@/features/admin/features/tournament-details/utils/grand-final";
 import {
   BRACKET_CARD_W,
   BRACKET_COL_GAP,
@@ -422,6 +423,7 @@ export function BracketTab({
         )}
         <BracketFooter
           isDoubleElim
+          grandFinalMode={grandFinalModeProp}
           hasLegacyPlayIn={legacyOpeningPlayIn}
           hasRoundOneByes={hasRoundOneByes}
           compressedPreliminary={compressedPreliminary}
@@ -524,12 +526,14 @@ function BracketHeader({ format }: { format: string }) {
 
 function BracketFooter({
   isDoubleElim = false,
+  grandFinalMode,
   hasLegacyPlayIn = false,
   hasRoundOneByes = false,
   compressedPreliminary = false,
   openingMatchCount = 0,
 }: {
   isDoubleElim?: boolean;
+  grandFinalMode?: GrandFinalMode | null;
   hasLegacyPlayIn?: boolean;
   hasRoundOneByes?: boolean;
   compressedPreliminary?: boolean;
@@ -539,7 +543,7 @@ function BracketFooter({
     return (
       <p className="font-tech text-[10px] font-semibold uppercase tracking-wider-2 text-muted-foreground/80">
         Play-in winners join the main upper bracket. Lower bracket columns run left to right in
-        match order. Grand Final: upper-bracket winner vs lower-bracket winner.
+        match order. {getGrandFinalBracketGuide(grandFinalMode)}
       </p>
     );
   }

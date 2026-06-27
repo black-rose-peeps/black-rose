@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import { ArrowDown, Crown, Shield, Swords, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
+import {
+  getGrandFinalStageSubtitle,
+  grandFinalAllowsBracketReset,
+  type GrandFinalMode,
+} from "@/features/admin/features/tournament-details/utils/grand-final";
 import { BracketSectionHeader } from "./BracketSectionHeader";
 
 export interface GrandFinalStageMatch {
@@ -77,18 +81,13 @@ export function GrandFinalStage({
   className,
 }: GrandFinalStageProps) {
   const bracketResetEnabled =
-    allowsBracketReset ??
-    (grandFinalMode === "one_match" || grandFinalMode === "none"
-      ? false
-      : grandFinalMode === "two_matches" || grandFinalMode == null);
+    allowsBracketReset ?? grandFinalAllowsBracketReset(grandFinalMode);
   const primaryDecided = primaryMatch.confirmed && !!primaryMatch.winner;
   const lowerWonPrimary =
     primaryDecided && !!primaryMatch.teamB && primaryMatch.winner === primaryMatch.teamB;
   const showReset = bracketResetEnabled && (!!resetMatch || lowerWonPrimary);
 
-  const stageSubtitle = !bracketResetEnabled
-    ? "Single grand final — winner takes the title"
-    : "Upper bracket advantage · Lower bracket must win twice";
+  const stageSubtitle = getGrandFinalStageSubtitle(grandFinalMode);
 
   const primaryMatchLabel = bracketResetEnabled ? "Grand Final 1" : "Grand Final";
 
