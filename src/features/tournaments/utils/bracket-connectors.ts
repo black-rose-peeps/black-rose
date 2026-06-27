@@ -59,7 +59,10 @@ export function managedToLayoutMatches(
 }
 
 export function publicToLayoutMatches(rounds: BracketRound[]): LayoutInputMatch[] {
-  const inferredLinks = inferWinnerLinks(rounds);
+  const hasExplicitLinks = rounds.some((round) =>
+    round.matches.some((match) => match.winnerAdvancesTo),
+  );
+  const inferredLinks = hasExplicitLinks ? new Map<string, string>() : inferWinnerLinks(rounds);
   const layoutMatches: LayoutInputMatch[] = [];
 
   rounds.forEach((round, roundIndex) => {

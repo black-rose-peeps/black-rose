@@ -5,7 +5,7 @@
  * with Black Rose styling. Mirrors admin ManagedBracketView structure.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
@@ -16,6 +16,7 @@ import {
   EliminationBracketCanvas,
   EliminationChampionshipStage,
   GrandFinalStage,
+  GrandFinalFeederCallout,
   type BracketCanvasBand,
   type BracketFocusSize,
   type BracketRoundColumn,
@@ -34,7 +35,7 @@ import {
 import {
   isChampionshipMatch,
   isChampionshipRoundLabel,
-  isGrandFinalRound,
+  isGrandFinalRoundRef,
   isLowerBracketRound,
   hasLegacyOpeningPlayIn,
   partitionDoubleElimRounds,
@@ -47,6 +48,7 @@ import {
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
 import { getGrandFinalBracketGuide } from "@/features/admin/features/tournament-details/utils/grand-final";
+import { getGrandFinalFeederSideFromMatchId } from "@/features/tournaments/utils/bracket-grand-final-feeder";
 import {
   BRACKET_CARD_W,
   BRACKET_COL_GAP,
@@ -99,6 +101,14 @@ export function BracketTab({
     [bracketTeamCount],
   );
 
+  useEffect(() => {
+    setBracketFocus((current) => {
+      if (current === "all") return current;
+      if (availableTopSizes.includes(current)) return current;
+      return "all";
+    });
+  }, [availableTopSizes]);
+
   if (isLoading) {
     return <BracketSkeleton />;
   }
@@ -149,10 +159,15 @@ export function BracketTab({
     if (grandRounds.length === 0 || !isDoubleElim) return null;
 
     const gfRound =
+      grandRounds.find((round) => round.id === "gf") ??
       grandRounds.find(
         (round) => /grand final/i.test(round.label) && !/reset/i.test(round.label),
-      ) ?? grandRounds[0];
-    const resetRound = grandRounds.find((round) => /reset/i.test(round.label));
+      ) ??
+      grandRounds.find((round) => !/reset/i.test(round.label)) ??
+      grandRounds[0];
+    const resetRound =
+      grandRounds.find((round) => round.id === "gf-reset") ??
+      grandRounds.find((round) => /reset/i.test(round.label));
     const primaryMatch = gfRound?.matches[0];
     if (!primaryMatch) return null;
 
@@ -260,13 +275,13 @@ export function BracketTab({
     upperSectionRounds: BracketRound[],
     lowerSectionRounds: BracketRound[],
   ) => {
-    const { bracketRounds: upperBracketRounds, grandRounds } = splitGrandFinalRounds(
+    const { bracketRounds: upperBracketRounds } = splitGrandFinalRounds(
       upperSectionRounds,
-      (round) => isGrandFinalRound(round.label),
+      isGrandFinalRoundRef,
     );
     const { bracketRounds: lowerBracketRounds } = splitGrandFinalRounds(
       lowerSectionRounds,
-      (round) => isGrandFinalRound(round.label),
+      isGrandFinalRoundRef,
     );
     const upperColumns = toPublicRoundColumns(upperBracketRounds);
     const lowerColumns = toPublicRoundColumns(lowerBracketRounds);
@@ -309,7 +324,6 @@ export function BracketTab({
             }}
           />
         )}
-        {renderGrandFinalStage(grandRounds)}
       </div>
     );
   };
@@ -325,9 +339,7 @@ export function BracketTab({
       ? partitionPublicChampionshipRounds(rounds)
       : { bracketRounds: rounds, championshipRounds: [] as BracketRound[] };
 
-    const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, (round) =>
-      isGrandFinalRound(round.label),
-    );
+    const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, isGrandFinalRoundRef);
     const columns = toPublicRoundColumns(bracketRounds);
     const sectionLayoutMatches = publicToLayoutMatches(flowRounds);
     const sectionByeMarkers = buildByeAdvancementMarkersFromRounds(flowRounds);
@@ -336,7 +348,7 @@ export function BracketTab({
         {title && <BracketSectionHeader title={title} accent={accent} />}
         {renderSectionGuides(rounds)}
         {renderPublicBracketCanvas(columns, sectionLayoutMatches, sectionByeMarkers)}
-        {renderGrandFinalStage(grandRounds)}
+        {!isDoubleElim && renderGrandFinalStage(grandRounds)}
         {!isDoubleElim &&
           grandRounds.map((round) => {
             const grandMatch = round.matches[0];
@@ -392,7 +404,8 @@ export function BracketTab({
   };
 
   if (isDoubleElim) {
-    const { upperRounds, lowerRounds, hasOpeningPlayIn } = partitionDoubleElimRounds(bracket);
+    const { upperRounds, lowerRounds } = partitionDoubleElimRounds(bracket);
+    const grandRounds = upperRounds.filter(isGrandFinalRoundRef);
     const focusedRounds = applyBracketFocusToDoubleElim(
       upperRounds,
       lowerRounds,
@@ -421,6 +434,7 @@ export function BracketTab({
           focusedRounds.lowerRounds.length > 0 &&
           renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
         )}
+        {renderGrandFinalStage(grandRounds)}
         <BracketFooter
           isDoubleElim
           grandFinalMode={grandFinalModeProp}
@@ -495,7 +509,7 @@ export function BracketTab({
 
 function toPublicRoundColumns(rounds: BracketRound[]): BracketRoundColumn[] {
   return rounds
-    .filter((round) => !isGrandFinalRound(round.label) && !isPublicChampionshipRound(round))
+    .filter((round) => !isGrandFinalRoundRef(round) && !isPublicChampionshipRound(round))
     .map((round) => ({
       id: round.id ?? round.label,
       label: round.label,
@@ -603,13 +617,15 @@ function PublicMatchCard({
   const sideBorder = isChampionship
     ? "border-amber-400/55"
     : isLower
-      ? "border-amber-400/25"
-      : "border-border";
+      ? "border-amber-400/35"
+      : "border-border/70";
+  const grandFinalFeederSide = getGrandFinalFeederSideFromMatchId(match.id);
+  const showGrandFinalFeeder = !!grandFinalFeederSide && decided && !!match.winner;
 
   return (
     <div
       className={cn(
-        "border bg-card",
+        "border bg-muted shadow-[0_1px_0_rgba(255,255,255,0.05)]",
         sideBorder,
         decided && !isChampionship && "ring-1 ring-emerald-400/30",
         championCrowned && "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
@@ -618,13 +634,13 @@ function PublicMatchCard({
       <div
         className={cn(
           "flex items-center justify-between border-b px-2 py-1",
-          isChampionship ? "border-amber-400/25 bg-amber-400/5" : "border-border/60",
+          isChampionship ? "border-amber-400/30 bg-amber-400/8" : "border-border/70 bg-secondary/40",
         )}
       >
         <span
           className={cn(
             "flex items-center gap-1 font-tech text-[10px] uppercase tracking-wider",
-            isChampionship ? "text-amber-300/90" : "text-muted-foreground",
+            isChampionship ? "text-amber-200" : "text-foreground/75",
           )}
         >
           {championCrowned && <Crown className="h-3 w-3" strokeWidth={1.25} />}
@@ -634,10 +650,14 @@ function PublicMatchCard({
           <span
             className={cn(
               "font-tech text-[9px] uppercase tracking-wider",
-              championCrowned ? "text-amber-300/80" : "text-emerald-400/70",
+              championCrowned
+                ? "text-amber-300/80"
+                : grandFinalFeederSide
+                  ? "text-amber-300/80"
+                  : "text-emerald-400/70",
             )}
           >
-            {championCrowned ? "Champion" : "Final"}
+            {championCrowned ? "Champion" : showGrandFinalFeeder ? "→ Grand Finals" : "Final"}
           </span>
         )}
       </div>
@@ -665,6 +685,10 @@ function PublicMatchCard({
         hasScores={hasScores}
         isChampionRow={championCrowned && match.winner === match.teamB}
       />
+
+      {showGrandFinalFeeder && grandFinalFeederSide && (
+        <GrandFinalFeederCallout side={grandFinalFeederSide} />
+      )}
     </div>
   );
 }

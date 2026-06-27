@@ -165,17 +165,17 @@ export function BracketCanvas({
     <div
       ref={containerRef}
       className={cn(
-        "relative overflow-hidden border border-border bg-card/40 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]",
+        "relative overflow-hidden border border-border/70 bg-muted/30 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
         isFullscreen && "fixed inset-0 z-[200] h-screen w-screen border-0 bg-background",
         className,
       )}
       style={isFullscreen ? undefined : { minHeight }}
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.28]"
+        className="pointer-events-none absolute inset-0 opacity-[0.38]"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--foreground) 10%, transparent) 1px, transparent 0)",
+            "radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--foreground) 14%, transparent) 1px, transparent 0)",
           backgroundSize: "24px 24px",
         }}
       />
