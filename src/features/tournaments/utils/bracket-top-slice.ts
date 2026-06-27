@@ -1,7 +1,7 @@
 import {
   bracketCapacity,
-  byeCount,
   isEvenBracketFieldSize,
+  usesCompressedPreliminaryField,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import {
   isGrandFinalRoundRef,
@@ -58,8 +58,8 @@ export function computeBracketSliceStartIndices(
 
   const ratio = capacity / topN;
   let upperStartIndex = Math.log2(ratio);
-  // Bye / compressed-preliminary opening rounds are not a full capacity round.
-  if (byeCount(teamCount) > 0) {
+  // Compressed-preliminary fields (64+ cap) skip a partial opening round; simple bye fields do not.
+  if (usesCompressedPreliminaryField(teamCount)) {
     upperStartIndex += 1;
   }
   const lowerStartIndex = Math.max(0, 2 * upperStartIndex - 3);

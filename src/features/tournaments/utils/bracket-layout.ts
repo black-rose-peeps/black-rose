@@ -121,17 +121,29 @@ function isSameIndexBijectivePair(
   return sources.every((source, index) => source.nextWinnerMatchId === targets[index]?.id);
 }
 
+function visibleFeedersForTarget(
+  targetId: string,
+  prevRoundIndex: number,
+  matchById: Map<string, LayoutInputMatch>,
+  hidden: Set<string>,
+): string[] {
+  const feeders: string[] = [];
+  for (const match of matchById.values()) {
+    if (match.roundIndex !== prevRoundIndex || hidden.has(match.id)) continue;
+    const visibleTarget = resolveVisibleSuccessor(match.nextWinnerMatchId, matchById, hidden);
+    if (visibleTarget === targetId) feeders.push(match.id);
+  }
+  return feeders;
+}
+
 function averageFeederYForTarget(
   targetId: string,
-  feedersOf: Map<string, string[]>,
   matchById: Map<string, LayoutInputMatch>,
   prevRoundIndex: number,
   positions: Map<string, { x: number; y: number }>,
   hidden: Set<string>,
 ): number | null {
-  const fromPrev = (feedersOf.get(targetId) ?? []).filter(
-    (id) => matchById.get(id)?.roundIndex === prevRoundIndex,
-  );
+  const fromPrev = visibleFeedersForTarget(targetId, prevRoundIndex, matchById, hidden);
   const feederYs = fromPrev
     .map((id) => effectiveParentY(id, positions, hidden))
     .filter((value): value is number => value !== null);
@@ -150,7 +162,6 @@ function resolveTargetYFromFeeders(
   roundMatches: LayoutInputMatch[],
   prevRoundMatches: LayoutInputMatch[],
   prevRoundIndex: number | null,
-  feedersOf: Map<string, string[]>,
   matchById: Map<string, LayoutInputMatch>,
   positions: Map<string, { x: number; y: number }>,
   hidden: Set<string>,
@@ -159,7 +170,6 @@ function resolveTargetYFromFeeders(
 
   const fromFeeders = averageFeederYForTarget(
     match.id,
-    feedersOf,
     matchById,
     prevRoundIndex,
     positions,
@@ -198,6 +208,8 @@ function resolveTargetYFromFeeders(
 function layoutSourcesGroupedByTarget(
   sources: LayoutInputMatch[],
   positions: Map<string, { x: number; y: number }>,
+  matchById: Map<string, LayoutInputMatch>,
+  hidden: Set<string>,
   span: number,
   minGap: number,
 ): void {
@@ -208,7 +220,7 @@ function layoutSourcesGroupedByTarget(
   const orphans: LayoutInputMatch[] = [];
 
   for (const source of sources) {
-    const targetId = source.nextWinnerMatchId;
+    const targetId = resolveVisibleSuccessor(source.nextWinnerMatchId, matchById, hidden);
     if (!targetId) {
       orphans.push(source);
       continue;
@@ -305,7 +317,6 @@ function repositionTargetRoundFromFeeders(
       roundMatches,
       prevRoundMatches,
       prevRoundIndex,
-      feedersOf,
       matchById,
       positions,
       hidden,
@@ -349,7 +360,7 @@ function refineLayoutForFeederFlow(
     for (let i = 0; i < visibleRoundIndices.length - 1; i++) {
       const roundIndex = visibleRoundIndices[i]!;
       const sources = byRound.get(roundIndex)!.filter((match) => !hidden.has(match.id));
-      layoutSourcesGroupedByTarget(sources, positions, refSpan, minGap);
+      layoutSourcesGroupedByTarget(sources, positions, matchById, hidden, refSpan, minGap);
     }
 
     for (let i = 1; i < visibleRoundIndices.length; i++) {
@@ -489,7 +500,6 @@ export function buildLayout(matches: LayoutInputMatch[]): {
               roundMatches,
               prevRoundMatches,
               prevRoundIndex,
-              feedersOf,
               matchById,
               positions,
               hidden,

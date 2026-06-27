@@ -213,18 +213,28 @@ export function ManagedBracketView({
   const renderGrandFinalStage = (grandRounds: BracketRoundMeta[]) => {
     if (grandRounds.length === 0 || !isDoubleElim) return null;
 
-    const gfRound = grandRounds.find((round) => round.id === "gf");
-    const resetRound = grandRounds.find((round) => round.id === "gf-reset");
+    const gfRound =
+      grandRounds.find((round) => round.id === "gf") ??
+      grandRounds.find(
+        (round) => /grand final/i.test(round.label) && !/reset/i.test(round.label),
+      ) ??
+      grandRounds.find((round) => !/reset/i.test(round.label)) ??
+      grandRounds[0];
+    const resetRound =
+      grandRounds.find((round) => round.id === "gf-reset") ??
+      grandRounds.find((round) => /reset/i.test(round.label));
     const primaryMatch = gfRound?.matchIds
       .map((id) => matchById.get(id))
       .find((match): match is ManagedMatch => !!match);
-    if (!primaryMatch) return null;
+    if (!primaryMatch || !gfRound) return null;
 
     const resetMatch = resetRound?.matchIds
       .map((id) => matchById.get(id))
       .find((match): match is ManagedMatch => !!match);
-    const primaryFormat = roundFormats.gf ?? "BO5";
-    const resetFormat = roundFormats["gf-reset"] ?? primaryFormat;
+    const primaryFormat = roundFormats[gfRound.id] ?? roundFormats.gf ?? "BO5";
+    const resetFormat = resetRound
+      ? (roundFormats[resetRound.id] ?? roundFormats["gf-reset"] ?? primaryFormat)
+      : primaryFormat;
 
     return (
       <GrandFinalStage
@@ -235,10 +245,12 @@ export function ManagedBracketView({
         formatControl={
           !readOnly ? (
             <div className="flex flex-wrap gap-2">
-              {!lockedFormatRoundIds.has("gf") && renderGrandFormatSelect("gf", primaryFormat)}
+              {!lockedFormatRoundIds.has(gfRound.id) &&
+                renderGrandFormatSelect(gfRound.id, primaryFormat)}
               {resetMatch &&
-                !lockedFormatRoundIds.has("gf-reset") &&
-                renderGrandFormatSelect("gf-reset", resetFormat)}
+                resetRound &&
+                !lockedFormatRoundIds.has(resetRound.id) &&
+                renderGrandFormatSelect(resetRound.id, resetFormat)}
             </div>
           ) : undefined
         }
