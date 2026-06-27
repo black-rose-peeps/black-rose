@@ -5,7 +5,7 @@
  * with Black Rose styling. Mirrors admin ManagedBracketView structure.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isDoubleEliminationFormat, isSwissFormat } from "@/features/tournaments/constants/formats";
@@ -34,7 +34,7 @@ import {
 import {
   isChampionshipMatch,
   isChampionshipRoundLabel,
-  isGrandFinalRound,
+  isGrandFinalRoundRef,
   isLowerBracketRound,
   hasLegacyOpeningPlayIn,
   partitionDoubleElimRounds,
@@ -99,6 +99,14 @@ export function BracketTab({
     [bracketTeamCount],
   );
 
+  useEffect(() => {
+    setBracketFocus((current) => {
+      if (current === "all") return current;
+      if (availableTopSizes.includes(current)) return current;
+      return "all";
+    });
+  }, [availableTopSizes]);
+
   if (isLoading) {
     return <BracketSkeleton />;
   }
@@ -149,10 +157,15 @@ export function BracketTab({
     if (grandRounds.length === 0 || !isDoubleElim) return null;
 
     const gfRound =
+      grandRounds.find((round) => round.id === "gf") ??
       grandRounds.find(
         (round) => /grand final/i.test(round.label) && !/reset/i.test(round.label),
-      ) ?? grandRounds[0];
-    const resetRound = grandRounds.find((round) => /reset/i.test(round.label));
+      ) ??
+      grandRounds.find((round) => !/reset/i.test(round.label)) ??
+      grandRounds[0];
+    const resetRound =
+      grandRounds.find((round) => round.id === "gf-reset") ??
+      grandRounds.find((round) => /reset/i.test(round.label));
     const primaryMatch = gfRound?.matches[0];
     if (!primaryMatch) return null;
 
@@ -260,13 +273,13 @@ export function BracketTab({
     upperSectionRounds: BracketRound[],
     lowerSectionRounds: BracketRound[],
   ) => {
-    const { bracketRounds: upperBracketRounds, grandRounds } = splitGrandFinalRounds(
+    const { bracketRounds: upperBracketRounds } = splitGrandFinalRounds(
       upperSectionRounds,
-      (round) => isGrandFinalRound(round.label),
+      isGrandFinalRoundRef,
     );
     const { bracketRounds: lowerBracketRounds } = splitGrandFinalRounds(
       lowerSectionRounds,
-      (round) => isGrandFinalRound(round.label),
+      isGrandFinalRoundRef,
     );
     const upperColumns = toPublicRoundColumns(upperBracketRounds);
     const lowerColumns = toPublicRoundColumns(lowerBracketRounds);
@@ -309,7 +322,6 @@ export function BracketTab({
             }}
           />
         )}
-        {renderGrandFinalStage(grandRounds)}
       </div>
     );
   };
@@ -325,9 +337,7 @@ export function BracketTab({
       ? partitionPublicChampionshipRounds(rounds)
       : { bracketRounds: rounds, championshipRounds: [] as BracketRound[] };
 
-    const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, (round) =>
-      isGrandFinalRound(round.label),
-    );
+    const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, isGrandFinalRoundRef);
     const columns = toPublicRoundColumns(bracketRounds);
     const sectionLayoutMatches = publicToLayoutMatches(flowRounds);
     const sectionByeMarkers = buildByeAdvancementMarkersFromRounds(flowRounds);
@@ -336,7 +346,7 @@ export function BracketTab({
         {title && <BracketSectionHeader title={title} accent={accent} />}
         {renderSectionGuides(rounds)}
         {renderPublicBracketCanvas(columns, sectionLayoutMatches, sectionByeMarkers)}
-        {renderGrandFinalStage(grandRounds)}
+        {!isDoubleElim && renderGrandFinalStage(grandRounds)}
         {!isDoubleElim &&
           grandRounds.map((round) => {
             const grandMatch = round.matches[0];
@@ -392,7 +402,8 @@ export function BracketTab({
   };
 
   if (isDoubleElim) {
-    const { upperRounds, lowerRounds, hasOpeningPlayIn } = partitionDoubleElimRounds(bracket);
+    const { upperRounds, lowerRounds } = partitionDoubleElimRounds(bracket);
+    const grandRounds = upperRounds.filter(isGrandFinalRoundRef);
     const focusedRounds = applyBracketFocusToDoubleElim(
       upperRounds,
       lowerRounds,
@@ -421,6 +432,7 @@ export function BracketTab({
           focusedRounds.lowerRounds.length > 0 &&
           renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
         )}
+        {renderGrandFinalStage(grandRounds)}
         <BracketFooter
           isDoubleElim
           grandFinalMode={grandFinalModeProp}
@@ -495,7 +507,7 @@ export function BracketTab({
 
 function toPublicRoundColumns(rounds: BracketRound[]): BracketRoundColumn[] {
   return rounds
-    .filter((round) => !isGrandFinalRound(round.label) && !isPublicChampionshipRound(round))
+    .filter((round) => !isGrandFinalRoundRef(round) && !isPublicChampionshipRound(round))
     .map((round) => ({
       id: round.id ?? round.label,
       label: round.label,

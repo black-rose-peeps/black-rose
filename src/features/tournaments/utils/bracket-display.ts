@@ -37,6 +37,20 @@ export function isUpperBracketRound(label: string): boolean {
   return /upper/i.test(label);
 }
 
+export function isGrandFinalRoundId(id?: string | null): boolean {
+  return id === "gf" || id === "gf-reset";
+}
+
+export function isGrandFinalRoundRef(round: {
+  id?: string;
+  label: string;
+  side?: string;
+}): boolean {
+  if (round.side === "grand") return true;
+  if (isGrandFinalRoundId(round.id)) return true;
+  return /grand/i.test(round.label);
+}
+
 export function isGrandFinalRound(label: string): boolean {
   return /grand/i.test(label);
 }
@@ -68,7 +82,7 @@ export function partitionDoubleElimRounds(bracket: BracketRound[]): {
         round.id === "pi-r1" ||
         isOpeningPlayInRound(round.label) ||
         isUpperBracketRound(round.label) ||
-        isGrandFinalRound(round.label),
+        isGrandFinalRoundRef(round),
     ),
   );
   const lowerRounds = sortBracketRoundsByFlow(

@@ -1,9 +1,10 @@
 import {
   bracketCapacity,
+  byeCount,
   isEvenBracketFieldSize,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import {
-  isGrandFinalRound,
+  isGrandFinalRoundRef,
   isLowerBracketRound,
   isUpperBracketRound,
 } from "./bracket-display";
@@ -20,8 +21,7 @@ type SliceableRound = {
 };
 
 function isGrandRound(round: SliceableRound): boolean {
-  if (round.side === "grand") return true;
-  return isGrandFinalRound(round.label);
+  return isGrandFinalRoundRef(round);
 }
 
 function isCompetitionUpperRound(round: SliceableRound): boolean {
@@ -57,7 +57,11 @@ export function computeBracketSliceStartIndices(
   }
 
   const ratio = capacity / topN;
-  const upperStartIndex = Math.log2(ratio);
+  let upperStartIndex = Math.log2(ratio);
+  // Bye / compressed-preliminary opening rounds are not a full capacity round.
+  if (byeCount(teamCount) > 0) {
+    upperStartIndex += 1;
+  }
   const lowerStartIndex = Math.max(0, 2 * upperStartIndex - 3);
 
   return { upperStartIndex, lowerStartIndex };

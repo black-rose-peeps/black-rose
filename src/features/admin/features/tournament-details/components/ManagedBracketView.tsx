@@ -44,6 +44,7 @@ import {
 } from "../utils/bracket-field";
 import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket-bye-markers";
+import { isGrandFinalRoundRef } from "@/features/tournaments/utils/bracket-display";
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
 import { OpeningPlayInGuide } from "@/features/tournaments/components/OpeningPlayInGuide";
 import { getLockedFormatRoundIds } from "./RoundFormatPanel";
@@ -332,13 +333,13 @@ export function ManagedBracketView({
     upperSectionRounds: BracketRoundMeta[],
     lowerSectionRounds: BracketRoundMeta[],
   ) => {
-    const { bracketRounds: upperBracketRounds, grandRounds } = splitGrandFinalRounds(
+    const { bracketRounds: upperBracketRounds } = splitGrandFinalRounds(
       upperSectionRounds,
-      (round) => round.side === "grand",
+      isGrandFinalRoundRef,
     );
     const { bracketRounds: lowerBracketRounds } = splitGrandFinalRounds(
       lowerSectionRounds,
-      (round) => round.side === "grand",
+      isGrandFinalRoundRef,
     );
     const upperColumns = toRoundColumns(upperBracketRounds);
     const lowerColumns = toRoundColumns(lowerBracketRounds);
@@ -386,7 +387,6 @@ export function ManagedBracketView({
             }}
           />
         )}
-        {renderGrandFinalStage(grandRounds)}
       </div>
     );
   };
@@ -404,7 +404,7 @@ export function ManagedBracketView({
 
     const { bracketRounds, grandRounds } = splitGrandFinalRounds(
       flowRounds,
-      (round) => round.side === "grand",
+      isGrandFinalRoundRef,
     );
     const columns = toRoundColumns(bracketRounds);
     return (
@@ -412,7 +412,7 @@ export function ManagedBracketView({
         {title && <BracketSectionHeader title={title} accent={accent} />}
         {renderSectionGuides(sectionRounds)}
         {renderBracketCanvas(columns)}
-        {renderGrandFinalStage(grandRounds)}
+        {!isDoubleElim && renderGrandFinalStage(grandRounds)}
         {!isDoubleElim && renderChampionshipStage(stagedChampionship)}
       </div>
     );
@@ -425,6 +425,7 @@ export function ManagedBracketView({
     const lowerRounds = sortBracketRoundsByFlow(
       roundMetas.filter((round) => round.side === "lower"),
     );
+    const grandRounds = roundMetas.filter(isGrandFinalRoundRef);
     const focusedRounds = applyBracketFocusToDoubleElim(
       upperRounds,
       lowerRounds,
@@ -461,6 +462,7 @@ export function ManagedBracketView({
         ) : (
           renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
         )}
+        {renderGrandFinalStage(grandRounds)}
         <p className="text-xs text-muted-foreground">
           {elimByes > 0
             ? `${teams.length} teams on a ${elimCapacity}-team bracket — top ${elimByes} seed${elimByes === 1 ? "" : "s"} received round-one byes. `
@@ -512,7 +514,7 @@ export function ManagedBracketView({
 
 function toRoundColumns(roundMetas: BracketRoundMeta[]): BracketRoundColumn[] {
   return roundMetas
-    .filter((round) => round.side !== "grand")
+    .filter((round) => !isGrandFinalRoundRef(round))
     .map((round) => ({
       id: round.id,
       label: round.label,
