@@ -467,7 +467,7 @@ export function ManagedBracketView({
           {showLowerGuide
             ? "Lower Round 1 pairs each play-in loser with an upper Round 2 loser — no immediate rematches among play-in losers."
             : grandFinalMode === "none"
-              ? "No Grand Final — the upper-bracket winner is crowned when they win the upper final."
+              ? "No Grand Final — the upper-bracket winner is crowned when they win the upper semifinals."
               : grandFinalMode === "one_match"
                 ? "Grand Final: one match between the upper- and lower-bracket winners decides the champion."
                 : "Grand Final: upper-bracket winner vs lower-bracket winner. If the lower-bracket team wins, a bracket-reset match is added automatically."}

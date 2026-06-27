@@ -199,9 +199,8 @@ function upperRoundLabel(
   hasOpeningPlayIn: boolean,
 ): string {
   const displayRound = roundIndex + (hasOpeningPlayIn ? 2 : 1);
-  if (roundIndex === totalUpperRounds - 1) return "Upper — Final";
-  if (roundIndex === totalUpperRounds - 2) return "Upper — Semifinals";
-  if (!hasOpeningPlayIn && roundIndex === totalUpperRounds - 3) return "Upper — Quarterfinals";
+  if (roundIndex === totalUpperRounds - 1) return "Upper — Semifinals";
+  if (roundIndex === totalUpperRounds - 2) return "Upper — Quarterfinals";
   return `Upper — Round ${displayRound}`;
 }
 

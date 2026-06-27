@@ -11,6 +11,8 @@ import {
 } from "@/features/tournaments/constants/formats";
 import { enrichPublicRounds } from "./bracket-connectors";
 import { applyGlobalMatchLabels } from "./bracket-global-match-labels";
+import { applyDoubleElimRoundMetaLabels } from "@/features/admin/features/tournament-details/utils/managed-double-elims-bracket";
+import { inferRoundIdFromMatchId } from "./bracket-display";
 import type { BracketRound } from "../types";
 
 /** Recompute global Match N labels on elimination brackets (admin restore + public read). */
@@ -21,6 +23,10 @@ export function relabelEliminationMatches(
   teamCount: number,
 ): void {
   if (isSwissFormat(format)) return;
+  if (isDoubleEliminationFormat(format)) {
+    applyDoubleElimRoundMetaLabels(roundMetas);
+    syncMatchRoundLabels(matches, roundMetas);
+  }
   applyOpeningRoundMatchLabels(matches, roundMetas, teamCount);
   if (isDoubleEliminationFormat(format)) {
     applyGlobalMatchLabels(matches, roundMetas, "double");
@@ -29,6 +35,29 @@ export function relabelEliminationMatches(
   if (isSingleEliminationFormat(format)) {
     applyGlobalMatchLabels(matches, roundMetas, "single");
   }
+}
+
+function syncMatchRoundLabels(matches: ManagedMatch[], roundMetas: BracketRoundMeta[]): void {
+  const labelByRoundId = new Map(roundMetas.map((meta) => [meta.id, meta.label]));
+  for (const match of matches) {
+    const label = labelByRoundId.get(match.roundId);
+    if (label) match.roundLabel = label;
+  }
+}
+
+function syncPublicRoundColumnLabels(
+  rounds: BracketRound[],
+  roundMetas: BracketRoundMeta[],
+): BracketRound[] {
+  const labelByRoundId = new Map(roundMetas.map((meta) => [meta.id, meta.label]));
+
+  return rounds.map((round) => {
+    const roundId =
+      round.id ??
+      (round.matches[0]?.id ? inferRoundIdFromMatchId(round.matches[0].id) : undefined);
+    const label = roundId ? labelByRoundId.get(roundId) : undefined;
+    return label ? { ...round, label } : round;
+  });
 }
 
 export function inferEliminationLabelFormat(
@@ -85,20 +114,28 @@ export function normalizePublishedBracketPayload(
   const roundMetas = admin.roundMetas ?? [];
   const labelFormat = roundMetas.length ? inferEliminationLabelFormat(roundMetas) : null;
   let managedMatches = admin.managedMatches;
+  let normalizedRoundMetas = roundMetas;
 
   if (labelFormat && roundMetas.length) {
     managedMatches = admin.managedMatches.map((match) => ({ ...match }));
+    normalizedRoundMetas = roundMetas.map((meta) => ({ ...meta }));
     const fieldSize = resolveOpeningFieldSize(admin.assignmentTeamIds, managedMatches);
-    applyOpeningRoundMatchLabels(managedMatches, roundMetas, fieldSize);
-    applyGlobalMatchLabels(managedMatches, roundMetas, labelFormat);
+    const formatLabel = labelFormat === "double" ? "Double Elimination" : "Single Elimination";
+    relabelEliminationMatches(managedMatches, normalizedRoundMetas, formatLabel, fieldSize);
   }
 
   const labeledRounds = syncPublicMatchLabels(payload.rounds, managedMatches);
-  const rounds = enrichPublicRounds(labeledRounds, managedMatches, roundMetas);
+  const roundsWithColumnLabels =
+    labelFormat === "double"
+      ? syncPublicRoundColumnLabels(labeledRounds, normalizedRoundMetas)
+      : labeledRounds;
+  const rounds = enrichPublicRounds(roundsWithColumnLabels, managedMatches, normalizedRoundMetas);
 
   return {
     ...payload,
     rounds,
-    admin: admin ? { ...admin, managedMatches } : undefined,
+    admin: admin
+      ? { ...admin, managedMatches, roundMetas: normalizedRoundMetas }
+      : undefined,
   };
 }

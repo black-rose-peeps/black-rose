@@ -123,8 +123,8 @@ function doubleEliminationBracketRules(teamCap: number | undefined, solo: boolea
       solo
         ? "A second loss (in the lower bracket) eliminates you."
         : "A second loss (in the lower bracket) eliminates your team.",
-      "Lower bracket progresses through as many lower rounds as needed (e.g., Lower Round 1, Lower Round 2, …) and culminates in the Lower Semifinals and Lower Final.",
-      "The upper-bracket winner and lower-bracket winner meet in the Grand Final.",
+      "Lower bracket progresses through numbered rounds (Lower Round 1, Lower Round 2, …) until one lower-bracket finalist remains.",
+      "The upper-bracket winner and lower-bracket winner meet in the Grand Final — the championship match.",
       "Grand Final is a single championship match unless staff announce a bracket-reset policy before play.",
       "Default match format is Best of 3 (BO3) unless a round is marked otherwise on the bracket.",
       "BO1 rounds require one map win; BO3 requires two map wins; BO5 requires three map wins.",
