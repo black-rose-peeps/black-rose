@@ -11,6 +11,7 @@ import {
   EliminationBracketCanvas,
   EliminationChampionshipStage,
   GrandFinalStage,
+  GrandFinalFeederCallout,
   type BracketCanvasBand,
   type BracketRoundColumn,
   type ChampionshipStageRound,
@@ -44,6 +45,8 @@ import {
 } from "../utils/bracket-field";
 import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket-bye-markers";
+import { isGrandFinalRoundRef } from "@/features/tournaments/utils/bracket-display";
+import { getGrandFinalFeederSide } from "@/features/tournaments/utils/bracket-grand-final-feeder";
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
 import { OpeningPlayInGuide } from "@/features/tournaments/components/OpeningPlayInGuide";
 import { getLockedFormatRoundIds } from "./RoundFormatPanel";
@@ -210,18 +213,28 @@ export function ManagedBracketView({
   const renderGrandFinalStage = (grandRounds: BracketRoundMeta[]) => {
     if (grandRounds.length === 0 || !isDoubleElim) return null;
 
-    const gfRound = grandRounds.find((round) => round.id === "gf");
-    const resetRound = grandRounds.find((round) => round.id === "gf-reset");
+    const gfRound =
+      grandRounds.find((round) => round.id === "gf") ??
+      grandRounds.find(
+        (round) => /grand final/i.test(round.label) && !/reset/i.test(round.label),
+      ) ??
+      grandRounds.find((round) => !/reset/i.test(round.label)) ??
+      grandRounds[0];
+    const resetRound =
+      grandRounds.find((round) => round.id === "gf-reset") ??
+      grandRounds.find((round) => /reset/i.test(round.label));
     const primaryMatch = gfRound?.matchIds
       .map((id) => matchById.get(id))
       .find((match): match is ManagedMatch => !!match);
-    if (!primaryMatch) return null;
+    if (!primaryMatch || !gfRound) return null;
 
     const resetMatch = resetRound?.matchIds
       .map((id) => matchById.get(id))
       .find((match): match is ManagedMatch => !!match);
-    const primaryFormat = roundFormats.gf ?? "BO5";
-    const resetFormat = roundFormats["gf-reset"] ?? primaryFormat;
+    const primaryFormat = roundFormats[gfRound.id] ?? roundFormats.gf ?? "BO5";
+    const resetFormat = resetRound
+      ? (roundFormats[resetRound.id] ?? roundFormats["gf-reset"] ?? primaryFormat)
+      : primaryFormat;
 
     return (
       <GrandFinalStage
@@ -232,10 +245,12 @@ export function ManagedBracketView({
         formatControl={
           !readOnly ? (
             <div className="flex flex-wrap gap-2">
-              {!lockedFormatRoundIds.has("gf") && renderGrandFormatSelect("gf", primaryFormat)}
+              {!lockedFormatRoundIds.has(gfRound.id) &&
+                renderGrandFormatSelect(gfRound.id, primaryFormat)}
               {resetMatch &&
-                !lockedFormatRoundIds.has("gf-reset") &&
-                renderGrandFormatSelect("gf-reset", resetFormat)}
+                resetRound &&
+                !lockedFormatRoundIds.has(resetRound.id) &&
+                renderGrandFormatSelect(resetRound.id, resetFormat)}
             </div>
           ) : undefined
         }
@@ -332,13 +347,13 @@ export function ManagedBracketView({
     upperSectionRounds: BracketRoundMeta[],
     lowerSectionRounds: BracketRoundMeta[],
   ) => {
-    const { bracketRounds: upperBracketRounds, grandRounds } = splitGrandFinalRounds(
+    const { bracketRounds: upperBracketRounds } = splitGrandFinalRounds(
       upperSectionRounds,
-      (round) => round.side === "grand",
+      isGrandFinalRoundRef,
     );
     const { bracketRounds: lowerBracketRounds } = splitGrandFinalRounds(
       lowerSectionRounds,
-      (round) => round.side === "grand",
+      isGrandFinalRoundRef,
     );
     const upperColumns = toRoundColumns(upperBracketRounds);
     const lowerColumns = toRoundColumns(lowerBracketRounds);
@@ -386,7 +401,6 @@ export function ManagedBracketView({
             }}
           />
         )}
-        {renderGrandFinalStage(grandRounds)}
       </div>
     );
   };
@@ -404,7 +418,7 @@ export function ManagedBracketView({
 
     const { bracketRounds, grandRounds } = splitGrandFinalRounds(
       flowRounds,
-      (round) => round.side === "grand",
+      isGrandFinalRoundRef,
     );
     const columns = toRoundColumns(bracketRounds);
     return (
@@ -412,7 +426,7 @@ export function ManagedBracketView({
         {title && <BracketSectionHeader title={title} accent={accent} />}
         {renderSectionGuides(sectionRounds)}
         {renderBracketCanvas(columns)}
-        {renderGrandFinalStage(grandRounds)}
+        {!isDoubleElim && renderGrandFinalStage(grandRounds)}
         {!isDoubleElim && renderChampionshipStage(stagedChampionship)}
       </div>
     );
@@ -425,6 +439,7 @@ export function ManagedBracketView({
     const lowerRounds = sortBracketRoundsByFlow(
       roundMetas.filter((round) => round.side === "lower"),
     );
+    const grandRounds = roundMetas.filter(isGrandFinalRoundRef);
     const focusedRounds = applyBracketFocusToDoubleElim(
       upperRounds,
       lowerRounds,
@@ -461,6 +476,7 @@ export function ManagedBracketView({
         ) : (
           renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
         )}
+        {renderGrandFinalStage(grandRounds)}
         <p className="text-xs text-muted-foreground">
           {elimByes > 0
             ? `${teams.length} teams on a ${elimCapacity}-team bracket — top ${elimByes} seed${elimByes === 1 ? "" : "s"} received round-one byes. `
@@ -512,7 +528,7 @@ export function ManagedBracketView({
 
 function toRoundColumns(roundMetas: BracketRoundMeta[]): BracketRoundColumn[] {
   return roundMetas
-    .filter((round) => round.side !== "grand")
+    .filter((round) => !isGrandFinalRoundRef(round))
     .map((round) => ({
       id: round.id,
       label: round.label,
@@ -574,17 +590,19 @@ function ManagedMatchCard({
   const championCrowned = isChampionship && matchDecided && !!match.winner;
   const sideBorder =
     match.bracketSide === "grand"
-      ? "border-amber-400/50"
+      ? "border-amber-400/55"
       : match.bracketSide === "lower"
-        ? "border-amber-400/25"
-        : "border-border";
+        ? "border-amber-400/35"
+        : "border-border/70";
+  const grandFinalFeederSide = getGrandFinalFeederSide(match.roundId);
+  const showGrandFinalFeeder = !!grandFinalFeederSide && matchDecided && !!match.winner;
 
   return (
     <div
       data-bracket-interactive
       onPointerDown={(event) => event.stopPropagation()}
       className={cn(
-        "border bg-card",
+        "border bg-muted shadow-[0_1px_0_rgba(255,255,255,0.05)]",
         isChampionship ? "border-amber-400/55" : sideBorder,
         matchDecided && !isChampionship && "ring-1 ring-emerald-400/30",
         championCrowned && "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
@@ -593,13 +611,13 @@ function ManagedMatchCard({
       <div
         className={cn(
           "flex items-center justify-between border-b px-2 py-1",
-          isChampionship ? "border-amber-400/25 bg-amber-400/5" : "border-border/60",
+          isChampionship ? "border-amber-400/30 bg-amber-400/8" : "border-border/70 bg-secondary/40",
         )}
       >
         <span
           className={cn(
             "flex items-center gap-1 font-tech text-[10px] uppercase tracking-wider",
-            isChampionship ? "text-amber-300/90" : "text-muted-foreground",
+            isChampionship ? "text-amber-200" : "text-foreground/75",
           )}
         >
           {championCrowned && <Crown className="h-3 w-3" />}
@@ -608,13 +626,15 @@ function ManagedMatchCard({
         <span
           className={cn(
             "font-tech text-[9px] uppercase tracking-wider",
-            championCrowned ? "text-amber-300/80" : "text-muted-foreground/70",
+            championCrowned ? "text-amber-200/90" : "text-foreground/60",
           )}
         >
           {championCrowned
             ? "Champion"
             : matchDecided
-              ? "Final"
+              ? showGrandFinalFeeder
+                ? "→ Grand Finals"
+                : "Final"
               : `${format} · first to ${required}`}
         </span>
       </div>
@@ -649,6 +669,10 @@ function ManagedMatchCard({
         onDecrement={() => onScoreChange(match.id, match.scoreA, Math.max(0, match.scoreB - 1))}
         onSelectWinner={() => match.teamB && onPickWinner(match.id, match.teamB)}
       />
+
+      {showGrandFinalFeeder && grandFinalFeederSide && (
+        <GrandFinalFeederCallout side={grandFinalFeederSide} />
+      )}
     </div>
   );
 }
@@ -690,11 +714,11 @@ function ManagedTeamRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-1 border-b border-border/40 px-2 py-1.5 last:border-0",
-        isChampionRow && "bg-amber-400/15",
-        isWinner && !isChampionRow && "bg-emerald-400/10",
-        isLoser && "bg-muted/15 opacity-80",
-        isTbd && "bg-muted/25",
+        "flex items-center gap-1 border-b border-border/60 px-2 py-1.5 last:border-0",
+        isChampionRow && "bg-amber-400/12",
+        isWinner && !isChampionRow && "bg-emerald-400/12",
+        isLoser && "bg-muted/20 opacity-75",
+        isTbd && "bg-muted/30",
       )}
     >
       <button
@@ -720,7 +744,7 @@ function ManagedTeamRow({
       <span
         className={cn(
           "w-6 text-center font-tech text-[10px]",
-          isTbd ? "text-muted-foreground/50" : "text-muted-foreground",
+          isTbd ? "text-foreground/45" : "text-foreground/60",
         )}
       >
         {abbr}
@@ -730,9 +754,13 @@ function ManagedTeamRow({
           "min-w-0 flex-1 truncate text-xs",
           isTbd
             ? placeholder
-              ? "font-tech text-[10px] uppercase tracking-wider text-muted-foreground/70"
-              : "font-tech uppercase tracking-wider text-muted-foreground/60"
-            : "font-medium",
+              ? "font-tech text-[10px] uppercase tracking-wider text-foreground/55"
+              : "font-tech uppercase tracking-wider text-foreground/50"
+            : isChampionRow
+              ? "font-semibold text-amber-100"
+              : isWinner
+                ? "font-semibold text-foreground"
+                : "font-medium text-foreground/85",
         )}
       >
         {display}
