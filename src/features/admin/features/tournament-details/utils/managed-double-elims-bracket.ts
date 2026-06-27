@@ -34,6 +34,7 @@ import {
   wireOpeningPlayableLosersToLowerRoundOne,
 } from "./managed-bracket-build-helpers";
 import { applyGlobalMatchLabels } from "@/features/tournaments/utils/bracket-global-match-labels";
+import { sortBracketRoundsByFlow } from "@/features/tournaments/utils/bracket-round-order";
 
 function upperRoundLabel(
   roundIndex: number,
@@ -41,20 +42,19 @@ function upperRoundLabel(
   hasOpeningPlayIn: boolean,
 ): string {
   const displayRound = roundIndex + (hasOpeningPlayIn ? 2 : 1);
-  if (roundIndex === totalUpperRounds - 1) return "Upper — Final";
-  if (roundIndex === totalUpperRounds - 2) return "Upper — Semifinals";
-  if (!hasOpeningPlayIn && roundIndex === totalUpperRounds - 3) return "Upper — Quarterfinals";
+  if (roundIndex === totalUpperRounds - 1) return "Upper — Semifinals";
+  if (roundIndex === totalUpperRounds - 2) return "Upper — Quarterfinals";
   return `Upper — Round ${displayRound}`;
 }
 
 function upperRoundMeta(
   roundIndex: number,
   totalUpperRounds: number,
-  matchCount: number,
+  _matchCount: number,
   hasOpeningPlayIn = false,
 ): { id: string; label: string } {
   if (roundIndex === totalUpperRounds - 1) {
-    return { id: "ub-f", label: "Upper — Final" };
+    return { id: "ub-f", label: "Upper — Semifinals" };
   }
   if (roundIndex === 0) {
     return {
@@ -63,12 +63,12 @@ function upperRoundMeta(
     };
   }
   if (roundIndex === totalUpperRounds - 2) {
-    return { id: "ub-sf", label: "Upper — Semifinals" };
+    return { id: "ub-sf", label: "Upper — Quarterfinals" };
   }
   if (roundIndex === totalUpperRounds - 3) {
     return {
       id: "ub-qf",
-      label: hasOpeningPlayIn ? "Upper — Round 3" : "Upper — Quarterfinals",
+      label: hasOpeningPlayIn ? "Upper — Round 3" : `Upper — Round ${roundIndex + 1}`,
     };
   }
   return {
@@ -81,19 +81,26 @@ function lowerRoundMeta(
   roundIndex: number,
   totalLowerRounds: number,
 ): { id: string; label: string } {
-  if (roundIndex === totalLowerRounds - 1) {
-    return { id: "lb-f", label: "Lower — Final" };
-  }
-  if (roundIndex === totalLowerRounds - 2) {
-    return { id: "lb-sf", label: "Lower — Semifinals" };
-  }
-  if (roundIndex === 0) {
-    return { id: "lb-r1", label: "Lower — Round 1" };
-  }
+  const id = lowerRoundId(roundIndex, totalLowerRounds);
   return {
-    id: `lb-r${roundIndex + 1}`,
+    id,
     label: `Lower — Round ${roundIndex + 1}`,
   };
+}
+
+/** Recompute double-elim round column labels (new brackets + published payload normalize). */
+export function applyDoubleElimRoundMetaLabels(roundMetas: BracketRoundMeta[]): void {
+  const hasOpeningPlayIn = roundMetas.some((round) => round.id === "pi-r1");
+  const upper = sortBracketRoundsByFlow(roundMetas.filter((round) => round.side === "upper"));
+  const lower = sortBracketRoundsByFlow(roundMetas.filter((round) => round.side === "lower"));
+
+  upper.forEach((meta, index) => {
+    meta.label = upperRoundMeta(index, upper.length, meta.matchIds.length, hasOpeningPlayIn).label;
+  });
+
+  lower.forEach((meta, index) => {
+    meta.label = lowerRoundMeta(index, lower.length).label;
+  });
 }
 
 /**
@@ -383,7 +390,7 @@ function buildDoubleElimPowerOfTwo(
               ? "ub-qf"
               : `ub-r${r + 1}`;
     const { label } = upperRoundMeta(r, ubRounds, count, hasOpeningPlayIn);
-    addRound(id, label, "upper", count, r === ubRounds - 1 ? () => "Upper Final" : undefined);
+    addRound(id, label, "upper", count);
   }
 
   if (includeGrandFinal) {
@@ -401,7 +408,7 @@ function buildDoubleElimPowerOfTwo(
     const id = lbRoundIds[r];
     const count = lbMatchCounts[r];
     const { label } = lowerRoundMeta(r, lbRoundCount);
-    addRound(id, label, "lower", count, id === "lb-f" ? () => "Lower Final" : undefined);
+    addRound(id, label, "lower", count);
   }
 
   const ubRoundIds = competitionUpperRoundIds(roundMetas);
@@ -491,14 +498,17 @@ function buildFourTeamDoubleElim(
     });
   };
 
-  addRound("ub-r1", "Upper — Semifinals", "upper", 2);
-  addRound("ub-f", "Upper — Final", "upper", 1, () => "Upper Final");
+  addRound("ub-r1", "Upper — Quarterfinals", "upper", 2);
+  addRound("ub-f", "Upper — Semifinals", "upper", 1);
   addRound("lb-r1", "Lower — Round 1", "lower", hasPlayInLosersPool ? 2 : 1);
   if (hasPlayInLosersPool) {
-    addRound("lb-r2", "Lower — Final", "lower", 1, () => "Lower Final");
+    addRound("lb-r2", "Lower — Round 2", "lower", 1);
   }
-  addRound("lb-f", hasPlayInLosersPool ? "Lower — Reset" : "Lower — Final", "lower", 1, () =>
-    hasPlayInLosersPool ? "Lower Reset" : "Lower Final",
+  addRound(
+    "lb-f",
+    hasPlayInLosersPool ? "Lower — Round 3" : "Lower — Round 2",
+    "lower",
+    1,
   );
   if (includeGrandFinal) {
     addRound("gf", "Grand Final", "grand", 1, () => "Grand Final");
