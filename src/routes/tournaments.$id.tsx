@@ -307,6 +307,14 @@ function TournamentDetailPage() {
   });
 
   const isLoadingDetail = tournament.name === "Loading…";
+  const showStandingsTab = supportsEliminationStandings(tournament.format);
+
+  useEffect(() => {
+    if (!showStandingsTab && activeTab === "standings") {
+      setActiveTab("overview");
+    }
+  }, [showStandingsTab, activeTab]);
+
   const session = getSession();
   const canRegisterTeam =
     isRegistrationOpen(liveDetail) &&
@@ -323,14 +331,6 @@ function TournamentDetailPage() {
       </div>
     );
   }
-
-  const showStandingsTab = supportsEliminationStandings(tournament.format);
-
-  useEffect(() => {
-    if (!showStandingsTab && activeTab === "standings") {
-      setActiveTab("overview");
-    }
-  }, [showStandingsTab, activeTab]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
