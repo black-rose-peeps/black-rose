@@ -121,16 +121,251 @@ function isSameIndexBijectivePair(
   return sources.every((source, index) => source.nextWinnerMatchId === targets[index]?.id);
 }
 
-function alignSourceRoundToTargets(
-  sourceRound: LayoutInputMatch[],
+function averageFeederYForTarget(
+  targetId: string,
+  feedersOf: Map<string, string[]>,
+  matchById: Map<string, LayoutInputMatch>,
+  prevRoundIndex: number,
+  positions: Map<string, { x: number; y: number }>,
+  hidden: Set<string>,
+): number | null {
+  const fromPrev = (feedersOf.get(targetId) ?? []).filter(
+    (id) => matchById.get(id)?.roundIndex === prevRoundIndex,
+  );
+  const feederYs = fromPrev
+    .map((id) => effectiveParentY(id, positions, hidden))
+    .filter((value): value is number => value !== null);
+
+  if (feederYs.length >= 2) {
+    return feederYs.reduce((sum, value) => sum + value, 0) / feederYs.length;
+  }
+  if (feederYs.length === 1) {
+    return feederYs[0];
+  }
+  return null;
+}
+
+function resolveTargetYFromFeeders(
+  match: LayoutInputMatch,
+  roundMatches: LayoutInputMatch[],
+  prevRoundMatches: LayoutInputMatch[],
+  prevRoundIndex: number | null,
+  feedersOf: Map<string, string[]>,
+  matchById: Map<string, LayoutInputMatch>,
+  positions: Map<string, { x: number; y: number }>,
+  hidden: Set<string>,
+): number | null {
+  if (prevRoundIndex === null) return null;
+
+  const fromFeeders = averageFeederYForTarget(
+    match.id,
+    feedersOf,
+    matchById,
+    prevRoundIndex,
+    positions,
+    hidden,
+  );
+  if (fromFeeders !== null) return fromFeeders;
+
+  if (prevRoundMatches.length === roundMatches.length * 2) {
+    const slotIdx = roundMatches.indexOf(match);
+    const parentA = prevRoundMatches[slotIdx * 2];
+    const parentB = prevRoundMatches[slotIdx * 2 + 1];
+    const yA = parentA ? effectiveParentY(parentA.id, positions, hidden) : null;
+    const yB = parentB ? effectiveParentY(parentB.id, positions, hidden) : null;
+
+    if (yA !== null && yB !== null) return (yA + yB) / 2;
+    if (yA !== null) return yA;
+    if (yB !== null) return yB;
+  }
+
+  if (prevRoundMatches.length > 0) {
+    const [parentAId, parentBId] = structuralParentIds(
+      roundMatches.indexOf(match),
+      prevRoundMatches,
+    );
+    const yA = effectiveParentY(parentAId, positions, hidden);
+    const yB = effectiveParentY(parentBId, positions, hidden);
+    if (yA !== null && yB !== null) return (yA + yB) / 2;
+    if (yA !== null) return yA;
+    if (yB !== null) return yB;
+  }
+
+  return null;
+}
+
+/** Sort sources by where they actually advance so connectors stay parallel. */
+function layoutSourcesGroupedByTarget(
+  sources: LayoutInputMatch[],
+  positions: Map<string, { x: number; y: number }>,
+  span: number,
+  minGap: number,
+): void {
+  if (sources.length === 0) return;
+
+  const x = positions.get(sources[0]!.id)?.x ?? 0;
+  const groups = new Map<string, LayoutInputMatch[]>();
+  const orphans: LayoutInputMatch[] = [];
+
+  for (const source of sources) {
+    const targetId = source.nextWinnerMatchId;
+    if (!targetId) {
+      orphans.push(source);
+      continue;
+    }
+    const list = groups.get(targetId) ?? [];
+    list.push(source);
+    groups.set(targetId, list);
+  }
+
+  const sortedGroups = [...groups.entries()].sort((a, b) => {
+    const yA = positions.get(a[0])?.y ?? 0;
+    const yB = positions.get(b[0])?.y ?? 0;
+    if (yA !== yB) return yA - yB;
+    return matchSlotIndex(a[1][0]!.id) - matchSlotIndex(b[1][0]!.id);
+  });
+
+  const planned: { id: string; y: number }[] = [];
+
+  for (const [targetId, group] of sortedGroups) {
+    const targetY = positions.get(targetId)?.y ?? span / 2;
+    const sortedGroup = sortRoundMatches(group);
+
+    if (sortedGroup.length === 1) {
+      planned.push({ id: sortedGroup[0]!.id, y: targetY });
+      continue;
+    }
+
+    const innerSpan = Math.min(span * 0.6, (sortedGroup.length - 1) * minGap);
+    sortedGroup.forEach((match, index) => {
+      planned.push({
+        id: match.id,
+        y: targetY - innerSpan / 2 + (index * innerSpan) / (sortedGroup.length - 1),
+      });
+    });
+  }
+
+  const sortedOrphans = sortRoundMatches(orphans);
+  sortedOrphans.forEach((match, index) => {
+    planned.push({ id: match.id, y: evenlySpacedY(index, sortedOrphans.length, span) });
+  });
+
+  planned.sort((a, b) => a.y - b.y || matchSlotIndex(a.id) - matchSlotIndex(b.id));
+  for (let i = 1; i < planned.length; i++) {
+    if (planned[i]!.y - planned[i - 1]!.y < minGap) {
+      planned[i]!.y = planned[i - 1]!.y + minGap;
+    }
+  }
+
+  for (const entry of planned) {
+    positions.set(entry.id, { x, y: entry.y });
+  }
+}
+
+function assignEvenTargetColumn(
+  visibleInRound: LayoutInputMatch[],
+  x: number,
+  span: number,
   positions: Map<string, { x: number; y: number }>,
 ): void {
-  for (const match of sourceRound) {
-    if (!match.nextWinnerMatchId) continue;
-    const sourcePos = positions.get(match.id);
-    const targetPos = positions.get(match.nextWinnerMatchId);
-    if (!sourcePos || !targetPos) continue;
-    positions.set(match.id, { x: sourcePos.x, y: targetPos.y });
+  const sorted = sortRoundMatches(visibleInRound);
+  sorted.forEach((match, index) => {
+    positions.set(match.id, {
+      x,
+      y: evenlySpacedY(index, sorted.length, span),
+    });
+  });
+}
+
+function repositionTargetRoundFromFeeders(
+  roundIndex: number,
+  visibleRoundIndices: number[],
+  byRound: Map<number, LayoutInputMatch[]>,
+  feedersOf: Map<string, string[]>,
+  matchById: Map<string, LayoutInputMatch>,
+  positions: Map<string, { x: number; y: number }>,
+  hidden: Set<string>,
+  visualColumnByRound: Map<number, number>,
+  refSpan: number,
+  minGap: number,
+): void {
+  const roundMatches = byRound.get(roundIndex)!;
+  const visibleInRound = roundMatches.filter((match) => !hidden.has(match.id));
+  const roundPos = visibleRoundIndices.indexOf(roundIndex);
+  const prevRoundIndex = roundPos > 0 ? visibleRoundIndices[roundPos - 1]! : null;
+  if (prevRoundIndex === null) return;
+
+  const prevRoundMatches = byRound.get(prevRoundIndex)!;
+  const x = (visualColumnByRound.get(roundIndex) ?? 0) * (BRACKET_CARD_W + BRACKET_COL_GAP);
+  const yById = new Map<string, number>();
+
+  for (const match of visibleInRound) {
+    const y = resolveTargetYFromFeeders(
+      match,
+      roundMatches,
+      prevRoundMatches,
+      prevRoundIndex,
+      feedersOf,
+      matchById,
+      positions,
+      hidden,
+    );
+    if (y !== null) yById.set(match.id, y);
+  }
+
+  const ys = [...yById.values()];
+  const needsEvenSpacing =
+    ys.length > 1 && Math.max(...ys) - Math.min(...ys) < minGap * 0.75;
+
+  if (needsEvenSpacing) {
+    assignEvenTargetColumn(visibleInRound, x, refSpan, positions);
+    return;
+  }
+
+  for (const [id, y] of yById) {
+    positions.set(id, { x, y });
+  }
+}
+
+function refineLayoutForFeederFlow(
+  visibleRoundIndices: number[],
+  byRound: Map<number, LayoutInputMatch[]>,
+  feedersOf: Map<string, string[]>,
+  matchById: Map<string, LayoutInputMatch>,
+  positions: Map<string, { x: number; y: number }>,
+  hidden: Set<string>,
+  visualColumnByRound: Map<number, number>,
+  refSpan: number,
+  minGap: number,
+): void {
+  for (let i = 1; i < visibleRoundIndices.length; i++) {
+    const roundIndex = visibleRoundIndices[i]!;
+    const visibleInRound = byRound.get(roundIndex)!.filter((match) => !hidden.has(match.id));
+    const x = (visualColumnByRound.get(roundIndex) ?? 0) * (BRACKET_CARD_W + BRACKET_COL_GAP);
+    assignEvenTargetColumn(visibleInRound, x, refSpan, positions);
+  }
+
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 0; i < visibleRoundIndices.length - 1; i++) {
+      const roundIndex = visibleRoundIndices[i]!;
+      const sources = byRound.get(roundIndex)!.filter((match) => !hidden.has(match.id));
+      layoutSourcesGroupedByTarget(sources, positions, refSpan, minGap);
+    }
+
+    for (let i = 1; i < visibleRoundIndices.length; i++) {
+      repositionTargetRoundFromFeeders(
+        visibleRoundIndices[i]!,
+        visibleRoundIndices,
+        byRound,
+        feedersOf,
+        matchById,
+        positions,
+        hidden,
+        visualColumnByRound,
+        refSpan,
+        minGap,
+      );
+    }
   }
 }
 
@@ -186,7 +421,6 @@ export function buildLayout(matches: LayoutInputMatch[]): {
   const refSpan = verticalSpan(maxVisibleRoundSize);
   const minGap = BRACKET_CARD_H + BRACKET_ROW_GAP;
   const positions = new Map<string, { x: number; y: number }>();
-  const bijectiveSourceRounds = new Set<number>();
 
   const firstVisibleRoundIndex = visibleRoundIndices[0];
 
@@ -240,7 +474,6 @@ export function buildLayout(matches: LayoutInputMatch[]): {
         sortedTargets.forEach((match, index) => {
           positions.set(match.id, { x, y: evenlySpacedY(index, sortedTargets.length, refSpan) });
         });
-        bijectiveSourceRounds.add(prevRoundIndex);
       }
       continue;
     }
@@ -248,46 +481,19 @@ export function buildLayout(matches: LayoutInputMatch[]): {
     const unplaced: LayoutInputMatch[] = [];
 
     for (const match of visibleInRound) {
-      let y: number | null = null;
-
-      if (prevRoundMatches.length === roundMatches.length * 2) {
-        const slotIdx = roundMatches.indexOf(match);
-        const parentA = prevRoundMatches[slotIdx * 2];
-        const parentB = prevRoundMatches[slotIdx * 2 + 1];
-        const yA = parentA ? effectiveParentY(parentA.id, positions, hidden) : null;
-        const yB = parentB ? effectiveParentY(parentB.id, positions, hidden) : null;
-
-        if (yA !== null && yB !== null) {
-          y = (yA + yB) / 2;
-        } else if (yA !== null) {
-          y = yA;
-        } else if (yB !== null) {
-          y = yB;
-        }
-      } else {
-        const fromPrev = (feedersOf.get(match.id) ?? []).filter(
-          (id) => matchById.get(id)?.roundIndex === prevRoundIndex,
-        );
-        const visibleFeederYs = fromPrev
-          .map((id) => effectiveParentY(id, positions, hidden))
-          .filter((value): value is number => value !== null);
-
-        if (visibleFeederYs.length >= 2) {
-          y = visibleFeederYs.reduce((sum, value) => sum + value, 0) / visibleFeederYs.length;
-        } else if (visibleFeederYs.length === 1) {
-          y = visibleFeederYs[0];
-        } else if (prevRoundMatches.length > 0) {
-          const [parentAId, parentBId] = structuralParentIds(
-            roundMatches.indexOf(match),
-            prevRoundMatches,
-          );
-          const yA = effectiveParentY(parentAId, positions, hidden);
-          const yB = effectiveParentY(parentBId, positions, hidden);
-          if (yA !== null && yB !== null) y = (yA + yB) / 2;
-          else if (yA !== null) y = yA;
-          else if (yB !== null) y = yB;
-        }
-      }
+      const y =
+        prevRoundIndex === null
+          ? null
+          : resolveTargetYFromFeeders(
+              match,
+              roundMatches,
+              prevRoundMatches,
+              prevRoundIndex,
+              feedersOf,
+              matchById,
+              positions,
+              hidden,
+            );
 
       if (y === null) {
         unplaced.push(match);
@@ -304,13 +510,19 @@ export function buildLayout(matches: LayoutInputMatch[]): {
     });
   }
 
-  for (const sourceRoundIndex of bijectiveSourceRounds) {
-    const visibleSources = byRound.get(sourceRoundIndex)!.filter((match) => !hidden.has(match.id));
-    alignSourceRoundToTargets(visibleSources, positions);
-  }
+  refineLayoutForFeederFlow(
+    visibleRoundIndices,
+    byRound,
+    feedersOf,
+    matchById,
+    positions,
+    hidden,
+    visualColumnByRound,
+    refSpan,
+    minGap,
+  );
 
   for (const roundIndex of visibleRoundIndices) {
-    if (bijectiveSourceRounds.has(roundIndex)) continue;
     const visibleInRound = byRound.get(roundIndex)!.filter((match) => !hidden.has(match.id));
     resolveColumnCollisions(visibleInRound, positions, minGap);
   }

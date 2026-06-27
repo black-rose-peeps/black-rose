@@ -48,11 +48,7 @@ export function ConnectorLayer({ positioned }: ConnectorLayerProps) {
           d={path.d}
           fill="none"
           stroke={
-            path.completed
-              ? "oklch(0.75 0.18 155)"
-              : path.live
-                ? "oklch(1 0 0)"
-                : "oklch(0.52 0 0)"
+            path.completed ? "oklch(0.75 0.18 155)" : path.live ? "oklch(1 0 0)" : "oklch(0.52 0 0)"
           }
           strokeWidth={path.completed || path.live ? 2 : 1.75}
           strokeLinecap="square"

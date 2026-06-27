@@ -224,8 +224,7 @@ export function EliminationBracketCanvas({
 
   if (effectiveBands.every((band) => band.rounds.length === 0)) return null;
 
-  const canvasMinHeight =
-    bands && effectiveBands.length > 1 ? Math.max(minHeight, 640) : minHeight;
+  const canvasMinHeight = bands && effectiveBands.length > 1 ? Math.max(minHeight, 640) : minHeight;
 
   return (
     <BracketCanvas className={className} minHeight={canvasMinHeight}>
