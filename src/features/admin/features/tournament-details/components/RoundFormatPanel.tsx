@@ -84,14 +84,14 @@ function buildFormatGroups(roundMetas: BracketRoundMeta[], isDoubleElim: boolean
     {
       id: "qual-main",
       title: "Qualifiers — Round 3",
-      hint: "Quarterfinals & lower crossover (BO3)",
+      hint: "Upper quarterfinals & lower crossover (BO3)",
       roundIds: ["ub-qf", "lb-r2", "lb-r3"],
     },
     {
       id: "semis",
       title: "Semi-finals",
-      hint: "Upper/lower semis through lower final (BO3)",
-      roundIds: ["ub-sf", "ub-f", "lb-r4", "lb-sf", "lb-f"],
+      hint: "Upper semis through late lower rounds (BO3)",
+      roundIds: ["ub-sf", "ub-f", "lb-r4", "lb-r5", "lb-r6", "lb-sf", "lb-f"],
     },
     {
       id: "grand",

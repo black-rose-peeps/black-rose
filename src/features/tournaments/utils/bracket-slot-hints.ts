@@ -52,10 +52,11 @@ export function displayHintRoundLabel(
   }
 
   if (roundId === "ub-qf") return "Upper Quarterfinals";
-  if (roundId === "ub-sf") return "Upper Semifinals";
-  if (roundId === "ub-f") return "Upper Final";
-  if (roundId === "lb-sf") return "Lower Semifinals";
-  if (roundId === "lb-f") return "Lower Final";
+  if (roundId === "ub-sf") return "Upper Quarterfinals";
+  if (roundId === "ub-f") return "Upper Semifinals";
+  if (roundId === "lb-f" || roundId === "lb-sf") {
+    return fallbackRoundLabel.replace(/^Lower — /, "Lower ");
+  }
   if (roundId === "pi-r1") return "Opening Play-in";
   if (roundId === "gf") return "Grand Final";
   if (roundId === "gf-reset") return "Grand Final Reset";
