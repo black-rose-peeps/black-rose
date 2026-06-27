@@ -47,9 +47,9 @@ interface EliminationBracketCanvasProps {
 }
 
 const BAND_ACCENT_CLASS: Record<NonNullable<BracketCanvasBand["accent"]>, string> = {
-  primary: "text-primary",
-  accent: "text-accent",
-  warning: "text-amber-500",
+  primary: "text-foreground/90",
+  accent: "text-amber-400/90",
+  warning: "text-amber-400",
 };
 
 function filterMatchesForRounds(
@@ -240,13 +240,13 @@ export function EliminationBracketCanvas({
                 <div
                   className={cn(
                     "h-px flex-1 bg-gradient-to-r from-border/80 to-transparent",
-                    bandLayout.accent === "accent" && "from-accent/40",
-                    bandLayout.accent === "primary" && "from-primary/40",
+                    bandLayout.accent === "accent" && "from-amber-400/40",
+                    bandLayout.accent === "primary" && "from-foreground/20",
                   )}
                 />
                 <span
                   className={cn(
-                    "shrink-0 font-tech text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground",
+                    "shrink-0 font-tech text-xs font-bold uppercase tracking-[0.18em] text-foreground/80",
                     bandLayout.accent && BAND_ACCENT_CLASS[bandLayout.accent],
                   )}
                 >
@@ -255,8 +255,8 @@ export function EliminationBracketCanvas({
                 <div
                   className={cn(
                     "h-px flex-1 bg-gradient-to-l from-border/80 to-transparent",
-                    bandLayout.accent === "accent" && "from-accent/40",
-                    bandLayout.accent === "primary" && "from-primary/40",
+                    bandLayout.accent === "accent" && "from-amber-400/40",
+                    bandLayout.accent === "primary" && "from-foreground/20",
                   )}
                 />
               </div>
@@ -287,14 +287,14 @@ export function EliminationBracketCanvas({
                     }}
                   >
                     <div className="flex items-center gap-1.5">
-                      <div className="h-px flex-1 bg-gradient-to-r from-border/80 to-transparent" />
+                      <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                       <span
-                        className="max-w-[7.5rem] truncate font-tech text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
+                        className="max-w-[7.5rem] truncate font-tech text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/80"
                         title={round.label}
                       >
                         {round.label}
                       </span>
-                      <div className="h-px flex-1 bg-gradient-to-l from-border/80 to-transparent" />
+                      <div className="h-px flex-1 bg-gradient-to-l from-border to-transparent" />
                     </div>
                     {showFormat && (
                       <div className="flex justify-center">

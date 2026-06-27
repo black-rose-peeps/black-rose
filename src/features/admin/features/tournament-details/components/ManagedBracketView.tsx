@@ -11,6 +11,7 @@ import {
   EliminationBracketCanvas,
   EliminationChampionshipStage,
   GrandFinalStage,
+  GrandFinalFeederCallout,
   type BracketCanvasBand,
   type BracketRoundColumn,
   type ChampionshipStageRound,
@@ -45,6 +46,7 @@ import {
 import { buildMatchSlotHints } from "@/features/tournaments/utils/bracket-slot-hints";
 import { buildByeAdvancementMarkers } from "@/features/tournaments/utils/bracket-bye-markers";
 import { isGrandFinalRoundRef } from "@/features/tournaments/utils/bracket-display";
+import { getGrandFinalFeederSide } from "@/features/tournaments/utils/bracket-grand-final-feeder";
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
 import { OpeningPlayInGuide } from "@/features/tournaments/components/OpeningPlayInGuide";
 import { getLockedFormatRoundIds } from "./RoundFormatPanel";
@@ -576,17 +578,19 @@ function ManagedMatchCard({
   const championCrowned = isChampionship && matchDecided && !!match.winner;
   const sideBorder =
     match.bracketSide === "grand"
-      ? "border-amber-400/50"
+      ? "border-amber-400/55"
       : match.bracketSide === "lower"
-        ? "border-amber-400/25"
-        : "border-border";
+        ? "border-amber-400/35"
+        : "border-border/70";
+  const grandFinalFeederSide = getGrandFinalFeederSide(match.roundId);
+  const showGrandFinalFeeder = !!grandFinalFeederSide && matchDecided && !!match.winner;
 
   return (
     <div
       data-bracket-interactive
       onPointerDown={(event) => event.stopPropagation()}
       className={cn(
-        "border bg-card",
+        "border bg-muted shadow-[0_1px_0_rgba(255,255,255,0.05)]",
         isChampionship ? "border-amber-400/55" : sideBorder,
         matchDecided && !isChampionship && "ring-1 ring-emerald-400/30",
         championCrowned && "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
@@ -595,13 +599,13 @@ function ManagedMatchCard({
       <div
         className={cn(
           "flex items-center justify-between border-b px-2 py-1",
-          isChampionship ? "border-amber-400/25 bg-amber-400/5" : "border-border/60",
+          isChampionship ? "border-amber-400/30 bg-amber-400/8" : "border-border/70 bg-secondary/40",
         )}
       >
         <span
           className={cn(
             "flex items-center gap-1 font-tech text-[10px] uppercase tracking-wider",
-            isChampionship ? "text-amber-300/90" : "text-muted-foreground",
+            isChampionship ? "text-amber-200" : "text-foreground/75",
           )}
         >
           {championCrowned && <Crown className="h-3 w-3" />}
@@ -610,13 +614,15 @@ function ManagedMatchCard({
         <span
           className={cn(
             "font-tech text-[9px] uppercase tracking-wider",
-            championCrowned ? "text-amber-300/80" : "text-muted-foreground/70",
+            championCrowned ? "text-amber-200/90" : "text-foreground/60",
           )}
         >
           {championCrowned
             ? "Champion"
             : matchDecided
-              ? "Final"
+              ? showGrandFinalFeeder
+                ? "→ Grand Finals"
+                : "Final"
               : `${format} · first to ${required}`}
         </span>
       </div>
@@ -651,6 +657,10 @@ function ManagedMatchCard({
         onDecrement={() => onScoreChange(match.id, match.scoreA, Math.max(0, match.scoreB - 1))}
         onSelectWinner={() => match.teamB && onPickWinner(match.id, match.teamB)}
       />
+
+      {showGrandFinalFeeder && grandFinalFeederSide && (
+        <GrandFinalFeederCallout side={grandFinalFeederSide} />
+      )}
     </div>
   );
 }
@@ -692,11 +702,11 @@ function ManagedTeamRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-1 border-b border-border/40 px-2 py-1.5 last:border-0",
-        isChampionRow && "bg-amber-400/15",
-        isWinner && !isChampionRow && "bg-emerald-400/10",
-        isLoser && "bg-muted/15 opacity-80",
-        isTbd && "bg-muted/25",
+        "flex items-center gap-1 border-b border-border/60 px-2 py-1.5 last:border-0",
+        isChampionRow && "bg-amber-400/12",
+        isWinner && !isChampionRow && "bg-emerald-400/12",
+        isLoser && "bg-muted/20 opacity-75",
+        isTbd && "bg-muted/30",
       )}
     >
       <button
@@ -722,7 +732,7 @@ function ManagedTeamRow({
       <span
         className={cn(
           "w-6 text-center font-tech text-[10px]",
-          isTbd ? "text-muted-foreground/50" : "text-muted-foreground",
+          isTbd ? "text-foreground/45" : "text-foreground/60",
         )}
       >
         {abbr}
@@ -732,9 +742,13 @@ function ManagedTeamRow({
           "min-w-0 flex-1 truncate text-xs",
           isTbd
             ? placeholder
-              ? "font-tech text-[10px] uppercase tracking-wider text-muted-foreground/70"
-              : "font-tech uppercase tracking-wider text-muted-foreground/60"
-            : "font-medium",
+              ? "font-tech text-[10px] uppercase tracking-wider text-foreground/55"
+              : "font-tech uppercase tracking-wider text-foreground/50"
+            : isChampionRow
+              ? "font-semibold text-amber-100"
+              : isWinner
+                ? "font-semibold text-foreground"
+                : "font-medium text-foreground/85",
         )}
       >
         {display}

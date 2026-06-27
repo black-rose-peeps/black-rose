@@ -16,6 +16,7 @@ import {
   EliminationBracketCanvas,
   EliminationChampionshipStage,
   GrandFinalStage,
+  GrandFinalFeederCallout,
   type BracketCanvasBand,
   type BracketFocusSize,
   type BracketRoundColumn,
@@ -47,6 +48,7 @@ import {
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
 import { getGrandFinalBracketGuide } from "@/features/admin/features/tournament-details/utils/grand-final";
+import { getGrandFinalFeederSideFromMatchId } from "@/features/tournaments/utils/bracket-grand-final-feeder";
 import {
   BRACKET_CARD_W,
   BRACKET_COL_GAP,
@@ -615,13 +617,15 @@ function PublicMatchCard({
   const sideBorder = isChampionship
     ? "border-amber-400/55"
     : isLower
-      ? "border-amber-400/25"
-      : "border-border";
+      ? "border-amber-400/35"
+      : "border-border/70";
+  const grandFinalFeederSide = getGrandFinalFeederSideFromMatchId(match.id);
+  const showGrandFinalFeeder = !!grandFinalFeederSide && decided && !!match.winner;
 
   return (
     <div
       className={cn(
-        "border bg-card",
+        "border bg-muted shadow-[0_1px_0_rgba(255,255,255,0.05)]",
         sideBorder,
         decided && !isChampionship && "ring-1 ring-emerald-400/30",
         championCrowned && "shadow-[0_0_32px_rgba(251,191,36,0.2)] ring-2 ring-amber-400/45",
@@ -630,13 +634,13 @@ function PublicMatchCard({
       <div
         className={cn(
           "flex items-center justify-between border-b px-2 py-1",
-          isChampionship ? "border-amber-400/25 bg-amber-400/5" : "border-border/60",
+          isChampionship ? "border-amber-400/30 bg-amber-400/8" : "border-border/70 bg-secondary/40",
         )}
       >
         <span
           className={cn(
             "flex items-center gap-1 font-tech text-[10px] uppercase tracking-wider",
-            isChampionship ? "text-amber-300/90" : "text-muted-foreground",
+            isChampionship ? "text-amber-200" : "text-foreground/75",
           )}
         >
           {championCrowned && <Crown className="h-3 w-3" strokeWidth={1.25} />}
@@ -646,10 +650,14 @@ function PublicMatchCard({
           <span
             className={cn(
               "font-tech text-[9px] uppercase tracking-wider",
-              championCrowned ? "text-amber-300/80" : "text-emerald-400/70",
+              championCrowned
+                ? "text-amber-300/80"
+                : grandFinalFeederSide
+                  ? "text-amber-300/80"
+                  : "text-emerald-400/70",
             )}
           >
-            {championCrowned ? "Champion" : "Final"}
+            {championCrowned ? "Champion" : showGrandFinalFeeder ? "→ Grand Finals" : "Final"}
           </span>
         )}
       </div>
@@ -677,6 +685,10 @@ function PublicMatchCard({
         hasScores={hasScores}
         isChampionRow={championCrowned && match.winner === match.teamB}
       />
+
+      {showGrandFinalFeeder && grandFinalFeederSide && (
+        <GrandFinalFeederCallout side={grandFinalFeederSide} />
+      )}
     </div>
   );
 }

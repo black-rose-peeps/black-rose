@@ -34,10 +34,10 @@ export function PublicBracketTeamSlot({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 border-b border-border/40 px-2 py-1.5 last:border-0",
-        isChampionRow && "bg-amber-400/10",
-        isWinner && !isChampionRow && "bg-emerald-400/10",
-        isLoser && "opacity-60",
+        "flex items-center gap-2 border-b border-border/60 px-2 py-1.5 last:border-0",
+        isChampionRow && "bg-amber-400/12",
+        isWinner && !isChampionRow && "bg-emerald-400/12",
+        isLoser && "opacity-75",
         swissStatus === "advanced" && "bg-emerald-500/5",
         swissStatus === "eliminated" && "opacity-50",
         isTbd && "opacity-40",
@@ -54,7 +54,7 @@ export function PublicBracketTeamSlot({
         )}
       />
 
-      <span className="w-6 shrink-0 text-center text-[10px] font-tech text-muted-foreground">
+      <span className="w-6 shrink-0 text-center text-[10px] font-tech text-foreground/60">
         {abbr}
       </span>
 
@@ -69,7 +69,7 @@ export function PublicBracketTeamSlot({
               ? "font-semibold text-amber-100"
               : isWinner
                 ? "font-semibold text-foreground"
-                : "text-muted-foreground",
+                : "text-foreground/85",
         )}
       >
         {isTbd ? (placeholder ?? "TBD") : name}

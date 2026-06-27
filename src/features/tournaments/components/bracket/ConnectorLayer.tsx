@@ -52,12 +52,12 @@ export function ConnectorLayer({ positioned }: ConnectorLayerProps) {
               ? "oklch(0.75 0.18 155)"
               : path.live
                 ? "oklch(1 0 0)"
-                : "oklch(0.24 0 0)"
+                : "oklch(0.52 0 0)"
           }
-          strokeWidth={path.completed || path.live ? 2 : 1.5}
+          strokeWidth={path.completed || path.live ? 2 : 1.75}
           strokeLinecap="square"
           strokeDasharray={path.skip ? "6 4" : undefined}
-          opacity={path.completed ? 0.9 : path.live ? 0.85 : path.skip ? 0.7 : 0.55}
+          opacity={path.completed ? 0.95 : path.live ? 0.9 : path.skip ? 0.82 : 0.78}
         />
       ))}
     </svg>

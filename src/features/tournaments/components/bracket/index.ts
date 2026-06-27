@@ -8,6 +8,7 @@ export {
   type ChampionshipStageRound,
 } from "./EliminationChampionshipStage";
 export { GrandFinalStage, type GrandFinalStageMatch } from "./GrandFinalStage";
+export { GrandFinalFeederCallout } from "./GrandFinalAdvanceBadge";
 export { BracketSectionHeader, GrandFinalSection } from "./BracketSectionHeader";
 export {
   EliminationBracketCanvas,
