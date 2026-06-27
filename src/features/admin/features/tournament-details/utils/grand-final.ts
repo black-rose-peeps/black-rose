@@ -10,6 +10,38 @@ export type GrandFinalMode = "two_matches" | "one_match" | "none";
 
 export const DEFAULT_GRAND_FINAL_MODE: GrandFinalMode = "two_matches";
 
+export function resolveEffectiveGrandFinalMode(mode?: GrandFinalMode | null): GrandFinalMode {
+  return mode ?? DEFAULT_GRAND_FINAL_MODE;
+}
+
+export function grandFinalAllowsBracketReset(mode?: GrandFinalMode | null): boolean {
+  return resolveEffectiveGrandFinalMode(mode) === "two_matches";
+}
+
+/** Championship stage subtitle shown above the grand final match card(s). */
+export function getGrandFinalStageSubtitle(mode?: GrandFinalMode | null): string {
+  switch (resolveEffectiveGrandFinalMode(mode)) {
+    case "two_matches":
+      return "Upper bracket advantage · Lower bracket must win twice";
+    case "one_match":
+      return "Single grand final — winner takes the title";
+    case "none":
+      return "No grand final — upper bracket winner is crowned";
+  }
+}
+
+/** Bracket footnote under double-elimination columns. */
+export function getGrandFinalBracketGuide(mode?: GrandFinalMode | null): string {
+  switch (resolveEffectiveGrandFinalMode(mode)) {
+    case "none":
+      return "No Grand Final — the upper-bracket winner is crowned when they win the upper semifinals.";
+    case "one_match":
+      return "Grand Final: one match between the upper- and lower-bracket winners decides the champion.";
+    case "two_matches":
+      return "Grand Final: upper-bracket winner vs lower-bracket winner. If the lower-bracket team wins, a bracket-reset match is added automatically.";
+  }
+}
+
 export function resolveStoredGrandFinalMode(
   roundMetaIds: string[],
   stored?: GrandFinalMode | null,
@@ -38,7 +70,7 @@ export const GRAND_FINAL_MODE_OPTIONS: ReadonlyArray<{
     value: "none",
     label: "None",
     description:
-      "No grand final — the upper bracket winner is crowned when they win the upper final.",
+      "No grand final — the upper-bracket winner is crowned when they win the upper semifinals.",
   },
 ];
 

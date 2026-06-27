@@ -90,8 +90,8 @@ function buildFormatGroups(roundMetas: BracketRoundMeta[], isDoubleElim: boolean
     {
       id: "semis",
       title: "Semi-finals",
-      hint: "Upper semis through late lower rounds (BO3)",
-      roundIds: ["ub-sf", "ub-f", "lb-r4", "lb-r5", "lb-r6", "lb-sf", "lb-f"],
+      hint: "Upper/lower quarterfinals & semis through late lower rounds (BO3)",
+      roundIds: ["ub-sf", "ub-f", "lb-r6", "lb-r7", "lb-r8", "lb-r9", "lb-sf", "lb-f"],
     },
     {
       id: "grand",
