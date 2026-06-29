@@ -30,10 +30,7 @@ export function bracketRoundHeaderReserveHeight(options: {
   return height;
 }
 
-function enforceLayoutFloor(
-  positions: Map<string, { x: number; y: number }>,
-  minY = 0,
-): void {
+function enforceLayoutFloor(positions: Map<string, { x: number; y: number }>, minY = 0): void {
   for (const [id, pos] of positions) {
     if (pos.y < minY) {
       positions.set(id, { ...pos, y: minY });
@@ -350,8 +347,7 @@ function repositionTargetRoundFromFeeders(
   }
 
   const ys = [...yById.values()];
-  const needsEvenSpacing =
-    ys.length > 1 && Math.max(...ys) - Math.min(...ys) < minGap * 0.75;
+  const needsEvenSpacing = ys.length > 1 && Math.max(...ys) - Math.min(...ys) < minGap * 0.75;
 
   if (needsEvenSpacing) {
     assignEvenTargetColumn(visibleInRound, x, refSpan, positions);
