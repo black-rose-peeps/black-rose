@@ -16,6 +16,30 @@ export const BRACKET_PAD_V = 24;
 export const BRACKET_HEADER_H = 44;
 export const BRACKET_BAND_GAP = 72;
 export const BRACKET_BAND_TITLE_H = 40;
+/** Extra clearance between round labels and the first match row. */
+export const BRACKET_HEADER_PAD = 12;
+
+/** Reserve vertical space for round labels (and optional format row) above match cards. */
+export function bracketRoundHeaderReserveHeight(options: {
+  showFormatControls?: boolean;
+  renderRoundHeader?: boolean;
+}): number {
+  let height = BRACKET_HEADER_H + BRACKET_HEADER_PAD;
+  if (options.showFormatControls) height += 34;
+  if (options.renderRoundHeader) height += 28;
+  return height;
+}
+
+function enforceLayoutFloor(
+  positions: Map<string, { x: number; y: number }>,
+  minY = 0,
+): void {
+  for (const [id, pos] of positions) {
+    if (pos.y < minY) {
+      positions.set(id, { ...pos, y: minY });
+    }
+  }
+}
 
 export interface PositionedLayoutMatch extends LayoutInputMatch {
   x: number;
@@ -249,10 +273,11 @@ function layoutSourcesGroupedByTarget(
     }
 
     const innerSpan = Math.min(span * 0.6, (sortedGroup.length - 1) * minGap);
+    const groupStart = Math.max(0, targetY - innerSpan / 2);
     sortedGroup.forEach((match, index) => {
       planned.push({
         id: match.id,
-        y: targetY - innerSpan / 2 + (index * innerSpan) / (sortedGroup.length - 1),
+        y: groupStart + (index * innerSpan) / (sortedGroup.length - 1),
       });
     });
   }
@@ -531,6 +556,8 @@ export function buildLayout(matches: LayoutInputMatch[]): {
     refSpan,
     minGap,
   );
+
+  enforceLayoutFloor(positions, 0);
 
   for (const roundIndex of visibleRoundIndices) {
     const visibleInRound = byRound.get(roundIndex)!.filter((match) => !hidden.has(match.id));

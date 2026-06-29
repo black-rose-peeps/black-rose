@@ -4,7 +4,7 @@ import {
   BRACKET_BAND_TITLE_H,
   BRACKET_CARD_W,
   BRACKET_COL_GAP,
-  BRACKET_HEADER_H,
+  bracketRoundHeaderReserveHeight,
   buildLayout,
   type PositionedLayoutMatch,
 } from "@/features/tournaments/utils/bracket-layout";
@@ -90,8 +90,7 @@ interface BandLayoutSlice {
 function useStackedBracketLayout(
   bands: BracketCanvasBand[],
   layoutMatches: LayoutInputMatch[],
-  renderRoundHeader: boolean,
-  formatRowOffset: number,
+  headerReserve: number,
 ): {
   positioned: PositionedLayoutMatch[];
   width: number;
@@ -103,7 +102,6 @@ function useStackedBracketLayout(
       return { positioned: [], width: 0, height: 0, bandLayouts: [] };
     }
 
-    const headerOffset = BRACKET_HEADER_H + (renderRoundHeader ? 28 : 0) + formatRowOffset;
     let yOffset = 0;
     const allPositioned: PositionedLayoutMatch[] = [];
     const bandLayouts: BandLayoutSlice[] = [];
@@ -116,12 +114,12 @@ function useStackedBracketLayout(
       const bandTop = yOffset + titleOffset;
       const sectionMatches = filterMatchesForRounds(layoutMatches, band.rounds);
       const layout = buildLayout(sectionMatches);
-      const bandHeight = layout.height + headerOffset;
+      const bandHeight = layout.height + headerReserve;
 
       for (const match of layout.positioned) {
         allPositioned.push({
           ...match,
-          y: match.y + bandTop + headerOffset,
+          y: match.y + bandTop + headerReserve,
         });
       }
 
@@ -147,14 +145,13 @@ function useStackedBracketLayout(
       height: yOffset,
       bandLayouts,
     };
-  }, [bands, layoutMatches, renderRoundHeader, formatRowOffset]);
+  }, [bands, layoutMatches, headerReserve]);
 }
 
 function useSingleBracketLayout(
   rounds: BracketRoundColumn[],
   layoutMatches: LayoutInputMatch[],
-  renderRoundHeader: boolean,
-  formatRowOffset: number,
+  headerReserve: number,
 ): {
   positioned: PositionedLayoutMatch[];
   width: number;
@@ -168,26 +165,24 @@ function useSingleBracketLayout(
 
     const sectionMatches = filterMatchesForRounds(layoutMatches, rounds);
     const layout = buildLayout(sectionMatches);
-    const headerOffset = BRACKET_HEADER_H + (renderRoundHeader ? 28 : 0) + formatRowOffset;
-
     return {
       positioned: layout.positioned.map((match) => ({
         ...match,
-        y: match.y + headerOffset,
+        y: match.y + headerReserve,
       })),
       width: layout.width,
-      height: layout.height + headerOffset,
+      height: layout.height + headerReserve,
       bandLayouts: [
         {
           top: 0,
           width: layout.width,
-          height: layout.height + headerOffset,
+          height: layout.height + headerReserve,
           roundIndices: layout.roundIndices,
           roundByFlowIndex: layout.roundIndices.map((roundIndex) => rounds[roundIndex]),
         },
       ],
     };
-  }, [rounds, layoutMatches, renderRoundHeader, formatRowOffset]);
+  }, [rounds, layoutMatches, headerReserve]);
 }
 
 export function EliminationBracketCanvas({
@@ -204,20 +199,22 @@ export function EliminationBracketCanvas({
   onFormatChange,
 }: EliminationBracketCanvasProps) {
   const effectiveBands = bands ?? (rounds ? [{ rounds }] : []);
-  const formatRowOffset = !readOnlyFormats && onFormatChange ? 28 : 0;
+  const showFormatControls = !readOnlyFormats && !!onFormatChange;
   const showRoundHeader = !!renderRoundHeader;
+  const headerReserve = bracketRoundHeaderReserveHeight({
+    showFormatControls,
+    renderRoundHeader: showRoundHeader,
+  });
 
   const stacked = useStackedBracketLayout(
     bands ? effectiveBands : [],
     layoutMatches,
-    showRoundHeader,
-    formatRowOffset,
+    headerReserve,
   );
   const single = useSingleBracketLayout(
     !bands && rounds ? rounds : [],
     layoutMatches,
-    showRoundHeader,
-    formatRowOffset,
+    headerReserve,
   );
 
   const { positioned, width, height, bandLayouts } = bands ? stacked : single;
@@ -273,7 +270,7 @@ export function EliminationBracketCanvas({
                 if (!round) return null;
                 const locked = lockedFormatRoundIds?.has(round.id) ?? false;
                 const format = roundFormats?.[round.id] ?? "BO3";
-                const showFormat = !readOnlyFormats && onFormatChange && round.side !== "grand";
+                const showFormat = showFormatControls && round.side !== "grand";
 
                 return (
                   <div

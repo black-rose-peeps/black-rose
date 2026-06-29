@@ -3,11 +3,7 @@ import {
   isEvenBracketFieldSize,
   usesCompressedPreliminaryField,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
-import {
-  isGrandFinalRoundRef,
-  isLowerBracketRound,
-  isUpperBracketRound,
-} from "./bracket-display";
+import { isGrandFinalRoundRef, isLowerBracketRound, isUpperBracketRound } from "./bracket-display";
 import { sortBracketRoundsByFlow } from "./bracket-round-order";
 
 export type BracketFocusSize = "all" | number;
