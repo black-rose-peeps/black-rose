@@ -13,7 +13,11 @@ import {
   Shield,
   Sparkles,
 } from "lucide-react";
-import { formatValorantRiotId } from "@/features/member/utils/valorant-identity";
+import {
+  hasMainGameIdentity,
+  listConfiguredIdentitySummaries,
+  mainGameIdentityConfig,
+} from "@/features/member/utils/game-identity";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,7 +67,7 @@ function DashboardPage() {
   const initials = p.avatarInitials || session.displayName.slice(0, 2).toUpperCase();
 
   return (
-    <MemberPageLayout>
+    <MemberPageLayout className="pb-12">
       <MemberHeroBanner
         eyebrow="Member Console"
         title={session.displayName}
@@ -182,36 +186,71 @@ function DashboardPage() {
           onViewComplete={isProfileComplete(p.profileCompletion) ? openCelebration : undefined}
         />
 
-        <DashboardSection label="Accounts" title="Valorant ID">
+        <DashboardSection label="Accounts" title="In-Game Identity">
           {(() => {
-            const valorantId = formatValorantRiotId(p.valorantGameName, p.valorantTagline);
+            const configured = listConfiguredIdentitySummaries(p);
+            const mainConfig = mainGameIdentityConfig(p.mainGame);
+
+            if (configured.length === 0) {
+              return (
+                <>
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/5">
+                      <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">No in-game IDs set</p>
+                      <p className="text-xs text-muted-foreground/60">
+                        Add identities per game on the Player tab — required when registering for
+                        tournaments outside your main game.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="rounded-none border-white/10 font-tech text-ui-readable uppercase"
+                  >
+                    <Link to="/dashboard/profile" search={{ tab: "player" }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                      {mainConfig ? "Set In-Game IDs" : "Set Main Game & IDs"}
+                    </Link>
+                  </Button>
+                </>
+              );
+            }
+
             return (
               <>
-                <div className="mb-4 flex items-center gap-3">
-                  {valorantId ? (
-                    <>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-emerald-400/20 bg-emerald-400/5">
-                        <CheckCircle className="h-5 w-5 text-emerald-400" />
+                <ul className="mb-4 flex flex-col gap-3">
+                  {configured.map((entry) => (
+                    <li key={entry.key} className="flex items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center border ${
+                          entry.isMain
+                            ? "border-emerald-400/20 bg-emerald-400/5"
+                            : "border-white/10 bg-white/5"
+                        }`}
+                      >
+                        <CheckCircle
+                          className={`h-5 w-5 ${entry.isMain ? "text-emerald-400" : "text-muted-foreground"}`}
+                        />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{valorantId}</p>
-                        <p className="text-xs text-muted-foreground">Shown in Valorant rosters</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/5">
-                        <AlertCircle className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Not set</p>
-                        <p className="text-xs text-muted-foreground/60">
-                          Add your IGN and tagline in profile settings
+                        <p className="text-sm font-medium">{entry.display}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {entry.games.join(" · ")}
+                          {entry.isMain ? " · MAIN GAME" : ""}
                         </p>
                       </div>
-                    </>
-                  )}
-                </div>
+                    </li>
+                  ))}
+                </ul>
+                {!hasMainGameIdentity(p) && mainConfig && (
+                  <p className="mb-4 text-xs text-amber-400/90">
+                    Your main game ({mainConfig.panelLabel}) identity is not set yet.
+                  </p>
+                )}
                 <Button
                   asChild
                   variant="outline"
@@ -219,7 +258,7 @@ function DashboardPage() {
                 >
                   <Link to="/dashboard/profile" search={{ tab: "player" }}>
                     <Pencil className="h-3.5 w-3.5" />
-                    {valorantId ? "Edit Valorant ID" : "Set Valorant ID"}
+                    Edit In-Game IDs
                   </Link>
                 </Button>
               </>

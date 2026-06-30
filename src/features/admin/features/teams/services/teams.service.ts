@@ -14,7 +14,7 @@ import { leaveTeamFn } from "../functions/leave-team.functions";
 import { MAX_TEAM_SIZE, resolveRoleForGame } from "@/features/teams/constants";
 import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
-import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
+import { formatIdentityForGame, parseGameIdentitiesFromRow } from "@/features/member/utils/game-identity";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { adminMemberToTeamMember } from "../utils";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
@@ -72,8 +72,10 @@ function initialsFromName(name: string): string {
 
 interface MemberProfileSnapshot {
   displayName: string;
+  mainGame: string;
   valorantGameName: string;
   valorantTagline: string;
+  gameIdentities: Record<string, string>;
   avatarUrl: string | null;
   slug: string;
 }
@@ -86,7 +88,9 @@ async function fetchMemberProfileSnapshots(
 
   const { data, error } = await supabase
     .from("member_profiles")
-    .select("member_id, display_name, valorant_game_name, valorant_tagline, avatar_url, slug")
+    .select(
+      "member_id, display_name, main_game, valorant_game_name, valorant_tagline, game_identities, ingame_display_name, avatar_url, slug",
+    )
     .in("member_id", unique);
 
   if (error) {
@@ -99,8 +103,14 @@ async function fetchMemberProfileSnapshots(
       row.member_id as string,
       {
         displayName: (row.display_name as string | null)?.trim() ?? "",
+        mainGame: (row.main_game as string | null)?.trim() ?? "",
         valorantGameName: (row.valorant_game_name as string | null)?.trim() ?? "",
         valorantTagline: (row.valorant_tagline as string | null)?.trim() ?? "",
+        gameIdentities: parseGameIdentitiesFromRow({
+          game_identities: row.game_identities,
+          ingame_display_name: row.ingame_display_name as string | null,
+          main_game: row.main_game as string | null,
+        }),
         avatarUrl: (row.avatar_url as string | null)?.trim() || null,
         slug: (row.slug as string | null)?.trim() ?? "",
       },
@@ -143,12 +153,12 @@ function rowToTeamMember(
   const snapshot = snapshots.get(userId);
   const snapshotDisplay = (row.display_name as string)?.trim();
   const baseDisplayName = snapshot?.displayName || snapshotDisplay || username;
-  const valorantId = snapshot
-    ? formatValorantRiotId(snapshot.valorantGameName, snapshot.valorantTagline)
+  const competitiveId = snapshot
+    ? formatIdentityForGame(teamGame, snapshot)
     : null;
-  const useValorantId = isValorantGame(teamGame) && !!valorantId;
-  const displayName = useValorantId ? valorantId! : baseDisplayName;
-  const ign = useValorantId ? valorantId! : (row.ign as string) || username;
+  const useCompetitiveId = !!competitiveId;
+  const displayName = useCompetitiveId ? competitiveId! : baseDisplayName;
+  const ign = useCompetitiveId ? competitiveId! : (row.ign as string) || username;
 
   return {
     userId,

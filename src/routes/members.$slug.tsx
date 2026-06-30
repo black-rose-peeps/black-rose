@@ -28,6 +28,7 @@ import { ChampionMarkGroup } from "@/features/championships/components/ChampionM
 import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
 import type { ChampionshipTitle } from "@/features/championships/types";
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
+import { listConfiguredIdentitySummaries } from "@/features/member/utils/game-identity";
 import { isSocialLinkPublic } from "@/features/member/utils/social-links";
 import { isDiscordHttpsUrl } from "@/lib/discord-url";
 
@@ -394,18 +395,20 @@ function MemberProfilePage() {
                 <dd className="mt-0.5 text-sm">{p.region || "—"}</dd>
               </div>
               <div className="h-px bg-white/6" />
-              <div>
-                <dt className="font-tech text-label-readable uppercase text-muted-foreground">
-                  Valorant ID
-                </dt>
-                <dd
-                  className={`mt-0.5 text-sm ${p.valorantGameName && p.valorantTagline ? "text-emerald-400" : "text-muted-foreground"}`}
-                >
-                  {p.valorantGameName && p.valorantTagline
-                    ? `${p.valorantGameName}#${p.valorantTagline}`
-                    : "Not set"}
-                </dd>
-              </div>
+              {listConfiguredIdentitySummaries(p).length > 0 && (
+                <>
+                  {listConfiguredIdentitySummaries(p).map((entry) => (
+                    <div key={entry.key}>
+                      <dt className="font-tech text-label-readable uppercase text-muted-foreground">
+                        {entry.label}
+                        {entry.games.length === 1 ? "" : ` · ${entry.games.join(" · ")}`}
+                      </dt>
+                      <dd className="mt-0.5 text-sm text-emerald-400">{entry.display}</dd>
+                      <div className="mt-3 h-px bg-white/6" />
+                    </div>
+                  ))}
+                </>
+              )}
             </dl>
           </ProfileCard>
 

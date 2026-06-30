@@ -1,6 +1,7 @@
 import type { AdminMember } from "@/features/admin/features/members/types";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "../constants";
 import type { MemberProfile, SocialLink, SocialPlatform } from "../types";
+import { parseGameIdentitiesFromRow } from "./game-identity";
 import { calculateProfileCompletion } from "./profile-completion";
 
 export interface MemberProfileRow {
@@ -15,6 +16,8 @@ export interface MemberProfileRow {
   region: string;
   valorant_game_name: string | null;
   valorant_tagline: string | null;
+  ingame_display_name: string | null;
+  game_identities?: unknown;
   avatar_url: string | null;
   banner_url: string | null;
   is_public: boolean;
@@ -80,6 +83,8 @@ export function buildMemberProfile(
     socialLinks,
   });
 
+  const gameIdentities = parseGameIdentitiesFromRow(profileRow);
+
   return {
     memberId: member.id,
     slug: profileRow.slug,
@@ -98,6 +103,8 @@ export function buildMemberProfile(
     socialLinks,
     valorantGameName: profileRow.valorant_game_name?.trim() ?? "",
     valorantTagline: profileRow.valorant_tagline?.trim() ?? "",
+    gameIdentities,
+    ingameDisplayName: gameIdentities[mainGame] ?? profileRow.ingame_display_name?.trim() ?? "",
     tournamentHistory: [],
     activeRegistrations: [],
     upcomingMatches: [],

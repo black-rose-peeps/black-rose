@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Emblem } from "@/features/shared/components/Emblem";
+import { Footer } from "@/features/landing/components/Footer";
 import { MemberNav } from "./MemberNav";
 import { cn } from "@/lib/utils";
 
@@ -38,18 +39,19 @@ export function MemberPageLayout({
   maxWidth?: string;
 }) {
   return (
-    <div className="min-h-screen pb-10 bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <MemberNav />
       <div className="pointer-events-none fixed inset-0 grid-bg opacity-25" />
       <div
         className={cn(
-          "relative mx-auto px-4 pb-16 safe-bottom site-header-offset-spaced sm:px-6",
+          "relative mx-auto w-full px-4 pb-10 site-header-offset-spaced sm:px-6",
           maxWidth,
           className,
         )}
       >
         {children}
       </div>
+      <Footer />
     </div>
   );
 }

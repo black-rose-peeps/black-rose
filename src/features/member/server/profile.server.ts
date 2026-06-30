@@ -13,10 +13,12 @@ import {
 } from "../utils/build-member-profile";
 import { sanitizeSocialLinksForViewer } from "../utils/social-links";
 import { sanitizeHttpUrl } from "../utils/validate-social-url";
+import { normalizeValorantTagline } from "../utils/valorant-identity";
 import {
-  normalizeValorantTagline,
-  validateValorantIdentityInput,
-} from "../utils/valorant-identity";
+  sanitizeGameIdentities,
+  validateGameIdentitiesInput,
+  isRiotGame,
+} from "../utils/game-identity";
 import type { MemberProfile } from "../types";
 import {
   MEMBER_READ_COLUMNS,
@@ -380,6 +382,7 @@ export interface UpdateMemberProfileInput {
   region: string;
   valorantGameName: string;
   valorantTagline: string;
+  gameIdentities: Record<string, string>;
   isPublic: boolean;
   socialLinks: { platform: SocialPlatform; url: string | null; isPublic: boolean }[];
 }
@@ -407,14 +410,19 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
   if (profileError) throw new Error(profileError.message);
   if (!profile) throw new Error("Profile not found. Sign in again to create your profile.");
 
-  const valorantError = validateValorantIdentityInput(
-    input.valorantGameName,
-    input.valorantTagline,
-  );
-  if (valorantError) throw new Error(valorantError);
+  const identityError = validateGameIdentitiesInput({
+    valorantGameName: input.valorantGameName,
+    valorantTagline: input.valorantTagline,
+    gameIdentities: input.gameIdentities,
+  });
+  if (identityError) throw new Error(identityError);
 
   const valorantGameName = input.valorantGameName.trim();
   const valorantTagline = normalizeValorantTagline(input.valorantTagline);
+  const gameIdentities = sanitizeGameIdentities(input.gameIdentities);
+  const mainGame = input.mainGame?.trim() || null;
+  const legacyIngameName =
+    mainGame && !isRiotGame(mainGame) ? gameIdentities[mainGame] ?? null : null;
 
   const { error: updateError } = await supabase
     .from("member_profiles")
@@ -422,11 +430,13 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
       display_name: input.displayName.trim() || member.username,
       headline: input.headline.trim() || "Black Rose Member",
       bio: input.bio.trim(),
-      main_game: input.mainGame?.trim() || null,
+      main_game: mainGame,
       main_role: input.mainRole.trim(),
       region: input.region.trim(),
       valorant_game_name: valorantGameName || null,
       valorant_tagline: valorantTagline || null,
+      game_identities: gameIdentities,
+      ingame_display_name: legacyIngameName,
       is_public: input.isPublic,
       updated_at: new Date().toISOString(),
     })
