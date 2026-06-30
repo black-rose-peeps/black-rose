@@ -11,6 +11,7 @@ import {
 } from "@/features/tournaments/types/participation";
 import type { AdminTournament, CreateTournamentFormValues, CreateTournamentInput } from "../types";
 import type { CreateTournamentFieldErrors } from "../types";
+import { TOURNAMENT_DESCRIPTION_MAX_LENGTH } from "../constants";
 
 export const BRACKET_TEAM_COUNT_SINGLE = 8;
 export const BRACKET_TEAM_COUNT_DOUBLE = 16;
@@ -52,6 +53,8 @@ export function tournamentToFormValues(tournament: AdminTournament): CreateTourn
     region: tournament.region,
     status: tournament.status,
     wwmMode: tournament.wwmMode ?? "",
+    description: tournament.description ?? "",
+    rulesUrl: tournament.rulesUrl ?? "",
   };
 }
 
@@ -79,6 +82,8 @@ export function formValuesToCreateInput(values: CreateTournamentFormValues): Cre
     status: values.status,
     participationType: resolveParticipationType(values.game, wwmMode),
     wwmMode,
+    description: values.description.trim() || null,
+    rulesUrl: values.rulesUrl.trim() || null,
   };
 }
 
@@ -103,6 +108,8 @@ export function buildTournamentFromInput(input: CreateTournamentInput): AdminTou
     region: input.region,
     participationType: input.participationType,
     wwmMode: input.wwmMode ?? null,
+    description: input.description ?? null,
+    rulesUrl: input.rulesUrl ?? null,
   };
 }
 
@@ -114,6 +121,10 @@ export function validateCreateTournamentForm(
 
   if (!values.name.trim()) {
     errors.name = "Tournament name is required.";
+  }
+
+  if (values.description.length > TOURNAMENT_DESCRIPTION_MAX_LENGTH) {
+    errors.description = `Description must be ${TOURNAMENT_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
   }
 
   if (!values.prizeAmount.trim() || prizeDigitsToNumber(values.prizeAmount) <= 0) {

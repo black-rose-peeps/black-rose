@@ -107,6 +107,7 @@ export interface TournamentDetail extends Tournament {
   prizeBreakdown: PrizeTier[];
   schedule: ScheduleEntry[];
   rules: RuleSection[];
+  rulesUrl?: string | null;
   bracket: BracketRound[];
   teams: TournamentTeam[];
   placements?: TournamentPlacementView[];

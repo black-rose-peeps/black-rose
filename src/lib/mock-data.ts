@@ -29,6 +29,10 @@ export interface MockTournament {
   region: string;
   participationType: ParticipationType;
   wwmMode?: WwmMode | null;
+  /** Public summary for the tournament detail hero (max 280 characters). */
+  description?: string | null;
+  /** Optional link to the full official ruleset for this event. */
+  rulesUrl?: string | null;
 }
 
 export interface MockPlayer {

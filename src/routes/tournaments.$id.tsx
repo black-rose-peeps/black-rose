@@ -62,7 +62,8 @@ function detailFromSummary(
     region: summary.region,
     participationType: summary.participationType,
     wwmMode: summary.wwmMode ?? null,
-    description: `${summary.name} is a Black Rose community tournament. Follow the bracket and overview for live updates.`,
+    description: summary.description?.trim() ?? "",
+    rulesUrl: summary.rulesUrl?.trim() ?? null,
     organizer: "Black Rose Operations",
     contact: BLACK_ROSE_STAFF_CONTACT_SUMMARY,
     prizeBreakdown: summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
@@ -125,7 +126,11 @@ export const Route = createFileRoute("/tournaments/$id")({
       { title: tournamentPageTitle(loaderData?.tournament?.name) },
       {
         name: "description",
-        content: loaderData?.tournament?.description ?? "Tournament details on Black Rose Arena.",
+        content:
+          loaderData?.tournament?.description?.trim() ||
+          (loaderData?.tournament?.name && loaderData.tournament.name !== "Loading…"
+            ? `${loaderData.tournament.name} — Black Rose Arena`
+            : "Tournament details on Black Rose Arena."),
       },
     ],
   }),
@@ -304,6 +309,7 @@ function TournamentDetailPage() {
     teamCap: rulesBracketSize,
     participationType: liveDetail.participationType,
     wwmMode: liveDetail.wwmMode,
+    hasOfficialRuleset: !!liveDetail.rulesUrl?.trim(),
   });
 
   const isLoadingDetail = tournament.name === "Loading…";
@@ -402,7 +408,11 @@ function TournamentDetailPage() {
           )}
           {activeTab === "rules" && (
             <div role="tabpanel" id="tab-panel-rules" aria-labelledby="tab-rules">
-              <RulesTab rules={displayRules} format={tournament.format} />
+              <RulesTab
+                rules={displayRules}
+                format={tournament.format}
+                rulesUrl={liveDetail.rulesUrl}
+              />
             </div>
           )}
         </div>
