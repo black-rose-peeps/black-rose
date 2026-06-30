@@ -76,12 +76,22 @@ function participationColumnsMissing(message: string): boolean {
   return message.includes("participation_type") || message.includes("wwm_mode");
 }
 
-function descriptionColumnMissing(message: string): boolean {
-  return message.includes("description");
+function missingColumnError(error: { code?: string; message?: string }, column: string): boolean {
+  if (error.code === "42703") {
+    return (error.message ?? "").includes(`"${column}"`);
+  }
+  if (error.code === "PGRST204") {
+    return (error.message ?? "").includes(`'${column}' column`);
+  }
+  return false;
 }
 
-function rulesUrlColumnMissing(message: string): boolean {
-  return message.includes("rules_url");
+function descriptionColumnMissing(error: { code?: string; message?: string }): boolean {
+  return missingColumnError(error, "description");
+}
+
+function rulesUrlColumnMissing(error: { code?: string; message?: string }): boolean {
+  return missingColumnError(error, "rules_url");
 }
 
 function collectTournamentEditChanges(
@@ -250,6 +260,30 @@ export async function fetchTournamentById(id: string): Promise<MockTournament | 
   return hydrateTournament(rowToTournament(data));
 }
 
+/** SSR-safe tournament fetch via PostgREST (avoids supabase-js Realtime on Node). */
+export async function fetchTournamentByIdForSsr(id: string): Promise<MockTournament | null> {
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!baseUrl || !apiKey) return null;
+
+  const response = await fetch(
+    `${baseUrl}/rest/v1/tournaments?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(TOURNAMENT_LIST_COLUMNS)}`,
+    {
+      headers: {
+        apikey: apiKey,
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/vnd.pgrst.object+json",
+      },
+    },
+  );
+
+  if (response.status === 406 || response.status === 404) return null;
+  if (!response.ok) throw new Error(`Tournament fetch failed (${response.status})`);
+
+  const data = (await response.json()) as Record<string, unknown>;
+  return withResolvedTournamentStatus(rowToTournament(data));
+}
+
 export async function getTournamentByIdSync(id: string): Promise<MockTournament | null> {
   return fetchTournamentById(id);
 }
@@ -282,12 +316,12 @@ export async function createTournament(input: CreateTournamentInput): Promise<Mo
         "Participation mode columns are missing. Run docs/sql/tournament_participation_mode.sql in Supabase.",
       );
     }
-    if (descriptionColumnMissing(error.message)) {
+    if (descriptionColumnMissing(error)) {
       throw new Error(
         "Tournament description column is missing. Run docs/sql/tournament_description.sql in Supabase.",
       );
     }
-    if (rulesUrlColumnMissing(error.message)) {
+    if (rulesUrlColumnMissing(error)) {
       throw new Error(
         "Tournament rules URL column is missing. Run docs/sql/tournament_rules_url.sql in Supabase.",
       );
@@ -452,12 +486,12 @@ export async function updateTournament(
         "Participation mode columns are missing. Run docs/sql/tournament_participation_mode.sql in Supabase.",
       );
     }
-    if (descriptionColumnMissing(error.message)) {
+    if (descriptionColumnMissing(error)) {
       throw new Error(
         "Tournament description column is missing. Run docs/sql/tournament_description.sql in Supabase.",
       );
     }
-    if (rulesUrlColumnMissing(error.message)) {
+    if (rulesUrlColumnMissing(error)) {
       throw new Error(
         "Tournament rules URL column is missing. Run docs/sql/tournament_rules_url.sql in Supabase.",
       );

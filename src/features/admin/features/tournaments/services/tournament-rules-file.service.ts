@@ -29,16 +29,35 @@ export function validateTournamentRulesFile(file: File): string | null {
   return null;
 }
 
+async function removeTournamentRulesPaths(paths: string[]): Promise<void> {
+  if (!paths.length) return;
+  const { error: removeError } = await supabase.storage
+    .from(TOURNAMENT_RULES_BUCKET)
+    .remove(paths);
+  if (removeError) throw new Error(removeError.message);
+}
+
 export async function removeTournamentRulesFiles(tournamentId: string): Promise<void> {
   const { data, error } = await supabase.storage.from(TOURNAMENT_RULES_BUCKET).list(tournamentId);
   if (error) throw new Error(error.message);
   if (!data?.length) return;
 
   const paths = data.map((item) => `${tournamentId}/${item.name}`);
-  const { error: removeError } = await supabase.storage
-    .from(TOURNAMENT_RULES_BUCKET)
-    .remove(paths);
-  if (removeError) throw new Error(removeError.message);
+  await removeTournamentRulesPaths(paths);
+}
+
+async function removeStaleTournamentRulesFiles(
+  tournamentId: string,
+  keepPath: string,
+): Promise<void> {
+  const { data, error } = await supabase.storage.from(TOURNAMENT_RULES_BUCKET).list(tournamentId);
+  if (error) throw new Error(error.message);
+  if (!data?.length) return;
+
+  const stalePaths = data
+    .map((item) => `${tournamentId}/${item.name}`)
+    .filter((path) => path !== keepPath);
+  await removeTournamentRulesPaths(stalePaths);
 }
 
 export async function uploadTournamentRulesFile(
@@ -51,13 +70,13 @@ export async function uploadTournamentRulesFile(
   const ext = fileExtension(file.name);
   const path = `${tournamentId}/official-rules.${ext}`;
 
-  await removeTournamentRulesFiles(tournamentId);
-
   const { error } = await supabase.storage.from(TOURNAMENT_RULES_BUCKET).upload(path, file, {
     upsert: true,
     contentType: file.type || undefined,
   });
   if (error) throw new Error(error.message);
+
+  await removeStaleTournamentRulesFiles(tournamentId, path);
 
   const { data } = supabase.storage.from(TOURNAMENT_RULES_BUCKET).getPublicUrl(path);
   return `${data.publicUrl}?v=${Date.now()}`;

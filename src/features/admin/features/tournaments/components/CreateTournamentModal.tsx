@@ -61,6 +61,7 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
   >({});
   const [rulesFile, setRulesFile] = useState<File | null>(null);
   const [rulesFileError, setRulesFileError] = useState<string | null>(null);
+  const [createdTournamentId, setCreatedTournamentId] = useState<string | null>(null);
   const { submit, isSubmitting, error, resetError } = useCreateTournament();
 
   const selectedFormat = TOURNAMENT_FORMATS.find((f) => f.value === values.format);
@@ -74,6 +75,7 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
     setFieldErrors({});
     setRulesFile(null);
     setRulesFileError(null);
+    setCreatedTournamentId(null);
     resetError();
   }, [open, resetError]);
 
@@ -108,15 +110,23 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
 
     try {
       const input = formValuesToCreateInput({ ...values, rulesUrl: "" });
-      let tournament = await submit(input);
+      let tournament = createdTournamentId
+        ? await updateTournament(createdTournamentId, input)
+        : await submit(input);
+
+      if (!createdTournamentId) {
+        setCreatedTournamentId(tournament.id);
+      }
+
       if (rulesFile) {
         const rulesUrl = await uploadTournamentRulesFile(tournament.id, rulesFile);
         tournament = await updateTournament(tournament.id, { ...input, rulesUrl });
       }
+
       onCreated(tournament);
       onClose();
     } catch {
-      // error state
+      // error state — createdTournamentId preserved so retry resumes the draft row
     }
   }
 

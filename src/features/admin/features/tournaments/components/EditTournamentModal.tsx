@@ -117,8 +117,9 @@ export function EditTournamentModal({
     try {
       let input = formValuesToCreateInput(values);
 
-      if (removeRulesFile && !rulesFile) {
-        await removeTournamentRulesFiles(tournament.id);
+      const clearingRulesFile = removeRulesFile && !rulesFile;
+
+      if (clearingRulesFile) {
         input = { ...input, rulesUrl: null };
       } else if (rulesFile) {
         const rulesUrl = await uploadTournamentRulesFile(tournament.id, rulesFile);
@@ -128,6 +129,11 @@ export function EditTournamentModal({
       }
 
       const updated = await submit(tournament.id, input);
+
+      if (clearingRulesFile) {
+        await removeTournamentRulesFiles(tournament.id);
+      }
+
       onUpdated(updated);
       onClose();
     } catch {

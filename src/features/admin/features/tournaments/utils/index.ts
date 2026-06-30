@@ -123,7 +123,8 @@ export function validateCreateTournamentForm(
     errors.name = "Tournament name is required.";
   }
 
-  if (values.description.length > TOURNAMENT_DESCRIPTION_MAX_LENGTH) {
+  const descriptionLength = values.description.trim().length;
+  if (descriptionLength > TOURNAMENT_DESCRIPTION_MAX_LENGTH) {
     errors.description = `Description must be ${TOURNAMENT_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
   }
 
