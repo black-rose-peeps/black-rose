@@ -2,13 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trophy, ChevronRight, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   acceptTeamInvite,
   declineTeamInvite,
   fetchTeamsForUser,
   rosterActorFromMemberSession,
 } from "@/features/admin/features/teams/services/teams.service";
+import { MemberTeamsSkeleton } from "@/features/member/components/MemberTeamsSkeleton";
 import {
   MemberHeroBanner,
   MemberPageLayout,
@@ -264,16 +264,11 @@ function TeamsIndexPage() {
   if (!session || memberRole === "not_verified") return null;
 
   if (loading) {
-    return (
-      <MemberPageLayout>
-        <Skeleton className="mb-8 h-40 w-full rounded-none bg-white/5" />
-        <Skeleton className="h-64 w-full rounded-none bg-white/5" />
-      </MemberPageLayout>
-    );
+    return <MemberTeamsSkeleton />;
   }
 
   return (
-    <MemberPageLayout>
+    <MemberPageLayout className="pb-12">
       <MemberHeroBanner
         eyebrow="Member Console"
         title="My Teams"

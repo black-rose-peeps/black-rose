@@ -50,7 +50,6 @@ const FOOTER_NAV: { title: string; links: FooterLink[] }[] = [
   {
     title: "Explore",
     links: [
-      { label: "Home", to: "/" },
       { label: "Tournaments", to: "/tournaments" },
       { label: "Hall of Champions", to: "/champions" },
       { label: "Community", to: "/community" },

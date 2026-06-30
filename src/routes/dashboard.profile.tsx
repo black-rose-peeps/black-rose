@@ -33,6 +33,7 @@ import {
   TechPanel,
   techFieldClass,
 } from "@/features/member/components/MemberShell";
+import { GameIdentitiesFields } from "@/features/member/components/GameIdentitiesFields";
 import { MemberDashboardSkeleton } from "@/features/member/components/MemberDashboardSkeleton";
 import { useSyncedMemberSession } from "@/features/auth/hooks/useSyncedMemberSession";
 import { setSession } from "@/features/auth/store/session";
@@ -55,11 +56,7 @@ import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfil
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
-import {
-  formatValorantRiotId,
-  hasValorantIdentity,
-  validateValorantIdentityInput,
-} from "@/features/member/utils/valorant-identity";
+import { validateGameIdentitiesInput } from "@/features/member/utils/game-identity";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "identity" | "player" | "socials" | "privacy";
@@ -67,9 +64,12 @@ type ProfileTab = "identity" | "player" | "socials" | "privacy";
 export const Route = createFileRoute("/dashboard/profile")({
   validateSearch: (search: Record<string, unknown>) => {
     const tab = search.tab as string | undefined;
+    const normalizedTab = tab === "ingame" ? "player" : tab;
     const valid: ProfileTab[] = ["identity", "player", "socials", "privacy"];
+    const focusGame = typeof search.focusGame === "string" ? search.focusGame : undefined;
     return {
-      tab: valid.includes(tab as ProfileTab) ? (tab as ProfileTab) : "identity",
+      tab: valid.includes(normalizedTab as ProfileTab) ? (normalizedTab as ProfileTab) : "identity",
+      ...(focusGame ? { focusGame } : {}),
     };
   },
   head: () => ({
@@ -98,6 +98,8 @@ const EMPTY_PROFILE: MemberProfile = {
   socialLinks: [],
   valorantGameName: "",
   valorantTagline: "",
+  gameIdentities: {},
+  ingameDisplayName: "",
   tournamentHistory: [],
   activeRegistrations: [],
   upcomingMatches: [],
@@ -127,6 +129,7 @@ function applyProfileToForm(
     setRegion: (v: string) => void;
     setValorantGameName: (v: string) => void;
     setValorantTagline: (v: string) => void;
+    setGameIdentities: (v: Record<string, string>) => void;
     setIsPublic: (v: boolean) => void;
     setSocials: (v: SocialFormState) => void;
   },
@@ -140,6 +143,7 @@ function applyProfileToForm(
   setters.setRegion(data.region.trim());
   setters.setValorantGameName(data.valorantGameName);
   setters.setValorantTagline(data.valorantTagline);
+  setters.setGameIdentities(data.gameIdentities);
   setters.setIsPublic(data.isPublic);
   setters.setSocials(socialsFromProfile(data));
 }
@@ -147,7 +151,7 @@ function applyProfileToForm(
 function ProfileEditPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { tab } = Route.useSearch();
+  const { tab, focusGame } = Route.useSearch();
   const { session, isSyncing } = useSyncedMemberSession();
   const memberId = session?.id;
   const profileQuery = useMemberProfileQuery(memberId);
@@ -165,6 +169,7 @@ function ProfileEditPage() {
   const [region, setRegion] = useState("");
   const [valorantGameName, setValorantGameName] = useState("");
   const [valorantTagline, setValorantTagline] = useState("");
+  const [gameIdentities, setGameIdentities] = useState<Record<string, string>>({});
   const [isPublic, setIsPublic] = useState(true);
   const [socials, setSocials] = useState<SocialFormState>(() => socialsFromProfile(EMPTY_PROFILE));
   const { celebrationOpen, maybeCelebrate, dismissCelebration } =
@@ -209,6 +214,7 @@ function ProfileEditPage() {
       setRegion,
       setValorantGameName,
       setValorantTagline,
+      setGameIdentities,
       setIsPublic,
       setSocials,
     });
@@ -244,10 +250,14 @@ function ProfileEditPage() {
     setSaved(false);
     setError(null);
 
-    const valorantError = validateValorantIdentityInput(valorantGameName, valorantTagline);
-    if (valorantError) {
+    const identityError = validateGameIdentitiesInput({
+      valorantGameName,
+      valorantTagline,
+      gameIdentities,
+    });
+    if (identityError) {
       setSaving(false);
-      setError(valorantError);
+      setError(identityError);
       return;
     }
 
@@ -263,6 +273,7 @@ function ProfileEditPage() {
         region,
         valorantGameName,
         valorantTagline,
+        gameIdentities,
         isPublic,
         socialLinks: SOCIAL_PLATFORM_ORDER.map((platform) => ({
           platform,
@@ -291,7 +302,6 @@ function ProfileEditPage() {
   }
 
   const completion = profile?.profileCompletion ?? 0;
-  const valorantRiotId = formatValorantRiotId(valorantGameName, valorantTagline);
 
   if (error && !profile) {
     return (
@@ -360,7 +370,10 @@ function ProfileEditPage() {
         <Tabs
           value={tab}
           onValueChange={(v) =>
-            navigate({ to: "/dashboard/profile", search: { tab: v as ProfileTab } })
+            navigate({
+              to: "/dashboard/profile",
+              search: { tab: v as ProfileTab, ...(focusGame ? { focusGame } : {}) },
+            })
           }
           className="gap-6"
         >
@@ -460,6 +473,10 @@ function ProfileEditPage() {
 
           <TabsContent value="player" className="mt-0">
             <TechPanel label="Competitive" title="Player Info">
+              <p className="mb-5 text-xs leading-relaxed text-muted-foreground">
+                Your main game determines which in-game identity fields appear below for rosters and
+                brackets.
+              </p>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
@@ -524,49 +541,18 @@ function ProfileEditPage() {
               </div>
             </TechPanel>
 
-            <TechPanel label="Valorant" title="In-Game Identity" className="mt-5">
-              <p className="mb-5 text-xs leading-relaxed text-muted-foreground">
-                Your Valorant IGN and tagline are shown in Valorant team rosters, invites, and
-                tournament brackets. Your community display name stays the same everywhere else.
-              </p>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                    Valorant IGN
-                  </Label>
-                  <Input
-                    value={valorantGameName}
-                    onChange={(e) => setValorantGameName(e.target.value)}
-                    placeholder="PlayerName"
-                    maxLength={16}
-                    className={techFieldClass}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                    Tagline
-                  </Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-tech text-sm text-muted-foreground">
-                      #
-                    </span>
-                    <Input
-                      value={valorantTagline}
-                      onChange={(e) => setValorantTagline(e.target.value.replace(/^#/, ""))}
-                      placeholder="000"
-                      maxLength={6}
-                      className={cn(techFieldClass, "pl-7")}
-                    />
-                  </div>
-                </div>
-              </div>
-              {hasValorantIdentity(valorantGameName, valorantTagline) && valorantRiotId && (
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Preview: <span className="font-medium text-foreground">{valorantRiotId}</span>
-                </p>
-              )}
-            </TechPanel>
+            <GameIdentitiesFields
+              mainGame={mainGame}
+              focusGame={focusGame}
+              valorantGameName={valorantGameName}
+              valorantTagline={valorantTagline}
+              gameIdentities={gameIdentities}
+              onValorantGameNameChange={setValorantGameName}
+              onValorantTaglineChange={setValorantTagline}
+              onGameIdentityChange={(game, value) =>
+                setGameIdentities((prev) => ({ ...prev, [game]: value }))
+              }
+            />
           </TabsContent>
 
           <TabsContent value="socials" className="mt-0">

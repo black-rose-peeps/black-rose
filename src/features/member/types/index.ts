@@ -50,6 +50,10 @@ export interface MemberProfile {
   socialLinks: SocialLink[];
   valorantGameName: string;
   valorantTagline: string;
+  /** Per-title in-game identities (non-Valorant). Valorant uses valorantGameName/tagline. */
+  gameIdentities: Record<string, string>;
+  /** @deprecated Use gameIdentities[mainGame] — kept for legacy reads during migration. */
+  ingameDisplayName: string;
   tournamentHistory: string[];
   activeRegistrations: TournamentEntry[];
   upcomingMatches: UpcomingMatch[];

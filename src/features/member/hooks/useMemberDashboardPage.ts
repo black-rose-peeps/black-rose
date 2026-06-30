@@ -29,6 +29,8 @@ function profileFallbackFromSession(session: AppUser): MemberProfile {
     socialLinks: [],
     valorantGameName: "",
     valorantTagline: "",
+    gameIdentities: {},
+    ingameDisplayName: "",
     tournamentHistory: [],
     activeRegistrations: [],
     upcomingMatches: [],
