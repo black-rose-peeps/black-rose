@@ -17,6 +17,8 @@ export interface CreateTournamentInput {
   status?: TournamentStatus;
   participationType: ParticipationType;
   wwmMode?: WwmMode | null;
+  description?: string | null;
+  rulesUrl?: string | null;
 }
 
 export interface CreateTournamentFormValues {
@@ -31,6 +33,8 @@ export interface CreateTournamentFormValues {
   region: string;
   status: TournamentStatus;
   wwmMode: WwmMode | "";
+  description: string;
+  rulesUrl: string;
 }
 
 export type CreateTournamentFieldErrors = Partial<Record<keyof CreateTournamentFormValues, string>>;

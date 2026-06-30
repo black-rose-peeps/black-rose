@@ -67,9 +67,11 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
               {t.name}
             </h1>
 
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base md:text-lg">
-              {t.description}
-            </p>
+            {t.description ? (
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base md:text-lg">
+                {t.description}
+              </p>
+            ) : null}
           </div>
 
           {/* Right — CTA */}

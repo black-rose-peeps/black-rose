@@ -29,7 +29,10 @@ import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament
 import { TournamentRegisterCTA } from "@/features/tournaments/components/TournamentRegisterCTA";
 import { supportsEliminationStandings } from "@/features/tournaments/constants/formats";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
-import { fetchTournamentById } from "@/features/tournaments/services";
+import {
+  fetchTournamentById,
+  fetchTournamentByIdForSsr,
+} from "@/features/tournaments/services";
 import { getSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
@@ -62,7 +65,8 @@ function detailFromSummary(
     region: summary.region,
     participationType: summary.participationType,
     wwmMode: summary.wwmMode ?? null,
-    description: `${summary.name} is a Black Rose community tournament. Follow the bracket and overview for live updates.`,
+    description: summary.description?.trim() ?? "",
+    rulesUrl: summary.rulesUrl?.trim() || null,
     organizer: "Black Rose Operations",
     contact: BLACK_ROSE_STAFF_CONTACT_SUMMARY,
     prizeBreakdown: summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
@@ -87,31 +91,13 @@ function tournamentPageTitle(name: string | undefined): string {
 
 export const Route = createFileRoute("/tournaments/$id")({
   loader: async ({ params }): Promise<{ tournament: TournamentDetail }> => {
-    // SSR guard — supabase-js throws on Node < 22 without native WebSocket.
-    // Fall back to a minimal stub; the component fetches the real data client-side.
+    // SSR uses PostgREST fetch — supabase-js Realtime client throws on Node < 22.
     if (typeof window === "undefined") {
-      const stub: TournamentDetail = {
-        id: params.id,
-        name: "Loading…",
-        game: "Valorant",
-        status: "Registration Closed",
-        prizePool: "",
-        startDate: "",
-        registrationDeadline: "",
-        teamsRegistered: 0,
-        teamCap: 0,
-        format: "",
-        region: "",
-        description: "",
-        organizer: "",
-        contact: "",
-        prizeBreakdown: [],
-        schedule: [],
-        rules: [],
-        bracket: [],
-        teams: [],
-      };
-      return { tournament: stub };
+      const summary = await fetchTournamentByIdForSsr(params.id);
+      if (!summary || summary.status === "Draft" || summary.status === "Archived") {
+        throw notFound();
+      }
+      return { tournament: detailFromSummary(summary) };
     }
 
     // Fall back to the live service for tournaments without a detail record
@@ -125,7 +111,11 @@ export const Route = createFileRoute("/tournaments/$id")({
       { title: tournamentPageTitle(loaderData?.tournament?.name) },
       {
         name: "description",
-        content: loaderData?.tournament?.description ?? "Tournament details on Black Rose Arena.",
+        content:
+          loaderData?.tournament?.description?.trim() ||
+          (loaderData?.tournament?.name && loaderData.tournament.name !== "Loading…"
+            ? `${loaderData.tournament.name} — Black Rose Arena`
+            : "Tournament details on Black Rose Arena."),
       },
     ],
   }),
@@ -304,6 +294,7 @@ function TournamentDetailPage() {
     teamCap: rulesBracketSize,
     participationType: liveDetail.participationType,
     wwmMode: liveDetail.wwmMode,
+    hasOfficialRuleset: !!liveDetail.rulesUrl?.trim(),
   });
 
   const isLoadingDetail = tournament.name === "Loading…";
@@ -402,7 +393,11 @@ function TournamentDetailPage() {
           )}
           {activeTab === "rules" && (
             <div role="tabpanel" id="tab-panel-rules" aria-labelledby="tab-rules">
-              <RulesTab rules={displayRules} format={tournament.format} />
+              <RulesTab
+                rules={displayRules}
+                format={tournament.format}
+                rulesUrl={liveDetail.rulesUrl}
+              />
             </div>
           )}
         </div>
