@@ -28,18 +28,14 @@ export function TournamentGameIdentityGate({
     return <RegisterNowButtonSkeleton />;
   }
 
-  if (!profile) {
-    return children;
-  }
-
   const source = {
-    mainGame: profile.mainGame,
-    valorantGameName: profile.valorantGameName,
-    valorantTagline: profile.valorantTagline,
-    gameIdentities: profile.gameIdentities,
+    mainGame: profile?.mainGame ?? "",
+    valorantGameName: profile?.valorantGameName ?? "",
+    valorantTagline: profile?.valorantTagline ?? "",
+    gameIdentities: profile?.gameIdentities ?? {},
   };
 
-  if (hasIdentityForGame(tournamentGame, source)) {
+  if (profile && hasIdentityForGame(tournamentGame, source)) {
     return <>{children}</>;
   }
 
@@ -75,10 +71,7 @@ export function TournamentGameIdentityGate({
         asChild
         className="clip-cta h-11 w-full rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90 sm:w-auto"
       >
-        <Link
-          to="/dashboard/profile"
-          search={{ tab: "player", focusGame: tournamentGame }}
-        >
+        <Link to="/dashboard/profile" search={{ tab: "player", focusGame: tournamentGame }}>
           <Pencil className="h-3.5 w-3.5" />
           {riotTournament ? "Set Riot ID" : `Set ${gameLabel} ID`}
         </Link>

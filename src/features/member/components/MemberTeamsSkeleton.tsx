@@ -3,14 +3,11 @@ import { MemberPageLayout } from "./MemberShell";
 
 export function MemberTeamsSkeleton() {
   return (
-    <MemberPageLayout>
+    <MemberPageLayout className="pb-12">
       <Skeleton className="mb-8 h-44 w-full rounded-none bg-white/5 sm:h-48" />
       <div className="flex flex-col gap-5">
         {Array.from({ length: 2 }).map((_, index) => (
-          <div
-            key={index}
-            className="overflow-hidden border border-white/8 bg-[oklch(0.07_0_0)]"
-          >
+          <div key={index} className="overflow-hidden border border-white/8 bg-[oklch(0.07_0_0)]">
             <Skeleton className="h-[3px] w-full rounded-none bg-white/10" />
             <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-5">

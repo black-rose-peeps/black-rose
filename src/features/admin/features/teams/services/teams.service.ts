@@ -14,7 +14,10 @@ import { leaveTeamFn } from "../functions/leave-team.functions";
 import { MAX_TEAM_SIZE, resolveRoleForGame } from "@/features/teams/constants";
 import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { AddTeamMemberInput, CreateTeamInput } from "../types";
-import { formatIdentityForGame, parseGameIdentitiesFromRow } from "@/features/member/utils/game-identity";
+import {
+  formatIdentityForGame,
+  parseGameIdentitiesFromRow,
+} from "@/features/member/utils/game-identity";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { adminMemberToTeamMember } from "../utils";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
@@ -153,9 +156,7 @@ function rowToTeamMember(
   const snapshot = snapshots.get(userId);
   const snapshotDisplay = (row.display_name as string)?.trim();
   const baseDisplayName = snapshot?.displayName || snapshotDisplay || username;
-  const competitiveId = snapshot
-    ? formatIdentityForGame(teamGame, snapshot)
-    : null;
+  const competitiveId = snapshot ? formatIdentityForGame(teamGame, snapshot) : null;
   const useCompetitiveId = !!competitiveId;
   const displayName = useCompetitiveId ? competitiveId! : baseDisplayName;
   const ign = useCompetitiveId ? competitiveId! : (row.ign as string) || username;

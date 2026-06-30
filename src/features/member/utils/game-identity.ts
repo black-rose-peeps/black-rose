@@ -179,9 +179,7 @@ export function listConfiguredIdentitySummaries(
   return summaries;
 }
 
-export function sanitizeGameIdentities(
-  identities: Record<string, string>,
-): Record<string, string> {
+export function sanitizeGameIdentities(identities: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};
   for (const game of IDENTITY_GAMES) {
     if (isRiotGame(game)) continue;
@@ -196,7 +194,11 @@ export function parseGameIdentitiesFromRow(row: {
   ingame_display_name?: string | null;
   main_game?: string | null;
 }): Record<string, string> {
-  if (row.game_identities && typeof row.game_identities === "object" && !Array.isArray(row.game_identities)) {
+  if (
+    row.game_identities &&
+    typeof row.game_identities === "object" &&
+    !Array.isArray(row.game_identities)
+  ) {
     const parsed: Record<string, string> = {};
     for (const [key, value] of Object.entries(row.game_identities as Record<string, unknown>)) {
       const game = normalizeGameKey(key);

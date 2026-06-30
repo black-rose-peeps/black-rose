@@ -3,11 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TechPanel, techFieldClass } from "@/features/member/components/MemberShell";
 import {
   formatRiotId,
@@ -17,7 +13,6 @@ import {
   isRiotGame,
   type MemberIdentitySource,
 } from "@/features/member/utils/game-identity";
-import { hasValorantIdentity as riotFieldsComplete } from "@/features/member/utils/valorant-identity";
 import { cn } from "@/lib/utils";
 
 interface GameIdentitiesFieldsProps extends MemberIdentitySource {
@@ -100,11 +95,9 @@ function RiotIdFields({
         </p>
       )}
 
-      {!riotFieldsComplete(valorantGameName, valorantTagline) &&
+      {!hasRiotIdentity({ valorantGameName, valorantTagline, gameIdentities: {} }) &&
         (valorantGameName.trim() || valorantTagline.trim()) && (
-          <p className="mt-4 text-xs text-amber-400/90">
-            Both game name and tagline are required.
-          </p>
+          <p className="mt-4 text-xs text-amber-400/90">Both game name and tagline are required.</p>
         )}
     </>
   );
@@ -165,16 +158,15 @@ export function GameIdentitiesFields({
 
   const focusNeedsSecondary = Boolean(
     focusGame &&
-      ((isRiotGame(focusGame) && primarySection !== "riot") ||
-        (focusGame === "Where Winds Meet" && primarySection !== "wwm")),
+    ((isRiotGame(focusGame) && primarySection !== "riot") ||
+      (focusGame === "Where Winds Meet" && primarySection !== "wwm")),
   );
 
   const [otherOpen, setOtherOpen] = useState(
     () =>
       focusNeedsSecondary ||
       (secondarySections.includes("riot") && hasRiotIdentity(identitySource)) ||
-      (secondarySections.includes("wwm") &&
-        hasIdentityForGame("Where Winds Meet", identitySource)),
+      (secondarySections.includes("wwm") && hasIdentityForGame("Where Winds Meet", identitySource)),
   );
 
   useEffect(() => {
@@ -270,9 +262,7 @@ export function GameIdentitiesFields({
               <TechPanel
                 label="Where Winds Meet"
                 title="Character Name"
-                className={cn(
-                  focusGame === "Where Winds Meet" && "ring-1 ring-white/15",
-                )}
+                className={cn(focusGame === "Where Winds Meet" && "ring-1 ring-white/15")}
               >
                 <WhereWindsMeetFields
                   value={gameIdentities["Where Winds Meet"] ?? ""}

@@ -53,9 +53,9 @@ export function SelectTeamRegistrationDialog({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [identityGapsByTeamId, setIdentityGapsByTeamId] = useState<Map<string, RosterIdentityGap[]>>(
-    () => new Map(),
-  );
+  const [identityGapsByTeamId, setIdentityGapsByTeamId] = useState<
+    Map<string, RosterIdentityGap[]>
+  >(() => new Map());
   const hasLoadedTeams = useRef(false);
 
   useEffect(() => {
@@ -272,9 +272,7 @@ export function SelectTeamRegistrationDialog({
                   <ul className="space-y-1 border-t border-amber-400/15 pt-3 text-xs text-muted-foreground">
                     {selectedTeamGaps.map((gap) => (
                       <li key={gap.userId}>
-                        <span className="text-foreground">
-                          {gap.displayName || gap.username}
-                        </span>
+                        <span className="text-foreground">{gap.displayName || gap.username}</span>
                         {" · "}
                         missing {gameIdentityLabel} ID
                       </li>

@@ -1,9 +1,5 @@
 import type { Team, TeamMember } from "@/features/teams/types";
-import {
-  gameIdentityConfig,
-  hasIdentityForGame,
-  type MemberIdentitySource,
-} from "./game-identity";
+import { gameIdentityConfig, hasIdentityForGame, type MemberIdentitySource } from "./game-identity";
 
 export interface RosterIdentityGap {
   userId: string;

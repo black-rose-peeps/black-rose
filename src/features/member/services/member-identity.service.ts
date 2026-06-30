@@ -14,22 +14,23 @@ export async function fetchMemberIdentityRecords(
   const unique = [...new Set(memberIds.filter(Boolean))];
   if (!unique.length) return new Map();
 
-  const { data: profiles, error: profileError } = await supabase
-    .from("member_profiles")
-    .select(
-      "member_id, display_name, main_game, valorant_game_name, valorant_tagline, game_identities, ingame_display_name",
-    )
-    .in("member_id", unique);
+  const [profilesResult, membersResult] = await Promise.all([
+    supabase
+      .from("member_profiles")
+      .select(
+        "member_id, display_name, main_game, valorant_game_name, valorant_tagline, game_identities, ingame_display_name",
+      )
+      .in("member_id", unique),
+    supabase.from("members").select("id, username").in("id", unique),
+  ]);
+
+  const { data: profiles, error: profileError } = profilesResult;
+  const { data: members, error: memberError } = membersResult;
 
   if (profileError) {
     console.error("[member-identity] profile lookup failed:", profileError.message);
     return new Map();
   }
-
-  const { data: members, error: memberError } = await supabase
-    .from("members")
-    .select("id, username")
-    .in("id", unique);
 
   if (memberError) {
     console.error("[member-identity] member lookup failed:", memberError.message);

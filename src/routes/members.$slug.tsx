@@ -197,6 +197,7 @@ function MemberProfilePage() {
   const publicSocials = SOCIAL_PLATFORM_ORDER.map((platform) =>
     p.socialLinks.find((s) => s.platform === platform),
   ).filter(isDefinedPublicSocialLink);
+  const identitySummaries = listConfiguredIdentitySummaries(p);
 
   return (
     <MemberPageLayout maxWidth="max-w-4xl">
@@ -395,20 +396,17 @@ function MemberProfilePage() {
                 <dd className="mt-0.5 text-sm">{p.region || "—"}</dd>
               </div>
               <div className="h-px bg-white/6" />
-              {listConfiguredIdentitySummaries(p).length > 0 && (
-                <>
-                  {listConfiguredIdentitySummaries(p).map((entry) => (
-                    <div key={entry.key}>
-                      <dt className="font-tech text-label-readable uppercase text-muted-foreground">
-                        {entry.label}
-                        {entry.games.length === 1 ? "" : ` · ${entry.games.join(" · ")}`}
-                      </dt>
-                      <dd className="mt-0.5 text-sm text-emerald-400">{entry.display}</dd>
-                      <div className="mt-3 h-px bg-white/6" />
-                    </div>
-                  ))}
-                </>
-              )}
+              {identitySummaries.length > 0 &&
+                identitySummaries.map((entry, index) => (
+                  <div key={entry.key}>
+                    {index > 0 && <div className="mb-3 h-px bg-white/6" />}
+                    <dt className="font-tech text-label-readable uppercase text-muted-foreground">
+                      {entry.label}
+                      {entry.games.length === 1 ? "" : ` · ${entry.games.join(" · ")}`}
+                    </dt>
+                    <dd className="mt-0.5 text-sm text-emerald-400">{entry.display}</dd>
+                  </div>
+                ))}
             </dl>
           </ProfileCard>
 

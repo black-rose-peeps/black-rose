@@ -14,6 +14,7 @@ import {
 import { sanitizeSocialLinksForViewer } from "../utils/social-links";
 import { sanitizeHttpUrl } from "../utils/validate-social-url";
 import { normalizeValorantTagline } from "../utils/valorant-identity";
+import { normalizeGameKey } from "@/features/teams/constants";
 import {
   sanitizeGameIdentities,
   validateGameIdentitiesInput,
@@ -163,7 +164,9 @@ export interface EnsureMemberProfileInput {
   connections?: DiscordConnection[];
 }
 
-export async function ensureMemberProfile(input: EnsureMemberProfileInput): Promise<MemberProfileRow> {
+export async function ensureMemberProfile(
+  input: EnsureMemberProfileInput,
+): Promise<MemberProfileRow> {
   const supabase = getSupabaseAdmin();
   const avatarUrl = buildDiscordAvatarUrl(input.discordUserId, input.discordAvatarHash);
 
@@ -222,11 +225,7 @@ export async function ensureMemberProfile(input: EnsureMemberProfileInput): Prom
   if (error) throw new Error(error.message);
 
   await ensureDefaultSocialLinks(input.member.id);
-  await applyDiscordConnections(
-    input.member.id,
-    input.connections ?? [],
-    input.discordUserId,
-  );
+  await applyDiscordConnections(input.member.id, input.connections ?? [], input.discordUserId);
 
   invalidateMemberProfileCache(input.member.id);
 
@@ -420,9 +419,9 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
   const valorantGameName = input.valorantGameName.trim();
   const valorantTagline = normalizeValorantTagline(input.valorantTagline);
   const gameIdentities = sanitizeGameIdentities(input.gameIdentities);
-  const mainGame = input.mainGame?.trim() || null;
+  const mainGame = input.mainGame?.trim() ? normalizeGameKey(input.mainGame.trim()) : null;
   const legacyIngameName =
-    mainGame && !isRiotGame(mainGame) ? gameIdentities[mainGame] ?? null : null;
+    mainGame && !isRiotGame(mainGame) ? (gameIdentities[mainGame] ?? null) : null;
 
   const { error: updateError } = await supabase
     .from("member_profiles")

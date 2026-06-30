@@ -1,6 +1,7 @@
 import type { AdminMember } from "@/features/admin/features/members/types";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "../constants";
 import type { MemberProfile, SocialLink, SocialPlatform } from "../types";
+import { normalizeGameKey } from "@/features/teams/constants";
 import { parseGameIdentitiesFromRow } from "./game-identity";
 import { calculateProfileCompletion } from "./profile-completion";
 
@@ -68,7 +69,7 @@ export function buildMemberProfile(
   });
 
   const displayName = profileRow.display_name.trim() || member.username;
-  const mainGame = profileRow.main_game?.trim() ?? "";
+  const mainGame = normalizeGameKey(profileRow.main_game?.trim() ?? "") ?? profileRow.main_game?.trim() ?? "";
   const mainRole = profileRow.main_role.trim();
   const region = profileRow.region.trim();
   const avatarUrl = profileRow.avatar_url;

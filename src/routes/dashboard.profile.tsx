@@ -370,7 +370,10 @@ function ProfileEditPage() {
         <Tabs
           value={tab}
           onValueChange={(v) =>
-            navigate({ to: "/dashboard/profile", search: { tab: v as ProfileTab } })
+            navigate({
+              to: "/dashboard/profile",
+              search: { tab: v as ProfileTab, ...(focusGame ? { focusGame } : {}) },
+            })
           }
           className="gap-6"
         >

@@ -24,6 +24,7 @@ import {
 import {
   formatIdentityForGame,
   gameIdentityConfig,
+  isRiotGame,
   parseGameIdentitiesFromRow,
 } from "@/features/member/utils/game-identity";
 import { fetchRosterIdentityGapsForTeam } from "@/features/member/services/member-identity.service";
@@ -971,7 +972,20 @@ export async function addMemberToTournament(
 
   let soloIgn = member.username;
   const competitiveIds = await fetchCompetitiveIdentitiesForMembers(tournament.game, [member.id]);
-  soloIgn = competitiveIds.get(member.id) ?? member.username;
+  const competitiveIgn = competitiveIds.get(member.id);
+  const identityConfig = gameIdentityConfig(tournament.game);
+
+  if (identityConfig) {
+    if (!competitiveIgn) {
+      const idLabel = isRiotGame(tournament.game) ? "Riot ID" : identityConfig.fieldLabel;
+      throw new Error(
+        `Add your ${idLabel} for ${identityConfig.panelLabel} on your profile before registering.`,
+      );
+    }
+    soloIgn = competitiveIgn;
+  } else if (competitiveIgn) {
+    soloIgn = competitiveIgn;
+  }
 
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")

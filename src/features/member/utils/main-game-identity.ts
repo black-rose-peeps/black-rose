@@ -22,10 +22,7 @@ export {
   type MemberIdentitySource,
 } from "./game-identity";
 
-import {
-  gameIdentityConfig,
-  validateGameIdentitiesInput,
-} from "./game-identity";
+import { gameIdentityConfig, validateGameIdentitiesInput } from "./game-identity";
 
 /** @deprecated Use validateGameIdentitiesInput */
 export function validateMainGameIdentityInput(
