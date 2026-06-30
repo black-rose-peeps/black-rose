@@ -32,6 +32,11 @@ import {
   resolveParticipationType,
 } from "@/features/tournaments/types/participation";
 import { useCreateTournament } from "../hooks";
+import { updateTournament } from "../services/tournaments.service";
+import {
+  uploadTournamentRulesFile,
+  validateTournamentRulesFile,
+} from "../services/tournament-rules-file.service";
 import type { AdminTournament, CreateTournamentFormValues } from "../types";
 import {
   applyGameToParticipationForm,
@@ -40,6 +45,8 @@ import {
   validateCreateTournamentForm,
 } from "../utils";
 import { ParticipationModeFields } from "./ParticipationModeFields";
+import { TournamentDescriptionField } from "./TournamentDescriptionField";
+import { TournamentRulesFileField } from "./TournamentRulesFileField";
 
 interface CreateTournamentModalProps {
   open: boolean;
@@ -52,6 +59,9 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof CreateTournamentFormValues, string>>
   >({});
+  const [rulesFile, setRulesFile] = useState<File | null>(null);
+  const [rulesFileError, setRulesFileError] = useState<string | null>(null);
+  const [createdTournamentId, setCreatedTournamentId] = useState<string | null>(null);
   const { submit, isSubmitting, error, resetError } = useCreateTournament();
 
   const selectedFormat = TOURNAMENT_FORMATS.find((f) => f.value === values.format);
@@ -63,6 +73,9 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
     if (!open) return;
     setValues(DEFAULT_CREATE_TOURNAMENT_FORM);
     setFieldErrors({});
+    setRulesFile(null);
+    setRulesFileError(null);
+    setCreatedTournamentId(null);
     resetError();
   }, [open, resetError]);
 
@@ -86,12 +99,34 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
     setFieldErrors(errors);
     if (hasFormErrors(errors)) return;
 
+    if (rulesFile) {
+      const fileError = validateTournamentRulesFile(rulesFile);
+      if (fileError) {
+        setRulesFileError(fileError);
+        return;
+      }
+    }
+    setRulesFileError(null);
+
     try {
-      const tournament = await submit(formValuesToCreateInput(values));
+      const input = formValuesToCreateInput({ ...values, rulesUrl: "" });
+      let tournament = createdTournamentId
+        ? await updateTournament(createdTournamentId, input)
+        : await submit(input);
+
+      if (!createdTournamentId) {
+        setCreatedTournamentId(tournament.id);
+      }
+
+      if (rulesFile) {
+        const rulesUrl = await uploadTournamentRulesFile(tournament.id, rulesFile);
+        tournament = await updateTournament(tournament.id, { ...input, rulesUrl });
+      }
+
       onCreated(tournament);
       onClose();
     } catch {
-      // error state
+      // error state — createdTournamentId preserved so retry resumes the draft row
     }
   }
 
@@ -121,6 +156,25 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
             />
             {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
           </div>
+
+          <TournamentDescriptionField
+            id="tournament-description"
+            value={values.description}
+            onChange={(description) => updateField("description", description)}
+            disabled={isSubmitting}
+            error={fieldErrors.description}
+          />
+
+          <TournamentRulesFileField
+            id="tournament-rules-file"
+            selectedFile={rulesFile}
+            onSelectFile={(file) => {
+              setRulesFile(file);
+              setRulesFileError(null);
+            }}
+            disabled={isSubmitting}
+            error={rulesFileError ?? undefined}
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

@@ -8,6 +8,7 @@
 export {
   fetchTournaments,
   fetchTournamentById,
+  fetchTournamentByIdForSsr,
 } from "@/features/admin/features/tournaments/services/tournaments.service";
 
 export { fetchTournamentRegistrations } from "@/features/admin/features/tournaments/services/tournament-registrations.service";

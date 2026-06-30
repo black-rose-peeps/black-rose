@@ -7,7 +7,6 @@ import {
   AdaptiveModalBody,
   AdaptiveModalContent,
   AdaptiveModalDescription,
-  AdaptiveModalFooter,
   AdaptiveModalHeader,
   AdaptiveModalTitle,
 } from "@/components/ui/adaptive-modal";
@@ -166,7 +165,9 @@ export function SelectTeamRegistrationDialog({
                 variant="outline"
                 className="rounded-none border-white/15 bg-transparent font-tech text-ui-readable uppercase"
               >
-                <Link to="/teams">Manage Teams</Link>
+                <Link to="/teams" search={{ create: false }}>
+                  Manage Teams
+                </Link>
               </Button>
             </div>
           ) : (
