@@ -5,6 +5,7 @@ import {
 } from "@/features/tournaments/services/tournament-registration-requests.service";
 import { RegisterNowButtonSkeleton } from "./SelectTeamRegistrationSkeleton";
 import { RequestTournamentRegistrationDialog } from "./RequestTournamentRegistrationDialog";
+import { TournamentGameIdentityGate } from "@/features/member/components/TournamentGameIdentityGate";
 
 interface TournamentMemberRegisterRequestProps {
   tournamentId: string;
@@ -63,7 +64,7 @@ export function TournamentMemberRegisterRequest({
   }
 
   return (
-    <>
+    <TournamentGameIdentityGate memberId={memberId} tournamentGame={tournamentGame}>
       <button
         type="button"
         onClick={() => setDialogOpen(true)}
@@ -83,6 +84,6 @@ export function TournamentMemberRegisterRequest({
           void loadStatus();
         }}
       />
-    </>
+    </TournamentGameIdentityGate>
   );
 }

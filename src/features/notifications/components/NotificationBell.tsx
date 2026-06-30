@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Radar,
+  Bell,
   X,
   CheckCheck,
   Trophy,
@@ -112,7 +112,7 @@ function NotificationPanel({
               eyebrow="Signal Clear"
               title={
                 <>
-                  Nothing on your <span className="text-stroke">radar.</span>
+                  Nothing <span className="text-stroke">new.</span>
                 </>
               }
               description="Team invites, tournament updates, profile comments, and match alerts will appear here when they land."
@@ -306,7 +306,10 @@ export function NotificationBell() {
           unread > 0 ? "border-white/20" : "border-white/10"
         }`}
       >
-        <Radar className={`h-4 w-4 ${unread > 0 ? "text-foreground" : ""}`} strokeWidth={1.5} />
+        <Bell
+          className={`h-[18px] w-[18px] ${unread > 0 ? "text-foreground" : ""}`}
+          strokeWidth={2}
+        />
         {unread > 0 && (
           <>
             <span className="pointer-events-none absolute inset-0 animate-pulse-soft bg-white/[0.04]" />

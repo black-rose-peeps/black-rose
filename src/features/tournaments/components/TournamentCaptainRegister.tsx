@@ -11,6 +11,7 @@ import {
 } from "@/features/tournaments/services/team-registration.service";
 import { RegisterNowButtonSkeleton } from "./SelectTeamRegistrationSkeleton";
 import { SelectTeamRegistrationDialog } from "./SelectTeamRegistrationDialog";
+import { TournamentGameIdentityGate } from "@/features/member/components/TournamentGameIdentityGate";
 
 export function TournamentRegistrationStatusBadge({
   status,
@@ -97,13 +98,15 @@ export function TournamentCaptainRegister({
         isRegisteredCaptainStatus(registrationStatus) ? (
         <TournamentRegistrationStatusBadge status={registrationStatus} />
       ) : (
-        <button
-          type="button"
-          onClick={() => setDialogOpen(true)}
-          className="clip-cta inline-flex h-12 items-center gap-3 bg-white px-8 font-tech text-sm uppercase tracking-wider-2 text-black transition hover:bg-white/90"
-        >
-          Register Now <span aria-hidden>→</span>
-        </button>
+        <TournamentGameIdentityGate memberId={memberId} tournamentGame={tournamentGame}>
+          <button
+            type="button"
+            onClick={() => setDialogOpen(true)}
+            className="clip-cta inline-flex h-12 items-center gap-3 bg-white px-8 font-tech text-sm uppercase tracking-wider-2 text-black transition hover:bg-white/90"
+          >
+            Register Now <span aria-hidden>→</span>
+          </button>
+        </TournamentGameIdentityGate>
       )}
 
       <SelectTeamRegistrationDialog

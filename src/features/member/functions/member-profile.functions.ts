@@ -34,6 +34,7 @@ export interface UpdateMyMemberProfileInput {
   region: string;
   valorantGameName: string;
   valorantTagline: string;
+  gameIdentities: Record<string, string>;
   isPublic: boolean;
   socialLinks: { platform: SocialPlatform; url: string | null; isPublic: boolean }[];
 }

@@ -21,7 +21,14 @@ import {
   isBlockingTournamentStatus,
   tournamentRosterRequirementError,
 } from "@/features/tournaments/utils/team-tournament-eligibility";
-import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
+import {
+  formatIdentityForGame,
+  gameIdentityConfig,
+  isRiotGame,
+  parseGameIdentitiesFromRow,
+} from "@/features/member/utils/game-identity";
+import { fetchRosterIdentityGapsForTeam } from "@/features/member/services/member-identity.service";
+import { formatRosterIdentityGapMessage } from "@/features/member/utils/roster-identity";
 import {
   fetchTournamentById,
   fetchTournaments,
@@ -175,28 +182,39 @@ function teamCaptainDisplayName(team: Team): string {
   return captain?.displayName || captain?.username || "—";
 }
 
-async function fetchValorantIdsForMembers(memberIds: string[]): Promise<Map<string, string>> {
+async function fetchCompetitiveIdentitiesForMembers(
+  game: string,
+  memberIds: string[],
+): Promise<Map<string, string>> {
   const unique = [...new Set(memberIds.filter(Boolean))];
-  if (!unique.length) return new Map();
+  if (!unique.length || !gameIdentityConfig(game)) return new Map();
 
   const { data, error } = await supabase
     .from("member_profiles")
-    .select("member_id, valorant_game_name, valorant_tagline")
+    .select(
+      "member_id, main_game, valorant_game_name, valorant_tagline, game_identities, ingame_display_name",
+    )
     .in("member_id", unique);
 
   if (error) {
-    console.error("[registrations] valorant id lookup failed:", error.message);
+    console.error("[registrations] competitive identity lookup failed:", error.message);
     return new Map();
   }
 
   const result = new Map<string, string>();
   for (const row of data ?? []) {
     const memberId = row.member_id as string;
-    const valorantId = formatValorantRiotId(
-      (row.valorant_game_name as string | null) ?? "",
-      (row.valorant_tagline as string | null) ?? "",
-    );
-    if (valorantId) result.set(memberId, valorantId);
+    const identity = formatIdentityForGame(game, {
+      mainGame: (row.main_game as string | null) ?? "",
+      valorantGameName: (row.valorant_game_name as string | null) ?? "",
+      valorantTagline: (row.valorant_tagline as string | null) ?? "",
+      gameIdentities: parseGameIdentitiesFromRow({
+        game_identities: row.game_identities,
+        ingame_display_name: row.ingame_display_name as string | null,
+        main_game: row.main_game as string | null,
+      }),
+    });
+    if (identity) result.set(memberId, identity);
   }
   return result;
 }
@@ -244,7 +262,23 @@ async function enrichRegistrationsWithLiveData(
   const soloMemberIds = regs
     .filter((r) => !r.rosterTeamId && r.memberUserId)
     .map((r) => r.memberUserId as string);
-  const valorantIds = await fetchValorantIdsForMembers(soloMemberIds);
+
+  const soloGames = [
+    ...new Set(
+      regs
+        .filter((r) => !r.rosterTeamId && r.memberUserId)
+        .map((r) => tournamentGameById.get(r.tournamentId))
+        .filter((g): g is string => !!g),
+    ),
+  ];
+
+  const competitiveIdsByGame = new Map<string, Map<string, string>>();
+  await Promise.all(
+    soloGames.map(async (game) => {
+      const ids = await fetchCompetitiveIdentitiesForMembers(game, soloMemberIds);
+      competitiveIdsByGame.set(game, ids);
+    }),
+  );
 
   return regs.map((reg) => {
     if (reg.rosterTeamId) {
@@ -253,15 +287,15 @@ async function enrichRegistrationsWithLiveData(
     }
 
     const game = tournamentGameById.get(reg.tournamentId);
-    if (!game || !isValorantGame(game) || !reg.memberUserId) return reg;
+    if (!game || !reg.memberUserId) return reg;
 
-    const valorantId = valorantIds.get(reg.memberUserId);
-    if (!valorantId) return reg;
+    const competitiveId = competitiveIdsByGame.get(game)?.get(reg.memberUserId);
+    if (!competitiveId) return reg;
 
     return {
       ...reg,
-      captain: valorantId,
-      members: reg.members.map((m) => ({ ...m, ign: valorantId })),
+      captain: competitiveId,
+      members: reg.members.map((m) => ({ ...m, ign: competitiveId })),
     };
   });
 }
@@ -327,6 +361,10 @@ async function validateTeamForTournamentRegistration(
 
   const rosterError = tournamentRosterRequirementError(rosterTeam, tournament.game);
   if (rosterError) throw new Error(rosterError);
+
+  const identityGaps = await fetchRosterIdentityGapsForTeam(rosterTeam, tournament.game);
+  const identityError = formatRosterIdentityGapMessage(rosterTeam, tournament.game, identityGaps);
+  if (identityError) throw new Error(identityError);
 
   return tournament;
 }
@@ -933,9 +971,20 @@ export async function addMemberToTournament(
   });
 
   let soloIgn = member.username;
-  if (isValorantGame(tournament.game)) {
-    const valorantIds = await fetchValorantIdsForMembers([member.id]);
-    soloIgn = valorantIds.get(member.id) ?? member.username;
+  const competitiveIds = await fetchCompetitiveIdentitiesForMembers(tournament.game, [member.id]);
+  const competitiveIgn = competitiveIds.get(member.id);
+  const identityConfig = gameIdentityConfig(tournament.game);
+
+  if (identityConfig) {
+    if (!competitiveIgn) {
+      const idLabel = isRiotGame(tournament.game) ? "Riot ID" : identityConfig.fieldLabel;
+      throw new Error(
+        `Add your ${idLabel} for ${identityConfig.panelLabel} on your profile before registering.`,
+      );
+    }
+    soloIgn = competitiveIgn;
+  } else if (competitiveIgn) {
+    soloIgn = competitiveIgn;
   }
 
   const { data: reg, error: regErr } = await supabase
