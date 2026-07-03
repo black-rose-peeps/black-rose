@@ -211,6 +211,7 @@ The platform is **production-capable** with Supabase as the backend. Shared doma
 | --- | -------- |
 | [docs/README.md](./docs/README.md) | Supabase tables, admin flow, env checklist |
 | [docs/SUPABASE_STAGING_CLONE.md](./docs/SUPABASE_STAGING_CLONE.md) | Clone prod DB to a staging project (local + preview) |
+| [docs/SUPABASE_PROD_MIGRATION.md](./docs/SUPABASE_PROD_MIGRATION.md) | Migrate old prod DB to new Supabase (`efchfvreaotskrdlweze`) |
 | [docs/ADMIN_DATABASE.md](./docs/ADMIN_DATABASE.md) | Schema detail, TypeScript mappings, RLS notes |
 | [docs/ADMIN_TOURNAMENTS.md](./docs/ADMIN_TOURNAMENTS.md) | Tournament & bracket setup step-by-step |
 | [docs/sql/](./docs/sql/) | SQL migration scripts |

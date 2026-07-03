@@ -339,7 +339,8 @@ Normal if the project was created manually / via dashboard rather than CLI migra
 
 | Path                             | Purpose                                             |
 | -------------------------------- | --------------------------------------------------- |
-| `scripts/restore-staging-db.ps1` | Restore `supabase/backups/*.sql` into staging       |
+| `scripts/restore-supabase-db.ps1` | Restore `supabase/backups/*.sql` into any project ref |
+| `scripts/restore-staging-db.ps1` | Restore into staging (wrapper; default `xjwugbbrqpwnenmlrkdh`) |
 | `supabase/backups/`              | Local dump output (gitignored)                      |
 | `supabase/.gitignore`            | Ignores `backups/`                                  |
 | `vite.config.ts`                 | Dev server port **3000**                            |
@@ -374,6 +375,7 @@ npm run dev
 
 ## Related docs
 
+- [SUPABASE_PROD_MIGRATION.md](./SUPABASE_PROD_MIGRATION.md) — migrate old prod to a **new** Supabase project (production cutover)
 - [README.md](./README.md) — Supabase tables and admin setup
 - [ADMIN_DATABASE.md](./ADMIN_DATABASE.md) — schema reference
 - [Supabase: Backup and restore using the CLI](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
