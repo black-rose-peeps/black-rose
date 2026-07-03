@@ -8,6 +8,8 @@ What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and m
 
 **Clone prod DB → staging project (local + Vercel preview):** [SUPABASE_STAGING_CLONE.md](./SUPABASE_STAGING_CLONE.md)
 
+| **Migrate old prod DB → new Supabase project (production cutover):** [SUPABASE_PROD_MIGRATION.md](./SUPABASE_PROD_MIGRATION.md) — new prod ref `efchfvreaotskrdlweze`
+
 ---
 
 ## Admin Console Login
