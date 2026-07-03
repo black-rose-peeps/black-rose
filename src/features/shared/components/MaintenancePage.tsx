@@ -10,8 +10,6 @@ export function MaintenancePage() {
 
       <section
         className="relative z-10 w-full max-w-2xl rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl backdrop-blur md:p-12"
-        role="status"
-        aria-live="polite"
       >
         <img
           src={blackRoseEmblem}
