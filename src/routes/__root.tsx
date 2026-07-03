@@ -8,6 +8,7 @@ import favicon from "@/assets/black-rose-emblem-black.png";
 import { CapacitorOAuthBridge } from "@/features/auth/components/CapacitorOAuthBridge";
 import { NotFoundPage } from "@/features/shared/components/NotFoundPage";
 import { ErrorPage } from "@/features/shared/components/ErrorPage";
+import { MaintenancePage } from "@/features/shared/components/MaintenancePage";
 import { DEFAULT_OG_TITLE, defaultOgMeta } from "@/lib/site-meta";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -69,10 +70,15 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
   useEffect(() => {
     setAppQueryClient(queryClient);
   }, [queryClient]);
+
+  if (maintenanceMode) {
+    return <MaintenancePage />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
