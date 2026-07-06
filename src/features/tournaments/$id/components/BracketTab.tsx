@@ -56,7 +56,10 @@ import {
   bracketCanvasSize,
   bracketMatchTop,
 } from "../../utils/bracket-layout";
-import { sortPublicBracketRounds } from "@/features/tournaments/utils/bracket-round-order";
+import {
+  resolveRoundId,
+  sortPublicBracketRounds,
+} from "@/features/tournaments/utils/bracket-round-order";
 import { buildByeAdvancementMarkersFromRounds } from "@/features/tournaments/utils/bracket-bye-markers";
 import { LowerBracketPlayInGuide } from "@/features/tournaments/components/LowerBracketPlayInGuide";
 import { OpeningPlayInGuide } from "@/features/tournaments/components/OpeningPlayInGuide";
@@ -376,7 +379,7 @@ export function BracketTab({
         {!isDoubleElim && stagedChampionship.length > 0 && (
           <EliminationChampionshipStage
             rounds={stagedChampionship.map((round) => {
-              const roundId = round.id ?? round.label;
+              const roundId = resolveRoundId(round);
               return {
                 roundId,
                 title: round.label,
@@ -476,7 +479,7 @@ export function BracketTab({
       {championshipRounds.length > 0 && (
         <EliminationChampionshipStage
           rounds={championshipRounds.map((round) => {
-            const roundId = round.id ?? round.label;
+            const roundId = resolveRoundId(round);
             return {
               roundId,
               title: round.label,

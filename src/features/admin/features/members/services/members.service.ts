@@ -227,38 +227,47 @@ async function fetchOtherTeamMembershipForUserIds(
 ): Promise<Map<string, OtherTeamMembership>> {
   if (!userIds.length) return new Map();
 
-  const { data: teamRows, error: teamErr } = await supabase
-    .from("teams")
-    .select("id, name, tag")
-    .eq("game", game);
-
-  if (teamErr) throw new Error(teamErr.message);
-
-  const teamsById = new Map<string, OtherTeamMembership>();
-  const teamIds: string[] = [];
-  for (const row of teamRows ?? []) {
-    const id = row.id as string;
-    if (id === excludeTeamId) continue;
-    teamsById.set(id, { teamName: row.name as string, teamTag: row.tag as string });
-    teamIds.push(id);
-  }
-
-  if (!teamIds.length) return new Map();
-
   const { data: memberRows, error: memberErr } = await supabase
     .from("team_members")
     .select("user_id, team_id")
     .in("user_id", userIds)
-    .in("team_id", teamIds)
     .in("status", ["captain", "active"]);
 
   if (memberErr) throw new Error(memberErr.message);
+  if (!memberRows?.length) return new Map();
+
+  const teamIds = [
+    ...new Set(
+      memberRows
+        .map((row) => row.team_id as string)
+        .filter((teamId) => teamId && teamId !== excludeTeamId),
+    ),
+  ];
+
+  if (!teamIds.length) return new Map();
+
+  const { data: teamRows, error: teamErr } = await supabase
+    .from("teams")
+    .select("id, name, tag")
+    .eq("game", game)
+    .in("id", teamIds);
+
+  if (teamErr) throw new Error(teamErr.message);
+
+  const teamsById = new Map<string, OtherTeamMembership>();
+  for (const row of teamRows ?? []) {
+    teamsById.set(row.id as string, {
+      teamName: row.name as string,
+      teamTag: row.tag as string,
+    });
+  }
 
   const result = new Map<string, OtherTeamMembership>();
-  for (const row of memberRows ?? []) {
+  for (const row of memberRows) {
     const userId = row.user_id as string;
+    const teamId = row.team_id as string;
     if (result.has(userId)) continue;
-    const team = teamsById.get(row.team_id as string);
+    const team = teamsById.get(teamId);
     if (team) result.set(userId, team);
   }
   return result;

@@ -78,10 +78,7 @@ export function ActiveRegistrationsPanel({ entries }: ActiveRegistrationsPanelPr
             )}
           >
             <CornerAccents />
-            <span
-              aria-hidden
-              className={cn("absolute inset-y-0 left-0 w-0.5", status.bar)}
-            />
+            <span aria-hidden className={cn("absolute inset-y-0 left-0 w-0.5", status.bar)} />
 
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
               <div className="min-w-0 flex-1 space-y-3">

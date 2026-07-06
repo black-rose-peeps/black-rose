@@ -1,12 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import {
-  Calendar,
-  ChevronRight,
-  Clock,
-  MapPin,
-  Monitor,
-  Swords,
-} from "lucide-react";
+import { Calendar, ChevronRight, Clock, MapPin, Monitor, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { CornerAccents } from "@/features/member/components/MemberShell";
@@ -129,10 +122,7 @@ export function UpcomingMatchesPanel({ matches }: UpcomingMatchesPanelProps) {
                 size="sm"
                 className="clip-cta h-9 w-full rounded-none border-white/12 bg-white/[0.03] font-tech text-ui-readable uppercase hover:bg-white/8 sm:w-auto sm:self-end"
               >
-                <Link
-                  to="/tournaments/$id"
-                  params={{ id: match.tournamentId }}
-                >
+                <Link to="/tournaments/$id" params={{ id: match.tournamentId }}>
                   View bracket
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Link>

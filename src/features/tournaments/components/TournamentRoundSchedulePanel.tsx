@@ -36,7 +36,9 @@ export function TournamentRoundSchedulePanel({
           <CalendarClock className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <h3 className="font-tech text-label-readable uppercase text-foreground">Match Schedule</h3>
+          <h3 className="font-tech text-label-readable uppercase text-foreground">
+            Match Schedule
+          </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Staff-published round times — check the Bracket tab for live results.
           </p>
@@ -53,6 +55,7 @@ export function TournamentRoundSchedulePanel({
           const parts = formatRoundScheduleParts(entry.schedule);
           const isOnline = entry.schedule.venueType === "online";
           const isOnsite = entry.schedule.venueType === "onsite";
+          const venueLabel = roundVenueLabel(entry.schedule.venueType);
           const prevDate = index > 0 ? entries[index - 1].schedule.date : null;
           const showDateBadge = entry.schedule.date !== prevDate;
 
@@ -138,7 +141,7 @@ export function TournamentRoundSchedulePanel({
                     )}
                   </div>
 
-                  {(isOnline || isOnsite || roundVenueLabel(entry.schedule.venueType)) && (
+                  {(isOnline || isOnsite || venueLabel) && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/6 pt-3">
                       {isOnline && (
                         <DiscordAppAnchor
@@ -165,9 +168,9 @@ export function TournamentRoundSchedulePanel({
                           </div>
                         </div>
                       )}
-                      {!isOnline && !isOnsite && roundVenueLabel(entry.schedule.venueType) && (
+                      {!isOnline && !isOnsite && venueLabel && (
                         <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {roundVenueLabel(entry.schedule.venueType)}
+                          {venueLabel}
                         </span>
                       )}
                     </div>
