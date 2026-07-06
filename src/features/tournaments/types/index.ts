@@ -38,12 +38,6 @@ export interface PrizeTier {
   prize: string;
 }
 
-export interface ScheduleEntry {
-  phase: string;
-  date: string;
-  note?: string;
-}
-
 export interface RuleSection {
   title: string;
   items: string[];
@@ -105,7 +99,6 @@ export interface TournamentDetail extends Tournament {
   organizer: string;
   contact: string;
   prizeBreakdown: PrizeTier[];
-  schedule: ScheduleEntry[];
   rules: RuleSection[];
   rulesUrl?: string | null;
   bracket: BracketRound[];

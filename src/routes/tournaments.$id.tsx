@@ -25,14 +25,10 @@ import {
 } from "@/features/tournaments/utils";
 import { countDisplayedTournamentEntrants } from "@/features/admin/features/participants/constants/registration-status";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
-import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
 import { TournamentRegisterCTA } from "@/features/tournaments/components/TournamentRegisterCTA";
 import { supportsEliminationStandings } from "@/features/tournaments/constants/formats";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
-import {
-  fetchTournamentById,
-  fetchTournamentByIdForSsr,
-} from "@/features/tournaments/services";
+import { fetchTournamentById, fetchTournamentByIdForSsr } from "@/features/tournaments/services";
 import { getSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
@@ -70,13 +66,6 @@ function detailFromSummary(
     organizer: "Black Rose Operations",
     contact: BLACK_ROSE_STAFF_CONTACT_SUMMARY,
     prizeBreakdown: summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
-    schedule: buildTournamentSchedule({
-      registrationDeadline: summary.registrationDeadline,
-      startDate: summary.startDate,
-      format: summary.format,
-      status,
-      bracketRounds,
-    }),
     rules: [],
     bracket: bracketRounds,
     teams: [],
@@ -281,13 +270,6 @@ function TournamentDetailPage() {
         : tournament.teamsRegistered
       : entrantCount,
     prizeBreakdown: resolvedPrizeBreakdown,
-    schedule: buildTournamentSchedule({
-      registrationDeadline: tournament.registrationDeadline,
-      startDate: tournament.startDate,
-      format: tournament.format,
-      status: tournament.status,
-      bracketRounds: displayBracket,
-    }),
     placements: displayPlacements,
   };
 
@@ -362,6 +344,7 @@ function TournamentDetailPage() {
               <OverviewTab
                 tournament={{ ...liveDetail, bracket: displayBracket }}
                 teamTags={teamTagMap}
+                roundSchedules={liveRoundSchedules}
               />
             </div>
           )}

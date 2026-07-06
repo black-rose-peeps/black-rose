@@ -25,10 +25,16 @@ export interface TournamentEntry {
 
 export interface UpcomingMatch {
   matchId: string;
+  tournamentId: string;
   tournamentName: string;
+  teamName: string;
   opponent: string;
   scheduledAt: string;
   round: string;
+  hasRoundSchedule?: boolean;
+  venueType?: "online" | "onsite";
+  location?: string;
+  scheduleSortKey?: string;
 }
 
 export interface MemberProfile {

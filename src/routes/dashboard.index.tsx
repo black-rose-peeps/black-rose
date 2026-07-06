@@ -22,13 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { QuickStat, DashboardSection } from "@/features/member/components/DashboardSection";
+import { ActiveRegistrationsPanel } from "@/features/member/components/ActiveRegistrationsPanel";
+import { UpcomingMatchesPanel } from "@/features/member/components/UpcomingMatchesPanel";
 import { ProfileCompletionPanel } from "@/features/member/components/ProfileCompletionPanel";
 import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
 import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import { useMemberDashboardPage } from "@/features/member/hooks/useMemberDashboardPage";
 import { MemberDashboardSkeleton } from "@/features/member/components/MemberDashboardSkeleton";
 import { MemberHeroBanner, MemberPageLayout } from "@/features/member/components/MemberShell";
-import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { SOCIAL_PLATFORM_LABELS } from "@/features/member/constants";
 import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
 import { ChampionshipTitlesCard } from "@/features/championships/components/ChampionshipTitlesCard";
@@ -277,69 +278,7 @@ function DashboardPage() {
             ) : undefined
           }
         >
-          {p.activeRegistrations.length > 0 ? (
-            <ul className="flex flex-col gap-4">
-              {p.activeRegistrations.map((entry) => (
-                <li key={`${entry.tournamentId}-${entry.teamTag}`} className="flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-medium leading-tight">{entry.tournamentName}</p>
-                    <Button asChild variant="ghost" size="sm" className={SECTION_LINK_CLASS}>
-                      <Link to="/tournaments/$id" params={{ id: entry.tournamentId }}>
-                        View →
-                      </Link>
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className="rounded-none border-white/10 font-tech text-label-readable uppercase text-muted-foreground"
-                    >
-                      {entry.teamTag}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{entry.teamName}</span>
-                  </div>
-                  {entry.status === "Pending" ? (
-                    <div className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-amber-400">
-                      <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-amber-400" />
-                      Pending admin approval
-                    </div>
-                  ) : entry.status === "Approved" ? (
-                    <div className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-emerald-400">
-                      <CheckCircle className="h-3 w-3" />
-                      Registered
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-1.5 font-tech text-ui-readable uppercase text-red-400">
-                      Declined
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <ArenaEmptyState
-              embedded
-              eyebrow="No Entries"
-              title={
-                <>
-                  No active <span className="text-stroke">registrations.</span>
-                </>
-              }
-              description="Browse open tournaments and register your team when the next bracket opens."
-              actions={
-                <Button
-                  asChild
-                  variant="outline"
-                  className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
-                >
-                  <Link to="/tournaments">
-                    Browse Tournaments
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              }
-            />
-          )}
+          <ActiveRegistrationsPanel entries={p.activeRegistrations} />
         </DashboardSection>
       </div>
 
@@ -349,37 +288,7 @@ function DashboardPage() {
           title="Upcoming Matches"
           icon={<Trophy className="h-3.5 w-3.5" />}
         >
-          {p.upcomingMatches.length > 0 ? (
-            <ul className="divide-y divide-white/6">
-              {p.upcomingMatches.map((m) => (
-                <li
-                  key={m.matchId}
-                  className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{m.tournamentName}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      vs {m.opponent} · {m.round}
-                    </p>
-                  </div>
-                  <span className="font-tech text-label-readable uppercase text-muted-foreground sm:shrink-0 sm:text-right">
-                    {m.scheduledAt}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <ArenaEmptyState
-              embedded
-              eyebrow="Clear Schedule"
-              title={
-                <>
-                  No matches <span className="text-stroke">scheduled.</span>
-                </>
-              }
-              description="Register for a tournament to get matched and see your upcoming games here."
-            />
-          )}
+          <UpcomingMatchesPanel matches={p.upcomingMatches} />
         </DashboardSection>
 
         <DashboardSection

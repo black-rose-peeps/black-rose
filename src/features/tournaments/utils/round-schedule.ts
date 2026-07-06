@@ -1,3 +1,7 @@
+import type { BracketRound } from "../types";
+import { isGrandFinalRoundId } from "./bracket-display";
+import { resolveRoundId, roundFlowRank, sortPublicBracketRounds } from "./bracket-round-order";
+
 export type RoundVenueType = "online" | "onsite";
 
 /** Per-round schedule configured by staff in the bracket manager. */
@@ -164,6 +168,60 @@ export function pruneRoundSchedules(
     if (!ids.has(roundId)) delete next[roundId];
   }
   return next;
+}
+
+export interface ConfiguredRoundScheduleEntry {
+  roundId: string;
+  roundLabel: string;
+  schedule: RoundSchedule;
+  isGrandFinal: boolean;
+}
+
+function scheduleChronologicalKey(schedule: RoundSchedule): string {
+  const time = schedule.time?.trim() || "00:00";
+  return `${schedule.date}T${time}`;
+}
+
+export function listConfiguredRoundSchedules(
+  bracket: BracketRound[],
+  roundSchedules: Record<string, RoundSchedule> | null | undefined,
+): ConfiguredRoundScheduleEntry[] {
+  if (!roundSchedules) return [];
+
+  const seen = new Set<string>();
+  const entries: ConfiguredRoundScheduleEntry[] = [];
+
+  for (const round of sortPublicBracketRounds(bracket)) {
+    const roundId = resolveRoundId(round);
+    const schedule = roundSchedules[roundId];
+    if (!isRoundScheduleConfigured(schedule)) continue;
+
+    seen.add(roundId);
+    entries.push({
+      roundId,
+      roundLabel: round.label,
+      schedule,
+      isGrandFinal: isGrandFinalRoundId(roundId),
+    });
+  }
+
+  for (const [roundId, schedule] of Object.entries(roundSchedules)) {
+    if (seen.has(roundId) || !isRoundScheduleConfigured(schedule)) continue;
+    entries.push({
+      roundId,
+      roundLabel: roundId,
+      schedule,
+      isGrandFinal: isGrandFinalRoundId(roundId),
+    });
+  }
+
+  return entries.sort((a, b) => {
+    const dateDiff = scheduleChronologicalKey(a.schedule).localeCompare(
+      scheduleChronologicalKey(b.schedule),
+    );
+    if (dateDiff !== 0) return dateDiff;
+    return roundFlowRank(a.roundId) - roundFlowRank(b.roundId);
+  });
 }
 
 export function roundVenueLabel(venueType: RoundVenueType | undefined): string | null {

@@ -78,7 +78,7 @@ function PathBadge({
   );
 }
 
-function MatchScheduleSlot({
+function BracketMatchScheduleSlot({
   label,
   schedule,
   scheduleControl,
@@ -176,7 +176,7 @@ export function GrandFinalStage({
               <span className="font-tech text-[9px] uppercase tracking-wider text-muted-foreground">
                 {primaryMatchLabel}
               </span>
-              <MatchScheduleSlot
+              <BracketMatchScheduleSlot
                 label={primaryMatchLabel}
                 schedule={primarySchedule}
                 scheduleControl={primaryScheduleControl}
@@ -209,7 +209,7 @@ export function GrandFinalStage({
                 </p>
               </div>
 
-              <MatchScheduleSlot
+              <BracketMatchScheduleSlot
                 label="Deciding Match"
                 schedule={resetSchedule}
                 scheduleControl={resetScheduleControl}

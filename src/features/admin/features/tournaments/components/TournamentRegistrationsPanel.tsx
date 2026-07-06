@@ -3,13 +3,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AdminManagementTable,
   adminTableCellClip,
@@ -23,7 +17,7 @@ import {
 } from "@/features/admin/constants/table-columns";
 import { registrationStatusVariant } from "@/features/admin/features/participants/utils";
 import { formatRegistrationDateTime } from "@/features/admin/utils/registration-date";
-import { FeatureEmptyState, FeaturePanelShell } from "@/features/shared/components/FeaturePanelShell";
+import { FeaturePanelShell } from "@/features/shared/components/FeaturePanelShell";
 import { cn } from "@/lib/utils";
 import type { MockTeam } from "@/lib/mock-data";
 import type { MockTournament } from "@/lib/mock-data";
@@ -31,6 +25,7 @@ import {
   TournamentRegistrationsMobileList,
   type TournamentRegistrationMobileRow,
 } from "./mobile/TournamentRegistrationsMobileList";
+import { TournamentRegistrationsEmptyState } from "./TournamentRegistrationsEmptyState";
 
 interface TournamentRegistrationsPanelProps {
   tournament: MockTournament;
@@ -165,7 +160,9 @@ export function TournamentRegistrationsPanel({
         <div className="overflow-x-auto px-4 py-4 sm:px-6">
           <AdminManagementTable
             columnWidths={
-              soloEvent ? TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS : TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS
+              soloEvent
+                ? TOURNAMENT_REGISTRATIONS_SOLO_COLUMNS
+                : TOURNAMENT_REGISTRATIONS_TEAM_COLUMNS
             }
             className="border border-white/[0.08] bg-[oklch(0.05_0_0)]"
           >
@@ -249,25 +246,14 @@ export function TournamentRegistrationsPanel({
                 ))
               ) : teams.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={soloEvent ? 5 : 6} className="p-0">
-                    <FeatureEmptyState
-                      title={soloEvent ? "No players registered yet" : "No teams registered yet"}
-                      message={
-                        soloEvent
-                          ? "Use Add Players to register members directly for this event."
-                          : "Use Add Teams to register rosters from the Teams directory."
-                      }
-                      action={
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="gap-2 font-tech uppercase tracking-wider"
-                          onClick={onAdd}
-                        >
-                          <Plus className="h-4 w-4" />
-                          {addLabel}
-                        </Button>
-                      }
+                  <TableCell colSpan={soloEvent ? 5 : 6} className="p-4 sm:p-6">
+                    <TournamentRegistrationsEmptyState
+                      soloEvent={soloEvent}
+                      addLabel={addLabel}
+                      capLabel={capLabel}
+                      teamCap={tournament.teamCap}
+                      capReached={capReached}
+                      onAdd={onAdd}
                     />
                   </TableCell>
                 </TableRow>
@@ -403,25 +389,16 @@ export function TournamentRegistrationsPanel({
             ))}
           </ul>
         ) : teams.length === 0 ? (
-          <FeatureEmptyState
-            title={soloEvent ? "No players registered yet" : "No teams registered yet"}
-            message={
-              soloEvent
-                ? "Use Add Players to register members directly."
-                : "Use Add Teams to register rosters from Teams."
-            }
-            action={
-              <Button
-                type="button"
-                size="sm"
-                className="gap-2 font-tech uppercase tracking-wider"
-                onClick={onAdd}
-              >
-                <Plus className="h-4 w-4" />
-                {addLabel}
-              </Button>
-            }
-          />
+          <div className="px-4 py-4 sm:px-6">
+            <TournamentRegistrationsEmptyState
+              soloEvent={soloEvent}
+              addLabel={addLabel}
+              capLabel={capLabel}
+              teamCap={tournament.teamCap}
+              capReached={capReached}
+              onAdd={onAdd}
+            />
+          </div>
         ) : (
           <TournamentRegistrationsMobileList
             rows={mobileRows}

@@ -375,23 +375,27 @@ export function BracketTab({
           })}
         {!isDoubleElim && stagedChampionship.length > 0 && (
           <EliminationChampionshipStage
-            rounds={stagedChampionship.map((round) => ({
-              roundId: round.id ?? round.label,
-              title: round.label,
-              subtitle:
-                publicChampionshipRoundVariant(round) === "third"
-                  ? "Semifinal losers"
-                  : "Winner takes the title",
-              variant: publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
-              match: {
-                id: round.matches[0]?.id ?? "",
-                teamA: round.matches[0]?.teamA ?? null,
-                teamB: round.matches[0]?.teamB ?? null,
-                winner: round.matches[0]?.winner ?? null,
-                confirmed: !!round.matches[0]?.winner,
-                label: round.matches[0]?.label,
-              },
-            }))}
+            rounds={stagedChampionship.map((round) => {
+              const roundId = round.id ?? round.label;
+              return {
+                roundId,
+                title: round.label,
+                subtitle:
+                  publicChampionshipRoundVariant(round) === "third"
+                    ? "Semifinal losers"
+                    : "Winner takes the title",
+                variant: publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
+                match: {
+                  id: round.matches[0]?.id ?? "",
+                  teamA: round.matches[0]?.teamA ?? null,
+                  teamB: round.matches[0]?.teamB ?? null,
+                  winner: round.matches[0]?.winner ?? null,
+                  confirmed: !!round.matches[0]?.winner,
+                  label: round.matches[0]?.label,
+                },
+                schedule: roundSchedules?.[roundId],
+              };
+            })}
             formatLabel={format}
             renderMatch={(round) => {
               const publicMatch = matchById.get(round.match.id);
@@ -471,23 +475,27 @@ export function BracketTab({
       {renderSection(undefined, "primary", focusedBracketRounds, { splitChampionship: false })}
       {championshipRounds.length > 0 && (
         <EliminationChampionshipStage
-          rounds={championshipRounds.map((round) => ({
-            roundId: round.id ?? round.label,
-            title: round.label,
-            subtitle:
-              publicChampionshipRoundVariant(round) === "third"
-                ? "Semifinal losers"
-                : "Winner takes the title",
-            variant: publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
-            match: {
-              id: round.matches[0]?.id ?? "",
-              teamA: round.matches[0]?.teamA ?? null,
-              teamB: round.matches[0]?.teamB ?? null,
-              winner: round.matches[0]?.winner ?? null,
-              confirmed: !!round.matches[0]?.winner,
-              label: round.matches[0]?.label,
-            },
-          }))}
+          rounds={championshipRounds.map((round) => {
+            const roundId = round.id ?? round.label;
+            return {
+              roundId,
+              title: round.label,
+              subtitle:
+                publicChampionshipRoundVariant(round) === "third"
+                  ? "Semifinal losers"
+                  : "Winner takes the title",
+              variant: publicChampionshipRoundVariant(round) === "third" ? "third" : "final",
+              match: {
+                id: round.matches[0]?.id ?? "",
+                teamA: round.matches[0]?.teamA ?? null,
+                teamB: round.matches[0]?.teamB ?? null,
+                winner: round.matches[0]?.winner ?? null,
+                confirmed: !!round.matches[0]?.winner,
+                label: round.matches[0]?.label,
+              },
+              schedule: roundSchedules?.[roundId],
+            };
+          })}
           formatLabel={format}
           renderMatch={(round) => {
             const publicMatch = matchById.get(round.match.id);

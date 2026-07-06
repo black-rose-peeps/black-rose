@@ -157,6 +157,14 @@ export function ManagedBracketView({
                 : "Winner takes the title",
           variant: variant === "third" ? ("third" as const) : ("final" as const),
           match,
+          schedule: readOnly ? roundSchedules[round.id] : undefined,
+          scheduleControl: !readOnly ? (
+            <BracketRoundScheduleControl
+              value={roundSchedules[round.id]}
+              compact
+              onChange={(next) => onScheduleChange(round.id, next)}
+            />
+          ) : undefined,
         },
       ];
     });
