@@ -15,6 +15,7 @@ interface EliminationStandingsTableProps {
 
 const STATUS_LABEL: Record<EliminationStandingEntry["status"], string> = {
   champion: "Champion",
+  placed: "Placed",
   active: "Active",
   advanced: "Advanced",
   eliminated: "Out",
@@ -22,6 +23,7 @@ const STATUS_LABEL: Record<EliminationStandingEntry["status"], string> = {
 
 const STATUS_CLASS: Record<EliminationStandingEntry["status"], string> = {
   champion: "border-amber-400/35 bg-amber-400/10 text-amber-200",
+  placed: "border-white/20 bg-white/[0.06] text-white/75",
   active: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
   advanced: "border-sky-400/30 bg-sky-400/10 text-sky-300",
   eliminated: "border-white/10 bg-white/[0.03] text-white/40",
@@ -41,6 +43,7 @@ export function EliminationStandingsTable({
       (entry) =>
         entry.status === "active" ||
         entry.status === "champion" ||
+        entry.status === "placed" ||
         entry.status === "advanced",
     ).length;
     const eliminated = standings.filter((entry) => entry.status === "eliminated").length;
@@ -85,7 +88,12 @@ export function EliminationStandingsTable({
                 const tag = teamTags?.get(entry.team);
                 const expanded = expandedTeam === entry.team;
                 const isChampion = entry.status === "champion";
+                const isPlaced = entry.status === "placed";
                 const isPodium = entry.placement ? entry.placement <= 3 : entry.rank <= 3;
+                const statusLabel =
+                  isPlaced && entry.placementLabel
+                    ? entry.placementLabel
+                    : STATUS_LABEL[entry.status];
 
                 return (
                   <Fragment key={entry.team}>
@@ -93,6 +101,7 @@ export function EliminationStandingsTable({
                       className={cn(
                         "group border-b border-white/[0.05] transition-colors hover:bg-white/[0.03]",
                         isChampion && "bg-amber-400/[0.04]",
+                        isPlaced && "bg-white/[0.02]",
                         entry.status === "active" && "border-l-2 border-l-emerald-400/35",
                         entry.status === "eliminated" && "opacity-90",
                       )}
@@ -156,7 +165,7 @@ export function EliminationStandingsTable({
                             STATUS_CLASS[entry.status],
                           )}
                         >
-                          {STATUS_LABEL[entry.status]}
+                          {statusLabel}
                         </span>
                       </td>
                       <td className="px-3 py-3">

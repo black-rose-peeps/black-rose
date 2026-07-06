@@ -47,6 +47,7 @@ import {
   usesCompressedPreliminaryField,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
+import type { RoundSchedule } from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import { getGrandFinalBracketGuide } from "@/features/admin/features/tournament-details/utils/grand-final";
 import { getGrandFinalFeederSideFromMatchId } from "@/features/tournaments/utils/bracket-grand-final-feeder";
 import {
@@ -77,6 +78,7 @@ interface BracketTabProps {
   seedByTeam?: Map<string, number>;
   tournamentStatus?: string;
   grandFinalMode?: GrandFinalMode | null;
+  roundSchedules?: Record<string, RoundSchedule> | null;
 }
 
 export function BracketTab({
@@ -88,6 +90,7 @@ export function BracketTab({
   seedByTeam,
   tournamentStatus,
   grandFinalMode: grandFinalModeProp,
+  roundSchedules,
 }: BracketTabProps) {
   const [viewMode, setViewMode] = useState<DoubleElimViewMode>("full");
   const [splitSide, setSplitSide] = useState<SplitBracketSide>("upper");
@@ -136,6 +139,7 @@ export function BracketTab({
         teamNames={teamNames}
         seedByTeam={seedByTeam}
         tournamentStatus={tournamentStatus}
+        roundSchedules={roundSchedules}
       />
     );
   }
@@ -195,6 +199,8 @@ export function BracketTab({
         }
         grandFinalMode={grandFinalModeProp ?? undefined}
         formatLabel={format}
+        primarySchedule={gfRound?.id ? roundSchedules?.[gfRound.id] : undefined}
+        resetSchedule={resetRound?.id ? roundSchedules?.[resetRound.id] : undefined}
         renderMatch={(match, variant) => {
           const publicMatch = matchById.get(match.id);
           if (!publicMatch) return null;
@@ -253,6 +259,8 @@ export function BracketTab({
       <EliminationBracketCanvas
         rounds={columns}
         layoutMatches={sectionLayoutMatches}
+        roundSchedules={roundSchedules ?? undefined}
+        readOnlySchedules
         renderMatch={(matchId, context) => {
           const match = matchById.get(matchId);
           if (!match) return null;
@@ -306,6 +314,8 @@ export function BracketTab({
             bands={bands}
             layoutMatches={sectionLayoutMatches}
             minHeight={720}
+            roundSchedules={roundSchedules ?? undefined}
+            readOnlySchedules
             renderMatch={(matchId, context) => {
               const match = matchById.get(matchId);
               if (!match) return null;

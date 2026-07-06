@@ -9,7 +9,12 @@ import {
   matchResultsSignature,
 } from "./competition-ranks";
 
-export type TeamStandingStatus = "active" | "eliminated" | "advanced" | "champion";
+export type TeamStandingStatus =
+  | "active"
+  | "eliminated"
+  | "advanced"
+  | "champion"
+  | "placed";
 
 export interface TeamMatchHistoryEntry {
   roundLabel: string;
@@ -186,6 +191,7 @@ function resolveEliminationStatus(
   placement?: TournamentPlacement,
 ): TeamStandingStatus {
   if (placement?.rank === 1) return "champion";
+  if (placement?.rank != null) return "placed";
   if (pendingTeams.has(team)) return "active";
   if (losses > 0 || wins > 0) return "eliminated";
   return "active";
@@ -211,9 +217,10 @@ function sortEliminationStandings(
 
     const statusRank = (status: TeamStandingStatus) => {
       if (status === "champion") return 0;
-      if (status === "active") return 1;
-      if (status === "advanced") return 2;
-      return 3;
+      if (status === "placed") return 1;
+      if (status === "active") return 2;
+      if (status === "advanced") return 3;
+      return 4;
     };
     const statusDiff = statusRank(a.status) - statusRank(b.status);
     if (statusDiff !== 0) return statusDiff;

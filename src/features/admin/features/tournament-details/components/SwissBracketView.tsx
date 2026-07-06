@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils";
 import {
   BracketFormatToolbar,
   BracketRoundFormatControl,
+  BracketRoundScheduleControl,
+  BracketRoundScheduleDisplay,
+  BracketScheduleToolbar,
 } from "@/features/tournaments/components/bracket";
 import { SwissFormatIntro } from "@/features/tournaments/components/SwissFormatIntro";
 import { SwissPhaseBanner } from "@/features/tournaments/components/SwissPhaseBanner";
@@ -16,7 +19,12 @@ import {
   swissStandingsThroughRound,
 } from "@/features/tournaments/utils/swiss-standings";
 import type { TournamentTeam } from "@/features/tournaments/types";
-import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
+import type {
+  BestOfFormat,
+  BracketRoundMeta,
+  ManagedMatch,
+  RoundSchedule,
+} from "../utils/managed-bracket";
 import { winsRequired } from "../utils/managed-bracket";
 import { getLockedFormatRoundIds } from "./RoundFormatPanel";
 import {
@@ -34,6 +42,7 @@ interface SwissBracketViewProps {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
   roundFormats: Record<string, BestOfFormat>;
+  roundSchedules: Record<string, RoundSchedule>;
   teams: TournamentTeam[];
   swiss: SwissBracketState;
   tournamentStatus?: string;
@@ -41,6 +50,7 @@ interface SwissBracketViewProps {
   canStartPlayoffs?: boolean;
   onStartPlayoffs?: () => void;
   onFormatChange: (roundId: string, format: BestOfFormat) => void;
+  onScheduleChange: (roundId: string, schedule: RoundSchedule | undefined) => void;
   onApplyRecommendedFormats?: () => void;
   onScoreChange: (matchId: string, scoreA: number, scoreB: number) => void;
   onPickWinner: (matchId: string, winner: string) => void;
@@ -50,6 +60,7 @@ export function SwissBracketView({
   matches,
   roundMetas,
   roundFormats,
+  roundSchedules,
   teams,
   swiss,
   tournamentStatus,
@@ -57,6 +68,7 @@ export function SwissBracketView({
   canStartPlayoffs = false,
   onStartPlayoffs,
   onFormatChange,
+  onScheduleChange,
   onApplyRecommendedFormats,
   onScoreChange,
   onPickWinner,
@@ -139,7 +151,10 @@ export function SwissBracketView({
       )}
 
       {!readOnly && onApplyRecommendedFormats && (
-        <BracketFormatToolbar onApplyRecommended={onApplyRecommendedFormats} />
+        <>
+          <BracketFormatToolbar onApplyRecommended={onApplyRecommendedFormats} />
+          <BracketScheduleToolbar />
+        </>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,1.4fr)]">
@@ -233,15 +248,27 @@ export function SwissBracketView({
               </h3>
               {roundMeta &&
                 (!readOnly ? (
-                  <BracketRoundFormatControl
-                    value={format}
-                    disabled={lockedFormatRoundIds.has(roundMeta.id)}
-                    onChange={(next) => onFormatChange(roundMeta.id, next)}
-                  />
+                  <div className="flex flex-col gap-2">
+                    <BracketRoundFormatControl
+                      value={format}
+                      disabled={lockedFormatRoundIds.has(roundMeta.id)}
+                      onChange={(next) => onFormatChange(roundMeta.id, next)}
+                    />
+                    <BracketRoundScheduleControl
+                      value={roundSchedules[roundMeta.id]}
+                      onChange={(next) => onScheduleChange(roundMeta.id, next)}
+                    />
+                  </div>
                 ) : (
-                  <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {format}
-                  </span>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {format}
+                    </span>
+                    <BracketRoundScheduleDisplay
+                      schedule={roundSchedules[roundMeta.id]}
+                      variant="card"
+                    />
+                  </div>
                 ))}
             </div>
 

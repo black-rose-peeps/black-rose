@@ -173,6 +173,7 @@ function TournamentDetailPage() {
     bracket: liveBracket,
     prizeBreakdown: livePrizeBreakdown,
     assignmentTeamIds,
+    roundSchedules: liveRoundSchedules,
     grandFinalMode: liveGrandFinalMode,
     isLoading: bracketLoading,
   } = useLiveBracket(tournament.id);
@@ -260,12 +261,17 @@ function TournamentDetailPage() {
   }, [tournament.prizeBreakdown, livePrizeBreakdown]);
 
   const displayPlacements = useMemo(() => {
-    const isDone = tournament.status === "Completed" || tournament.status === "Archived";
-    if (!isDone || !displayBracket.length) return [];
+    if (!displayBracket.length) return [];
 
-    const raw = derivePublicPlacements(tournament.format, displayBracket);
+    const raw = derivePublicPlacements(
+      tournament.format,
+      displayBracket,
+      liveGrandFinalMode ?? undefined,
+    );
+    if (raw.length === 0) return [];
+
     return buildPodiumPlacements(resolvedPrizeBreakdown, raw);
-  }, [tournament.status, tournament.format, displayBracket, resolvedPrizeBreakdown]);
+  }, [tournament.format, displayBracket, resolvedPrizeBreakdown, liveGrandFinalMode]);
 
   const liveDetail: TournamentDetail = {
     ...tournament,
@@ -388,6 +394,7 @@ function TournamentDetailPage() {
                 seedByTeam={seedByTeam}
                 tournamentStatus={liveDetail.status}
                 grandFinalMode={liveGrandFinalMode}
+                roundSchedules={liveRoundSchedules}
               />
             </div>
           )}

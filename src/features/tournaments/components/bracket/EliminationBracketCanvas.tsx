@@ -9,11 +9,14 @@ import {
   type PositionedLayoutMatch,
 } from "@/features/tournaments/utils/bracket-layout";
 import type { LayoutInputMatch } from "@/features/tournaments/utils/bracket-connectors";
-import type { BestOfFormat } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { BestOfFormat, RoundSchedule } from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import { cn } from "@/lib/utils";
 import { BracketCanvas } from "./BracketCanvas";
 import { BracketRoundFormatControl } from "./BracketRoundFormatControl";
+import { BracketRoundScheduleControl } from "./BracketRoundScheduleControl";
+import { BracketRoundScheduleDisplay } from "./BracketRoundScheduleDisplay";
 import { ConnectorLayer } from "./ConnectorLayer";
+import { hasAnyRoundSchedule } from "@/features/tournaments/utils/round-schedule";
 
 export interface BracketRoundColumn {
   id: string;
@@ -41,9 +44,12 @@ interface EliminationBracketCanvasProps {
   className?: string;
   minHeight?: number;
   roundFormats?: Record<string, BestOfFormat>;
+  roundSchedules?: Record<string, RoundSchedule>;
   lockedFormatRoundIds?: Set<string>;
   readOnlyFormats?: boolean;
+  readOnlySchedules?: boolean;
   onFormatChange?: (roundId: string, format: BestOfFormat) => void;
+  onScheduleChange?: (roundId: string, schedule: RoundSchedule | undefined) => void;
 }
 
 const BAND_ACCENT_CLASS: Record<NonNullable<BracketCanvasBand["accent"]>, string> = {
@@ -194,15 +200,22 @@ export function EliminationBracketCanvas({
   className,
   minHeight = 480,
   roundFormats,
+  roundSchedules,
   lockedFormatRoundIds,
   readOnlyFormats = true,
+  readOnlySchedules = true,
   onFormatChange,
+  onScheduleChange,
 }: EliminationBracketCanvasProps) {
   const effectiveBands = bands ?? (rounds ? [{ rounds }] : []);
   const showFormatControls = !readOnlyFormats && !!onFormatChange;
+  const showScheduleControls = !readOnlySchedules && !!onScheduleChange;
+  const showScheduleDisplay = readOnlySchedules && hasAnyRoundSchedule(roundSchedules);
   const showRoundHeader = !!renderRoundHeader;
   const headerReserve = bracketRoundHeaderReserveHeight({
     showFormatControls,
+    showScheduleControls,
+    showScheduleDisplay,
     renderRoundHeader: showRoundHeader,
   });
 
@@ -301,6 +314,19 @@ export function EliminationBracketCanvas({
                           onChange={(next) => onFormatChange(round.id, next)}
                         />
                       </div>
+                    )}
+                    {showScheduleControls && (
+                      <BracketRoundScheduleControl
+                        value={roundSchedules?.[round.id]}
+                        compact
+                        onChange={(next) => onScheduleChange?.(round.id, next)}
+                      />
+                    )}
+                    {showScheduleDisplay && (
+                      <BracketRoundScheduleDisplay
+                        schedule={roundSchedules?.[round.id]}
+                        variant="column"
+                      />
                     )}
                     {renderRoundHeader?.(round)}
                   </div>

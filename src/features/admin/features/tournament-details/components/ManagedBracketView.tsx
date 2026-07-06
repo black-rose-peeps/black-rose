@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
 import {
   BracketFormatToolbar,
+  BracketScheduleToolbar,
   BracketSectionHeader,
   DoubleElimViewControls,
   EliminationBracketCanvas,
@@ -19,6 +20,8 @@ import {
   type BracketFocusSize,
   type DoubleElimViewMode,
   type SplitBracketSide,
+  BracketRoundScheduleControl,
+  BracketRoundScheduleDisplay,
 } from "@/features/tournaments/components/bracket";
 import {
   applyBracketFocusToDoubleElim,
@@ -34,7 +37,12 @@ import {
   partitionChampionshipRounds,
 } from "@/features/tournaments/utils/bracket-championship";
 import { sortBracketRoundsByFlow } from "@/features/tournaments/utils/bracket-round-order";
-import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
+import type {
+  BestOfFormat,
+  BracketRoundMeta,
+  ManagedMatch,
+  RoundSchedule,
+} from "../utils/managed-bracket";
 import { winsRequired } from "../utils/managed-bracket";
 import {
   bracketCapacity,
@@ -60,11 +68,13 @@ interface ManagedBracketViewProps {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
   roundFormats: Record<string, BestOfFormat>;
+  roundSchedules: Record<string, RoundSchedule>;
   teams: TournamentTeam[];
   isDoubleElim: boolean;
   grandFinalMode?: GrandFinalMode;
   readOnly?: boolean;
   onFormatChange: (roundId: string, format: BestOfFormat) => void;
+  onScheduleChange: (roundId: string, schedule: RoundSchedule | undefined) => void;
   onApplyRecommendedFormats?: () => void;
   onScoreChange: (matchId: string, scoreA: number, scoreB: number) => void;
   onPickWinner: (matchId: string, winner: string) => void;
@@ -74,11 +84,13 @@ export function ManagedBracketView({
   matches,
   roundMetas,
   roundFormats,
+  roundSchedules,
   teams,
   isDoubleElim,
   grandFinalMode,
   readOnly = false,
   onFormatChange,
+  onScheduleChange,
   onApplyRecommendedFormats,
   onScoreChange,
   onPickWinner,
@@ -254,6 +266,26 @@ export function ManagedBracketView({
             </div>
           ) : undefined
         }
+        primarySchedule={readOnly ? roundSchedules[gfRound.id] : undefined}
+        resetSchedule={readOnly && resetRound ? roundSchedules[resetRound.id] : undefined}
+        primaryScheduleControl={
+          !readOnly ? (
+            <BracketRoundScheduleControl
+              value={roundSchedules[gfRound.id]}
+              compact
+              onChange={(next) => onScheduleChange(gfRound.id, next)}
+            />
+          ) : undefined
+        }
+        resetScheduleControl={
+          !readOnly && resetRound ? (
+            <BracketRoundScheduleControl
+              value={roundSchedules[resetRound.id]}
+              compact
+              onChange={(next) => onScheduleChange(resetRound.id, next)}
+            />
+          ) : undefined
+        }
         renderMatch={(match, variant) => {
           const roundFormat = variant === "reset" ? resetFormat : primaryFormat;
           const managed = matchById.get(match.id);
@@ -317,9 +349,12 @@ export function ManagedBracketView({
         rounds={columns}
         layoutMatches={layoutMatches}
         roundFormats={roundFormats}
+        roundSchedules={roundSchedules}
         lockedFormatRoundIds={lockedFormatRoundIds}
         readOnlyFormats={readOnly}
+        readOnlySchedules={readOnly}
         onFormatChange={onFormatChange}
+        onScheduleChange={onScheduleChange}
         renderMatch={(matchId, context) => {
           const match = matchById.get(matchId);
           if (!match) return null;
@@ -376,9 +411,12 @@ export function ManagedBracketView({
             bands={bands}
             layoutMatches={layoutMatches}
             roundFormats={roundFormats}
+            roundSchedules={roundSchedules}
             lockedFormatRoundIds={lockedFormatRoundIds}
             readOnlyFormats={readOnly}
+            readOnlySchedules={readOnly}
             onFormatChange={onFormatChange}
+            onScheduleChange={onScheduleChange}
             minHeight={720}
             renderMatch={(matchId, context) => {
               const match = matchById.get(matchId);
@@ -416,10 +454,7 @@ export function ManagedBracketView({
       ? partitionChampionshipRounds(sectionRounds)
       : { bracketRounds: sectionRounds, championshipRounds: [] as BracketRoundMeta[] };
 
-    const { bracketRounds, grandRounds } = splitGrandFinalRounds(
-      flowRounds,
-      isGrandFinalRoundRef,
-    );
+    const { bracketRounds, grandRounds } = splitGrandFinalRounds(flowRounds, isGrandFinalRoundRef);
     const columns = toRoundColumns(bracketRounds);
     return (
       <div className="space-y-4">
@@ -457,7 +492,10 @@ export function ManagedBracketView({
           />
         )}
         {!readOnly && onApplyRecommendedFormats && (
-          <BracketFormatToolbar onApplyRecommended={onApplyRecommendedFormats} />
+          <>
+            <BracketFormatToolbar onApplyRecommended={onApplyRecommendedFormats} />
+            <BracketScheduleToolbar />
+          </>
         )}
         <DoubleElimViewControls
           viewMode={viewMode}
@@ -469,13 +507,11 @@ export function ManagedBracketView({
           onBracketFocusChange={setBracketFocus}
           hasLowerBracket={lowerRounds.length > 0}
         />
-        {viewMode === "full" ? (
-          renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)
-        ) : splitSide === "upper" ? (
-          renderSection("Upper Bracket", "primary", focusedRounds.upperRounds)
-        ) : (
-          renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
-        )}
+        {viewMode === "full"
+          ? renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)
+          : splitSide === "upper"
+            ? renderSection("Upper Bracket", "primary", focusedRounds.upperRounds)
+            : renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)}
         {renderGrandFinalStage(grandRounds)}
         <p className="text-xs text-muted-foreground">
           {elimByes > 0
@@ -505,7 +541,10 @@ export function ManagedBracketView({
         />
       )}
       {!readOnly && onApplyRecommendedFormats && (
-        <BracketFormatToolbar onApplyRecommended={onApplyRecommendedFormats} />
+        <>
+          <BracketFormatToolbar onApplyRecommended={onApplyRecommendedFormats} />
+          <BracketScheduleToolbar />
+        </>
       )}
       {availableTopSizes.length > 0 && (
         <BracketFocusControls
@@ -611,7 +650,9 @@ function ManagedMatchCard({
       <div
         className={cn(
           "flex items-center justify-between border-b px-2 py-1",
-          isChampionship ? "border-amber-400/30 bg-amber-400/8" : "border-border/70 bg-secondary/40",
+          isChampionship
+            ? "border-amber-400/30 bg-amber-400/8"
+            : "border-border/70 bg-secondary/40",
         )}
       >
         <span
