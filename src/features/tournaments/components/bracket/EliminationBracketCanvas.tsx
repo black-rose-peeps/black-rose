@@ -9,7 +9,8 @@ import {
   type PositionedLayoutMatch,
 } from "@/features/tournaments/utils/bracket-layout";
 import type { LayoutInputMatch } from "@/features/tournaments/utils/bracket-connectors";
-import type { BestOfFormat, RoundSchedule } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { BestOfFormat } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
 import { cn } from "@/lib/utils";
 import { BracketCanvas } from "./BracketCanvas";
 import { BracketRoundFormatControl } from "./BracketRoundFormatControl";
@@ -284,6 +285,8 @@ export function EliminationBracketCanvas({
                 const locked = lockedFormatRoundIds?.has(round.id) ?? false;
                 const format = roundFormats?.[round.id] ?? "BO3";
                 const showFormat = showFormatControls && round.side !== "grand";
+                const showRoundScheduleControl = showScheduleControls && round.side !== "grand";
+                const showRoundScheduleDisplay = showScheduleDisplay && round.side !== "grand";
 
                 return (
                   <div
@@ -315,14 +318,14 @@ export function EliminationBracketCanvas({
                         />
                       </div>
                     )}
-                    {showScheduleControls && (
+                    {showRoundScheduleControl && (
                       <BracketRoundScheduleControl
                         value={roundSchedules?.[round.id]}
                         compact
                         onChange={(next) => onScheduleChange?.(round.id, next)}
                       />
                     )}
-                    {showScheduleDisplay && (
+                    {showRoundScheduleDisplay && (
                       <BracketRoundScheduleDisplay
                         schedule={roundSchedules?.[round.id]}
                         variant="column"

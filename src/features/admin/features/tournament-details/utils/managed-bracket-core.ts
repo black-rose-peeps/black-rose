@@ -17,18 +17,7 @@ export interface BuildBracketOptions {
 
 export type BestOfFormat = "BO1" | "BO3" | "BO5";
 
-export type RoundVenueType = "online" | "onsite";
-
-/** Per-round schedule configured by staff in the bracket manager. */
-export interface RoundSchedule {
-  /** ISO date (YYYY-MM-DD). */
-  date: string;
-  /** Optional 24h time (HH:mm). Omitted from public copy when empty. */
-  time?: string;
-  venueType?: RoundVenueType;
-  /** Required when `venueType` is `onsite`. */
-  location?: string;
-}
+export type { RoundSchedule, RoundVenueType } from "@/features/tournaments/utils/round-schedule";
 
 export interface MatchSlotRef {
   matchId: string;

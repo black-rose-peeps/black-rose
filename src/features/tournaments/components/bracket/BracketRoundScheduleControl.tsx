@@ -8,10 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type {
-  RoundSchedule,
-  RoundVenueType,
-} from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { RoundSchedule, RoundVenueType } from "@/features/tournaments/utils/round-schedule";
 import { cn } from "@/lib/utils";
 import {
   buildScheduleTime,
@@ -89,7 +86,9 @@ export function BracketRoundScheduleControl({
 
   function handleVenueChange(next: RoundVenueType) {
     setVenueType(next);
-    if (date) commit(date, time, includeTime, next, location);
+    if (date && (next !== "onsite" || location.trim())) {
+      commit(date, time, includeTime, next, location);
+    }
   }
 
   function handleLocationChange(next: string) {

@@ -111,9 +111,7 @@ export function EliminationStandingsTable({
                           type="button"
                           onClick={() => setExpandedTeam(expanded ? null : entry.team)}
                           className="grid h-8 w-8 place-items-center border border-white/10 text-white/45 transition hover:border-white/25 hover:bg-white/[0.05] hover:text-white"
-                          aria-label={
-                            expanded ? "Collapse match history" : "Expand match history"
-                          }
+                          aria-label={expanded ? "Collapse match history" : "Expand match history"}
                         >
                           {expanded ? (
                             <ChevronDown className="h-4 w-4" />
@@ -145,7 +143,7 @@ export function EliminationStandingsTable({
                             </span>
                             <span className="truncate font-medium text-white">{entry.team}</span>
                           </div>
-                          {entry.placementLabel && (
+                          {entry.placementLabel && !isPlaced && (
                             <span className="pl-9 font-tech text-[10px] uppercase tracking-wider text-white/35">
                               {entry.placementLabel}
                             </span>

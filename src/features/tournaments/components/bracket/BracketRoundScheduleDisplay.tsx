@@ -1,7 +1,7 @@
 import { ArrowUpRight, Calendar, Clock, MapPin, Monitor } from "lucide-react";
 import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
 import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
-import type { RoundSchedule } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
 import { cn } from "@/lib/utils";
 import {
   formatRoundScheduleParts,
@@ -28,17 +28,17 @@ export function BracketRoundScheduleDisplay({
 }: BracketRoundScheduleDisplayProps) {
   if (!isRoundScheduleConfigured(schedule)) return null;
 
-  const parts = formatRoundScheduleParts(schedule!);
+  const parts = formatRoundScheduleParts(schedule);
   if (!parts) return null;
 
   const resolvedVariant: ScheduleDisplayVariant = variant ?? (compact ? "column" : "card");
-  const isOnline = schedule!.venueType === "online";
-  const isOnsite = schedule!.venueType === "onsite";
+  const isOnline = schedule.venueType === "online";
+  const isOnsite = schedule.venueType === "onsite";
 
   if (resolvedVariant === "column") {
     return (
       <ColumnScheduleStrip
-        schedule={schedule!}
+        schedule={schedule}
         parts={parts}
         isOnline={isOnline}
         isOnsite={isOnsite}
@@ -50,7 +50,7 @@ export function BracketRoundScheduleDisplay({
   if (resolvedVariant === "grand") {
     return (
       <GrandFinalSchedulePanel
-        schedule={schedule!}
+        schedule={schedule}
         parts={parts}
         isOnline={isOnline}
         isOnsite={isOnsite}
@@ -62,7 +62,7 @@ export function BracketRoundScheduleDisplay({
 
   return (
     <CardScheduleDisplay
-      schedule={schedule!}
+      schedule={schedule}
       parts={parts}
       isOnline={isOnline}
       isOnsite={isOnsite}

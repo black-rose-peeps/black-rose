@@ -47,7 +47,7 @@ import {
   usesCompressedPreliminaryField,
 } from "@/features/admin/features/tournament-details/utils/bracket-field";
 import type { GrandFinalMode } from "@/features/admin/features/tournament-details/utils/grand-final";
-import type { RoundSchedule } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
 import { getGrandFinalBracketGuide } from "@/features/admin/features/tournament-details/utils/grand-final";
 import { getGrandFinalFeederSideFromMatchId } from "@/features/tournaments/utils/bracket-grand-final-feeder";
 import {
@@ -98,9 +98,7 @@ export function BracketTab({
   const bracketTeamCount = useMemo(() => countBracketTeams(bracket), [bracket]);
   const availableTopSizes = useMemo(
     () =>
-      isEvenBracketFieldSize(bracketTeamCount)
-        ? getAvailableTopBracketSizes(bracketTeamCount)
-        : [],
+      isEvenBracketFieldSize(bracketTeamCount) ? getAvailableTopBracketSizes(bracketTeamCount) : [],
     [bracketTeamCount],
   );
 
@@ -204,9 +202,7 @@ export function BracketTab({
         renderMatch={(match, variant) => {
           const publicMatch = matchById.get(match.id);
           if (!publicMatch) return null;
-          const round = bracket.find((item) =>
-            item.matches.some((entry) => entry.id === match.id),
-          );
+          const round = bracket.find((item) => item.matches.some((entry) => entry.id === match.id));
           return (
             <PublicMatchCard
               match={publicMatch}
@@ -222,7 +218,9 @@ export function BracketTab({
 
   const renderSectionGuides = (rounds: BracketRound[]) => {
     const sectionHasLowerPlayIn =
-      isDoubleElim && legacyOpeningPlayIn && rounds.some((round) => isLowerBracketRound(round.label));
+      isDoubleElim &&
+      legacyOpeningPlayIn &&
+      rounds.some((round) => isLowerBracketRound(round.label));
     const sectionHasByeGuide =
       !legacyOpeningPlayIn &&
       hasRoundOneByes &&
@@ -436,14 +434,12 @@ export function BracketTab({
           onBracketFocusChange={setBracketFocus}
           hasLowerBracket={lowerRounds.length > 0}
         />
-        {viewMode === "full" ? (
-          renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)
-        ) : splitSide === "upper" ? (
-          renderSection("Upper Bracket", "primary", focusedRounds.upperRounds)
-        ) : (
-          focusedRounds.lowerRounds.length > 0 &&
-          renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)
-        )}
+        {viewMode === "full"
+          ? renderUnifiedDoubleElim(focusedRounds.upperRounds, focusedRounds.lowerRounds)
+          : splitSide === "upper"
+            ? renderSection("Upper Bracket", "primary", focusedRounds.upperRounds)
+            : focusedRounds.lowerRounds.length > 0 &&
+              renderSection("Lower Bracket", "accent", focusedRounds.lowerRounds)}
         {renderGrandFinalStage(grandRounds)}
         <BracketFooter
           isDoubleElim
@@ -644,7 +640,9 @@ function PublicMatchCard({
       <div
         className={cn(
           "flex items-center justify-between border-b px-2 py-1",
-          isChampionship ? "border-amber-400/30 bg-amber-400/8" : "border-border/70 bg-secondary/40",
+          isChampionship
+            ? "border-amber-400/30 bg-amber-400/8"
+            : "border-border/70 bg-secondary/40",
         )}
       >
         <span

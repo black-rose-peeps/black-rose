@@ -25,7 +25,7 @@ import {
   SWISS_WINS_TO_ADVANCE,
 } from "../../utils/swiss-standings";
 import type { BracketMatch, BracketRound } from "../../types";
-import type { RoundSchedule } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
 import { BracketRoundScheduleDisplay } from "@/features/tournaments/components/bracket";
 import { BracketTab } from "./BracketTab";
 import { PublicBracketTeamSlot } from "./PublicBracketTeamSlot";
@@ -74,9 +74,7 @@ export function SwissBracketTab({
   const activeRoundData = swissRounds.find((round) => parseSwissRoundNumber(round) === activeRound);
   const roundMatches = activeRoundData?.matches ?? [];
   const roundByes = activeRoundData?.swissByes ?? [];
-  const activeRoundComplete = activeRoundData
-    ? isPublicSwissRoundComplete(activeRoundData)
-    : false;
+  const activeRoundComplete = activeRoundData ? isPublicSwissRoundComplete(activeRoundData) : false;
   const hasDecidedInActiveRound =
     roundMatches.some((match) => !!match.winner && match.teamA && match.teamB) ||
     roundByes.length > 0;
@@ -154,7 +152,8 @@ export function SwissBracketTab({
                         className={cn(
                           "transition-colors hover:bg-muted/40",
                           entry.status === "advanced" && "border-l-2 border-l-emerald-400/50",
-                          entry.status === "eliminated" && "border-l-2 border-l-red-400/40 opacity-75",
+                          entry.status === "eliminated" &&
+                            "border-l-2 border-l-red-400/40 opacity-75",
                         )}
                       >
                         <td className="px-3 py-2.5 text-center">

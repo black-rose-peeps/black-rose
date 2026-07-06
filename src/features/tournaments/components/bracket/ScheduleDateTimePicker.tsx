@@ -1,8 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { CalendarIcon, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Clock } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import {
@@ -63,18 +62,12 @@ export function ScheduleDateTimePicker({
       <div className="space-y-2">
         <Label className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
           Date
+          {selectedDate ? (
+            <span className="ml-2 font-normal normal-case tracking-normal text-foreground">
+              {format(selectedDate, "PPP")}
+            </span>
+          ) : null}
         </Label>
-        <Button
-          type="button"
-          variant="outline"
-          className={cn(
-            "w-full justify-start bg-background/50 font-normal",
-            !selectedDate && "text-muted-foreground",
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-          {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-        </Button>
         <div className="overflow-hidden rounded-md border border-border/70 bg-background/40">
           <Calendar
             mode="single"

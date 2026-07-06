@@ -6,7 +6,7 @@ import {
   grandFinalAllowsBracketReset,
   type GrandFinalMode,
 } from "@/features/admin/features/tournament-details/utils/grand-final";
-import type { RoundSchedule } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
 import { isRoundScheduleConfigured } from "@/features/tournaments/utils/round-schedule";
 import { BracketSectionHeader } from "./BracketSectionHeader";
 import { BracketRoundScheduleDisplay } from "./BracketRoundScheduleDisplay";
