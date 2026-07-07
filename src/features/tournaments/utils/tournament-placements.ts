@@ -248,19 +248,32 @@ export function deriveManagedPlacements(
   return deriveSingleElimPlacements(matches);
 }
 
+function isDecisiveGrandFinalMatchId(matchId: string): boolean {
+  return matchId === GRAND_FINAL_MATCH_ID || matchId === GRAND_FINAL_RESET_MATCH_ID;
+}
+
+function includePublicPlacementMatch(match: BracketRound["matches"][number]): boolean {
+  const teamA = match.teamA?.trim();
+  const teamB = match.teamB?.trim();
+  if (!teamA || !teamB) return false;
+  if (match.winner?.trim()) return true;
+  return isDecisiveGrandFinalMatchId(match.id);
+}
+
 export function derivePublicPlacements(
   format: string,
   rounds: BracketRound[],
+  grandFinalMode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
 ): TournamentPlacement[] {
   const rows = rounds.flatMap((round) =>
     round.matches
-      .filter((match) => match.winner && match.teamA && match.teamB)
+      .filter(includePublicPlacementMatch)
       .map((match) => ({
         matchId: match.id,
         roundLabel: round.label,
         bracketSide: inferPublicBracketSide(round.label),
-        confirmed: true as const,
-        winner: match.winner!,
+        confirmed: !!match.winner?.trim(),
+        winner: match.winner?.trim() ?? null,
         teamA: match.teamA,
         teamB: match.teamB,
       })),
@@ -314,13 +327,13 @@ export function derivePublicPlacements(
     scoreA: 0,
     scoreB: 0,
     winner: match.winner,
-    confirmed: true,
+    confirmed: match.confirmed,
     winnerNext: null,
     loserNext: null,
   }));
 
   if (isDoubleEliminationFormat(format)) {
-    return deriveDoubleElimPlacements(pseudoMatches);
+    return deriveDoubleElimPlacements(pseudoMatches, grandFinalMode);
   }
   return deriveSingleElimPlacements(pseudoMatches);
 }

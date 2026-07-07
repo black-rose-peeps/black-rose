@@ -58,8 +58,7 @@ export const GRAND_FINAL_MODE_OPTIONS: ReadonlyArray<{
   {
     value: "two_matches",
     label: "1–2 matches",
-    description:
-      "Winners bracket finalist must be defeated twice by the losers bracket finalist.",
+    description: "Winners bracket finalist must be defeated twice by the losers bracket finalist.",
   },
   {
     value: "one_match",
@@ -74,17 +73,21 @@ export const GRAND_FINAL_MODE_OPTIONS: ReadonlyArray<{
   },
 ];
 
-export function grandFinalResetPending(matches: ManagedMatch[]): boolean {
+export function grandFinalResetPending(
+  matches: ManagedMatch[],
+  mode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
+): boolean {
+  if (resolveEffectiveGrandFinalMode(mode) !== "two_matches") return false;
+
   const gf = matches.find((match) => match.id === GRAND_FINAL_MATCH_ID);
+  if (!gf?.confirmed || !gf.winner || !gf.teamB) return false;
+
+  // Lower-bracket finalist (teamB) won Grand Final 1 — title undecided until reset is played.
+  if (gf.winner !== gf.teamB) return false;
+
   const reset = matches.find((match) => match.id === GRAND_FINAL_RESET_MATCH_ID);
-  return (
-    !!gf?.confirmed &&
-    !!gf.winner &&
-    !!gf.teamB &&
-    gf.winner === gf.teamB &&
-    !!reset &&
-    !reset.confirmed
-  );
+  if (!reset) return true;
+  return !reset.confirmed || !reset.winner;
 }
 
 /** Tournament champion from Grand Final (reset match takes priority). */
@@ -109,7 +112,7 @@ export function resolveGrandFinalChampion(
   );
   if (!gf?.winner) return null;
 
-  if (mode === "two_matches" && grandFinalResetPending(matches)) return null;
+  if (mode === "two_matches" && grandFinalResetPending(matches, mode)) return null;
 
   return gf.winner;
 }
@@ -124,6 +127,8 @@ export function resolveGrandFinalRunnerUp(
     );
     return lowerFinal?.winner ?? null;
   }
+
+  if (mode === "two_matches" && grandFinalResetPending(matches, mode)) return null;
 
   const deciding =
     matches.find(

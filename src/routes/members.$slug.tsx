@@ -402,7 +402,6 @@ function MemberProfilePage() {
                     {index > 0 && <div className="mb-3 h-px bg-white/6" />}
                     <dt className="font-tech text-label-readable uppercase text-muted-foreground">
                       {entry.label}
-                      {entry.games.length === 1 ? "" : ` · ${entry.games.join(" · ")}`}
                     </dt>
                     <dd className="mt-0.5 text-sm text-emerald-400">{entry.display}</dd>
                   </div>

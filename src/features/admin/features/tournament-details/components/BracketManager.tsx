@@ -30,8 +30,13 @@ import type {
   BracketRoundMeta,
   ManagedMatch,
   PlayoffRound1Pairing,
+  RoundSchedule,
 } from "../utils/managed-bracket";
 import { relabelEliminationMatches } from "@/features/tournaments/utils/bracket-payload-normalize";
+import {
+  normalizeRoundSchedule,
+  pruneRoundSchedules,
+} from "@/features/tournaments/utils/round-schedule";
 import {
   buildDoubleElimMatches,
   buildSingleElimMatches,
@@ -144,6 +149,7 @@ function buildPersistedPayload(
   managedMatches: ManagedMatch[],
   roundMetas: BracketRoundMeta[],
   roundFormats: Record<string, BestOfFormat>,
+  roundSchedules: Record<string, RoundSchedule>,
   assignments: Array<TournamentTeam | null>,
   options: {
     format: string;
@@ -176,6 +182,7 @@ function buildPersistedPayload(
       managedMatches,
       roundMetas,
       roundFormats,
+      roundSchedules,
       assignmentTeamIds: assignments.map((t) => t?.id ?? null),
       swiss: options.swiss,
       includeThirdPlaceMatch: options.includeThirdPlaceMatch,
@@ -183,6 +190,7 @@ function buildPersistedPayload(
       seedingFormat: options.seedingFormat,
       teamTiers: options.teamTiers,
       protectedSeedCount: options.protectedSeedCount,
+      format: options.format,
     },
   };
 }
@@ -310,6 +318,7 @@ export function BracketManager({
   const [managedMatches, setManagedMatches] = useState<ManagedMatch[]>([]);
   const [roundMetas, setRoundMetas] = useState<BracketRoundMeta[]>([]);
   const [roundFormats, setRoundFormats] = useState<Record<string, BestOfFormat>>({});
+  const [roundSchedules, setRoundSchedules] = useState<Record<string, RoundSchedule>>({});
   const [assignments, setAssignments] = useState<Array<TournamentTeam | null>>(() =>
     Array(bracketSize).fill(null),
   );
@@ -384,19 +393,27 @@ export function BracketManager({
       matches: ManagedMatch[],
       metas: BracketRoundMeta[],
       formats: Record<string, BestOfFormat>,
+      schedules: Record<string, RoundSchedule>,
       currentAssignments: Array<TournamentTeam | null>,
       swiss: SwissBracketState | null | undefined,
       locked: boolean,
     ) => {
-      const payload = buildPersistedPayload(matches, metas, formats, currentAssignments, {
-        format,
-        prizeBreakdown,
-        swiss: swiss ?? undefined,
-        teamNames: orderedTeamNamesFromAssignments(currentAssignments, bracketSize),
-        includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
-        grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
-        ...adminSeedingOptions,
-      });
+      const payload = buildPersistedPayload(
+        matches,
+        metas,
+        formats,
+        schedules,
+        currentAssignments,
+        {
+          format,
+          prizeBreakdown,
+          swiss: swiss ?? undefined,
+          teamNames: orderedTeamNamesFromAssignments(currentAssignments, bracketSize),
+          includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
+          grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
+          ...adminSeedingOptions,
+        },
+      );
       void saveDraftBracket(tournamentId, payload, locked).catch((err) => {
         console.error("[BracketManager] Draft bracket save failed:", err);
       });
@@ -475,6 +492,7 @@ export function BracketManager({
           }
 
           const mergedFormats = { ...defaultRoundFormats(restoredMetas), ...admin.roundFormats };
+          const restoredSchedules = admin.roundSchedules ?? {};
 
           if (!isSwissFormat(format)) {
             const savedFieldSize = Math.max(admin.assignmentTeamIds.length, teams.length);
@@ -484,6 +502,7 @@ export function BracketManager({
           setManagedMatches(restoredMatches);
           setRoundMetas(restoredMetas);
           setRoundFormats(mergedFormats);
+          setRoundSchedules(restoredSchedules);
           setSwissState(restoredSwiss);
 
           if (
@@ -496,6 +515,7 @@ export function BracketManager({
               restoredMatches,
               restoredMetas,
               mergedFormats,
+              restoredSchedules,
               admin.assignmentTeamIds.map((id) =>
                 id ? (teams.find((t) => t.id === id) ?? null) : null,
               ),
@@ -538,9 +558,7 @@ export function BracketManager({
           );
           setSeedingFormat(admin.seedingFormat ?? DEFAULT_SEEDING_FORMAT);
           setTeamTiers(admin.teamTiers ?? {});
-          setProtectedSeedCount(
-            admin.protectedSeedCount ?? defaultProtectedSeedCount(bracketSize),
-          );
+          setProtectedSeedCount(admin.protectedSeedCount ?? defaultProtectedSeedCount(bracketSize));
           setBracketGenerated(true);
           setBracketLocked(isPublishedRestore || state.seedingLocked);
           setStatus(isPublishedRestore ? "published" : "draft");
@@ -587,12 +605,14 @@ export function BracketManager({
         setManagedMatches(managed.matches);
         setRoundMetas(managed.roundMetas);
         setRoundFormats(managed.roundFormats);
+        setRoundSchedules({});
         setSwissState(managed.swiss ?? null);
       }
     } else {
       setManagedMatches([]);
       setRoundMetas([]);
       setRoundFormats({});
+      setRoundSchedules({});
       setSwissState(null);
     }
   }, [
@@ -673,15 +693,11 @@ export function BracketManager({
     const teamNames = orderedTeamNamesFromAssignments(resolvedAssignments, bracketSize);
     bracketEngine.autoSeed(teamNames);
 
-    const managed = buildManagedState(
-      teamNames,
-      format,
-      includeThirdPlaceMatch,
-      grandFinalMode,
-    );
+    const managed = buildManagedState(teamNames, format, includeThirdPlaceMatch, grandFinalMode);
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
+    setRoundSchedules({});
     setSwissState(managed.swiss ?? null);
     setBracketGenerated(true);
     setStatus("draft");
@@ -690,6 +706,7 @@ export function BracketManager({
       managed.matches,
       managed.roundMetas,
       managed.roundFormats,
+      {},
       resolvedAssignments,
       managed.swiss ?? null,
       false,
@@ -710,6 +727,8 @@ export function BracketManager({
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
+    const prunedSchedules = pruneRoundSchedules(roundSchedules, managed.roundMetas);
+    setRoundSchedules(prunedSchedules);
     setSwissState(managed.swiss ?? null);
     setBracketGenerated(true);
     setStatus("draft");
@@ -717,6 +736,7 @@ export function BracketManager({
       managed.matches,
       managed.roundMetas,
       managed.roundFormats,
+      prunedSchedules,
       nextAssignments,
       managed.swiss ?? null,
       false,
@@ -754,9 +774,7 @@ export function BracketManager({
 
   function handleRandomFillRemaining() {
     if (seedingShuffleDisabled) return;
-    syncBracketToSeeding(
-      buildProtectedRandomAssignments(teams, assignments, protectedSeedCount),
-    );
+    syncBracketToSeeding(buildProtectedRandomAssignments(teams, assignments, protectedSeedCount));
   }
 
   function handleProtectedSeedCountChange(count: number) {
@@ -779,6 +797,8 @@ export function BracketManager({
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
+    const prunedSchedules = pruneRoundSchedules(roundSchedules, managed.roundMetas);
+    setRoundSchedules(prunedSchedules);
     setSwissState(managed.swiss ?? null);
     setBracketGenerated(true);
     setStatus("draft");
@@ -786,6 +806,7 @@ export function BracketManager({
       managed.matches,
       managed.roundMetas,
       managed.roundFormats,
+      prunedSchedules,
       assignments,
       managed.swiss ?? null,
       false,
@@ -806,6 +827,8 @@ export function BracketManager({
     setManagedMatches(managed.matches);
     setRoundMetas(managed.roundMetas);
     setRoundFormats(managed.roundFormats);
+    const prunedSchedules = pruneRoundSchedules(roundSchedules, managed.roundMetas);
+    setRoundSchedules(prunedSchedules);
     setSwissState(managed.swiss ?? null);
     setBracketGenerated(true);
     setStatus("draft");
@@ -813,6 +836,7 @@ export function BracketManager({
       managed.matches,
       managed.roundMetas,
       managed.roundFormats,
+      prunedSchedules,
       assignments,
       managed.swiss ?? null,
       false,
@@ -875,6 +899,7 @@ export function BracketManager({
       setManagedMatches([]);
       setRoundMetas([]);
       setRoundFormats({});
+      setRoundSchedules({});
       setSwissState(null);
       setStatus("not_generated");
       bracketEngine.reset();
@@ -936,15 +961,22 @@ export function BracketManager({
   }
 
   async function executePublish() {
-    const payload = buildPersistedPayload(managedMatches, roundMetas, roundFormats, assignments, {
-      format,
-      prizeBreakdown,
-      swiss: swissState ?? undefined,
-      teamNames,
-      includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
-      grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
-      ...adminSeedingOptions,
-    });
+    const payload = buildPersistedPayload(
+      managedMatches,
+      roundMetas,
+      roundFormats,
+      roundSchedules,
+      assignments,
+      {
+        format,
+        prizeBreakdown,
+        swiss: swissState ?? undefined,
+        teamNames,
+        includeThirdPlaceMatch: canIncludeThirdPlaceMatch ? includeThirdPlaceMatch : undefined,
+        grandFinalMode: isDoubleElim ? grandFinalMode : undefined,
+        ...adminSeedingOptions,
+      },
+    );
 
     setIsSaving(true);
     setSaveError(null);
@@ -979,12 +1011,14 @@ export function BracketManager({
       updatedRoundMetas = roundMetas,
       updatedSwiss = swissState ?? undefined,
       updatedRoundFormats = roundFormats,
+      updatedRoundSchedules = roundSchedules,
     ) => {
       if (!isPublished) return;
       const payload = buildPersistedPayload(
         updatedMatches,
         updatedRoundMetas,
         updatedRoundFormats,
+        updatedRoundSchedules,
         assignments,
         {
           format,
@@ -1005,6 +1039,7 @@ export function BracketManager({
       isPublished,
       roundMetas,
       roundFormats,
+      roundSchedules,
       assignments,
       swissState,
       tournamentId,
@@ -1051,14 +1086,17 @@ export function BracketManager({
       setManagedMatches(progressed.matches);
       setRoundMetas(progressed.roundMetas);
       setRoundFormats(nextFormats);
+      const prunedSchedules = pruneRoundSchedules(roundSchedules, progressed.roundMetas);
+      setRoundSchedules(prunedSchedules);
       pushLiveUpdate(
         progressed.matches,
         progressed.roundMetas,
         swissState ?? undefined,
         nextFormats,
+        prunedSchedules,
       );
     },
-    [roundMetas, roundFormats, swissState, pushLiveUpdate, grandFinalMode],
+    [roundMetas, roundFormats, roundSchedules, swissState, pushLiveUpdate, grandFinalMode],
   );
 
   const commitSwissUpdate = useCallback(
@@ -1078,9 +1116,15 @@ export function BracketManager({
       setRoundMetas(applied.roundMetas);
       setRoundFormats(mergedFormats);
       setManagedMatches(applied.matches);
-      pushLiveUpdate(applied.matches, applied.roundMetas, applied.swiss, mergedFormats);
+      pushLiveUpdate(
+        applied.matches,
+        applied.roundMetas,
+        applied.swiss,
+        mergedFormats,
+        roundSchedules,
+      );
     },
-    [roundMetas, roundFormats, teamNames, pushLiveUpdate],
+    [roundMetas, roundFormats, roundSchedules, teamNames, pushLiveUpdate],
   );
 
   const openPlayoffDialog = useCallback(() => {
@@ -1111,12 +1155,23 @@ export function BracketManager({
         setRoundMetas(next.roundMetas);
         setSwissState(next.swiss);
         setRoundFormats(mergedFormats);
-        pushLiveUpdate(next.matches, next.roundMetas, next.swiss, mergedFormats);
+        const prunedSchedules = pruneRoundSchedules(roundSchedules, next.roundMetas);
+        setRoundSchedules(prunedSchedules);
+        pushLiveUpdate(next.matches, next.roundMetas, next.swiss, mergedFormats, prunedSchedules);
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : "Failed to start playoffs.");
       }
     },
-    [swissState, teamNames, managedMatches, roundMetas, roundFormats, pushLiveUpdate, seedByTeam],
+    [
+      swissState,
+      teamNames,
+      managedMatches,
+      roundMetas,
+      roundFormats,
+      roundSchedules,
+      pushLiveUpdate,
+      seedByTeam,
+    ],
   );
 
   const handleMatchScore = useCallback(
@@ -1249,6 +1304,54 @@ export function BracketManager({
       commitEliminationUpdate(updatedMatches, { roundFormats: nextFormats });
     },
     [managedMatches, resultsLocked, roundFormats, commitEliminationUpdate],
+  );
+
+  const handleRoundSchedule = useCallback(
+    (roundId: string, schedule: RoundSchedule | undefined) => {
+      if (resultsLocked) return;
+      const normalized = normalizeRoundSchedule(schedule);
+      const nextSchedules = { ...roundSchedules };
+      if (!normalized) {
+        delete nextSchedules[roundId];
+      } else {
+        nextSchedules[roundId] = normalized;
+      }
+      setRoundSchedules(nextSchedules);
+      if (isPublished) {
+        pushLiveUpdate(
+          managedMatches,
+          roundMetas,
+          swissState ?? undefined,
+          roundFormats,
+          nextSchedules,
+        );
+      } else if (bracketGenerated && status === "draft") {
+        persistDraftSnapshot(
+          managedMatches,
+          roundMetas,
+          roundFormats,
+          nextSchedules,
+          assignments,
+          swissState,
+          bracketLocked,
+        );
+      }
+    },
+    [
+      resultsLocked,
+      roundSchedules,
+      isPublished,
+      managedMatches,
+      roundMetas,
+      swissState,
+      roundFormats,
+      pushLiveUpdate,
+      bracketGenerated,
+      status,
+      persistDraftSnapshot,
+      assignments,
+      bracketLocked,
+    ],
   );
 
   function onTeamSelect(slotIdx: number, teamId: string | null) {
@@ -1445,6 +1548,7 @@ export function BracketManager({
                       matches={managedMatches}
                       roundMetas={roundMetas}
                       roundFormats={roundFormats}
+                      roundSchedules={roundSchedules}
                       teams={teams}
                       swiss={swissState}
                       tournamentStatus={tournamentStatus}
@@ -1455,6 +1559,7 @@ export function BracketManager({
                       }
                       onStartPlayoffs={openPlayoffDialog}
                       onFormatChange={handleRoundFormat}
+                      onScheduleChange={handleRoundSchedule}
                       onApplyRecommendedFormats={handleApplyRecommendedFormats}
                       onScoreChange={handleMatchScore}
                       onPickWinner={handlePickWinner}
@@ -1489,10 +1594,12 @@ export function BracketManager({
                           matches={managedMatches}
                           roundMetas={roundMetas.filter((meta) => meta.side === "playoff")}
                           roundFormats={roundFormats}
+                          roundSchedules={roundSchedules}
                           teams={teams}
                           isDoubleElim={false}
                           readOnly={resultsLocked}
                           onFormatChange={handleRoundFormat}
+                          onScheduleChange={handleRoundSchedule}
                           onApplyRecommendedFormats={handleApplyRecommendedFormats}
                           onScoreChange={handleMatchScore}
                           onPickWinner={handlePickWinner}
@@ -1513,11 +1620,13 @@ export function BracketManager({
                     matches={managedMatches}
                     roundMetas={roundMetas}
                     roundFormats={roundFormats}
+                    roundSchedules={roundSchedules}
                     teams={teams}
                     isDoubleElim={isDoubleElim}
                     grandFinalMode={grandFinalMode}
                     readOnly={resultsLocked}
                     onFormatChange={handleRoundFormat}
+                    onScheduleChange={handleRoundSchedule}
                     onApplyRecommendedFormats={handleApplyRecommendedFormats}
                     onScoreChange={handleMatchScore}
                     onPickWinner={handlePickWinner}
@@ -1564,10 +1673,7 @@ export function BracketManager({
                 <ValidationItem label="Seeding requirements met" passed={seedingReadiness.ready} />
                 <ValidationItem label="All teams seeded" passed={allAssigned} />
                 <ValidationItem label="Bracket structure valid" passed={bracketGenerated} />
-                <ValidationItem
-                  label="Team count correct"
-                  passed={teams.length >= 2 && parityOk}
-                />
+                <ValidationItem label="Team count correct" passed={teams.length >= 2 && parityOk} />
                 <ValidationItem
                   label="Seeding complete"
                   passed={seedingReadiness.ready && bracketGenerated && allAssigned}

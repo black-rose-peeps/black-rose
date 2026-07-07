@@ -18,6 +18,7 @@ import {
   formatIdentityForGame,
   parseGameIdentitiesFromRow,
 } from "@/features/member/utils/game-identity";
+import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
 import { adminMemberToTeamMember } from "../utils";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";

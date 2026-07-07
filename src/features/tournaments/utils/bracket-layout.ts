@@ -19,13 +19,17 @@ export const BRACKET_BAND_TITLE_H = 40;
 /** Extra clearance between round labels and the first match row. */
 export const BRACKET_HEADER_PAD = 12;
 
-/** Reserve vertical space for round labels (and optional format row) above match cards. */
+/** Reserve vertical space for round labels (and optional format / schedule rows) above match cards. */
 export function bracketRoundHeaderReserveHeight(options: {
   showFormatControls?: boolean;
+  showScheduleControls?: boolean;
+  showScheduleDisplay?: boolean;
   renderRoundHeader?: boolean;
 }): number {
   let height = BRACKET_HEADER_H + BRACKET_HEADER_PAD;
   if (options.showFormatControls) height += 34;
+  if (options.showScheduleControls) height += 44;
+  if (options.showScheduleDisplay) height += 64;
   if (options.renderRoundHeader) height += 28;
   return height;
 }
