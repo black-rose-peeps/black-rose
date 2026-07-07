@@ -57,9 +57,9 @@ export function InviteMemberDialog({
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   const rosterCount = team.members.filter((m) => m.status !== "removed").length;
-  const rosterExcludeKey = team.members
+  const rosterKey = team.members
     .filter((m) => m.status !== "removed")
-    .map((m) => m.userId)
+    .map((m) => `${m.userId}:${m.status}`)
     .sort()
     .join(",");
   const slotsLeft = MAX_TEAM_SIZE - rosterCount;
@@ -109,15 +109,16 @@ export function InviteMemberDialog({
       setSearching(true);
       setSearchError(null);
       const currentTeam = teamRef.current;
-      const excludeIds = currentTeam.members
+      const teamRoster = currentTeam.members
         .filter((m) => m.status !== "removed")
-        .map((m) => m.userId);
+        .map((m) => ({ userId: m.userId, status: m.status }));
 
-      searchVerifiedMembersForInvite(query, excludeIds, {
+      searchVerifiedMembersForInvite(query, {
         page,
         pageSize: PAGE_SIZE,
         game: currentTeam.game,
         excludeTeamId: currentTeam.id,
+        teamRoster,
       })
         .then((result) => {
           if (!cancelled) {
@@ -141,20 +142,24 @@ export function InviteMemberDialog({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, search, page, team.id, team.game, rosterExcludeKey]);
+  }, [open, search, page, team.id, team.game, rosterKey]);
 
-  function isMemberInvited(memberId: string): boolean {
-    if (recentlyInvitedIds.has(memberId)) return true;
-    return team.members.some((m) => m.userId === memberId && m.status === "invited");
+  function memberShowsInvited(member: InviteSearchMember): boolean {
+    if (recentlyInvitedIds.has(member.id)) return true;
+    return member.availability === "invited";
   }
 
-  async function handleInvite(memberId: string) {
-    if (invitingId !== null || isMemberInvited(memberId) || slotsLeft <= 0) return;
+  function canInviteMember(member: InviteSearchMember): boolean {
+    return member.availability === "available" && !recentlyInvitedIds.has(member.id);
+  }
+
+  async function handleInvite(member: InviteSearchMember) {
+    if (invitingId !== null || !canInviteMember(member) || slotsLeft <= 0) return;
     setInviteError(null);
-    setInvitingId(memberId);
+    setInvitingId(member.id);
     try {
-      const updated = await inviteMemberToTeam({ teamId: team.id, memberId });
-      setRecentlyInvitedIds((prev) => new Set(prev).add(memberId));
+      const updated = await inviteMemberToTeam({ teamId: team.id, memberId: member.id });
+      setRecentlyInvitedIds((prev) => new Set(prev).add(member.id));
       onInvited(updated);
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : "Failed to invite member.");
@@ -267,7 +272,7 @@ export function InviteMemberDialog({
                       Nobody <span className="text-stroke">eligible.</span>
                     </>
                   }
-                  description={`No verified member matches "${search.trim()}". They may already be on a ${team.game} roster, on your team, or not verified yet.`}
+                  description={`No verified member matches "${search.trim()}". They may not be verified yet or use a different handle.`}
                   actions={clearSearchButton(() => setSearch(""))}
                   className="border-white/6 bg-transparent"
                 />
@@ -280,8 +285,9 @@ export function InviteMemberDialog({
                 className="px-2 pb-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-tech [&_[cmdk-group-heading]]:text-label-readable [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-muted-foreground/70"
               >
                 {results.map((member) => {
-                  const invited = isMemberInvited(member.id);
+                  const invited = memberShowsInvited(member);
                   const sending = invitingId === member.id;
+                  const inviteable = canInviteMember(member);
 
                   return (
                     <div
@@ -306,32 +312,51 @@ export function InviteMemberDialog({
                           className="min-w-0"
                         />
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={invitingId !== null || invited}
-                        variant={invited ? "outline" : "secondary"}
-                        onClick={() => void handleInvite(member.id)}
-                        className={cn(
-                          "min-w-22 shrink-0 cursor-pointer rounded-none font-tech text-ui-readable uppercase",
-                          invited &&
-                            "border-emerald-400/25 bg-emerald-400/5 text-emerald-400 hover:bg-emerald-400/5",
-                        )}
-                      >
-                        {invited ? (
-                          <>
-                            <Check className="h-3 w-3" />
-                            Invited
-                          </>
-                        ) : sending ? (
-                          <>
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Sending…
-                          </>
-                        ) : (
-                          "Invite"
-                        )}
-                      </Button>
+                      {invited ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled
+                          variant="outline"
+                          className="min-w-22 shrink-0 cursor-default rounded-none border-emerald-400/25 bg-emerald-400/5 font-tech text-ui-readable uppercase text-emerald-400 hover:bg-emerald-400/5"
+                        >
+                          <Check className="h-3 w-3" />
+                          Invited
+                        </Button>
+                      ) : member.availability === "on_roster" ? (
+                        <span className="min-w-22 shrink-0 border border-white/12 bg-white/5 px-3 py-1.5 text-center font-tech text-ui-readable uppercase text-muted-foreground">
+                          On roster
+                        </span>
+                      ) : member.availability === "on_other_team" ? (
+                        <span
+                          className="min-w-22 shrink-0 truncate border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 text-center font-tech text-ui-readable uppercase text-amber-300/90"
+                          title={
+                            member.busyTeamName
+                              ? `${member.busyTeamName}${member.busyTeamTag ? ` [${member.busyTeamTag}]` : ""}`
+                              : undefined
+                          }
+                        >
+                          On [{member.busyTeamTag ?? "team"}]
+                        </span>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={invitingId !== null || !inviteable}
+                          variant="secondary"
+                          onClick={() => void handleInvite(member)}
+                          className="min-w-22 shrink-0 cursor-pointer rounded-none font-tech text-ui-readable uppercase"
+                        >
+                          {sending ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Sending…
+                            </>
+                          ) : (
+                            "Invite"
+                          )}
+                        </Button>
+                      )}
                     </div>
                   );
                 })}
@@ -369,7 +394,7 @@ export function InviteMemberDialog({
             ) : (
               <span className="inline-flex items-center gap-1.5 font-tech uppercase tracking-wider">
                 <Search className="h-3 w-3" />
-                Verified · {team.game} eligible only
+                Verified members
               </span>
             )}
           </div>

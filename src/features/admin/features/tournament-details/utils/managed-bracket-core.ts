@@ -3,10 +3,7 @@
  */
 
 import { roundFlowRank } from "@/features/tournaments/utils/bracket-round-order";
-import {
-  DEFAULT_GRAND_FINAL_MODE,
-  type GrandFinalMode,
-} from "./grand-final";
+import { DEFAULT_GRAND_FINAL_MODE, type GrandFinalMode } from "./grand-final";
 
 export interface BuildBracketOptions {
   /** Opening play-in field (e.g. 24 teams) — play-in losers wait in LB R1 for UB R2 losers. */
@@ -19,6 +16,8 @@ export interface BuildBracketOptions {
 }
 
 export type BestOfFormat = "BO1" | "BO3" | "BO5";
+
+export type { RoundSchedule, RoundVenueType } from "@/features/tournaments/utils/round-schedule";
 
 export interface MatchSlotRef {
   matchId: string;

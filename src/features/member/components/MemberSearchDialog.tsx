@@ -224,7 +224,7 @@ export function MemberSearchDialog({ open, onOpenChange }: MemberSearchDialogPro
           </CommandList>
         </Command>
 
-        <div className="flex shrink-0 items-center justify-between border-t border-white/8 px-4 py-2.5 text-xs text-muted-foreground safe-bottom">
+        <div className="flex shrink-0 items-center justify-between border-t border-white/8 px-4 py-2.5 mb-2.5 text-xs text-muted-foreground safe-bottom">
           <div className="flex items-center gap-3">
             {hasQuery && total > pageSize ? (
               <>

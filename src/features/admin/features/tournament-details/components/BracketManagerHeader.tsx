@@ -137,138 +137,138 @@ export function BracketManagerHeader({
         />
 
         <div className="relative border-t border-white/[0.06] bg-[oklch(0.06_0_0)]">
-        {isMobile ? (
-          <div className="flex items-center justify-end gap-2 border-b border-white/[0.06] px-4 py-3">
-            <BracketMobileActionsMenu
-              bracketGenerated={bracketGenerated}
-              canGenerate={canGenerate}
-              canPublish={canPublish}
-              isPublished={isPublished}
-              isSaving={isSaving}
-              resultsLocked={resultsLocked}
-              seedingLocked={seedingLocked}
-              seedingShuffleDisabled={seedingShuffleDisabled}
-              hasBracketProgress={hasBracketProgress}
-              showMarkComplete={showMarkComplete}
-              assignedCount={assignedCount}
-              teamCount={teamCount}
-              onGenerate={onGenerate}
-              onRandomSeed={onRandomSeed}
-              onAutoSeed={onAutoSeed}
-              onToggleLock={onToggleLock}
-              onReset={onReset}
-              onPublish={onPublish}
-              onMarkComplete={onMarkComplete}
-            />
-          </div>
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-3 sm:px-6">
-              <p className="mr-1 font-tech text-[9px] uppercase tracking-[0.18em] text-white/35">
-                Seeding
-              </p>
-              {!bracketGenerated && (
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!canGenerate || resultsLocked}
-                  onClick={onGenerate}
-                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-                >
-                  <GitBranch className="h-3.5 w-3.5" />
-                  Generate bracket
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={seedingShuffleDisabled}
-                title={shuffleTitle}
-                onClick={onAutoSeed}
-                className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider hover:bg-white/[0.05]"
-              >
-                <ArrowDownToLine className="h-3.5 w-3.5" />
-                Auto seed
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={seedingShuffleDisabled}
-                title={shuffleTitle}
-                onClick={onRandomSeed}
-                className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider text-amber-300 hover:bg-white/[0.05] hover:text-amber-200"
-              >
-                <Shuffle className="h-3.5 w-3.5" />
-                Random seed
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isPublished || resultsLocked}
-                onClick={onToggleLock}
-                className={cn(
-                  "gap-1.5 font-tech text-[10px] uppercase tracking-wider",
-                  seedingLocked
-                    ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
-                    : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]",
-                )}
-              >
-                {seedingLocked ? (
-                  <Lock className="h-3.5 w-3.5" />
-                ) : (
-                  <LockOpen className="h-3.5 w-3.5" />
-                )}
-                {seedingLocked ? "Seeding locked" : "Lock seeding"}
-              </Button>
-              <span className="hidden text-[10px] text-white/35 sm:inline">
-                {assignedCount}/{teamCount} seeded
-              </span>
+          {isMobile ? (
+            <div className="flex items-center justify-end gap-2 border-b border-white/[0.06] px-4 py-3">
+              <BracketMobileActionsMenu
+                bracketGenerated={bracketGenerated}
+                canGenerate={canGenerate}
+                canPublish={canPublish}
+                isPublished={isPublished}
+                isSaving={isSaving}
+                resultsLocked={resultsLocked}
+                seedingLocked={seedingLocked}
+                seedingShuffleDisabled={seedingShuffleDisabled}
+                hasBracketProgress={hasBracketProgress}
+                showMarkComplete={showMarkComplete}
+                assignedCount={assignedCount}
+                teamCount={teamCount}
+                onGenerate={onGenerate}
+                onRandomSeed={onRandomSeed}
+                onAutoSeed={onAutoSeed}
+                onToggleLock={onToggleLock}
+                onReset={onReset}
+                onPublish={onPublish}
+                onMarkComplete={onMarkComplete}
+              />
             </div>
-
-            <div className="flex flex-wrap items-center gap-2 px-5 py-3 sm:px-6">
-              <p className="mr-1 font-tech text-[9px] uppercase tracking-[0.18em] text-white/35">
-                Bracket
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={resultsLocked || isSaving}
-                title={resultsLocked ? "Reset is disabled for completed tournaments" : undefined}
-                onClick={onReset}
-                className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider text-red-400 hover:bg-white/[0.05] hover:text-red-300"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!canPublish || isPublished || isSaving}
-                onClick={onPublish}
-                className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                {isSaving ? "Saving…" : "Publish"}
-              </Button>
-              {showMarkComplete && (
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-3 sm:px-6">
+                <p className="mr-1 font-tech text-[9px] uppercase tracking-[0.18em] text-white/35">
+                  Seeding
+                </p>
+                {!bracketGenerated && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!canGenerate || resultsLocked}
+                    onClick={onGenerate}
+                    className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                  >
+                    <GitBranch className="h-3.5 w-3.5" />
+                    Generate bracket
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={isSaving}
-                  onClick={onMarkComplete}
-                  className="gap-1.5 border-emerald-400/40 bg-emerald-950/20 font-tech text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-950/40"
+                  disabled={seedingShuffleDisabled}
+                  title={shuffleTitle}
+                  onClick={onAutoSeed}
+                  className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider hover:bg-white/[0.05]"
                 >
-                  Mark complete
+                  <ArrowDownToLine className="h-3.5 w-3.5" />
+                  Auto seed
                 </Button>
-              )}
-            </div>
-          </>
-        )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={seedingShuffleDisabled}
+                  title={shuffleTitle}
+                  onClick={onRandomSeed}
+                  className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider text-amber-300 hover:bg-white/[0.05] hover:text-amber-200"
+                >
+                  <Shuffle className="h-3.5 w-3.5" />
+                  Random seed
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPublished || resultsLocked}
+                  onClick={onToggleLock}
+                  className={cn(
+                    "gap-1.5 font-tech text-[10px] uppercase tracking-wider",
+                    seedingLocked
+                      ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                      : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]",
+                  )}
+                >
+                  {seedingLocked ? (
+                    <Lock className="h-3.5 w-3.5" />
+                  ) : (
+                    <LockOpen className="h-3.5 w-3.5" />
+                  )}
+                  {seedingLocked ? "Seeding locked" : "Lock seeding"}
+                </Button>
+                <span className="hidden text-[10px] text-white/35 sm:inline">
+                  {assignedCount}/{teamCount} seeded
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 px-5 py-3 sm:px-6">
+                <p className="mr-1 font-tech text-[9px] uppercase tracking-[0.18em] text-white/35">
+                  Bracket
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={resultsLocked || isSaving}
+                  title={resultsLocked ? "Reset is disabled for completed tournaments" : undefined}
+                  onClick={onReset}
+                  className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider text-red-400 hover:bg-white/[0.05] hover:text-red-300"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canPublish || isPublished || isSaving}
+                  onClick={onPublish}
+                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {isSaving ? "Saving…" : "Publish"}
+                </Button>
+                {showMarkComplete && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={onMarkComplete}
+                    className="gap-1.5 border-emerald-400/40 bg-emerald-950/20 font-tech text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-950/40"
+                  >
+                    Mark complete
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </div>
         {subTabs}
       </div>

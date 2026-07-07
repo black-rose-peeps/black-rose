@@ -5,6 +5,8 @@
 export {
   type BuildBracketOptions,
   type BestOfFormat,
+  type RoundSchedule,
+  type RoundVenueType,
   type MatchSlotRef,
   type ManagedMatch,
   type BracketRoundMeta,

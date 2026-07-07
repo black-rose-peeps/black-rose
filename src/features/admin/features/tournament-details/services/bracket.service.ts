@@ -4,7 +4,12 @@ import type { BracketRound, PrizeTier } from "@/features/tournaments/types";
 import type { TournamentPlacement } from "@/features/tournaments/utils/tournament-placements";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { normalizePublishedBracketPayload } from "@/features/tournaments/utils/bracket-payload-normalize";
-import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "../utils/managed-bracket";
+import type {
+  BestOfFormat,
+  BracketRoundMeta,
+  ManagedMatch,
+  RoundSchedule,
+} from "../utils/managed-bracket";
 import type { GrandFinalMode } from "../utils/grand-final";
 import type { SeedingFormat, SeedingTier } from "@/features/tournaments/utils/seeding-format";
 import type { SwissBracketState } from "../utils/managed-swiss-bracket";
@@ -20,6 +25,7 @@ export interface PersistedBracketPayload {
     managedMatches: ManagedMatch[];
     roundMetas: BracketRoundMeta[];
     roundFormats: Record<string, BestOfFormat>;
+    roundSchedules?: Record<string, RoundSchedule>;
     assignmentTeamIds: Array<string | null>;
     swiss?: SwissBracketState;
     includeThirdPlaceMatch?: boolean;
@@ -27,6 +33,7 @@ export interface PersistedBracketPayload {
     seedingFormat?: SeedingFormat;
     teamTiers?: Record<string, SeedingTier | undefined>;
     protectedSeedCount?: number;
+    format?: string;
   };
 }
 

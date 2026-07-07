@@ -24,7 +24,6 @@ import {
 import {
   formatIdentityForGame,
   gameIdentityConfig,
-  isRiotGame,
   parseGameIdentitiesFromRow,
 } from "@/features/member/utils/game-identity";
 import { fetchRosterIdentityGapsForTeam } from "@/features/member/services/member-identity.service";
@@ -325,7 +324,7 @@ async function insertTeamRegistrationPlayers(
 async function validateTeamForTournamentRegistration(
   tournamentId: string,
   rosterTeam: Team,
-  options?: { requireOpenRegistration?: boolean },
+  options?: { requireOpenRegistration?: boolean; skipIdentityCheck?: boolean },
 ): Promise<Awaited<ReturnType<typeof fetchTournamentById>> & object> {
   const tournament = await fetchTournamentById(tournamentId);
   if (!tournament) throw new Error("Tournament not found.");
@@ -362,9 +361,11 @@ async function validateTeamForTournamentRegistration(
   const rosterError = tournamentRosterRequirementError(rosterTeam, tournament.game);
   if (rosterError) throw new Error(rosterError);
 
-  const identityGaps = await fetchRosterIdentityGapsForTeam(rosterTeam, tournament.game);
-  const identityError = formatRosterIdentityGapMessage(rosterTeam, tournament.game, identityGaps);
-  if (identityError) throw new Error(identityError);
+  if (!options?.skipIdentityCheck) {
+    const identityGaps = await fetchRosterIdentityGapsForTeam(rosterTeam, tournament.game);
+    const identityError = formatRosterIdentityGapMessage(rosterTeam, tournament.game, identityGaps);
+    if (identityError) throw new Error(identityError);
+  }
 
   return tournament;
 }
@@ -679,7 +680,7 @@ export async function updateRegistrationStatus(
     const tournamentName =
       tournament?.name ?? (await fetchTournamentById(existing.tournamentId))?.name;
     if (status === "Approved") {
-      void logAdminAction({
+      void logAuditAction({
         action: ADMIN_AUDIT_ACTIONS.REGISTRATION_APPROVED,
         entityType: "registration",
         entityId: registrationId,
@@ -692,7 +693,7 @@ export async function updateRegistrationStatus(
         },
       });
     } else if (status === "Rejected") {
-      void logAdminAction({
+      void logAuditAction({
         action: ADMIN_AUDIT_ACTIONS.REGISTRATION_REJECTED,
         entityType: "registration",
         entityId: registrationId,
@@ -886,7 +887,9 @@ export async function addTeamToTournament(
   const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
   if (!rosterTeam) throw new Error("Team not found. Create the team under Teams first.");
 
-  const tournament = await validateTeamForTournamentRegistration(tournamentId, rosterTeam);
+  const tournament = await validateTeamForTournamentRegistration(tournamentId, rosterTeam, {
+    skipIdentityCheck: true,
+  });
 
   const existing = await fetchTeamTournamentRegistration(rosterTeamId, tournamentId);
   if (existing) throw new Error("This team is already registered for this tournament.");
@@ -922,7 +925,7 @@ export async function addTeamToTournament(
   }
 
   const registration = await fetchRegistrationWithPlayers(reg.id as string);
-  void logAdminAction({
+  void logAuditAction({
     action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ADDED,
     entityType: "registration",
     entityId: registration.id,
@@ -973,17 +976,8 @@ export async function addMemberToTournament(
   let soloIgn = member.username;
   const competitiveIds = await fetchCompetitiveIdentitiesForMembers(tournament.game, [member.id]);
   const competitiveIgn = competitiveIds.get(member.id);
-  const identityConfig = gameIdentityConfig(tournament.game);
 
-  if (identityConfig) {
-    if (!competitiveIgn) {
-      const idLabel = isRiotGame(tournament.game) ? "Riot ID" : identityConfig.fieldLabel;
-      throw new Error(
-        `Add your ${idLabel} for ${identityConfig.panelLabel} on your profile before registering.`,
-      );
-    }
-    soloIgn = competitiveIgn;
-  } else if (competitiveIgn) {
+  if (competitiveIgn) {
     soloIgn = competitiveIgn;
   }
 
@@ -1025,7 +1019,7 @@ export async function addMemberToTournament(
   await syncTournamentTeamCount(tournamentId, updatedCount);
 
   const registration = await fetchRegistrationWithPlayers(reg.id as string);
-  void logAdminAction({
+  void logAuditAction({
     action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ADDED,
     entityType: "registration",
     entityId: registration.id,
@@ -1391,7 +1385,7 @@ export async function removeTeamFromTournament(registrationId: string): Promise<
     if (teamErr) throw new Error(teamErr.message);
   }
 
-  void logAdminAction({
+  void logAuditAction({
     action: ADMIN_AUDIT_ACTIONS.REGISTRATION_REMOVED,
     entityType: "registration",
     entityId: registrationId,

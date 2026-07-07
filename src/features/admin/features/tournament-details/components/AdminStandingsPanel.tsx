@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import {
-  fetchBracketState,
-  type PersistedBracketPayload,
-} from "../services/bracket.service";
+import { fetchBracketState, type PersistedBracketPayload } from "../services/bracket.service";
 import {
   buildPodiumPlacements,
   deriveManagedPlacements,

@@ -25,14 +25,10 @@ import {
 } from "@/features/tournaments/utils";
 import { countDisplayedTournamentEntrants } from "@/features/admin/features/participants/constants/registration-status";
 import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
-import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
 import { TournamentRegisterCTA } from "@/features/tournaments/components/TournamentRegisterCTA";
 import { supportsEliminationStandings } from "@/features/tournaments/constants/formats";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
-import {
-  fetchTournamentById,
-  fetchTournamentByIdForSsr,
-} from "@/features/tournaments/services";
+import { fetchTournamentById, fetchTournamentByIdForSsr } from "@/features/tournaments/services";
 import { getSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
@@ -70,13 +66,6 @@ function detailFromSummary(
     organizer: "Black Rose Operations",
     contact: BLACK_ROSE_STAFF_CONTACT_SUMMARY,
     prizeBreakdown: summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
-    schedule: buildTournamentSchedule({
-      registrationDeadline: summary.registrationDeadline,
-      startDate: summary.startDate,
-      format: summary.format,
-      status,
-      bracketRounds,
-    }),
     rules: [],
     bracket: bracketRounds,
     teams: [],
@@ -173,6 +162,7 @@ function TournamentDetailPage() {
     bracket: liveBracket,
     prizeBreakdown: livePrizeBreakdown,
     assignmentTeamIds,
+    roundSchedules: liveRoundSchedules,
     grandFinalMode: liveGrandFinalMode,
     isLoading: bracketLoading,
   } = useLiveBracket(tournament.id);
@@ -260,12 +250,17 @@ function TournamentDetailPage() {
   }, [tournament.prizeBreakdown, livePrizeBreakdown]);
 
   const displayPlacements = useMemo(() => {
-    const isDone = tournament.status === "Completed" || tournament.status === "Archived";
-    if (!isDone || !displayBracket.length) return [];
+    if (!displayBracket.length) return [];
 
-    const raw = derivePublicPlacements(tournament.format, displayBracket);
+    const raw = derivePublicPlacements(
+      tournament.format,
+      displayBracket,
+      liveGrandFinalMode ?? undefined,
+    );
+    if (raw.length === 0) return [];
+
     return buildPodiumPlacements(resolvedPrizeBreakdown, raw);
-  }, [tournament.status, tournament.format, displayBracket, resolvedPrizeBreakdown]);
+  }, [tournament.format, displayBracket, resolvedPrizeBreakdown, liveGrandFinalMode]);
 
   const liveDetail: TournamentDetail = {
     ...tournament,
@@ -275,13 +270,6 @@ function TournamentDetailPage() {
         : tournament.teamsRegistered
       : entrantCount,
     prizeBreakdown: resolvedPrizeBreakdown,
-    schedule: buildTournamentSchedule({
-      registrationDeadline: tournament.registrationDeadline,
-      startDate: tournament.startDate,
-      format: tournament.format,
-      status: tournament.status,
-      bracketRounds: displayBracket,
-    }),
     placements: displayPlacements,
   };
 
@@ -356,6 +344,7 @@ function TournamentDetailPage() {
               <OverviewTab
                 tournament={{ ...liveDetail, bracket: displayBracket }}
                 teamTags={teamTagMap}
+                roundSchedules={liveRoundSchedules}
               />
             </div>
           )}
@@ -388,6 +377,7 @@ function TournamentDetailPage() {
                 seedByTeam={seedByTeam}
                 tournamentStatus={liveDetail.status}
                 grandFinalMode={liveGrandFinalMode}
+                roundSchedules={liveRoundSchedules}
               />
             </div>
           )}

@@ -3,7 +3,6 @@ import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/a
 import { formatValorantRiotId, isValorantGame } from "@/features/member/utils/valorant-identity";
 import type { AdminMember, CreateMemberInput, MemberVerificationStatus } from "../types";
 import { resolveMemberProfileSlug } from "@/features/member/utils/profile-slug";
-import { isUuid } from "../utils/postgrest-filter";
 import { rowToAdminMember } from "../utils";
 
 const MEMBER_SYNC_COLUMNS = "discord_not_in_guild_strikes, discord_sync_paused_at";
@@ -177,6 +176,8 @@ export async function updateMember(id: string, input: CreateMemberInput): Promis
   return member;
 }
 
+export type InviteMemberAvailability = "available" | "on_roster" | "invited" | "on_other_team";
+
 export interface InviteSearchMember {
   id: string;
   username: string;
@@ -185,6 +186,9 @@ export interface InviteSearchMember {
   avatarInitials: string;
   avatarUrl: string | null;
   profileSlug: string;
+  availability: InviteMemberAvailability;
+  busyTeamName?: string;
+  busyTeamTag?: string;
 }
 
 export interface InviteSearchResult {
@@ -196,38 +200,121 @@ export interface InviteSearchResult {
 
 const INVITE_SEARCH_PAGE_SIZE = 8;
 
+export interface InviteSearchTeamRosterRef {
+  userId: string;
+  status: string;
+}
+
 export interface InviteSearchOptions {
   page?: number;
   pageSize?: number;
-  /** When set, members already on an active team for this game are excluded. */
   game?: string;
-  /** Current team id — excluded from the active-game busy check (same roster allowed). */
+  /** Current team id — used to resolve roster vs other-team availability. */
   excludeTeamId?: string;
+  /** Current team roster — used to mark on-roster / invited members in results. */
+  teamRoster?: InviteSearchTeamRosterRef[];
 }
 
-async function fetchMemberIdsOnActiveGame(game: string, excludeTeamId?: string): Promise<string[]> {
-  const { data: teamRows, error: teamErr } = await supabase
-    .from("teams")
-    .select("id")
-    .eq("game", game);
+interface OtherTeamMembership {
+  teamName: string;
+  teamTag: string;
+}
 
-  if (teamErr) throw new Error(teamErr.message);
-
-  const teamIds = (teamRows ?? [])
-    .map((row) => row.id as string)
-    .filter((teamId) => teamId !== excludeTeamId);
-
-  if (teamIds.length === 0) return [];
+async function fetchOtherTeamMembershipForUserIds(
+  userIds: string[],
+  game: string,
+  excludeTeamId?: string,
+): Promise<Map<string, OtherTeamMembership>> {
+  if (!userIds.length) return new Map();
 
   const { data: memberRows, error: memberErr } = await supabase
     .from("team_members")
-    .select("user_id")
-    .in("team_id", teamIds)
+    .select("user_id, team_id")
+    .in("user_id", userIds)
     .in("status", ["captain", "active"]);
 
   if (memberErr) throw new Error(memberErr.message);
+  if (!memberRows?.length) return new Map();
 
-  return [...new Set((memberRows ?? []).map((row) => row.user_id as string))];
+  const teamIds = [
+    ...new Set(
+      memberRows
+        .map((row) => row.team_id as string)
+        .filter((teamId) => teamId && teamId !== excludeTeamId),
+    ),
+  ];
+
+  if (!teamIds.length) return new Map();
+
+  const { data: teamRows, error: teamErr } = await supabase
+    .from("teams")
+    .select("id, name, tag")
+    .eq("game", game)
+    .in("id", teamIds);
+
+  if (teamErr) throw new Error(teamErr.message);
+
+  const teamsById = new Map<string, OtherTeamMembership>();
+  for (const row of teamRows ?? []) {
+    teamsById.set(row.id as string, {
+      teamName: row.name as string,
+      teamTag: row.tag as string,
+    });
+  }
+
+  const result = new Map<string, OtherTeamMembership>();
+  for (const row of memberRows) {
+    const userId = row.user_id as string;
+    const teamId = row.team_id as string;
+    if (result.has(userId)) continue;
+    const team = teamsById.get(teamId);
+    if (team) result.set(userId, team);
+  }
+  return result;
+}
+
+function resolveInviteAvailability(
+  memberId: string,
+  teamRoster: InviteSearchTeamRosterRef[] | undefined,
+  otherTeams: Map<string, OtherTeamMembership>,
+): Pick<InviteSearchMember, "availability" | "busyTeamName" | "busyTeamTag"> {
+  const onTeam = teamRoster?.find((member) => member.userId === memberId);
+  if (onTeam) {
+    if (onTeam.status === "invited") return { availability: "invited" };
+    if (onTeam.status === "captain" || onTeam.status === "active") {
+      return { availability: "on_roster" };
+    }
+  }
+
+  const other = otherTeams.get(memberId);
+  if (other) {
+    return {
+      availability: "on_other_team",
+      busyTeamName: other.teamName,
+      busyTeamTag: other.teamTag,
+    };
+  }
+
+  return { availability: "available" };
+}
+
+async function enrichInviteSearchMembers(
+  members: Omit<InviteSearchMember, "availability" | "busyTeamName" | "busyTeamTag">[],
+  options?: InviteSearchOptions,
+): Promise<InviteSearchMember[]> {
+  const otherTeams =
+    options?.game != null
+      ? await fetchOtherTeamMembershipForUserIds(
+          members.map((member) => member.id),
+          options.game,
+          options.excludeTeamId,
+        )
+      : new Map<string, OtherTeamMembership>();
+
+  return members.map((member) => ({
+    ...member,
+    ...resolveInviteAvailability(member.id, options?.teamRoster, otherTeams),
+  }));
 }
 
 function initialsFromName(name: string): string {
@@ -316,7 +403,10 @@ async function collectInviteSearchMemberIds(query: string, game?: string): Promi
   return [...ids];
 }
 
-function rowToInviteSearchMember(row: Record<string, unknown>, game?: string): InviteSearchMember {
+function rowToInviteSearchMember(
+  row: Record<string, unknown>,
+  game?: string,
+): Omit<InviteSearchMember, "availability" | "busyTeamName" | "busyTeamTag"> {
   const username = row.username as string;
   const discordUsername = (row.discord_username as string | null | undefined)?.trim() || username;
   const profiles = row.member_profiles as
@@ -359,10 +449,9 @@ function rowToInviteSearchMember(row: Record<string, unknown>, game?: string): I
   };
 }
 
-/** Search verified members available for team invites (paginated). */
+/** Search verified members for team invites (paginated). Includes roster/busy members with availability labels. */
 export async function searchVerifiedMembersForInvite(
   query: string,
-  excludeIds: string[] = [],
   options?: InviteSearchOptions,
 ): Promise<InviteSearchResult> {
   const page = Math.max(1, options?.page ?? 1);
@@ -370,42 +459,34 @@ export async function searchVerifiedMembersForInvite(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const rosterExclude = excludeIds.filter(isUuid);
-  const gameBusy =
-    options?.game != null
-      ? await fetchMemberIdsOnActiveGame(options.game, options.excludeTeamId)
-      : [];
-  const allExclude = new Set([...rosterExclude, ...gameBusy.filter(isUuid)]);
-
   const trimmed = query.trim();
 
   if (!trimmed) {
-    let builder = supabase
+    const { data, error, count } = await supabase
       .from("members")
       .select(INVITE_MEMBER_SELECT, { count: "exact" })
       .eq("status", "Verified")
-      .order("username", { ascending: true });
+      .order("username", { ascending: true })
+      .range(from, to);
 
-    if (allExclude.size > 0) {
-      builder = builder.not("id", "in", `(${[...allExclude].map((id) => `"${id}"`).join(",")})`);
-    }
-
-    const { data, error, count } = await builder.range(from, to);
     if (error) throw new Error(error.message);
 
-    return {
-      members: (data ?? []).map((row) =>
+    const members = await enrichInviteSearchMembers(
+      (data ?? []).map((row) =>
         rowToInviteSearchMember(row as Record<string, unknown>, options?.game),
       ),
+      options,
+    );
+
+    return {
+      members,
       total: count ?? 0,
       page,
       pageSize,
     };
   }
 
-  const matchingIds = (await collectInviteSearchMemberIds(trimmed, options?.game)).filter(
-    (id) => !allExclude.has(id),
-  );
+  const matchingIds = await collectInviteSearchMemberIds(trimmed, options?.game);
   const total = matchingIds.length;
   if (total === 0) {
     return { members: [], total: 0, page, pageSize };
@@ -435,10 +516,15 @@ export async function searchVerifiedMembersForInvite(
 
   if (error) throw new Error(error.message);
 
-  return {
-    members: (data ?? []).map((row) =>
+  const members = await enrichInviteSearchMembers(
+    (data ?? []).map((row) =>
       rowToInviteSearchMember(row as Record<string, unknown>, options?.game),
     ),
+    options,
+  );
+
+  return {
+    members,
     total,
     page,
     pageSize,

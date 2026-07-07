@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { Crown, Medal, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
+import { isRoundScheduleConfigured } from "@/features/tournaments/utils/round-schedule";
 import { BracketSectionHeader } from "./BracketSectionHeader";
+import { BracketRoundScheduleDisplay } from "./BracketRoundScheduleDisplay";
 
 export interface ChampionshipStageMatch {
   id: string;
@@ -18,6 +21,30 @@ export interface ChampionshipStageRound {
   subtitle?: string;
   variant: "final" | "third";
   match: ChampionshipStageMatch;
+  schedule?: RoundSchedule;
+  scheduleControl?: ReactNode;
+}
+
+function ChampionshipScheduleSlot({
+  label,
+  schedule,
+  scheduleControl,
+}: {
+  label: string;
+  schedule?: RoundSchedule;
+  scheduleControl?: ReactNode;
+}) {
+  const hasSchedule = isRoundScheduleConfigured(schedule);
+  if (!scheduleControl && !hasSchedule) return null;
+
+  return (
+    <div className="mx-auto w-full max-w-[240px] space-y-2">
+      {scheduleControl}
+      {!scheduleControl && hasSchedule ? (
+        <BracketRoundScheduleDisplay schedule={schedule} variant="grand" label={label} />
+      ) : null}
+    </div>
+  );
 }
 
 interface EliminationChampionshipStageProps {
@@ -74,6 +101,11 @@ export function EliminationChampionshipStage({
         </div>
 
         <div className="space-y-6 p-4 sm:p-6">
+          <ChampionshipScheduleSlot
+            label={primary.title}
+            schedule={primary.schedule}
+            scheduleControl={primary.scheduleControl}
+          />
           <div className="mx-auto w-full max-w-md">{renderMatch(primary)}</div>
 
           {thirdPlace && (
@@ -84,6 +116,11 @@ export function EliminationChampionshipStage({
                   {thirdPlace.title}
                 </p>
               </div>
+              <ChampionshipScheduleSlot
+                label={thirdPlace.title}
+                schedule={thirdPlace.schedule}
+                scheduleControl={thirdPlace.scheduleControl}
+              />
               <div className="mx-auto w-full max-w-md">{renderMatch(thirdPlace)}</div>
             </div>
           )}

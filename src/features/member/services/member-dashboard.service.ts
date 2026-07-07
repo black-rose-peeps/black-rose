@@ -3,6 +3,12 @@ import { fetchTeamsForUser } from "@/features/admin/features/teams/services/team
 import { fetchTournamentsLite } from "@/features/admin/features/tournaments/services/tournaments.service";
 import { fetchRegistrationsForTeam } from "@/features/tournaments/services/team-registration.service";
 import type { BracketRound } from "@/features/tournaments/types";
+import {
+  formatRoundScheduleDate,
+  isRoundScheduleConfigured,
+  type RoundSchedule,
+} from "@/features/tournaments/utils/round-schedule";
+import { resolveRoundId } from "@/features/tournaments/utils/bracket-round-order";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import type { TournamentEntry, UpcomingMatch } from "../types";
 
@@ -45,10 +51,15 @@ function extractUpcomingMatches(
   tournamentName: string,
   tournamentStartDate: string,
   rounds: BracketRound[],
+  roundSchedules?: Record<string, RoundSchedule> | null,
 ): UpcomingMatch[] {
   const results: UpcomingMatch[] = [];
 
   for (const round of rounds) {
+    const roundId = resolveRoundId(round);
+    const schedule = roundSchedules?.[roundId];
+    const hasRoundSchedule = isRoundScheduleConfigured(schedule);
+
     for (const match of round.matches) {
       if (match.winner) continue;
 
@@ -57,12 +68,25 @@ function extractUpcomingMatches(
       if (!myTeam) continue;
 
       const opponent = myTeam === match.teamA ? match.teamB : match.teamA;
+      const scheduledAt = hasRoundSchedule
+        ? formatRoundScheduleDate(schedule)
+        : tournamentStartDate || "Date TBD";
+      const scheduleSortKey = hasRoundSchedule
+        ? `${schedule.date}T${schedule.time?.trim() || "00:00"}`
+        : tournamentStartDate || "9999";
+
       results.push({
         matchId: `${tournamentId}-${match.id}`,
+        tournamentId,
         tournamentName,
+        teamName: myTeam,
         opponent: opponent ?? "TBD",
-        scheduledAt: tournamentStartDate || "TBD",
+        scheduledAt,
         round: match.round || round.label,
+        hasRoundSchedule,
+        venueType: schedule?.venueType,
+        location: schedule?.location,
+        scheduleSortKey,
       });
     }
   }
@@ -142,6 +166,7 @@ export async function fetchMemberTournamentDashboard(
             tournament.name,
             tournament.startDate,
             payload.rounds,
+            payload.admin?.roundSchedules,
           ),
         );
       } catch {
@@ -155,7 +180,11 @@ export async function fetchMemberTournamentDashboard(
       (a.status === "Pending" ? 0 : 1) - (b.status === "Pending" ? 0 : 1),
   );
 
-  upcomingMatches.sort((a, b) => a.tournamentName.localeCompare(b.tournamentName));
+  upcomingMatches.sort((a, b) => {
+    const dateDiff = (a.scheduleSortKey ?? "").localeCompare(b.scheduleSortKey ?? "");
+    if (dateDiff !== 0) return dateDiff;
+    return a.tournamentName.localeCompare(b.tournamentName);
+  });
 
   return {
     activeRegistrations,

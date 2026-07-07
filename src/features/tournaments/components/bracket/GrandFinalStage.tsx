@@ -6,7 +6,10 @@ import {
   grandFinalAllowsBracketReset,
   type GrandFinalMode,
 } from "@/features/admin/features/tournament-details/utils/grand-final";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
+import { isRoundScheduleConfigured } from "@/features/tournaments/utils/round-schedule";
 import { BracketSectionHeader } from "./BracketSectionHeader";
+import { BracketRoundScheduleDisplay } from "./BracketRoundScheduleDisplay";
 
 export interface GrandFinalStageMatch {
   id: string;
@@ -20,11 +23,16 @@ export interface GrandFinalStageMatch {
 interface GrandFinalStageProps {
   primaryMatch: GrandFinalStageMatch;
   resetMatch?: GrandFinalStageMatch | null;
-  /** When false (single grand final), hide bracket-reset copy and deciding match UI. */
   allowsBracketReset?: boolean;
   grandFinalMode?: GrandFinalMode;
   formatLabel?: string;
   formatControl?: ReactNode;
+  primarySchedule?: RoundSchedule;
+  resetSchedule?: RoundSchedule;
+  primaryScheduleControl?: ReactNode;
+  resetScheduleControl?: ReactNode;
+  /** @deprecated use primarySchedule / resetSchedule */
+  scheduleDisplay?: ReactNode;
   renderMatch: (match: GrandFinalStageMatch, variant: "primary" | "reset") => ReactNode;
   className?: string;
 }
@@ -70,6 +78,32 @@ function PathBadge({
   );
 }
 
+function BracketMatchScheduleSlot({
+  label,
+  schedule,
+  scheduleControl,
+  legacyDisplay,
+}: {
+  label: string;
+  schedule?: RoundSchedule;
+  scheduleControl?: ReactNode;
+  legacyDisplay?: ReactNode;
+}) {
+  const hasSchedule = isRoundScheduleConfigured(schedule);
+  if (!scheduleControl && !hasSchedule && !legacyDisplay) return null;
+
+  return (
+    <div className="mx-auto w-full max-w-[240px] space-y-2">
+      {scheduleControl}
+      {!scheduleControl && hasSchedule ? (
+        <BracketRoundScheduleDisplay schedule={schedule} variant="grand" label={label} />
+      ) : (
+        !scheduleControl && legacyDisplay
+      )}
+    </div>
+  );
+}
+
 export function GrandFinalStage({
   primaryMatch,
   resetMatch,
@@ -77,18 +111,21 @@ export function GrandFinalStage({
   grandFinalMode,
   formatLabel,
   formatControl,
+  primarySchedule,
+  resetSchedule,
+  primaryScheduleControl,
+  resetScheduleControl,
+  scheduleDisplay,
   renderMatch,
   className,
 }: GrandFinalStageProps) {
-  const bracketResetEnabled =
-    allowsBracketReset ?? grandFinalAllowsBracketReset(grandFinalMode);
+  const bracketResetEnabled = allowsBracketReset ?? grandFinalAllowsBracketReset(grandFinalMode);
   const primaryDecided = primaryMatch.confirmed && !!primaryMatch.winner;
   const lowerWonPrimary =
     primaryDecided && !!primaryMatch.teamB && primaryMatch.winner === primaryMatch.teamB;
   const showReset = bracketResetEnabled && (!!resetMatch || lowerWonPrimary);
 
   const stageSubtitle = getGrandFinalStageSubtitle(grandFinalMode);
-
   const primaryMatchLabel = bracketResetEnabled ? "Grand Final 1" : "Grand Final";
 
   return (
@@ -125,20 +162,28 @@ export function GrandFinalStage({
         </div>
 
         <div className="space-y-6 p-4 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
             <PathBadge
               side="upper"
               teamName={primaryMatch.teamA}
               isWinner={primaryDecided && primaryMatch.winner === primaryMatch.teamA}
               decided={primaryDecided}
             />
-            <div className="flex flex-col items-center gap-1 py-1 sm:px-2">
+            <div className="flex w-full max-w-[240px] flex-col items-center gap-2 py-1 sm:px-2">
               <span className="font-display text-lg font-bold uppercase tracking-[0.2em] text-amber-300/90">
                 VS
               </span>
               <span className="font-tech text-[9px] uppercase tracking-wider text-muted-foreground">
                 {primaryMatchLabel}
               </span>
+              <BracketMatchScheduleSlot
+                label={primaryMatchLabel}
+                schedule={primarySchedule}
+                scheduleControl={primaryScheduleControl}
+                legacyDisplay={
+                  !resetSchedule && !resetScheduleControl ? scheduleDisplay : undefined
+                }
+              />
             </div>
             <PathBadge
               side="lower"
@@ -163,6 +208,13 @@ export function GrandFinalStage({
                     : "The lower-bracket champion won Grand Final 1. One more match decides the title."}
                 </p>
               </div>
+
+              <BracketMatchScheduleSlot
+                label="Deciding Match"
+                schedule={resetSchedule}
+                scheduleControl={resetScheduleControl}
+              />
+
               {resetMatch && (
                 <div className="mx-auto w-full max-w-md">{renderMatch(resetMatch, "reset")}</div>
               )}

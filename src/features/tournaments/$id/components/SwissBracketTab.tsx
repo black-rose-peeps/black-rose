@@ -25,6 +25,8 @@ import {
   SWISS_WINS_TO_ADVANCE,
 } from "../../utils/swiss-standings";
 import type { BracketMatch, BracketRound } from "../../types";
+import type { RoundSchedule } from "@/features/tournaments/utils/round-schedule";
+import { BracketRoundScheduleDisplay } from "@/features/tournaments/components/bracket";
 import { BracketTab } from "./BracketTab";
 import { PublicBracketTeamSlot } from "./PublicBracketTeamSlot";
 
@@ -35,6 +37,7 @@ interface SwissBracketTabProps {
   teamNames?: string[];
   seedByTeam?: Map<string, number>;
   tournamentStatus?: string;
+  roundSchedules?: Record<string, RoundSchedule> | null;
 }
 
 export function SwissBracketTab({
@@ -44,6 +47,7 @@ export function SwissBracketTab({
   teamNames,
   seedByTeam,
   tournamentStatus,
+  roundSchedules,
 }: SwissBracketTabProps) {
   const swissRounds = filterSwissGroupRounds(bracket);
   const playoffRounds = bracket.filter((round) => isSwissPlayoffRound(round));
@@ -70,9 +74,7 @@ export function SwissBracketTab({
   const activeRoundData = swissRounds.find((round) => parseSwissRoundNumber(round) === activeRound);
   const roundMatches = activeRoundData?.matches ?? [];
   const roundByes = activeRoundData?.swissByes ?? [];
-  const activeRoundComplete = activeRoundData
-    ? isPublicSwissRoundComplete(activeRoundData)
-    : false;
+  const activeRoundComplete = activeRoundData ? isPublicSwissRoundComplete(activeRoundData) : false;
   const hasDecidedInActiveRound =
     roundMatches.some((match) => !!match.winner && match.teamA && match.teamB) ||
     roundByes.length > 0;
@@ -150,7 +152,8 @@ export function SwissBracketTab({
                         className={cn(
                           "transition-colors hover:bg-muted/40",
                           entry.status === "advanced" && "border-l-2 border-l-emerald-400/50",
-                          entry.status === "eliminated" && "border-l-2 border-l-red-400/40 opacity-75",
+                          entry.status === "eliminated" &&
+                            "border-l-2 border-l-red-400/40 opacity-75",
                         )}
                       >
                         <td className="px-3 py-2.5 text-center">
@@ -199,9 +202,18 @@ export function SwissBracketTab({
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="font-display text-base font-bold uppercase tracking-[0.18em]">
-              Round {activeRound} Pairings
-            </h3>
+            <div className="space-y-2">
+              <h3 className="font-display text-base font-bold uppercase tracking-[0.18em]">
+                Round {activeRound} Pairings
+              </h3>
+              {activeRoundData?.id && (
+                <BracketRoundScheduleDisplay
+                  schedule={roundSchedules?.[activeRoundData.id]}
+                  variant="card"
+                  className="max-w-xs text-left"
+                />
+              )}
+            </div>
 
             {totalRounds > 0 && (
               <div className="flex items-center gap-1 border border-border bg-card p-1">
@@ -293,7 +305,12 @@ export function SwissBracketTab({
               <h3 className="font-display text-xl tracking-display">Playoff Bracket</h3>
             </div>
           </div>
-          <BracketTab bracket={playoffRounds} format="Single Elimination" teamTags={teamTags} />
+          <BracketTab
+            bracket={playoffRounds}
+            format="Single Elimination"
+            teamTags={teamTags}
+            roundSchedules={roundSchedules}
+          />
         </section>
       )}
     </div>
