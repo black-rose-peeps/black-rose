@@ -1,228 +1,153 @@
 # Black Rose Arena
 
-A community esports tournament platform for creating, managing, and competing in organized events. Members sign in with Discord, build profiles and teams, register for tournaments, and follow live brackets. Operators run the full lifecycle from the admin console.
+Community esports platform for **Black Rose** — Discord members create profiles and teams, register for tournaments, and follow live brackets. Operators run the full event lifecycle from an admin console.
 
-Built with **React 19**, **TanStack Start**, **Supabase**, and **Tailwind CSS v4**.
+**Stack:** React 19 · TanStack Start · Supabase · Tailwind CSS v4
+
+---
+
+## Quick start
+
+```bash
+git clone https://github.com/reyowner/black-rose.git
+cd black-rose
+npm install
+cp .env.example .env   # fill in Supabase + Discord values
+npm run dev
+```
+
+App runs at **http://localhost:3000**
+
+| Who | How to sign in |
+| --- | --- |
+| Members | `/login` → Discord OAuth |
+| Admins | `/login?console=1` → username/password from `admin_accounts` |
+
+> **Database:** New environments need the SQL under [`docs/sql/`](./docs/sql/). Start with [`docs/README.md`](./docs/README.md).
 
 ---
 
 ## Prerequisites
 
-- **Node.js** `22.12+` — check with `node -v`
-- **npm** `10+` — check with `npm -v`
-- **Git**
-- A **Supabase** project (PostgreSQL + Auth)
-- A **Discord** application (OAuth2 for member login)
+- Node.js **22.12+** (`node -v`)
+- npm **10+**
+- A [Supabase](https://supabase.com) project
+- A [Discord application](https://discord.com/developers/applications) (OAuth2)
 
 ---
 
-## Getting Started
+## Environment
 
-**1. Clone and install**
+Copy `.env.example` → `.env`. Minimum to run locally:
 
-```bash
-git clone https://github.com/your-org/blackrose-arena.git
-cd blackrose-arena
-npm install
-```
+| Variable | Where used | Notes |
+| -------- | ---------- | ----- |
+| `VITE_SUPABASE_URL` | Client + server | Project URL |
+| `VITE_SUPABASE_ANON_KEY` | Client | Public anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only | OAuth / privileged writes — **never** prefix with `VITE_` |
+| `VITE_DISCORD_CLIENT_ID` | Client | Discord app ID |
+| `DISCORD_CLIENT_SECRET` | Server only | Discord OAuth secret |
+| `VITE_SITE_URL` | Client | OG previews (prod: `https://blackrose.asia`) |
+| `VITE_DISCORD_SERVER_INVITE` | Client | Invite shown on waitlist |
 
-**2. Configure environment**
+Register OAuth redirects in Discord → OAuth2 → Redirects, e.g. `http://localhost:3000/auth/callback`.
 
-Copy `.env.example` to `.env` and fill in your values:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Purpose |
-| -------- | ------- |
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Public anon key (browser) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-side writes (OAuth, profiles) — **never expose in the client** |
-| `VITE_DISCORD_CLIENT_ID` | Discord OAuth app client ID |
-| `DISCORD_CLIENT_SECRET` | Discord OAuth secret (server only) |
-| `VITE_SITE_URL` | Public site URL for Open Graph previews (production: `https://blackrose.asia`) |
-| `VITE_DISCORD_SERVER_INVITE` | Invite link shown on waitlist / onboarding |
-
-Register each deployment callback in Discord → OAuth2 → Redirects, e.g. `http://localhost:3000/auth/callback`.
-
-**3. Set up the database**
-
-Run the SQL scripts in Supabase SQL Editor. Start with [docs/README.md](./docs/README.md) for the admin flow and table overview, then run scripts under [docs/sql/](./docs/sql/) as needed (members, teams, tournaments, member profiles, admin accounts, etc.).
-
-**4. Start the dev server**
-
-```bash
-npm run dev
-```
-
-Open **http://localhost:3000**
-
-- **Members:** `/login` → Discord OAuth
-- **Admin console:** `/login?console=1` → username/password from `admin_accounts` (see [docs/sql/create_admin_account.sql](./docs/sql/create_admin_account.sql))
+Full list (bot sync, Capacitor, waitlist channels): see [`.env.example`](./.env.example).
 
 ---
 
-## Available Scripts
+## Scripts
 
-| Command | What it does |
-| ------- | ------------ |
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview the production build locally |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Run Prettier on all files |
+| Command | Purpose |
+| ------- | ------- |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run preview` | Preview production build |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier |
 
----
-
-## Key Pages
-
-| URL | Description |
-| --- | ----------- |
-| `/` | Public landing page |
-| `/tournaments` | Tournament directory (game & status filters) |
-| `/tournaments/:id` | Tournament detail — overview, teams, bracket, rules, results |
-| `/champions` | Hall of Champions archive |
-| `/community` | Guild values and community info |
-| `/login` | Sign in with Discord |
-| `/register` | Register with Discord → waitlist if unverified |
-| `/auth/callback` | Discord OAuth callback (handled automatically) |
-| `/waitlist` | Pending verification after registration |
-| `/dashboard` | Member dashboard (verified members) |
-| `/dashboard/profile` | Edit profile — identity, player info, Valorant ID, socials |
-| `/members/:slug` | Public member profile |
-| `/teams` | My teams overview |
-| `/teams/create` | Create a team |
-| `/teams/:id` | Team detail — roster, invites, tournament registration |
-| `/admin` | Admin dashboard |
-| `/admin/users` | Member registry & verification |
-| `/admin/teams` | Team directory |
-| `/admin/tournaments` | Tournament management |
-| `/admin/tournaments/:id` | Bracket manager, registrations, seeding |
-| `/admin/participants` | Registration approval queue |
-| `/admin/announcements` | Broadcast center (UI only — see status below) |
-| `/admin/settings` | Console settings |
+Optional Discord tooling: `npm run discord-bot`, `npm run discord-sync:dev` — see [`docs/discord-bot.md`](./docs/discord-bot.md).
 
 ---
 
-## Project Structure
+## How the codebase is organized
 
 ```text
 src/
-├── features/           # Feature modules (main source of truth)
-│   ├── landing/        # Public home page
-│   ├── auth/           # Discord OAuth, session, member auth server fns
-│   ├── member/         # Profiles, dashboard, profile comments
-│   ├── teams/          # Team creation, roster, invites
-│   ├── tournaments/    # Public tournament UI, registration, brackets
-│   ├── championships/  # Hall of Champions
-│   ├── community/      # Community / guild page
-│   ├── notifications/  # In-app notification bell & sync
-│   └── admin/          # Admin console (members, teams, tournaments, bracket)
-├── routes/             # TanStack Router file-based routes (thin page shells)
-├── components/ui/      # shadcn/ui primitives
-└── lib/                # Supabase client, shared types, utilities
-
-docs/
-├── README.md           # Supabase setup & admin flow
-├── ADMIN_DATABASE.md   # Detailed schema reference
-├── ADMIN_TOURNAMENTS.md
-└── sql/                # Migration scripts
+├── features/     # Domain logic + UI (source of truth)
+│   ├── auth/           Discord OAuth, session
+│   ├── member/         Profiles, dashboard, comments
+│   ├── teams/          Rosters, invites
+│   ├── tournaments/    Public tournament UI + brackets
+│   ├── championships/  Hall of Champions
+│   ├── notifications/  In-app bell + realtime
+│   └── admin/          Console (members, teams, events, brackets)
+├── routes/       # Thin TanStack Router pages — compose from features/
+├── components/ui # shadcn primitives
+└── lib/          # Supabase client, shared helpers
 ```
 
-Route files stay thin — they compose pages from `features/`. The `@/` alias maps to `src/`.
+**Mental model**
+
+1. Put business logic and feature UI in `src/features/<area>/`.
+2. Keep `src/routes/` thin — load data, render feature components.
+3. `@/` maps to `src/`.
+4. Do **not** edit `routeTree.gen.ts` — TanStack Router generates it.
+
+Shared domain types still live in `src/lib/mock-data.ts` (legacy name). Runtime data comes from Supabase services, not mocks.
 
 ---
 
-## Tech Stack
+## Key routes
 
-- **[React 19](https://react.dev)** — UI
-- **[TanStack Start](https://tanstack.com/start)** — Full-stack React with SSR
-- **[TanStack Router](https://tanstack.com/router)** — File-based routing
-- **[Supabase](https://supabase.com)** — PostgreSQL, RLS, realtime
-- **[Tailwind CSS v4](https://tailwindcss.com)** — Styling
-- **[shadcn/ui](https://ui.shadcn.com)** — UI primitives
-- **[Vite 7](https://vite.dev)** — Build tool
-
----
-
-## Current Status
-
-The platform is **production-capable** with Supabase as the backend. Shared domain types still live in `src/lib/mock-data.ts` (historical name only — data comes from Supabase services).
-
-### Completed
-
-**Auth & members**
-
-- Discord OAuth2 sign-in and registration (`/auth/callback`, server token exchange)
-- Client session in `localStorage` with verification sync from database
-- Waitlist for unverified members; admin verification in `/admin/users`
-- Separate admin console login (`admin_accounts` + RPC)
-
-**Profiles**
-
-- Member profiles (`member_profiles`, social links) with public `/members/:slug`
-- Profile editing — display name, bio, game/role, socials, privacy
-- Manual **Valorant IGN + tagline** (shown in Valorant rosters, invites, and tournament views)
-- Profile comments on public profiles
-- Profile completion score on dashboard
-
-**Teams**
-
-- Create teams, captain roster management, member invites (pending → accept)
-- Game-specific roles; Valorant competitive names (`IGN#TAG`) in rosters
-- One active team per game per member; roster capacity limits
-
-**Tournaments (public)**
-
-- Tournament directory and detail pages from Supabase
-- Team and solo registration flows; captain register from tournament page
-- Public bracket view (single/double elimination, Swiss)
-- Results board and podium for concluded events
-
-**Tournaments (admin)**
-
-- Create/edit/archive tournaments (Valorant, LoL, TFT, Where Winds Meet)
-- Solo vs team participation modes
-- Registration queue — approve, reject, bulk approve, veteran (`Previously Competed`) status
-- Add teams/players to events; roster sync from live team data
-- Bracket manager — seeding, scores, Swiss groups, playoff pairing, publish
-- Prize breakdown on tournaments
-
-**Other**
-
-- Hall of Champions (`/champions`) from completed tournament data
-- Community page (`/community`)
-- In-app notifications (team invites, registration updates) with realtime sync
-- Admin dashboard overview
-
-### Not yet / partial
-
-- **Announcements** — admin UI uses static mock data; no database persistence or Discord posting
-- **Riot Sign-On (RSO)** — not integrated; Valorant identity is manual IGN + tagline only
-- **Discord ROSE role sync** — Cloudflare Cron Worker (`workers/discord-sync`) or optional Gateway bot; see [docs/discord-bot.md](./docs/discord-bot.md)
-- **Email notifications** — in-app only today
+| Path | Purpose |
+| ---- | ------- |
+| `/` | Landing |
+| `/tournaments`, `/tournaments/$id` | Directory + detail (overview, teams, bracket, rules) |
+| `/champions` | Hall of Champions |
+| `/dashboard`, `/dashboard/profile` | Member home + profile edit |
+| `/members/$slug` | Public profile |
+| `/teams`, `/teams/$id` | Team list + roster / invites |
+| `/admin/*` | Operator console |
 
 ---
 
-## Documentation
+## What works today
 
-| Doc | Contents |
-| --- | -------- |
-| [docs/README.md](./docs/README.md) | Supabase tables, admin flow, env checklist |
-| [docs/SUPABASE_STAGING_CLONE.md](./docs/SUPABASE_STAGING_CLONE.md) | Clone prod DB to a staging project (local + preview) |
-| [docs/SUPABASE_PROD_MIGRATION.md](./docs/SUPABASE_PROD_MIGRATION.md) | Migrate old prod DB to new Supabase (`efchfvreaotskrdlweze`) |
-| [docs/ADMIN_DATABASE.md](./docs/ADMIN_DATABASE.md) | Schema detail, TypeScript mappings, RLS notes |
-| [docs/ADMIN_TOURNAMENTS.md](./docs/ADMIN_TOURNAMENTS.md) | Tournament & bracket setup step-by-step |
-| [docs/sql/](./docs/sql/) | SQL migration scripts |
+- Discord OAuth for members; separate admin login
+- Profiles, teams, invites, tournament registration
+- Admin tournament lifecycle: create → approve entries → seed → score → publish bracket
+- Bracket formats: single elim, double elim, Swiss
+- Round schedules (admin-set, shown on public overview / bracket)
+- In-app notifications (invites, registration status)
+
+**Still partial / not built**
+
+- Announcements admin UI (no persistence yet)
+- Riot Sign-On (Valorant IGN is manual)
+- Email notifications (in-app only)
 
 ---
 
-## Notes for Contributors
+## Docs map
 
-- **Do not edit `routeTree.gen.ts`** — auto-generated by TanStack Router.
-- Add pages by creating files in `src/routes/`.
-- Add shadcn components with `npx shadcn@latest add <component>`.
-- Never commit `.env` or expose `SUPABASE_SERVICE_ROLE_KEY` / `DISCORD_CLIENT_SECRET` to the client.
-- Server functions under `src/features/*/functions/` and `src/features/*/server/` use the service role for writes; browser services use the anon key with RLS.
-- When adding DB columns, add a matching script under `docs/sql/` and document it in [docs/README.md](./docs/README.md).
+| Doc | When you need it |
+| --- | ---------------- |
+| [`docs/README.md`](./docs/README.md) | Supabase tables, admin login SQL, env checklist |
+| [`docs/ADMIN_DATABASE.md`](./docs/ADMIN_DATABASE.md) | Schema detail, RLS notes |
+| [`docs/ADMIN_TOURNAMENTS.md`](./docs/ADMIN_TOURNAMENTS.md) | Tournament + bracket setup |
+| [`docs/SUPABASE_STAGING_CLONE.md`](./docs/SUPABASE_STAGING_CLONE.md) | Clone prod → staging |
+| [`docs/SUPABASE_PROD_MIGRATION.md`](./docs/SUPABASE_PROD_MIGRATION.md) | Production DB cutover |
+| [`docs/sql/`](./docs/sql/) | Migration scripts |
+| [`docs/discord-bot.md`](./docs/discord-bot.md) | ROSE role sync worker / bot |
+
+---
+
+## Contributor notes
+
+- Add pages as files under `src/routes/`.
+- Add UI primitives with `npx shadcn@latest add <component>`.
+- Never commit `.env`. Keep `SUPABASE_SERVICE_ROLE_KEY` and `DISCORD_CLIENT_SECRET` server-only.
+- Browser code uses the anon key + RLS; server functions under `features/*/functions/` or `features/*/server/` may use the service role.
+- New DB columns → add a script in `docs/sql/` and note it in [`docs/README.md`](./docs/README.md).
+- Prefer small, focused PRs. Match existing commit style (`feat:`, `fix:`, `docs:`).
