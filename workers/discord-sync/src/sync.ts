@@ -2,23 +2,29 @@ import { createClient } from "@supabase/supabase-js";
 import type { Env } from "./env";
 import {
   getBaselineIntervalMinutes,
+  getColdSweepIntervalMinutes,
+  getHotQueueDays,
   getMaxMembersPerRun,
+  getNotInGuildStrikeLimit,
   SUBREQUEST_MARGIN,
   WORKERS_FREE_SUBREQUEST_BUDGET,
 } from "./env";
 import { fetchGuildMemberRoleIds, resolveRoseRoleId } from "./discord";
-
-type MemberStatus = "Verified" | "Not Verified";
+import {
+  countNotVerifiedQueues,
+  fetchColdNotVerifiedPage,
+  fetchHotNotVerifiedPage,
+  fetchPausedNotVerifiedPage,
+  hotCutoffIso,
+  runsPerColdSweep,
+  type MemberStatus,
+  type SyncMemberRow,
+} from "./sync-queue";
+import { buildStrikeUpdate, type MemberRow } from "./sync-strike";
 
 /** Minimum batch slots reserved for verified ROSE-removal checks each run. */
 function verifiedReservedSlots(batchSize: number): number {
   return Math.max(1, Math.min(4, Math.floor(batchSize / 5)));
-}
-
-interface MemberRow {
-  id: string;
-  discord_id: string;
-  status: MemberStatus;
 }
 
 export interface SyncSummary {
@@ -34,11 +40,37 @@ export interface SyncSummary {
   page: number;
   totalPages: number;
   batchSize: number;
+  /** Active hot-queue size (Not Verified, unpaused, created within SYNC_HOT_DAYS). */
   notVerifiedQueued: number;
+  notVerifiedHotQueued: number;
+  notVerifiedColdQueued: number;
+  notVerifiedPaused: number;
+  queueTier: "hot" | "cold" | "paused-recovery" | "mixed";
+  coldSweep: boolean;
+  syncPaused: number;
+  strikesReset: number;
+  priorityNotVerified?: boolean;
 }
 
-export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
+export interface SyncRoseRolesOptions {
+  /**
+   * Manual/admin runs: always check the newest hot Not Verified members (page 0)
+   * and skip verified-member audits for maximum verification throughput.
+   */
+  priorityNotVerified?: boolean;
+}
+
+export async function syncRoseRoles(
+  env: Env,
+  options?: SyncRoseRolesOptions,
+): Promise<SyncSummary> {
   const batchSize = getMaxMembersPerRun(env);
+  const hotDays = getHotQueueDays(env);
+  const strikeLimit = getNotInGuildStrikeLimit(env);
+  const baselineIntervalMinutes = getBaselineIntervalMinutes(env);
+  const coldSweepIntervalMinutes = getColdSweepIntervalMinutes(env);
+  const coldSweepEveryNRuns = runsPerColdSweep(coldSweepIntervalMinutes, baselineIntervalMinutes);
+
   const summary: SyncSummary = {
     checked: 0,
     updated: 0,
@@ -53,6 +85,14 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
     totalPages: 1,
     batchSize,
     notVerifiedQueued: 0,
+    notVerifiedHotQueued: 0,
+    notVerifiedColdQueued: 0,
+    notVerifiedPaused: 0,
+    queueTier: "hot",
+    coldSweep: false,
+    syncPaused: 0,
+    strikesReset: 0,
+    priorityNotVerified: options?.priorityNotVerified ?? false,
   };
 
   const roseRoleId = await resolveRoseRoleId(env);
@@ -60,49 +100,68 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const rotationMs = getBaselineIntervalMinutes(env) * 60 * 1000;
+  const rotationMs = baselineIntervalMinutes * 60 * 1000;
   const rotationTick = Math.floor(Date.now() / rotationMs);
+  const cutoffIso = hotCutoffIso(hotDays);
+  const priorityNotVerified = options?.priorityNotVerified ?? false;
 
-  const { count: notVerifiedCount, error: notVerifiedCountError } = await supabase
-    .from("members")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "Not Verified")
-    .not("discord_id", "is", null);
+  const queueCounts = await countNotVerifiedQueues(supabase, cutoffIso);
+  summary.subrequestsUsed += 3;
 
-  if (notVerifiedCountError) {
-    throw new Error(`Supabase not-verified count failed: ${notVerifiedCountError.message}`);
-  }
-  summary.subrequestsUsed += 1;
+  summary.notVerifiedHotQueued = queueCounts.hot;
+  summary.notVerifiedColdQueued = queueCounts.cold;
+  summary.notVerifiedPaused = queueCounts.paused;
+  summary.notVerifiedQueued = queueCounts.hot;
 
-  summary.notVerifiedQueued = notVerifiedCount ?? 0;
-  const notVerifiedPages = Math.max(1, Math.ceil(summary.notVerifiedQueued / batchSize));
-  const notVerifiedPage = rotationTick % notVerifiedPages;
-  const notVerifiedFrom = notVerifiedPage * batchSize;
-  const notVerifiedTo = notVerifiedFrom + batchSize - 1;
+  const hotPages = Math.max(1, Math.ceil(queueCounts.hot / batchSize));
+  const hotPage = priorityNotVerified ? 0 : rotationTick % hotPages;
+  const hotFrom = hotPage * batchSize;
+  const hotTo = hotFrom + batchSize - 1;
 
-  summary.page = notVerifiedPage;
-  summary.totalPages = notVerifiedPages;
+  summary.page = hotPage;
+  summary.totalPages = hotPages;
 
-  const { data: notVerifiedRows, error: notVerifiedError } = await supabase
-    .from("members")
-    .select("id, discord_id, status")
-    .eq("status", "Not Verified")
-    .not("discord_id", "is", null)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: true })
-    .range(notVerifiedFrom, notVerifiedTo);
-
-  if (notVerifiedError) {
-    throw new Error(`Supabase not-verified query failed: ${notVerifiedError.message}`);
-  }
-  summary.subrequestsUsed += 1;
-
-  const reservedForVerified = verifiedReservedSlots(batchSize);
+  const reservedForVerified = priorityNotVerified ? 0 : verifiedReservedSlots(batchSize);
   const notVerifiedLimit = batchSize - reservedForVerified;
-  const members: MemberRow[] = [
-    ...((notVerifiedRows ?? []) as MemberRow[]).slice(0, notVerifiedLimit),
-  ];
-  const remainingSlots = batchSize - members.length;
+
+  const hotRows = await fetchHotNotVerifiedPage(supabase, cutoffIso, hotFrom, hotTo);
+  summary.subrequestsUsed += 1;
+
+  const members: MemberRow[] = hotRows.slice(0, notVerifiedLimit);
+  let remainingSlots = priorityNotVerified ? 0 : batchSize - members.length;
+
+  const isColdSweepRun =
+    !priorityNotVerified && remainingSlots > 0 && rotationTick % coldSweepEveryNRuns === 0;
+
+  if (isColdSweepRun) {
+    summary.coldSweep = true;
+    const sweepIndex = Math.floor(rotationTick / coldSweepEveryNRuns);
+    const preferCold = sweepIndex % 2 === 0;
+
+    if (preferCold && queueCounts.cold > 0) {
+      const coldPages = Math.max(1, Math.ceil(queueCounts.cold / remainingSlots));
+      const coldPage = sweepIndex % coldPages;
+      const coldFrom = coldPage * remainingSlots;
+      const coldTo = coldFrom + remainingSlots - 1;
+
+      const coldRows = await fetchColdNotVerifiedPage(supabase, cutoffIso, coldFrom, coldTo);
+      summary.subrequestsUsed += 1;
+      summary.queueTier = members.length > 0 ? "mixed" : "cold";
+      members.push(...coldRows);
+      remainingSlots = batchSize - members.length;
+    } else if (queueCounts.paused > 0) {
+      const pausedPages = Math.max(1, Math.ceil(queueCounts.paused / remainingSlots));
+      const pausedPage = sweepIndex % pausedPages;
+      const pausedFrom = pausedPage * remainingSlots;
+      const pausedTo = pausedFrom + remainingSlots - 1;
+
+      const pausedRows = await fetchPausedNotVerifiedPage(supabase, pausedFrom, pausedTo);
+      summary.subrequestsUsed += 1;
+      summary.queueTier = members.length > 0 ? "mixed" : "paused-recovery";
+      members.push(...pausedRows);
+      remainingSlots = batchSize - members.length;
+    }
+  }
 
   if (remainingSlots > 0) {
     const { count: verifiedCount, error: verifiedCountError } = await supabase
@@ -125,7 +184,7 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
 
       const { data: verifiedRows, error: verifiedError } = await supabase
         .from("members")
-        .select("id, discord_id, status")
+        .select("id, discord_id, status, discord_not_in_guild_strikes, discord_sync_paused_at")
         .eq("status", "Verified")
         .not("discord_id", "is", null)
         .order("created_at", { ascending: false })
@@ -137,7 +196,13 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
       }
       summary.subrequestsUsed += 1;
 
-      members.push(...((verifiedRows ?? []) as MemberRow[]));
+      members.push(
+        ...((verifiedRows ?? []) as SyncMemberRow[]).map((row) => ({
+          ...row,
+          discord_not_in_guild_strikes: row.discord_not_in_guild_strikes ?? 0,
+          discord_sync_paused_at: row.discord_sync_paused_at ?? null,
+        })),
+      );
     }
   }
 
@@ -165,28 +230,46 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
       );
       summary.subrequestsUsed += 1;
 
+      const strikeUpdate = buildStrikeUpdate(member, roleIds === null, strikeLimit);
       if (roleIds === null) {
         summary.notInGuild += 1;
+      }
+      if (strikeUpdate.pausedNow) {
+        summary.syncPaused += 1;
+      }
+      if (strikeUpdate.reset) {
+        summary.strikesReset += 1;
       }
 
       const hasRose = roleIds?.includes(roseRoleId) ?? false;
       const targetStatus: MemberStatus = hasRose ? "Verified" : "Not Verified";
+      const statusChanged = member.status !== targetStatus;
+      const strikeChanged =
+        strikeUpdate.strikes !== member.discord_not_in_guild_strikes ||
+        strikeUpdate.clearPause ||
+        strikeUpdate.pausedNow;
 
-      if (member.status === targetStatus) {
+      if (!statusChanged && !strikeChanged) {
         continue;
       }
 
       if (summary.subrequestsUsed + 1 > subrequestLimit) {
         summary.deferred += 1;
-        console.warn(
-          `[discord-sync] Deferred ${discordId} status update (subrequest budget)`,
-        );
+        console.warn(`[discord-sync] Deferred ${discordId} update (subrequest budget)`);
         continue;
+      }
+
+      const updatePayload: Record<string, unknown> = {
+        discord_not_in_guild_strikes: strikeUpdate.strikes,
+        discord_sync_paused_at: strikeUpdate.pausedAt,
+      };
+      if (statusChanged) {
+        updatePayload.status = targetStatus;
       }
 
       const { error: updateError } = await supabase
         .from("members")
-        .update({ status: targetStatus })
+        .update(updatePayload)
         .eq("id", member.id);
 
       if (updateError) {
@@ -194,18 +277,29 @@ export async function syncRoseRoles(env: Env): Promise<SyncSummary> {
       }
 
       summary.subrequestsUsed += 1;
-      summary.updated += 1;
-      if (targetStatus === "Verified") {
-        summary.verified += 1;
-      } else {
-        summary.unverified += 1;
+
+      if (statusChanged) {
+        summary.updated += 1;
+        if (targetStatus === "Verified") {
+          summary.verified += 1;
+        } else {
+          summary.unverified += 1;
+        }
       }
 
-      console.info(
-        `[discord-sync] ${discordId} ${member.status} -> ${targetStatus}${
-          roleIds === null ? " (not in guild)" : ""
-        }`,
-      );
+      const parts: string[] = [];
+      if (statusChanged) {
+        parts.push(`${member.status} -> ${targetStatus}`);
+      }
+      if (strikeUpdate.pausedNow) {
+        parts.push(`sync paused (${strikeUpdate.strikes} not-in-guild strikes)`);
+      } else if (strikeUpdate.reset) {
+        parts.push("guild strikes reset");
+      } else if (roleIds === null) {
+        parts.push(`not-in-guild strike ${strikeUpdate.strikes}/${strikeLimit}`);
+      }
+
+      console.info(`[discord-sync] ${discordId}${parts.length > 0 ? ` ${parts.join("; ")}` : ""}`);
     } catch (err) {
       summary.errors += 1;
       console.error(

@@ -1,6 +1,5 @@
 import type { BracketRound } from "../types";
 import type { BracketRoundMeta, ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
-import { resolveRoundId } from "./bracket-round-order";
 
 export interface MatchSlotHints {
   teamA?: string;
@@ -8,6 +7,9 @@ export interface MatchSlotHints {
 }
 
 function compactMatchRef(label: string): string {
+  const protectedSeed = label.match(/^Seed (\d+) · protected$/i);
+  if (protectedSeed) return `Seed ${protectedSeed[1]}`;
+
   const matchNumber = label.match(/^Match\s+(\d+)$/i);
   if (matchNumber) return `M${matchNumber[1]}`;
 
@@ -35,28 +37,102 @@ function compactMatchRef(label: string): string {
   return label;
 }
 
-function feederLabel(match: Pick<ManagedMatch, "label" | "roundLabel">, role: "winner" | "loser"): string {
-  const roleLabel = role === "winner" ? "Winner" : "Loser";
-  const matchRef = compactMatchRef(match.label);
-  const round = match.roundLabel
-    .replace(/^Lower — /, "LB ")
-    .replace(/^Upper — /, "UB ")
-    .replace(/^Opening — /, "");
-  return `${matchRef} ${roleLabel} ${round || match.label}`;
+/** Human-readable round name for empty slot placeholders (matches column headers). */
+export function displayHintRoundLabel(
+  roundId: string,
+  fallbackRoundLabel: string,
+  labelByRoundId?: Map<string, string>,
+): string {
+  const metaLabel = labelByRoundId?.get(roundId);
+  if (metaLabel) {
+    return metaLabel
+      .replace(/^Upper — /, "Upper ")
+      .replace(/^Lower — /, "Lower ")
+      .replace(/^Opening — /, "Opening ");
+  }
+
+  if (roundId === "ub-qf") return "Upper Quarterfinals";
+  if (roundId === "ub-sf") return "Upper Quarterfinals";
+  if (roundId === "ub-f") return "Upper Semifinals";
+  if (roundId === "lb-f" || roundId === "lb-sf") {
+    return fallbackRoundLabel.replace(/^Lower — /, "Lower ");
+  }
+  if (roundId === "pi-r1") return "Opening Play-in";
+  if (roundId === "gf") return "Grand Final";
+  if (roundId === "gf-reset") return "Grand Final Reset";
+
+  const ubRoundMatch = roundId.match(/^ub-r(\d+)$/);
+  if (ubRoundMatch) return `Upper Round ${ubRoundMatch[1]}`;
+
+  const lbRoundMatch = roundId.match(/^lb-r(\d+)$/);
+  if (lbRoundMatch) return `Lower Round ${lbRoundMatch[1]}`;
+
+  const seRoundMatch = roundId.match(/^se-r(\d+)$/);
+  if (seRoundMatch) return `Round ${parseInt(seRoundMatch[1], 10) + 1}`;
+
+  return fallbackRoundLabel
+    .replace(/^Upper — /, "Upper ")
+    .replace(/^Lower — /, "Lower ")
+    .replace(/^Opening — /, "Opening ");
 }
 
-export function buildMatchSlotHints(matches: ManagedMatch[]): Map<string, MatchSlotHints> {
+function feederLabel(
+  match: Pick<ManagedMatch, "label" | "roundLabel" | "roundId">,
+  role: "winner" | "loser",
+  labelByRoundId?: Map<string, string>,
+): string {
+  const protectedSeed = match.label.match(/^Seed (\d+) · protected$/i);
+  if (protectedSeed) {
+    return `Seed ${protectedSeed[1]} · protected`;
+  }
+
+  const globalMatch = match.label.match(/^Match\s+(\d+)$/i);
+  if (globalMatch) {
+    const roleWord = role === "winner" ? "winner" : "loser";
+    return `M${globalMatch[1]} ${roleWord}`;
+  }
+
+  const matchRef = compactMatchRef(match.label);
+  const round = displayHintRoundLabel(match.roundId, match.roundLabel, labelByRoundId);
+  const roleWord = role === "winner" ? "winner" : "loser";
+  return `${round} · ${matchRef} ${roleWord}`;
+}
+
+function buildLabelByRoundId(
+  roundMetas?: BracketRoundMeta[],
+  publicRounds?: BracketRound[],
+): Map<string, string> | undefined {
+  if (roundMetas?.length) {
+    return new Map(roundMetas.map((meta) => [meta.id, meta.label]));
+  }
+  if (publicRounds?.length) {
+    const map = new Map<string, string>();
+    for (const round of publicRounds) {
+      if (round.id) map.set(round.id, round.label);
+    }
+    return map.size > 0 ? map : undefined;
+  }
+  return undefined;
+}
+
+export function buildMatchSlotHints(
+  matches: ManagedMatch[],
+  roundMetas?: BracketRoundMeta[],
+  publicRounds?: BracketRound[],
+): Map<string, MatchSlotHints> {
+  const labelByRoundId = buildLabelByRoundId(roundMetas, publicRounds);
   const hints = new Map<string, MatchSlotHints>();
 
   for (const match of matches) {
     if (match.winnerNext) {
       const entry = hints.get(match.winnerNext.matchId) ?? {};
-      entry[match.winnerNext.slot] = feederLabel(match, "winner");
+      entry[match.winnerNext.slot] = feederLabel(match, "winner", labelByRoundId);
       hints.set(match.winnerNext.matchId, entry);
     }
     if (match.loserNext) {
+      if (/^Seed \d+ · protected$/i.test(match.label)) continue;
       const entry = hints.get(match.loserNext.matchId) ?? {};
-      entry[match.loserNext.slot] = feederLabel(match, "loser");
+      entry[match.loserNext.slot] = feederLabel(match, "loser", labelByRoundId);
       hints.set(match.loserNext.matchId, entry);
     }
   }
@@ -70,7 +146,7 @@ export function applySlotHintsToPublicRounds(
 ): BracketRound[] {
   if (!managedMatches?.length) return rounds;
 
-  const hints = buildMatchSlotHints(managedMatches);
+  const hints = buildMatchSlotHints(managedMatches, undefined, rounds);
 
   return rounds.map((round) => ({
     ...round,
@@ -87,18 +163,6 @@ export function applySlotHintsToPublicRounds(
   }));
 }
 
-export function hasLowerPlayInPool(
-  rounds: Array<{ id?: string; label: string; matches?: { id: string }[]; matchIds?: string[] }>,
-): boolean {
-  return rounds.some((round) => {
-    const roundId = resolveRoundId(round);
-    return roundId === "lb-pi" || roundId === "lb-pc" || /lower — play-in/i.test(round.label);
-  });
-}
-
-export function hasOpeningPlayInField(teamCount: number): boolean {
-  if (!Number.isInteger(teamCount) || teamCount < 2) return false;
-  let size = 2;
-  while (size * 2 <= teamCount) size *= 2;
-  return teamCount !== size;
+export function hasOpeningPlayInField(_teamCount: number): boolean {
+  return false;
 }

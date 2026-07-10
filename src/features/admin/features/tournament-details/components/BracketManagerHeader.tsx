@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   ArrowDownToLine,
   GitBranch,
@@ -7,10 +8,12 @@ import {
   Shuffle,
   Upload,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BracketStatus } from "@/features/admin/types";
+import { FeaturePanelHeader } from "@/features/shared/components/FeaturePanelShell";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { BracketMobileActionsMenu } from "@/features/admin/features/tournaments/components/mobile";
 
 interface BracketStat {
   label: string;
@@ -19,7 +22,6 @@ interface BracketStat {
 }
 
 interface BracketManagerHeaderProps {
-  tournamentName: string;
   game: string;
   region: string;
   format: string;
@@ -46,6 +48,7 @@ interface BracketManagerHeaderProps {
   onReset: () => void;
   onPublish: () => void;
   onMarkComplete: () => void;
+  subTabs?: ReactNode;
 }
 
 function bracketStatusLabel(status: BracketStatus): string {
@@ -55,13 +58,12 @@ function bracketStatusLabel(status: BracketStatus): string {
 }
 
 function bracketStatusClass(status: BracketStatus): string {
-  if (status === "published") return "border-foreground/30 bg-foreground/10 text-foreground";
+  if (status === "published") return "border-emerald-400/35 bg-emerald-400/10 text-emerald-300";
   if (status === "draft") return "border-amber-400/40 bg-amber-400/10 text-amber-300";
-  return "border-border bg-secondary/40 text-muted-foreground";
+  return "border-white/15 bg-white/[0.03] text-white/45";
 }
 
 export function BracketManagerHeader({
-  tournamentName,
   game,
   region,
   format,
@@ -88,181 +90,187 @@ export function BracketManagerHeader({
   onReset,
   onPublish,
   onMarkComplete,
+  subTabs,
 }: BracketManagerHeaderProps) {
+  const isMobile = useIsMobile();
   const shuffleTitle =
     bracketGenerated && hasBracketProgress
       ? "Reset the bracket to reshuffle seeds after match results exist"
       : undefined;
 
+  const statusBadges = (
+    <>
+      {resultsLocked && (
+        <span className="inline-flex items-center border border-violet-400/35 bg-violet-400/10 px-2.5 py-1 font-tech text-[9px] uppercase tracking-wider text-violet-300">
+          Results locked
+        </span>
+      )}
+      {isPublished && !resultsLocked && (
+        <span className="inline-flex items-center border border-sky-400/30 bg-sky-400/10 px-2.5 py-1 font-tech text-[9px] uppercase tracking-wider text-sky-300">
+          Match management active
+        </span>
+      )}
+      <span
+        className={cn(
+          "inline-flex items-center px-2.5 py-1 font-tech text-[9px] uppercase tracking-wider border",
+          bracketStatusClass(bracketStatus),
+        )}
+      >
+        {bracketStatusLabel(bracketStatus)}
+      </span>
+    </>
+  );
+
   return (
-    <div className="border-b border-border">
-      <div className="relative overflow-hidden px-6 py-6 lg:px-8">
-        <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
+    <div className="relative mb-6">
+      <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.22]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
 
-        <div className="relative flex flex-col gap-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                {game} · {region}
-              </p>
-              <h2 className="mt-1 font-title tracking-display text-2xl lg:text-3xl">
-                {tournamentName}
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {format} · {teamCount}/{teamCap} approved teams · Starts {startDate}
-              </p>
+      <div className="relative overflow-hidden border border-white/[0.08] bg-[oklch(0.07_0_0)]">
+        <FeaturePanelHeader
+          embedded
+          eyebrow={`Admin Console · ${game} · ${region}`}
+          title="Bracket Management"
+          subtitle={`${format} · ${teamCount}/${teamCap} approved teams · Starts ${startDate}`}
+          stats={stats}
+          headerExtra={statusBadges}
+        />
+
+        <div className="relative border-t border-white/[0.06] bg-[oklch(0.06_0_0)]">
+          {isMobile ? (
+            <div className="flex items-center justify-end gap-2 border-b border-white/[0.06] px-4 py-3">
+              <BracketMobileActionsMenu
+                bracketGenerated={bracketGenerated}
+                canGenerate={canGenerate}
+                canPublish={canPublish}
+                isPublished={isPublished}
+                isSaving={isSaving}
+                resultsLocked={resultsLocked}
+                seedingLocked={seedingLocked}
+                seedingShuffleDisabled={seedingShuffleDisabled}
+                hasBracketProgress={hasBracketProgress}
+                showMarkComplete={showMarkComplete}
+                assignedCount={assignedCount}
+                teamCount={teamCount}
+                onGenerate={onGenerate}
+                onRandomSeed={onRandomSeed}
+                onAutoSeed={onAutoSeed}
+                onToggleLock={onToggleLock}
+                onReset={onReset}
+                onPublish={onPublish}
+                onMarkComplete={onMarkComplete}
+              />
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {resultsLocked && (
-                <Badge
-                  variant="outline"
-                  className="font-tech text-[10px] uppercase tracking-wider text-violet-300 border-violet-400/40"
-                >
-                  Results locked
-                </Badge>
-              )}
-              {isPublished && !resultsLocked && (
-                <Badge variant="outline" className="font-tech text-[10px] uppercase tracking-wider">
-                  Match management active
-                </Badge>
-              )}
-              <span
-                className={cn(
-                  "inline-flex items-center px-3 py-1 font-tech text-[10px] uppercase tracking-wider border",
-                  bracketStatusClass(bracketStatus),
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-3 sm:px-6">
+                <p className="mr-1 font-tech text-[9px] uppercase tracking-[0.18em] text-white/35">
+                  Seeding
+                </p>
+                {!bracketGenerated && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!canGenerate || resultsLocked}
+                    onClick={onGenerate}
+                    className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                  >
+                    <GitBranch className="h-3.5 w-3.5" />
+                    Generate bracket
+                  </Button>
                 )}
-              >
-                {bracketStatusLabel(bracketStatus)}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-3 lg:grid-cols-5">
-            {stats.map((stat) => (
-              <div key={stat.label} className="bg-card px-4 py-3">
-                <p className="text-[9px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-                  {stat.label}
-                </p>
-                <p
-                  className={cn(
-                    "mt-0.5 truncate font-display text-lg font-bold tracking-wider",
-                    stat.accent && "text-amber-400",
-                  )}
-                  title={typeof stat.value === "string" ? stat.value : undefined}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={seedingShuffleDisabled}
+                  title={shuffleTitle}
+                  onClick={onAutoSeed}
+                  className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider hover:bg-white/[0.05]"
                 >
-                  {stat.value}
-                </p>
+                  <ArrowDownToLine className="h-3.5 w-3.5" />
+                  Auto seed
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={seedingShuffleDisabled}
+                  title={shuffleTitle}
+                  onClick={onRandomSeed}
+                  className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider text-amber-300 hover:bg-white/[0.05] hover:text-amber-200"
+                >
+                  <Shuffle className="h-3.5 w-3.5" />
+                  Random seed
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPublished || resultsLocked}
+                  onClick={onToggleLock}
+                  className={cn(
+                    "gap-1.5 font-tech text-[10px] uppercase tracking-wider",
+                    seedingLocked
+                      ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                      : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]",
+                  )}
+                >
+                  {seedingLocked ? (
+                    <Lock className="h-3.5 w-3.5" />
+                  ) : (
+                    <LockOpen className="h-3.5 w-3.5" />
+                  )}
+                  {seedingLocked ? "Seeding locked" : "Lock seeding"}
+                </Button>
+                <span className="hidden text-[10px] text-white/35 sm:inline">
+                  {assignedCount}/{teamCount} seeded
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      <div className="flex flex-col gap-3 border-t border-border bg-card/40 px-6 py-4 lg:px-8">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="mr-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-            Seeding
-          </p>
-          {!bracketGenerated && (
-            <Button
-              type="button"
-              size="sm"
-              disabled={!canGenerate || resultsLocked}
-              onClick={onGenerate}
-              className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-            >
-              <GitBranch className="h-3.5 w-3.5" />
-              Generate bracket
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={seedingShuffleDisabled}
-            title={shuffleTitle}
-            onClick={onAutoSeed}
-            className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-          >
-            <ArrowDownToLine className="h-3.5 w-3.5" />
-            Auto seed
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={seedingShuffleDisabled}
-            title={shuffleTitle}
-            onClick={onRandomSeed}
-            className="gap-1.5 font-tech text-[10px] uppercase tracking-wider text-amber-400 hover:text-amber-300"
-          >
-            <Shuffle className="h-3.5 w-3.5" />
-            Random seed
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isPublished || resultsLocked}
-            onClick={onToggleLock}
-            className={cn(
-              "gap-1.5 font-tech text-[10px] uppercase tracking-wider",
-              seedingLocked && "border-amber-400/30 bg-amber-400/10 text-amber-300",
-            )}
-          >
-            {seedingLocked ? (
-              <Lock className="h-3.5 w-3.5" />
-            ) : (
-              <LockOpen className="h-3.5 w-3.5" />
-            )}
-            {seedingLocked ? "Seeding locked" : "Lock seeding"}
-          </Button>
-          <span className="hidden text-[10px] text-muted-foreground sm:inline">
-            {assignedCount}/{teamCount} seeded
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="mr-1 text-[10px] font-tech uppercase tracking-wider-2 text-muted-foreground">
-            Bracket
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={resultsLocked || isSaving}
-            title={resultsLocked ? "Reset is disabled for completed tournaments" : undefined}
-            onClick={onReset}
-            className="gap-1.5 font-tech text-[10px] uppercase tracking-wider text-destructive hover:text-destructive"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Reset
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!canPublish || isPublished || isSaving}
-            onClick={onPublish}
-            className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            {isSaving ? "Saving…" : "Publish"}
-          </Button>
-          {showMarkComplete && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSaving}
-              onClick={onMarkComplete}
-              className="gap-1.5 border-emerald-400/40 bg-emerald-950/20 font-tech text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-950/40"
-            >
-              Mark complete
-            </Button>
+              <div className="flex flex-wrap items-center gap-2 px-5 py-3 sm:px-6">
+                <p className="mr-1 font-tech text-[9px] uppercase tracking-[0.18em] text-white/35">
+                  Bracket
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={resultsLocked || isSaving}
+                  title={resultsLocked ? "Reset is disabled for completed tournaments" : undefined}
+                  onClick={onReset}
+                  className="gap-1.5 border-white/10 bg-white/[0.02] font-tech text-[10px] uppercase tracking-wider text-red-400 hover:bg-white/[0.05] hover:text-red-300"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canPublish || isPublished || isSaving}
+                  onClick={onPublish}
+                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {isSaving ? "Saving…" : "Publish"}
+                </Button>
+                {showMarkComplete && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={onMarkComplete}
+                    className="gap-1.5 border-emerald-400/40 bg-emerald-950/20 font-tech text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-950/40"
+                  >
+                    Mark complete
+                  </Button>
+                )}
+              </div>
+            </>
           )}
         </div>
+        {subTabs}
       </div>
     </div>
   );

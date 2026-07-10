@@ -1,4 +1,5 @@
 import { isTrustedAppHost } from "@/lib/site-meta";
+import { isDiscordNativeRedirectUri } from "@/lib/discord-mobile-oauth";
 
 const DISCORD_CALLBACK_PATH = "/auth/callback";
 
@@ -65,6 +66,8 @@ function areRelatedAppOrigins(originA: string, originB: string): boolean {
  * to be registered in the Discord Developer Portal.
  */
 export function isAllowedDiscordRedirectUri(uri: string): boolean {
+  if (isDiscordNativeRedirectUri(uri)) return true;
+
   const url = parseUrl(uri);
   if (!url || url.pathname !== DISCORD_CALLBACK_PATH) return false;
 

@@ -3,6 +3,7 @@ import type {
   AdminMember,
   CreateMemberFormValues,
   CreateMemberInput,
+  MemberSyncQueueTier,
   MemberVerificationStatus,
 } from "../types";
 
@@ -97,6 +98,8 @@ export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
     createdAt: row.created_at as string,
     avatarUrl,
     profileSlug,
+    discordNotInGuildStrikes: Number(row.discord_not_in_guild_strikes ?? 0),
+    discordSyncPausedAt: (row.discord_sync_paused_at as string | null | undefined) ?? null,
   };
 }
 
@@ -112,6 +115,8 @@ export function buildAdminMemberFromInput(input: CreateMemberInput): AdminMember
     avatarUrl: null,
     profileSlug: input.username.trim(),
     displayName: input.username.trim(),
+    discordNotInGuildStrikes: 0,
+    discordSyncPausedAt: null,
   };
 }
 
@@ -127,3 +132,26 @@ export function memberStatusBadgeVariant(
       return "outline";
   }
 }
+
+export function syncQueueTierBadgeVariant(
+  tier: MemberSyncQueueTier,
+): "default" | "destructive" | "outline" | "secondary" {
+  switch (tier) {
+    case "hot":
+      return "secondary";
+    case "cold":
+      return "outline";
+    case "paused":
+      return "destructive";
+  }
+}
+
+export {
+  countMembersBySyncQueueFilter,
+  getMemberSyncQueueTier,
+  getSyncQueueFilterDescription,
+  matchesSyncQueueFilter,
+  memberIsStaleSyncCandidate,
+  memberNeedsSyncQueueReset,
+  syncQueueTierLabel,
+} from "./sync-queue";

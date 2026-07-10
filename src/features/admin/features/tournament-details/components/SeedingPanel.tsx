@@ -1,16 +1,33 @@
 import { useMemo } from "react";
-import { Swords, Users2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Shield, Shuffle, Swords, Users2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { TournamentTeam } from "@/features/tournaments/types";
-import type { SeedingMode } from "../services/bracket.service";
-import { isPowerOfTwo, mainBracketSize } from "../utils/bracket-field";
 import {
-  formatSeedLabel,
-  playInSeedPairings,
-  projectedUpperRoundOnePairings,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import type { TournamentTeam } from "@/features/tournaments/types";
+import {
+  bracketCapacity,
+  byeCount,
+  isPowerOfTwo,
+  openingPlayableMatchCount,
+  usesCompressedPreliminaryField,
+} from "../utils/bracket-field";
+import {
+  roundOnePairingsForSeedingMode,
   roundOneSeedingPairings,
 } from "@/features/tournaments/utils/tournament-seeding";
+import {
+  protectedSeedCountOptions,
+  seedingFormatDescription,
+  type SeedingFormat,
+} from "@/features/tournaments/utils/seeding-format";
+import { CommitteeSeedList } from "./CommitteeSeedList";
+import { TierSeedingPanel } from "./TierSeedingPanel";
 import { SeedingTeamPicker } from "./SeedingTeamPicker";
 
 interface SeedingPanelProps {
@@ -21,14 +38,37 @@ interface SeedingPanelProps {
   hasSwissByeSlot: boolean;
   isSwiss?: boolean;
   isDoubleElim?: boolean;
-  /** Play-in: teams that start directly in the main bracket. */
+  seedingFormat?: SeedingFormat;
+  protectedSeedCount?: number;
+  tierByTeamId?: Record<string, "elite" | "contender" | "open" | undefined>;
+  onProtectedSeedCountChange?: (count: number) => void;
+  onApplyTierSeeding?: () => void;
+  onRandomFillRemaining?: () => void;
+  onTierChange?: (teamId: string, tier: "elite" | "contender" | "open") => void;
+  /** @deprecated Play-in seeding removed — byes are used instead. */
   directSeedCount?: number;
-  /** Play-in: opening play-in match count. */
+  /** @deprecated Play-in seeding removed — byes are used instead. */
   playInMatchCount?: number;
-  seedingMode: SeedingMode;
-  onSeedingModeChange: (mode: SeedingMode) => void;
   disabled?: boolean;
   onTeamSelect: (slotIdx: number, teamId: string | null) => void;
+}
+
+function SeedingProtectedSlot({ seed }: { seed: number }) {
+  return (
+    <div>
+      <label className="mb-1.5 flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
+        <Shield className="h-3 w-3 opacity-50" strokeWidth={1.5} aria-hidden />
+        Seed {seed} · Protected
+      </label>
+      <div
+        className="flex h-10 w-full items-center gap-2 border border-dashed border-white/15 bg-white/[0.02] px-3 text-white/40"
+        title="Round-one bye — no opponent"
+      >
+        <Shield className="h-3.5 w-3.5 shrink-0 opacity-40" strokeWidth={1.5} aria-hidden />
+        <span className="font-tech text-[10px] uppercase tracking-wider">Round-one bye</span>
+      </div>
+    </div>
+  );
 }
 
 function SeedingMatchCard({
@@ -37,7 +77,7 @@ function SeedingMatchCard({
   teamBIdx,
   teamA,
   teamB,
-  isByeSlot,
+  byeSide = "none",
   seedLabel,
   teams,
   usedTeamIds,
@@ -49,77 +89,80 @@ function SeedingMatchCard({
   teamBIdx: number;
   teamA: TournamentTeam | null;
   teamB: TournamentTeam | null;
-  isByeSlot: boolean;
+  byeSide?: "none" | "teamA" | "teamB";
   seedLabel?: string;
   teams: TournamentTeam[];
   usedTeamIds: Set<string>;
   disabled?: boolean;
   onTeamSelect: (slotIdx: number, teamId: string | null) => void;
 }) {
-  const isComplete = isByeSlot ? !!teamA : teamA && teamB;
+  const isByeMatch = byeSide !== "none";
+  const isComplete =
+    byeSide === "none"
+      ? Boolean(teamA && teamB)
+      : byeSide === "teamA"
+        ? Boolean(teamB)
+        : Boolean(teamA);
 
   return (
     <div
       className={cn(
         "relative overflow-hidden border transition-colors",
         isComplete
-          ? "border-amber-400/35 bg-amber-400/[0.03]"
-          : "border-border bg-card hover:border-border-bright",
+          ? "border-amber-400/35 bg-amber-400/[0.04]"
+          : "border-white/[0.08] bg-[oklch(0.06_0_0)] hover:border-white/15",
       )}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-linear-to-b from-white/[0.03] to-transparent" />
-      <div className="relative flex items-center justify-between border-b border-border px-4 py-2.5">
+      <div className="relative flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
         <p className="font-display text-sm tracking-wider">
           Match {String(matchIndex + 1).padStart(2, "0")}
         </p>
         <span
           className={cn(
-            "font-tech text-[10px] uppercase tracking-wider",
+            "flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider",
             isComplete ? "text-amber-300/80" : "text-muted-foreground",
           )}
         >
+          {isByeMatch && <Shield className="h-3 w-3 opacity-60" strokeWidth={1.5} aria-hidden />}
           {seedLabel ??
-            (isByeSlot
-              ? `Seed ${teamAIdx + 1} — BYE`
+            (isByeMatch
+              ? `Seed ${byeSide === "teamA" ? teamBIdx + 1 : teamAIdx + 1} protected`
               : `Seeds ${teamAIdx + 1} – ${teamBIdx + 1}`)}
         </span>
       </div>
 
-      <div
-        className={cn(
-          "relative p-4",
-          isByeSlot ? "space-y-3" : "grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end",
-        )}
-      >
-        <SeedingTeamPicker
-          label="Team A"
-          seed={teamAIdx + 1}
-          value={teamA}
-          teams={teams}
-          usedTeamIds={usedTeamIds}
-          onChange={(teamId) => onTeamSelect(teamAIdx, teamId)}
-          disabled={disabled}
-        />
-
-        {isByeSlot ? (
-          <div className="flex items-center justify-center border border-amber-400/20 bg-amber-400/5 py-3 font-display text-xs font-bold uppercase tracking-widest text-amber-400/80">
-            Bye — advances without opponent
-          </div>
+      <div className="relative grid gap-4 p-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
+        {byeSide === "teamA" ? (
+          <SeedingProtectedSlot seed={teamAIdx + 1} />
         ) : (
-          <>
-            <div className="place-self-center py-1 font-display text-lg tracking-wider text-muted-foreground/40 md:pb-2">
-              vs
-            </div>
-            <SeedingTeamPicker
-              label="Team B"
-              seed={teamBIdx + 1}
-              value={teamB}
-              teams={teams}
-              usedTeamIds={usedTeamIds}
-              onChange={(teamId) => onTeamSelect(teamBIdx, teamId)}
-              disabled={disabled}
-            />
-          </>
+          <SeedingTeamPicker
+            label="Team A"
+            seed={teamAIdx + 1}
+            value={teamA}
+            teams={teams}
+            usedTeamIds={usedTeamIds}
+            onChange={(teamId) => onTeamSelect(teamAIdx, teamId)}
+            disabled={disabled}
+          />
+        )}
+
+        <div className="place-self-center py-1 font-display text-lg tracking-wider text-muted-foreground/40 md:pb-2">
+          {isByeMatch ? <Shield className="h-4 w-4" strokeWidth={1.5} aria-hidden /> : "vs"}
+        </div>
+
+        {byeSide === "teamB" ? (
+          <SeedingProtectedSlot seed={teamBIdx + 1} />
+        ) : (
+          <SeedingTeamPicker
+            label="Team B"
+            seed={teamBIdx + 1}
+            value={teamB}
+            teams={teams}
+            usedTeamIds={usedTeamIds}
+            onChange={(teamId) => onTeamSelect(teamBIdx, teamId)}
+            disabled={disabled}
+          />
         )}
       </div>
     </div>
@@ -141,10 +184,26 @@ function ProtectedSeedSlot({
   disabled?: boolean;
   onTeamSelect: (slotIdx: number, teamId: string | null) => void;
 }) {
+  const isComplete = Boolean(team);
+
   return (
-    <div className="border border-border bg-card p-4">
+    <div
+      className={cn(
+        "border bg-[oklch(0.06_0_0)] p-4 transition-colors",
+        isComplete ? "border-amber-400/30" : "border-white/[0.08]",
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+          <Shield className="h-3 w-3 opacity-50" strokeWidth={1.5} aria-hidden />
+          Protected seed
+        </span>
+        <span className="font-display text-xs tracking-wider text-muted-foreground/80">
+          Seed {seed}
+        </span>
+      </div>
       <SeedingTeamPicker
-        label={`Protected seed`}
+        label=""
         seed={seed}
         value={team}
         teams={teams}
@@ -152,42 +211,6 @@ function ProtectedSeedSlot({
         onChange={(teamId) => onTeamSelect(seed - 1, teamId)}
         disabled={disabled}
       />
-    </div>
-  );
-}
-
-function RoundOnePreviewCard({
-  matchIndex,
-  seedA,
-  seedB,
-  playInMatchIndexA,
-  playInMatchIndexB,
-  assignments,
-  roundLabel,
-}: {
-  matchIndex: number;
-  seedA: number | "play-in";
-  seedB: number | "play-in";
-  playInMatchIndexA?: number;
-  playInMatchIndexB?: number;
-  assignments: Array<TournamentTeam | null>;
-  roundLabel: string;
-}) {
-  const nameFor = (seed: number | "play-in", playInIdx?: number) => {
-    if (seed === "play-in") return formatSeedLabel(seed, playInIdx);
-    return assignments[seed - 1]?.name ?? formatSeedLabel(seed);
-  };
-
-  return (
-    <div className="border border-border/70 bg-secondary/10 px-4 py-3">
-      <p className="mb-2 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-        {roundLabel} · Match {matchIndex + 1}
-      </p>
-      <p className="font-display text-sm tracking-wider text-foreground/90">
-        {nameFor(seedA, playInMatchIndexA)}
-        <span className="mx-2 text-muted-foreground/50">vs</span>
-        {nameFor(seedB, playInMatchIndexB)}
-      </p>
     </div>
   );
 }
@@ -200,20 +223,21 @@ export function SeedingPanel({
   hasSwissByeSlot,
   isSwiss = false,
   isDoubleElim = false,
+  seedingFormat = "committee",
+  protectedSeedCount = 0,
+  tierByTeamId = {},
+  onProtectedSeedCountChange,
+  onApplyTierSeeding,
+  onRandomFillRemaining,
+  onTierChange,
   directSeedCount = 0,
   playInMatchCount = 0,
-  seedingMode,
-  onSeedingModeChange,
   disabled = false,
   onTeamSelect,
 }: SeedingPanelProps) {
-  const isManualSeeding = seedingMode === "manual";
-  const hasPlayInSeeding =
-    !isManualSeeding && !isSwiss && playInMatchCount > 0 && directSeedCount > 0;
-  const protectedBracketLabel = isDoubleElim ? "upper bracket" : "main bracket";
-  const roundOnePreviewLabel = isDoubleElim
-    ? "Upper bracket round 1 preview"
-    : "Main bracket round 1 preview";
+  const isElimination = !isSwiss;
+  const elimCapacity = isElimination ? bracketCapacity(bracketSize) : bracketSize;
+  const elimByes = isElimination ? byeCount(bracketSize) : 0;
 
   const usedTeamIds = useMemo(() => {
     const ids = new Set<string>();
@@ -231,133 +255,190 @@ export function SeedingPanel({
     [teams, usedTeamIds],
   );
 
-  const playInMatches = useMemo(
-    () =>
-      hasPlayInSeeding
-        ? playInSeedPairings(bracketSize).map((pairing, index) => ({
-            key: `playin-${index}`,
-            matchIndex: index,
-            teamAIdx: pairing.seedA - 1,
-            teamBIdx: pairing.seedB - 1,
-            seedLabel: `Seeds ${pairing.seedA} – ${pairing.seedB}`,
-          }))
-        : [],
-    [bracketSize, hasPlayInSeeding],
-  );
-
-  const upperPreview = useMemo(
-    () => (hasPlayInSeeding ? projectedUpperRoundOnePairings(bracketSize) : []),
-    [bracketSize, hasPlayInSeeding],
-  );
-
   const roundOnePairings = useMemo(() => {
-    if (hasPlayInSeeding || isManualSeeding) return [];
-    return roundOneSeedingPairings(bracketSize, { swissTraditional: isSwiss });
-  }, [bracketSize, hasPlayInSeeding, isManualSeeding, isSwiss]);
+    if (isSwiss) return roundOnePairingsForSeedingMode(bracketSize);
+    return roundOneSeedingPairings(bracketSize);
+  }, [bracketSize, isSwiss]);
+
+  const standardMatches = useMemo(() => {
+    return roundOnePairings.map((pairing, index) => {
+      if (isSwiss && hasSwissByeSlot && index === roundOnePairings.length - 1) {
+        return {
+          key: `match-${index}`,
+          matchIndex: index,
+          teamAIdx: bracketSize - 1,
+          teamBIdx: pairing.seedB - 1,
+          byeSide: "teamB" as const,
+          seedLabel: `Seed ${bracketSize} · protected`,
+        };
+      }
+
+      const teamARegistered = pairing.seedA <= bracketSize;
+      const teamBRegistered = pairing.seedB <= bracketSize;
+      let byeSide: "none" | "teamA" | "teamB" = "none";
+      if (isElimination) {
+        if (teamARegistered && !teamBRegistered) byeSide = "teamB";
+        else if (!teamARegistered && teamBRegistered) byeSide = "teamA";
+      }
+
+      return {
+        key: `match-${index}`,
+        matchIndex: index,
+        teamAIdx: pairing.seedA - 1,
+        teamBIdx: pairing.seedB - 1,
+        byeSide,
+        seedLabel:
+          byeSide === "none"
+            ? `Seeds ${pairing.seedA} – ${pairing.seedB}`
+            : `Seed ${teamARegistered ? pairing.seedA : pairing.seedB} · protected`,
+      };
+    });
+  }, [bracketSize, hasSwissByeSlot, isElimination, isSwiss, roundOnePairings]);
+
+  const useProtectedSeedSection = isElimination && seedingFormat === "protected_random";
+
+  const protectedSeedNumbers = useMemo(() => {
+    if (!useProtectedSeedSection) return [];
+    const count = Math.min(Math.max(1, protectedSeedCount), bracketSize - 1);
+    return Array.from({ length: count }, (_, index) => index + 1);
+  }, [bracketSize, protectedSeedCount, useProtectedSeedSection]);
+
+  const remainingSeedNumbers = useMemo(() => {
+    if (seedingFormat !== "protected_random") return [];
+    const start = protectedSeedNumbers.length;
+    return Array.from({ length: bracketSize - start }, (_, index) => start + index + 1);
+  }, [bracketSize, protectedSeedNumbers.length, seedingFormat]);
+
+  const playableOpeningMatches = useMemo(
+    () => standardMatches.filter((match) => match.byeSide === "none"),
+    [standardMatches],
+  );
+
+  const openingMatches = playableOpeningMatches;
+
+  const formatHelp = seedingFormatDescription(
+    seedingFormat,
+    bracketSize,
+    protectedSeedNumbers.length || protectedSeedCount,
+  );
+
+  const compressedPreliminary = isElimination && usesCompressedPreliminaryField(bracketSize);
 
   const readyMatches = useMemo(() => {
-    if (isManualSeeding) {
-      return assignments.slice(0, bracketSize).filter(Boolean).length;
+    if (isSwiss) {
+      let ready = 0;
+      for (let i = 0; i < seedingMatchCount; i++) {
+        const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
+        const pairing = roundOnePairings[i];
+        if (!pairing && !isByeSlot) continue;
+
+        if (isByeSlot) {
+          if (assignments[bracketSize - 1]) ready++;
+          continue;
+        }
+
+        if (!pairing) continue;
+        const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
+        const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
+        if (teamA && teamB) ready++;
+        else if (teamA || teamB) ready++;
+      }
+      return ready;
     }
 
-    if (hasPlayInSeeding) {
-      let ready = 0;
-      for (let seed = 1; seed <= directSeedCount; seed++) {
-        if (assignments[seed - 1]) ready++;
-      }
-      for (const match of playInMatches) {
-        if (assignments[match.teamAIdx] && assignments[match.teamBIdx]) ready++;
+    if (useProtectedSeedSection) {
+      let ready = protectedSeedNumbers.filter((seed) => assignments[seed - 1]).length;
+      for (const match of openingMatches) {
+        const teamA = assignments[match.teamAIdx];
+        const teamB = assignments[match.teamBIdx];
+        if (match.byeSide === "none") {
+          if (teamA && teamB) ready++;
+          else if (teamA || teamB) ready++;
+        } else if (match.byeSide === "teamA") {
+          if (teamB) ready++;
+        } else if (teamA) {
+          ready++;
+        }
       }
       return ready;
     }
 
     let ready = 0;
-    for (let i = 0; i < seedingMatchCount; i++) {
-      const isByeSlot = hasSwissByeSlot && i === seedingMatchCount - 1;
-      const pairing = roundOnePairings[i];
-      if (!pairing) continue;
-      const teamAIdx = isByeSlot ? bracketSize - 1 : pairing.seedA - 1;
-      const teamBIdx = pairing.seedB - 1;
-      const teamA = assignments[teamAIdx];
-      const teamB = isByeSlot ? null : assignments[teamBIdx];
-      if (isByeSlot ? teamA : teamA && teamB) ready++;
+    for (const pairing of roundOnePairings) {
+      const teamA = pairing.seedA <= bracketSize ? assignments[pairing.seedA - 1] : null;
+      const teamB = pairing.seedB <= bracketSize ? assignments[pairing.seedB - 1] : null;
+      if (teamA && teamB) ready++;
+      else if (teamA || teamB) ready++;
     }
     return ready;
   }, [
     assignments,
     bracketSize,
-    directSeedCount,
-    hasPlayInSeeding,
     hasSwissByeSlot,
-    isManualSeeding,
-    playInMatches,
+    isSwiss,
+    openingMatches,
+    protectedSeedNumbers,
     roundOnePairings,
     seedingMatchCount,
+    useProtectedSeedSection,
   ]);
 
-  const totalMatchCount = isManualSeeding
-    ? bracketSize
-    : hasPlayInSeeding
-      ? directSeedCount + playInMatchCount
-      : seedingMatchCount;
+  const showCommitteeList = isElimination && seedingFormat === "committee";
 
-  const standardMatches = hasPlayInSeeding
-    ? []
-    : roundOnePairings.map((pairing, index) => {
-        const isByeSlot = hasSwissByeSlot && index === seedingMatchCount - 1;
-        return {
-          key: `match-${index}`,
-          matchIndex: index,
-          teamAIdx: isByeSlot ? bracketSize - 1 : pairing.seedA - 1,
-          teamBIdx: pairing.seedB - 1,
-          isByeSlot,
-          seedLabel: isByeSlot
-            ? `Seed ${pairing.seedA} — BYE`
-            : isSwiss && !isPowerOfTwo(bracketSize)
-              ? `Seeds ${pairing.seedA} – ${pairing.seedB}`
-              : `Seeds ${pairing.seedA} – ${pairing.seedB}`,
-        };
-      });
+  const showTierPanel = isElimination && seedingFormat === "tier";
+
+  const showMatchPreview =
+    isSwiss ||
+    seedingFormat === "random" ||
+    (isElimination && seedingFormat === "tier" && assignedCount > 0) ||
+    (isElimination && seedingFormat === "protected_random") ||
+    (isElimination && seedingFormat === "committee" && elimByes > 0);
+
+  const openingMatchCount = openingMatches.length;
+
+  const totalMatchCount = isSwiss
+    ? seedingMatchCount
+    : useProtectedSeedSection
+      ? openingMatchCount + protectedSeedNumbers.length
+      : roundOnePairings.length;
+
+  const seedingBodyDisabled = disabled || seedingFormat === "random";
+
+  const matchesForPreview = useMemo(() => {
+    if (seedingFormat === "protected_random" && elimByes === 0) return standardMatches;
+    if (useProtectedSeedSection) return openingMatches;
+    if (elimByes > 0 && (seedingFormat === "committee" || seedingFormat === "tier")) {
+      return playableOpeningMatches;
+    }
+    return standardMatches;
+  }, [
+    elimByes,
+    openingMatches,
+    playableOpeningMatches,
+    seedingFormat,
+    standardMatches,
+    useProtectedSeedSection,
+  ]);
 
   return (
-    <div className="border-b border-border p-8">
-      <div className="mb-6 overflow-hidden border border-border bg-card">
-        <div className="border-b border-border px-5 py-4">
+    <div className="border-b border-white/[0.06] px-4 py-6 md:px-6">
+      <div className="overflow-hidden border border-white/[0.08] bg-[oklch(0.06_0_0)]">
+        <div className="border-b border-white/[0.08] bg-white/[0.02] px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="font-tech text-[10px] uppercase tracking-wider-2 text-muted-foreground">
-                {isManualSeeding ? "Manual seeding" : "Traditional seeding"}
+              <p className="font-tech text-[10px] uppercase tracking-[0.18em] text-white/45">
+                Bracket seeding
               </p>
-              <h3 className="mt-1 font-display text-lg tracking-wider">Seed assignments</h3>
+              <h3 className="mt-1 font-display text-lg tracking-display text-white">
+                Seed assignments
+              </h3>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex border border-border bg-secondary/30 p-0.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={seedingMode === "traditional" ? "default" : "ghost"}
-                  disabled={disabled}
-                  onClick={() => onSeedingModeChange("traditional")}
-                  className="h-7 px-2.5 font-tech text-[10px] uppercase tracking-wider"
-                >
-                  Traditional
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={seedingMode === "manual" ? "default" : "ghost"}
-                  disabled={disabled}
-                  onClick={() => onSeedingModeChange("manual")}
-                  className="h-7 px-2.5 font-tech text-[10px] uppercase tracking-wider"
-                >
-                  Manual
-                </Button>
-              </div>
-              <span className="inline-flex items-center gap-1.5 border border-border bg-secondary/30 px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 border border-white/10 bg-white/[0.03] px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-white/45">
                 <Users2 className="h-3.5 w-3.5" />
                 {assignedCount}/{teams.length} teams
               </span>
-              <span className="inline-flex items-center gap-1.5 border border-border bg-secondary/30 px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 border border-white/10 bg-white/[0.03] px-2.5 py-1 font-tech text-[10px] uppercase tracking-wider text-white/45">
                 <Swords className="h-3.5 w-3.5" />
                 {readyMatches}/{totalMatchCount} slots ready
               </span>
@@ -365,15 +446,15 @@ export function SeedingPanel({
           </div>
 
           <div className="mt-4">
-            <div className="mb-1.5 flex items-center justify-between font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1.5 flex items-center justify-between font-tech text-[10px] uppercase tracking-wider text-white/40">
               <span>Progress</span>
               <span>{progress}%</span>
             </div>
-            <div className="h-1.5 overflow-hidden bg-secondary">
+            <div className="h-1.5 overflow-hidden bg-white/[0.06]">
               <div
                 className={cn(
                   "h-full transition-all duration-300",
-                  progress === 100 ? "bg-amber-400" : "bg-foreground/70",
+                  progress === 100 ? "bg-amber-400" : "bg-white/50",
                 )}
                 style={{ width: `${progress}%` }}
               />
@@ -381,44 +462,72 @@ export function SeedingPanel({
           </div>
         </div>
 
-        {isManualSeeding && (
-          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            Assign teams to seed numbers in order. Round 1 pairings are built from seed order when you
-            generate the bracket.
+        {isElimination && (
+          <div className="border-b border-white/[0.06] bg-white/[0.02] px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-white/40">
+            {formatHelp}
+            {compressedPreliminary && (
+              <span className="mt-1 block text-foreground/75">
+                {openingPlayableMatchCount(bracketSize)} opening upper matches on a {elimCapacity}
+                -slot tree; seeds 1–{elimByes} skip to upper round two.
+              </span>
+            )}
           </div>
         )}
 
-        {hasPlayInSeeding && (
-          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            Seeds 1–{directSeedCount} skip opening play-in and enter the {protectedBracketLabel} with
-            protection. Seeds {directSeedCount + 1}–{bracketSize} play in traditional high-vs-low
-            play-in pairings; winners join round 1 at the correct bracket positions.
-          </div>
-        )}
-
-        {!isManualSeeding && !hasPlayInSeeding && isSwiss && isPowerOfTwo(bracketSize) && (
-          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            Swiss round 1 uses standard bracket seeding (1 vs {bracketSize}, 2 vs {bracketSize - 1}, …).
-          </div>
-        )}
-
-        {!isManualSeeding && !hasPlayInSeeding && isSwiss && !isPowerOfTwo(bracketSize) && (
-          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            Swiss round 1 uses sequential pairings (1 vs 2, 3 vs 4, …) for this field size.
-          </div>
-        )}
-
-        {!isManualSeeding && !hasPlayInSeeding && !isSwiss && isPowerOfTwo(bracketSize) && (
+        {isSwiss && isPowerOfTwo(bracketSize) && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
             Round 1 uses standard bracket seeding (1 vs {bracketSize}, 2 vs {bracketSize - 1}, …).
           </div>
         )}
 
-        {!isManualSeeding && hasPlayInSeeding && !isSwiss && (
+        {isSwiss && !isPowerOfTwo(bracketSize) && (
           <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
-            {bracketSize} teams → {mainBracketSize(bracketSize)}-slot main bracket with{" "}
-            {playInMatchCount} opening play-in{" "}
-            {playInMatchCount === 1 ? "match" : "matches"}.
+            Round 1 uses high-vs-low pairings (1 vs {bracketSize}, 2 vs {bracketSize - 1}, …).
+          </div>
+        )}
+
+        {isElimination && seedingFormat === "protected_random" && onProtectedSeedCountChange && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-border bg-secondary/10 px-5 py-3">
+            <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+              Protected top seeds
+            </span>
+            <Select
+              value={String(protectedSeedNumbers.length)}
+              onValueChange={(value) => onProtectedSeedCountChange(Number(value))}
+              disabled={disabled}
+            >
+              <SelectTrigger className="h-8 w-28 bg-background/50 font-tech text-[10px] uppercase tracking-wider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {protectedSeedCountOptions(bracketSize).map((count) => (
+                  <SelectItem key={count} value={String(count)}>
+                    Top {count}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {onRandomFillRemaining && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={disabled}
+                onClick={onRandomFillRemaining}
+                className="gap-1.5 font-tech text-[10px] uppercase tracking-wider text-amber-400 hover:text-amber-300"
+              >
+                <Shuffle className="h-3.5 w-3.5" />
+                Random fill remaining
+              </Button>
+            )}
+          </div>
+        )}
+
+        {isElimination && seedingFormat === "random" && (
+          <div className="border-b border-border bg-secondary/10 px-5 py-3 font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            Teams are shuffled into seed slots when you click{" "}
+            <span className="text-foreground">Generate Bracket</span>. Use Random seed in the
+            toolbar for an early preview.
           </div>
         )}
 
@@ -451,43 +560,51 @@ export function SeedingPanel({
         )}
       </div>
 
-      {isManualSeeding ? (
-        <div>
-          <div className="mb-4 flex items-center gap-3">
-            <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-              Seed order
-            </span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: bracketSize }, (_, index) => (
-              <ProtectedSeedSlot
-                key={`manual-seed-${index + 1}`}
-                seed={index + 1}
-                team={assignments[index]}
-                teams={teams}
-                usedTeamIds={usedTeamIds}
-                disabled={disabled}
-                onTeamSelect={onTeamSelect}
-              />
-            ))}
-          </div>
-        </div>
-      ) : hasPlayInSeeding ? (
+      {showTierPanel && onApplyTierSeeding && onTierChange && (
+        <TierSeedingPanel
+          teams={teams}
+          tierByTeamId={tierByTeamId}
+          disabled={disabled}
+          onTierChange={onTierChange}
+          onApply={onApplyTierSeeding}
+        />
+      )}
+
+      {showCommitteeList && (
+        <CommitteeSeedList
+          teamCount={bracketSize}
+          assignments={assignments}
+          teams={teams}
+          disabled={disabled}
+          onTeamSelect={onTeamSelect}
+        />
+      )}
+
+      {useProtectedSeedSection && (
         <div className="space-y-8">
           <div>
             <div className="mb-4 flex items-center gap-3">
-              <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-                Protected seeds — {protectedBracketLabel}
+              <span className="flex items-center gap-2 font-display text-sm uppercase tracking-wider text-foreground/90">
+                <Shield
+                  className="h-3.5 w-3.5 text-muted-foreground/60"
+                  strokeWidth={1.5}
+                  aria-hidden
+                />
+                {seedingFormat === "protected_random" ? "Protected top seeds" : "Protected seeds"}
               </span>
               <span className="h-px flex-1 bg-border" />
+              <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                {seedingFormat === "protected_random"
+                  ? `Seeds 1–${protectedSeedNumbers.length}`
+                  : `${protectedSeedNumbers.length} round-one bye${protectedSeedNumbers.length === 1 ? "" : "s"}`}
+              </span>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: directSeedCount }, (_, index) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {protectedSeedNumbers.map((seed) => (
                 <ProtectedSeedSlot
-                  key={`protected-${index + 1}`}
-                  seed={index + 1}
-                  team={assignments[index]}
+                  key={`protected-seed-${seed}`}
+                  seed={seed}
+                  team={assignments[seed - 1]}
                   teams={teams}
                   usedTeamIds={usedTeamIds}
                   disabled={disabled}
@@ -497,76 +614,120 @@ export function SeedingPanel({
             </div>
           </div>
 
-          <div>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-                Opening — play-in
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              {playInMatches.map((match) => (
-                <SeedingMatchCard
-                  key={match.key}
-                  matchIndex={match.matchIndex}
-                  teamAIdx={match.teamAIdx}
-                  teamBIdx={match.teamBIdx}
-                  teamA={assignments[match.teamAIdx]}
-                  teamB={assignments[match.teamBIdx]}
-                  isByeSlot={false}
-                  seedLabel={match.seedLabel}
-                  teams={teams}
-                  usedTeamIds={usedTeamIds}
-                  disabled={disabled}
-                  onTeamSelect={onTeamSelect}
-                />
-              ))}
-            </div>
-          </div>
-
-          {upperPreview.length > 0 && (
+          {seedingFormat === "protected_random" && remainingSeedNumbers.length > 0 && (
             <div>
               <div className="mb-4 flex items-center gap-3">
                 <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
-                  {roundOnePreviewLabel}
+                  Remaining seeds
                 </span>
                 <span className="h-px flex-1 bg-border" />
+                <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Seeds {remainingSeedNumbers[0]}–
+                  {remainingSeedNumbers[remainingSeedNumbers.length - 1]}
+                </span>
               </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {upperPreview.map((preview) => (
-                  <RoundOnePreviewCard
-                    key={`r1-preview-${preview.matchIndex}`}
-                    matchIndex={preview.matchIndex}
-                    seedA={preview.seedA}
-                    seedB={preview.seedB}
-                    playInMatchIndexA={preview.playInMatchIndexA}
-                    playInMatchIndexB={preview.playInMatchIndexB}
-                    assignments={assignments}
-                    roundLabel={isDoubleElim ? "Upper R1" : "Main R1"}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {remainingSeedNumbers.map((seed) => (
+                  <div
+                    key={`remaining-seed-${seed}`}
+                    className={cn(
+                      "border bg-card p-4 transition-colors",
+                      assignments[seed - 1] ? "border-amber-400/30" : "border-border",
+                    )}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Random slot
+                      </span>
+                      <span className="font-display text-xs tracking-wider text-muted-foreground/80">
+                        Seed {seed}
+                      </span>
+                    </div>
+                    <SeedingTeamPicker
+                      label=""
+                      seed={seed}
+                      value={assignments[seed - 1]}
+                      teams={teams}
+                      usedTeamIds={usedTeamIds}
+                      onChange={(teamId) => onTeamSelect(seed - 1, teamId)}
+                      disabled={seedingBodyDisabled}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showMatchPreview && matchesForPreview.length > 0 && (
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
+                  Round 1 preview
+                </span>
+                <span className="h-px flex-1 bg-border" />
+                <span className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {matchesForPreview.length} match{matchesForPreview.length === 1 ? "" : "es"}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {matchesForPreview.map((match, displayIndex) => (
+                  <SeedingMatchCard
+                    key={match.key}
+                    matchIndex={displayIndex}
+                    teamAIdx={match.teamAIdx}
+                    teamBIdx={match.teamBIdx}
+                    teamA={assignments[match.teamAIdx]}
+                    teamB={assignments[match.teamBIdx]}
+                    byeSide={match.byeSide}
+                    seedLabel={match.seedLabel}
+                    teams={teams}
+                    usedTeamIds={usedTeamIds}
+                    disabled={seedingBodyDisabled}
+                    onTeamSelect={onTeamSelect}
                   />
                 ))}
               </div>
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {showMatchPreview && !useProtectedSeedSection && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {standardMatches.map((match) => (
+          {matchesForPreview.map((match) => (
             <SeedingMatchCard
               key={match.key}
               matchIndex={match.matchIndex}
               teamAIdx={match.teamAIdx}
               teamBIdx={match.teamBIdx}
-              teamA={assignments[match.teamAIdx]}
-              teamB={match.isByeSlot ? null : assignments[match.teamBIdx]}
-              isByeSlot={match.isByeSlot}
+              teamA={match.byeSide === "teamA" ? null : assignments[match.teamAIdx]}
+              teamB={match.byeSide === "teamB" ? null : assignments[match.teamBIdx]}
+              byeSide={match.byeSide}
               seedLabel={match.seedLabel}
               teams={teams}
               usedTeamIds={usedTeamIds}
-              disabled={disabled}
+              disabled={seedingBodyDisabled}
               onTeamSelect={onTeamSelect}
             />
           ))}
+        </div>
+      )}
+
+      {showTierPanel && assignedCount > 0 && (
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="font-display text-sm uppercase tracking-wider text-foreground/90">
+              Seed order preview
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <CommitteeSeedList
+            teamCount={bracketSize}
+            assignments={assignments}
+            teams={teams}
+            disabled
+            onTeamSelect={onTeamSelect}
+          />
         </div>
       )}
     </div>

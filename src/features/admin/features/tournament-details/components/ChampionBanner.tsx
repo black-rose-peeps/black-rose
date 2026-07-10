@@ -9,7 +9,12 @@ interface ChampionBannerProps {
   className?: string;
 }
 
-export function ChampionBanner({ champion, team, variant = "final", className }: ChampionBannerProps) {
+export function ChampionBanner({
+  champion,
+  team,
+  variant = "final",
+  className,
+}: ChampionBannerProps) {
   const abbr = team?.tag ?? champion.slice(0, 2).toUpperCase();
   const title = variant === "grand" ? "Grand Finals Champion" : "Tournament Champion";
 
@@ -37,7 +42,9 @@ export function ChampionBanner({ champion, team, variant = "final", className }:
         </div>
 
         <div className="hidden sm:block text-right">
-          <p className="font-tech text-[10px] uppercase tracking-wider-2 text-amber-400/60">Status</p>
+          <p className="font-tech text-[10px] uppercase tracking-wider-2 text-amber-400/60">
+            Status
+          </p>
           <p className="font-display text-xl tracking-display text-amber-100">Crowned</p>
         </div>
       </div>

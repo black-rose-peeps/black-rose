@@ -25,6 +25,7 @@ Login-time verification (existing ROSE holders) still runs in the main web app v
 3. Supabase service role key (Worker writes to `members`)
 4. `members` table in Supabase Realtime publication (`docs/sql/members_realtime.sql`)
 5. Runtime flags table (`docs/sql/worker_runtime_flags.sql`) for boost mode
+6. Discord sync queue columns (`docs/sql/members_discord_sync_queue.sql`) for hot/cold filtering and not-in-guild strikes
 
 ## Setup
 
@@ -54,6 +55,9 @@ Set non-secret vars in `wrangler.toml` or the Cloudflare dashboard:
 | `DISCORD_ROSE_ROLE_ID` | `1465647773658517660` |
 | `SUPABASE_URL` | `https://xxx.supabase.co` |
 | `SYNC_BATCH_SIZE` | `22` (Workers Free: each member may use 2 subrequests — Discord + DB update) |
+| `SYNC_HOT_DAYS` | `30` (Not Verified signups newer than this are in the hot queue) |
+| `SYNC_NOT_IN_GUILD_STRIKE_LIMIT` | `3` (pause Worker polls after this many consecutive 404s) |
+| `SYNC_COLD_SWEEP_INTERVAL_MINUTES` | `1440` (daily cold + paused-recovery page when cron budget allows) |
 | `SYNC_BOOST_WINDOW_MINUTES` | `10` |
 | `SYNC_BASELINE_INTERVAL_MINUTES` | `15` |
 
@@ -110,7 +114,8 @@ curl http://localhost:8787/health
 - **Cron schedule:** every 15 minutes (`*/15 * * * *` in `wrangler.toml`).
 - **Workers Paid** is recommended for production cron (Free tier cron CPU is 10 ms; network `fetch` time does not count toward CPU).
 - **Rate limits:** Workers Free allows **50 subrequests per cron run**. Default batch is **22** members per page (Discord fetch + possible DB update = up to 2 subrequests each).
-- **Member priority:** each run selects a `Not Verified` page via `rotationTick % notVerifiedPages`, orders members within that page by `created_at desc`, then fills remaining batch slots (after reserving capacity for verified checks) with `Verified` members for ROSE-removal checks.
+- **Member priority:** cron always checks the **newest hot** Not Verified batch (created within `SYNC_HOT_DAYS`, not paused). Older **cold** members and **paused** members (at `SYNC_NOT_IN_GUILD_STRIKE_LIMIT`, default 3) are swept on a slower cadence (`SYNC_COLD_SWEEP_INTERVAL_MINUTES`, default daily). Manual `POST /sync?priority=1` (admin **Sync Discord now**) uses the same hot queue and skips verified-member audits for that run.
+- **Not-in-guild strikes:** each Discord 404 increments `discord_not_in_guild_strikes`; at the limit the row gets `discord_sync_paused_at` and is excluded from hot polls until a paused-recovery sweep or login OAuth sees them in guild again.
 - **Guild scope:** the Worker only inspects `DISCORD_GUILD_ID`. Members **not in that server** are treated as **Not Verified** (no ROSE possible).
 - **Boost endpoint:** `/sync/boost` runs an immediate sync and records a boost window in `worker_runtime_flags` (visible via `/sync/status`). Cron cadence stays every 15 minutes.
 - **Gateway bot (`npm run discord-bot`)** is optional — use the Worker instead for Cloudflare hosting. The Gateway bot gives ~instant updates; the cron Worker runs every 15 minutes.
@@ -120,7 +125,7 @@ curl http://localhost:8787/health
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Liveness check |
-| GET | `/sync/status` | Current boost status (`boostActive`, `boostUntil`) |
+| GET | `/sync/status` | Boost status (`boostActive`, `boostUntil`) and queue config (`queueConfig`: `hotDays`, `coldSweepIntervalMinutes`, `notInGuildStrikeLimit`) |
 | POST | `/sync` | Manual sync run (optional `Authorization: Bearer SYNC_SECRET`) |
 | POST | `/sync/boost` | Immediate sync + record boost window (optional `Authorization: Bearer SYNC_SECRET`) |
 

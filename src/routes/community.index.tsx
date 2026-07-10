@@ -28,7 +28,7 @@ function CommunityPage() {
       <Header />
 
       {/* ── Page hero ─────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-white/6 pt-32 pb-20">
+      <section className="relative overflow-hidden border-b border-white/6 site-header-offset-hero pb-20">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-60" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_70%_60%_at_50%_0%,rgba(255,255,255,0.06),transparent)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-background to-transparent" />

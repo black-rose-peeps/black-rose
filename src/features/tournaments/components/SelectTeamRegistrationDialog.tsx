@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, Trophy, Users } from "lucide-react";
+import { AlertCircle, CheckCircle2, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { GAME_COLOR } from "@/features/teams/constants";
 import {
   countActiveRosterMembers,
@@ -20,6 +21,10 @@ import {
   fetchCaptainTeamsForTournament,
   requestCaptainTeamRegistration,
 } from "@/features/tournaments/services/team-registration.service";
+import { fetchRosterIdentityGapsForTeams } from "@/features/member/services/member-identity.service";
+import { gameIdentityConfig } from "@/features/member/utils/game-identity";
+import { tournamentRosterIdentityError } from "@/features/member/utils/roster-identity";
+import type { RosterIdentityGap } from "@/features/member/utils/roster-identity";
 import { cn } from "@/lib/utils";
 import type { Team } from "@/features/teams/types";
 import { SelectTeamRegistrationSkeleton } from "./SelectTeamRegistrationSkeleton";
@@ -48,12 +53,16 @@ export function SelectTeamRegistrationDialog({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [identityGapsByTeamId, setIdentityGapsByTeamId] = useState<
+    Map<string, RosterIdentityGap[]>
+  >(() => new Map());
   const hasLoadedTeams = useRef(false);
 
   useEffect(() => {
     hasLoadedTeams.current = false;
     setTeams([]);
     setSelectedTeamId("");
+    setIdentityGapsByTeamId(new Map());
   }, [tournamentId, captainUserId]);
 
   useEffect(() => {
@@ -66,15 +75,20 @@ export function SelectTeamRegistrationDialog({
     if (!hasLoadedTeams.current) setLoading(true);
 
     fetchCaptainTeamsForTournament(captainUserId, tournamentId)
-      .then((eligible) => {
+      .then(async (eligible) => {
         if (cancelled) return;
         const compatible = eligible.filter(
           (team) => team.game === "Multi" || team.game === tournamentGame,
         );
+        const gaps = await fetchRosterIdentityGapsForTeams(compatible, tournamentGame);
+        if (cancelled) return;
         setTeams(compatible);
-        const firstEligible = compatible.find((team) =>
-          meetsTournamentRosterRequirement(team, tournamentGame),
-        );
+        setIdentityGapsByTeamId(gaps);
+        const firstEligible = compatible.find((team) => {
+          if (!meetsTournamentRosterRequirement(team, tournamentGame)) return false;
+          const gapsForTeam = gaps.get(team.id) ?? [];
+          return gapsForTeam.length === 0;
+        });
         setSelectedTeamId(firstEligible?.id ?? compatible[0]?.id ?? "");
         hasLoadedTeams.current = true;
       })
@@ -109,22 +123,27 @@ export function SelectTeamRegistrationDialog({
 
   const selectedTeam = teams.find((t) => t.id === selectedTeamId);
   const requiredRosterSize = getRequiredRosterSizeForTournament(tournamentGame);
+  const selectedTeamGaps = selectedTeam ? (identityGapsByTeamId.get(selectedTeam.id) ?? []) : [];
   const selectedTeamRosterError = selectedTeam
     ? tournamentRosterRequirementError(selectedTeam, tournamentGame)
     : null;
-  const eligibleTeams = teams.filter((team) =>
+  const selectedTeamIdentityError = selectedTeam
+    ? tournamentRosterIdentityError(selectedTeam, tournamentGame, selectedTeamGaps)
+    : null;
+  const gameIdentityLabel = gameIdentityConfig(tournamentGame)?.panelLabel ?? tournamentGame;
+  const anyRosterEligible = teams.some((team) =>
     meetsTournamentRosterRequirement(team, tournamentGame),
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 gap-0">
-        <DialogHeader className="border-b border-white/8 px-6 py-5">
-          <DialogTitle className="flex items-center gap-2 font-display text-2xl tracking-display">
+    <AdaptiveModal open={open} onOpenChange={onOpenChange}>
+      <AdaptiveModalContent className="flex max-w-lg flex-col gap-0 border-white/12 bg-[oklch(0.08_0_0)] p-0">
+        <AdaptiveModalHeader>
+          <AdaptiveModalTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-muted-foreground" />
             Register for Tournament
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+          </AdaptiveModalTitle>
+          <AdaptiveModalDescription>
             Choose which team to submit for{" "}
             <span className="text-foreground">{tournamentName}</span>.
             {requiredRosterSize ? (
@@ -135,10 +154,10 @@ export function SelectTeamRegistrationDialog({
               </>
             ) : null}{" "}
             An admin will review your registration before your team is confirmed.
-          </DialogDescription>
-        </DialogHeader>
+          </AdaptiveModalDescription>
+        </AdaptiveModalHeader>
 
-        <div className="flex flex-col gap-4 px-6 py-5">
+        <AdaptiveModalBody className="flex flex-col gap-4">
           {loading ? (
             <SelectTeamRegistrationSkeleton />
           ) : teams.length === 0 ? (
@@ -153,7 +172,7 @@ export function SelectTeamRegistrationDialog({
                 <Link to="/teams/create">Create a Team</Link>
               </Button>
             </div>
-          ) : eligibleTeams.length === 0 && requiredRosterSize ? (
+          ) : !anyRosterEligible && requiredRosterSize ? (
             <div className="flex flex-col items-center gap-4 py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 {tournamentGame} tournaments require at least {requiredRosterSize} active roster
@@ -164,7 +183,9 @@ export function SelectTeamRegistrationDialog({
                 variant="outline"
                 className="rounded-none border-white/15 bg-transparent font-tech text-ui-readable uppercase"
               >
-                <Link to="/teams">Manage Teams</Link>
+                <Link to="/teams" search={{ create: false }}>
+                  Manage Teams
+                </Link>
               </Button>
             </div>
           ) : (
@@ -174,7 +195,13 @@ export function SelectTeamRegistrationDialog({
                   const activeCount = countActiveRosterMembers(team);
                   const isSelected = team.id === selectedTeamId;
                   const rosterError = tournamentRosterRequirementError(team, tournamentGame);
-                  const rosterEligible = !rosterError;
+                  const identityGaps = identityGapsByTeamId.get(team.id) ?? [];
+                  const identityError = tournamentRosterIdentityError(
+                    team,
+                    tournamentGame,
+                    identityGaps,
+                  );
+                  const rosterEligible = !rosterError && !identityError;
 
                   return (
                     <li key={team.id}>
@@ -211,6 +238,9 @@ export function SelectTeamRegistrationDialog({
                           {rosterError && (
                             <p className="mt-1 text-xs text-amber-400/90">{rosterError}</p>
                           )}
+                          {!rosterError && identityError && (
+                            <p className="mt-1 text-xs text-amber-400/90">{identityError}</p>
+                          )}
                         </div>
                         {isSelected && rosterEligible && (
                           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
@@ -225,7 +255,33 @@ export function SelectTeamRegistrationDialog({
                 <p className="text-xs text-amber-400/90">{selectedTeamRosterError}</p>
               )}
 
-              {selectedTeam && !selectedTeamRosterError && (
+              {selectedTeam && !selectedTeamRosterError && selectedTeamIdentityError && (
+                <div className="flex flex-col gap-3 border border-amber-400/25 bg-amber-400/5 px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                    <div>
+                      <p className="text-xs leading-relaxed text-amber-100/90">
+                        {selectedTeamIdentityError}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Ask each player to sign in and set their {gameIdentityLabel} in-game ID on
+                        the Player tab of their profile.
+                      </p>
+                    </div>
+                  </div>
+                  <ul className="space-y-1 border-t border-amber-400/15 pt-3 text-xs text-muted-foreground">
+                    {selectedTeamGaps.map((gap) => (
+                      <li key={gap.userId}>
+                        <span className="text-foreground">{gap.displayName || gap.username}</span>
+                        {" · "}
+                        missing {gameIdentityLabel} ID
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {selectedTeam && !selectedTeamRosterError && !selectedTeamIdentityError && (
                 <p className="text-xs text-muted-foreground">
                   Submitting <span className="text-foreground">{selectedTeam.name}</span> [
                   {selectedTeam.tag}] for admin approval.
@@ -234,7 +290,12 @@ export function SelectTeamRegistrationDialog({
 
               <Button
                 type="button"
-                disabled={!selectedTeamId || submitting || Boolean(selectedTeamRosterError)}
+                disabled={
+                  !selectedTeamId ||
+                  submitting ||
+                  Boolean(selectedTeamRosterError) ||
+                  Boolean(selectedTeamIdentityError)
+                }
                 onClick={() => void handleRegister()}
                 className="clip-cta h-11 w-full rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90 disabled:opacity-70"
               >
@@ -244,8 +305,8 @@ export function SelectTeamRegistrationDialog({
           )}
 
           {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </AdaptiveModalBody>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

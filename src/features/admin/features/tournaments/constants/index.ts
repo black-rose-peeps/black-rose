@@ -14,6 +14,18 @@ export const TOURNAMENT_GAMES: TournamentGame[] = [
 
 export const TOURNAMENT_REGIONS = ["PH", "SEA", "APAC", "Global"] as const;
 
+/** Public tournament hero blurb — keep in sync with DB check constraint. */
+export const TOURNAMENT_DESCRIPTION_MAX_LENGTH = 280;
+
+/** Max length for optional official ruleset URL. */
+export const TOURNAMENT_RULES_URL_MAX_LENGTH = 500;
+
+export const TOURNAMENT_RULES_FILE_MAX_BYTES = 10 * 1024 * 1024;
+
+export const TOURNAMENT_RULES_FILE_EXTENSIONS = ["pdf", "doc", "docx"] as const;
+
+export const TOURNAMENT_RULES_FILE_ACCEPT = ".pdf,.doc,.docx";
+
 export const ADMIN_TOURNAMENT_STATUSES: TournamentStatus[] = [
   "Draft",
   "Registration Open",
@@ -33,4 +45,6 @@ export const DEFAULT_CREATE_TOURNAMENT_FORM: CreateTournamentFormValues = {
   region: "PH",
   status: "Draft",
   wwmMode: "",
+  description: "",
+  rulesUrl: "",
 };

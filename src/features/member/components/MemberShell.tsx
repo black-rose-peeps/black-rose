@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Emblem } from "@/features/shared/components/Emblem";
+import { Footer } from "@/features/landing/components/Footer";
 import { MemberNav } from "./MemberNav";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,16 @@ export function MemberPageLayout({
     <div className="min-h-screen bg-background text-foreground">
       <MemberNav />
       <div className="pointer-events-none fixed inset-0 grid-bg opacity-25" />
-      <div className={cn("relative mx-auto px-6 pb-16 pt-24", maxWidth, className)}>{children}</div>
+      <div
+        className={cn(
+          "relative mx-auto w-full px-4 pb-10 site-header-offset-spaced sm:px-6",
+          maxWidth,
+          className,
+        )}
+      >
+        {children}
+      </div>
+      <Footer />
     </div>
   );
 }
@@ -73,7 +83,7 @@ export function TechPanel({
     >
       <CornerAccents />
       {(label || title || action) && (
-        <div className="flex items-start justify-between gap-3 border-b border-white/6 px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-white/6 px-4 py-3 sm:px-5 sm:py-4">
           <div className="min-w-0">
             {label && (
               <p className="font-tech text-label-readable uppercase text-muted-foreground">
@@ -90,7 +100,7 @@ export function TechPanel({
           {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
-      <div className={cn(noPadding ? "" : "p-5")}>{children}</div>
+      <div className={cn(noPadding ? "" : "p-4 sm:p-5")}>{children}</div>
     </div>
   );
 }
@@ -117,11 +127,13 @@ export function MemberHeroBanner({
     <div className="relative mb-8 overflow-hidden border border-white/8 bg-[oklch(0.06_0_0)] clip-angle-lg">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-60" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[radial-gradient(ellipse_80%_60%_at_20%_50%,rgba(255,255,255,0.04),transparent)]" />
-      <div className={cn("pointer-events-none absolute -right-12 -top-12 opacity-[0.07]", emblemSize)}>
+      <div
+        className={cn("pointer-events-none absolute -right-12 -top-12 opacity-[0.07]", emblemSize)}
+      >
         <Emblem className={emblemSize} spin />
       </div>
 
-      <div className="relative px-6 py-8 sm:px-8 sm:py-10">
+      <div className="relative px-4 py-6 sm:px-8 sm:py-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
             {children}
@@ -131,13 +143,19 @@ export function MemberHeroBanner({
                   {eyebrow}
                 </p>
               )}
-              <h1 className="mt-1 font-display text-4xl tracking-display sm:text-5xl">{title}</h1>
-              {subtitle && <p className="mt-2 text-base leading-7 text-muted-foreground">{subtitle}</p>}
+              <h1 className="mt-1 font-display text-3xl tracking-display sm:text-5xl">{title}</h1>
+              {subtitle && (
+                <p className="mt-2 text-sm leading-7 text-muted-foreground sm:text-base">
+                  {subtitle}
+                </p>
+              )}
               {meta && <div className="mt-3">{meta}</div>}
             </div>
           </div>
           {actions && (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center [&_a]:w-full sm:[&_a]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+              {actions}
+            </div>
           )}
         </div>
       </div>

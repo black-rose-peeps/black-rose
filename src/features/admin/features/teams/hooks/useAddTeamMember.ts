@@ -1,15 +1,11 @@
 import { useCallback, useState } from "react";
-import { resyncRegistrationsForTeam } from "@/features/admin/features/tournaments/services/tournament-registrations.service";
-import { addMemberToTeam, addMembersToTeam, type AddMembersToTeamResult } from "../services/teams.service";
+import {
+  addMemberToTeam,
+  addMembersToTeam,
+  rosterActorFromAdminConsole,
+  type AddMembersToTeamResult,
+} from "../services/teams.service";
 import type { AddTeamMemberInput, Team } from "../types";
-
-async function resyncTeamRoster(teamId: string) {
-  try {
-    await resyncRegistrationsForTeam(teamId);
-  } catch (resyncErr) {
-    console.error("Roster resync failed after adding member:", resyncErr);
-  }
-}
 
 export function useAddTeamMember() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,8 +15,7 @@ export function useAddTeamMember() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const team = await addMemberToTeam(input);
-      await resyncTeamRoster(input.teamId);
+      const team = await addMemberToTeam(input, rosterActorFromAdminConsole());
       return team;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to add member.";
@@ -36,10 +31,7 @@ export function useAddTeamMember() {
       setIsSubmitting(true);
       setError(null);
       try {
-        const result = await addMembersToTeam(teamId, memberIds);
-        if (result.added.length > 0) {
-          await resyncTeamRoster(teamId);
-        }
+        const result = await addMembersToTeam(teamId, memberIds, rosterActorFromAdminConsole());
         if (result.added.length === 0 && result.failed.length > 0) {
           setError(result.failed.map((failure) => failure.message).join(" "));
         }

@@ -1,5 +1,6 @@
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { BLACK_ROSE_STAFF_CONTACT_SUMMARY } from "@/features/auth/constants";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { TournamentHero } from "@/features/tournaments/$id/components/TournamentHero";
@@ -8,6 +9,7 @@ import { TournamentTabs } from "@/features/tournaments/$id/components/Tournament
 import { OverviewTab } from "@/features/tournaments/$id/components/OverviewTab";
 import { TeamsTab } from "@/features/tournaments/$id/components/TeamsTab";
 import { BracketTab } from "@/features/tournaments/$id/components/BracketTab";
+import { StandingsTab } from "@/features/tournaments/$id/components/StandingsTab";
 import { RulesTab } from "@/features/tournaments/$id/components/RulesTab";
 import { useTournamentRegistrations } from "@/features/tournaments/hooks";
 import {
@@ -21,10 +23,12 @@ import {
   resolveTournamentStatus,
   toPublicTournamentStatus,
 } from "@/features/tournaments/utils";
-import { buildTournamentSchedule } from "@/features/tournaments/utils/tournament-schedule";
+import { countDisplayedTournamentEntrants } from "@/features/admin/features/participants/constants/registration-status";
+import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { TournamentRegisterCTA } from "@/features/tournaments/components/TournamentRegisterCTA";
+import { supportsEliminationStandings } from "@/features/tournaments/constants/formats";
 import { isSoloTournament } from "@/features/tournaments/types/participation";
-import { fetchTournamentById } from "@/features/tournaments/services";
+import { fetchTournamentById, fetchTournamentByIdForSsr } from "@/features/tournaments/services";
 import { getSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import {
@@ -38,7 +42,10 @@ import type { Tab } from "@/features/tournaments/$id/components/TournamentTabs";
 import type { BracketRound, TournamentDetail } from "@/features/tournaments/types";
 import type { MockTournament } from "@/lib/mock-data";
 
-function detailFromSummary(summary: MockTournament, bracketRounds: BracketRound[] = []): TournamentDetail {
+function detailFromSummary(
+  summary: MockTournament,
+  bracketRounds: BracketRound[] = [],
+): TournamentDetail {
   const status = toPublicTournamentStatus(resolveTournamentStatus(summary));
   return {
     id: summary.id,
@@ -54,18 +61,11 @@ function detailFromSummary(summary: MockTournament, bracketRounds: BracketRound[
     region: summary.region,
     participationType: summary.participationType,
     wwmMode: summary.wwmMode ?? null,
-    description: `${summary.name} is a Black Rose community tournament. Follow the bracket and overview for live updates.`,
+    description: summary.description?.trim() ?? "",
+    rulesUrl: summary.rulesUrl?.trim() || null,
     organizer: "Black Rose Operations",
-    contact: "ops@blackrose.gg",
-    prizeBreakdown:
-      summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
-    schedule: buildTournamentSchedule({
-      registrationDeadline: summary.registrationDeadline,
-      startDate: summary.startDate,
-      format: summary.format,
-      status,
-      bracketRounds,
-    }),
+    contact: BLACK_ROSE_STAFF_CONTACT_SUMMARY,
+    prizeBreakdown: summary.prizeBreakdown?.length ? summary.prizeBreakdown : DEFAULT_PRIZE_TIERS,
     rules: [],
     bracket: bracketRounds,
     teams: [],
@@ -80,31 +80,13 @@ function tournamentPageTitle(name: string | undefined): string {
 
 export const Route = createFileRoute("/tournaments/$id")({
   loader: async ({ params }): Promise<{ tournament: TournamentDetail }> => {
-    // SSR guard — supabase-js throws on Node < 22 without native WebSocket.
-    // Fall back to a minimal stub; the component fetches the real data client-side.
+    // SSR uses PostgREST fetch — supabase-js Realtime client throws on Node < 22.
     if (typeof window === "undefined") {
-      const stub: TournamentDetail = {
-        id: params.id,
-        name: "Loading…",
-        game: "Valorant",
-        status: "Registration Closed",
-        prizePool: "",
-        startDate: "",
-        registrationDeadline: "",
-        teamsRegistered: 0,
-        teamCap: 0,
-        format: "",
-        region: "",
-        description: "",
-        organizer: "",
-        contact: "",
-        prizeBreakdown: [],
-        schedule: [],
-        rules: [],
-        bracket: [],
-        teams: [],
-      };
-      return { tournament: stub };
+      const summary = await fetchTournamentByIdForSsr(params.id);
+      if (!summary || summary.status === "Draft" || summary.status === "Archived") {
+        throw notFound();
+      }
+      return { tournament: detailFromSummary(summary) };
     }
 
     // Fall back to the live service for tournaments without a detail record
@@ -118,7 +100,11 @@ export const Route = createFileRoute("/tournaments/$id")({
       { title: tournamentPageTitle(loaderData?.tournament?.name) },
       {
         name: "description",
-        content: loaderData?.tournament?.description ?? "Tournament details on Black Rose Arena.",
+        content:
+          loaderData?.tournament?.description?.trim() ||
+          (loaderData?.tournament?.name && loaderData.tournament.name !== "Loading…"
+            ? `${loaderData.tournament.name} — Black Rose Arena`
+            : "Tournament details on Black Rose Arena."),
       },
     ],
   }),
@@ -176,6 +162,8 @@ function TournamentDetailPage() {
     bracket: liveBracket,
     prizeBreakdown: livePrizeBreakdown,
     assignmentTeamIds,
+    roundSchedules: liveRoundSchedules,
+    grandFinalMode: liveGrandFinalMode,
     isLoading: bracketLoading,
   } = useLiveBracket(tournament.id);
 
@@ -187,6 +175,18 @@ function TournamentDetailPage() {
 
   const displayTeams = liveTeams.length > 0 ? liveTeams : tournament.teams;
   const teamTagMap = useMemo(() => buildTeamTagMap(displayTeams), [displayTeams]);
+  const seedByTeam = useMemo(
+    () => new Map(displayTeams.map((team, index) => [team.name, team.seed ?? index + 1])),
+    [displayTeams],
+  );
+  const entrantCount = useMemo(
+    () =>
+      countDisplayedTournamentEntrants(
+        registrations.map((registration) => ({ status: registration.status })),
+        tournament.status,
+      ),
+    [registrations, tournament.status],
+  );
 
   // Bracket: subscribe to the live bracket store so the public page re-renders
   // whenever the admin publishes, updates scores/winners, or resets.
@@ -250,29 +250,31 @@ function TournamentDetailPage() {
   }, [tournament.prizeBreakdown, livePrizeBreakdown]);
 
   const displayPlacements = useMemo(() => {
-    const isDone = tournament.status === "Completed" || tournament.status === "Archived";
-    if (!isDone || !displayBracket.length) return [];
+    if (!displayBracket.length) return [];
 
-    const raw = derivePublicPlacements(tournament.format, displayBracket);
+    const raw = derivePublicPlacements(
+      tournament.format,
+      displayBracket,
+      liveGrandFinalMode ?? undefined,
+    );
+    if (raw.length === 0) return [];
+
     return buildPodiumPlacements(resolvedPrizeBreakdown, raw);
-  }, [tournament.status, tournament.format, displayBracket, resolvedPrizeBreakdown]);
+  }, [tournament.format, displayBracket, resolvedPrizeBreakdown, liveGrandFinalMode]);
 
   const liveDetail: TournamentDetail = {
     ...tournament,
-    teamsRegistered: teamsLoading ? tournament.teamsRegistered : registrations.length,
+    teamsRegistered: teamsLoading
+      ? isTournamentConcluded(tournament.status)
+        ? Math.max(tournament.teamsRegistered, entrantCount)
+        : tournament.teamsRegistered
+      : entrantCount,
     prizeBreakdown: resolvedPrizeBreakdown,
-    schedule: buildTournamentSchedule({
-      registrationDeadline: tournament.registrationDeadline,
-      startDate: tournament.startDate,
-      format: tournament.format,
-      status: tournament.status,
-      bracketRounds: displayBracket,
-    }),
     placements: displayPlacements,
   };
 
   const approvedCount =
-    displayTeams.length > 0 ? displayTeams.length : tournament.teamsRegistered;
+    displayTeams.length > 0 ? displayTeams.length : (entrantCount ?? tournament.teamsRegistered);
   const rulesBracketSize = bracketFieldSize(approvedCount) ?? tournament.teamCap;
 
   const displayRules = resolveTournamentRules(tournament.format, tournament.rules, {
@@ -280,9 +282,18 @@ function TournamentDetailPage() {
     teamCap: rulesBracketSize,
     participationType: liveDetail.participationType,
     wwmMode: liveDetail.wwmMode,
+    hasOfficialRuleset: !!liveDetail.rulesUrl?.trim(),
   });
 
   const isLoadingDetail = tournament.name === "Loading…";
+  const showStandingsTab = supportsEliminationStandings(tournament.format);
+
+  useEffect(() => {
+    if (!showStandingsTab && activeTab === "standings") {
+      setActiveTab("overview");
+    }
+  }, [showStandingsTab, activeTab]);
+
   const session = getSession();
   const canRegisterTeam =
     isRegistrationOpen(liveDetail) &&
@@ -318,7 +329,12 @@ function TournamentDetailPage() {
         }
       />
 
-      <TournamentTabs active={activeTab} onChange={setActiveTab} teamCount={displayTeams.length} />
+      <TournamentTabs
+        active={activeTab}
+        onChange={setActiveTab}
+        teamCount={displayTeams.length}
+        showStandings={showStandingsTab}
+      />
 
       <main className="relative bg-[oklch(0.05_0_0)]">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
@@ -328,12 +344,26 @@ function TournamentDetailPage() {
               <OverviewTab
                 tournament={{ ...liveDetail, bracket: displayBracket }}
                 teamTags={teamTagMap}
+                roundSchedules={liveRoundSchedules}
               />
             </div>
           )}
           {activeTab === "teams" && (
             <div role="tabpanel" id="tab-panel-teams" aria-labelledby="tab-teams">
               <TeamsTab teams={displayTeams} isLoading={teamsLoading} />
+            </div>
+          )}
+          {showStandingsTab && activeTab === "standings" && (
+            <div role="tabpanel" id="tab-panel-standings" aria-labelledby="tab-standings">
+              <StandingsTab
+                format={tournament.format}
+                bracket={displayBracket}
+                teamNames={displayTeams.map((team) => team.name)}
+                teamTags={teamTagMap}
+                seedByTeam={seedByTeam}
+                placements={displayPlacements}
+                isLoading={bracketLoading}
+              />
             </div>
           )}
           {activeTab === "bracket" && (
@@ -343,7 +373,11 @@ function TournamentDetailPage() {
                 format={tournament.format}
                 isLoading={bracketLoading}
                 teamTags={teamTagMap}
+                teamNames={displayTeams.map((team) => team.name)}
+                seedByTeam={seedByTeam}
                 tournamentStatus={liveDetail.status}
+                grandFinalMode={liveGrandFinalMode}
+                roundSchedules={liveRoundSchedules}
               />
             </div>
           )}
@@ -352,7 +386,7 @@ function TournamentDetailPage() {
               <RulesTab
                 rules={displayRules}
                 format={tournament.format}
-                contact={tournament.contact}
+                rulesUrl={liveDetail.rulesUrl}
               />
             </div>
           )}

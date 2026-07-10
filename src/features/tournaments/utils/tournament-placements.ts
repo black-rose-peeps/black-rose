@@ -1,15 +1,17 @@
 import { isDoubleEliminationFormat, isSwissFormat } from "../constants/formats";
 import type { BracketRound, PrizeTier } from "../types";
+import { inferPublicBracketSide, inferRoundIdFromMatchId } from "./bracket-display";
 import {
-  inferPublicBracketSide,
-  inferRoundIdFromMatchId,
-} from "./bracket-display";
+  GRAND_FINAL_MATCH_ID,
+  GRAND_FINAL_RESET_MATCH_ID,
+  DEFAULT_GRAND_FINAL_MODE,
+  resolveGrandFinalChampion,
+  resolveGrandFinalRunnerUp,
+  type GrandFinalMode,
+} from "@/features/admin/features/tournament-details/utils/grand-final";
 import type { ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import type { SwissBracketState } from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
-import {
-  getSwissPhase,
-  getSwissStandings,
-} from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
+import { getSwissPhase } from "@/features/admin/features/tournament-details/utils/managed-swiss-bracket";
 
 export interface TournamentPlacement {
   rank: number;
@@ -56,10 +58,7 @@ function isSemifinalRound(match: ManagedMatch): boolean {
 
 function isThirdPlaceRound(match: ManagedMatch): boolean {
   const normalized = normalizeRoundLabel(match.roundLabel);
-  return (
-    /\b(third|3rd)\s*place\b/i.test(normalized) ||
-    /\bbro(nze)?\b/i.test(normalized)
-  );
+  return /\b(third|3rd)\s*place\b/i.test(normalized) || /\bbro(nze)?\b/i.test(normalized);
 }
 
 function isLowerFinalRoundId(match: ManagedMatch): boolean {
@@ -141,9 +140,7 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
   );
   if (!final?.winner) return [];
 
-  const placements: TournamentPlacement[] = [
-    { rank: 1, label: "Champion", team: final.winner },
-  ];
+  const placements: TournamentPlacement[] = [{ rank: 1, label: "Champion", team: final.winner }];
 
   const runnerUp = loserOf(final);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
@@ -187,19 +184,36 @@ export function deriveSingleElimPlacements(matches: ManagedMatch[]): TournamentP
   return placements;
 }
 
-export function deriveDoubleElimPlacements(matches: ManagedMatch[]): TournamentPlacement[] {
-  const grandFinal = findMatch(
-    matches,
-    (match) => match.bracketSide === "grand" && match.confirmed && !!match.winner,
-  );
-  if (!grandFinal?.winner) return [];
+export function deriveDoubleElimPlacements(
+  matches: ManagedMatch[],
+  grandFinalMode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
+): TournamentPlacement[] {
+  const champion = resolveGrandFinalChampion(matches, grandFinalMode);
+  if (!champion) return [];
 
-  const placements: TournamentPlacement[] = [
-    { rank: 1, label: "Champion", team: grandFinal.winner },
-  ];
+  const placements: TournamentPlacement[] = [{ rank: 1, label: "Champion", team: champion }];
 
-  const runnerUp = loserOf(grandFinal);
+  const runnerUp = resolveGrandFinalRunnerUp(matches, grandFinalMode);
   if (runnerUp) placements.push({ rank: 2, label: "Runner-up", team: runnerUp });
+
+  if (grandFinalMode === "none") {
+    const lowerFinal = matches.find(
+      (match) => match.roundId === "lb-f" && match.confirmed && !!match.winner,
+    );
+    const thirdPlace = lowerFinal ? loserOf(lowerFinal) : null;
+    if (thirdPlace) {
+      placements.push({ rank: 3, label: "3rd Place", team: thirdPlace });
+    }
+    return placements;
+  }
+
+  const grandFinal = matches.find(
+    (match) =>
+      (match.id === GRAND_FINAL_MATCH_ID || match.id === GRAND_FINAL_RESET_MATCH_ID) &&
+      match.confirmed &&
+      !!match.winner,
+  );
+  if (!grandFinal) return placements;
 
   const lowerFinal = findLowerFinalMatch(matches, grandFinal);
   const lowerFinalLoser = lowerFinal ? loserOf(lowerFinal) : null;
@@ -223,29 +237,43 @@ export function deriveManagedPlacements(
   matches: ManagedMatch[],
   swiss?: SwissBracketState | null,
   teamNames?: string[],
+  grandFinalMode?: GrandFinalMode,
 ): TournamentPlacement[] {
   if (isSwissFormat(format) && swiss) {
     return deriveSwissPlacements(matches, swiss);
   }
   if (isDoubleEliminationFormat(format)) {
-    return deriveDoubleElimPlacements(matches);
+    return deriveDoubleElimPlacements(matches, grandFinalMode);
   }
   return deriveSingleElimPlacements(matches);
+}
+
+function isDecisiveGrandFinalMatchId(matchId: string): boolean {
+  return matchId === GRAND_FINAL_MATCH_ID || matchId === GRAND_FINAL_RESET_MATCH_ID;
+}
+
+function includePublicPlacementMatch(match: BracketRound["matches"][number]): boolean {
+  const teamA = match.teamA?.trim();
+  const teamB = match.teamB?.trim();
+  if (!teamA || !teamB) return false;
+  if (match.winner?.trim()) return true;
+  return isDecisiveGrandFinalMatchId(match.id);
 }
 
 export function derivePublicPlacements(
   format: string,
   rounds: BracketRound[],
+  grandFinalMode: GrandFinalMode = DEFAULT_GRAND_FINAL_MODE,
 ): TournamentPlacement[] {
   const rows = rounds.flatMap((round) =>
     round.matches
-      .filter((match) => match.winner && match.teamA && match.teamB)
+      .filter(includePublicPlacementMatch)
       .map((match) => ({
         matchId: match.id,
         roundLabel: round.label,
         bracketSide: inferPublicBracketSide(round.label),
-        confirmed: true as const,
-        winner: match.winner!,
+        confirmed: !!match.winner?.trim(),
+        winner: match.winner?.trim() ?? null,
         teamA: match.teamA,
         teamB: match.teamB,
       })),
@@ -299,13 +327,13 @@ export function derivePublicPlacements(
     scoreA: 0,
     scoreB: 0,
     winner: match.winner,
-    confirmed: true,
+    confirmed: match.confirmed,
     winnerNext: null,
     loserNext: null,
   }));
 
   if (isDoubleEliminationFormat(format)) {
-    return deriveDoubleElimPlacements(pseudoMatches);
+    return deriveDoubleElimPlacements(pseudoMatches, grandFinalMode);
   }
   return deriveSingleElimPlacements(pseudoMatches);
 }

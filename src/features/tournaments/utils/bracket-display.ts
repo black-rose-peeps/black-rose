@@ -1,9 +1,14 @@
 import type { BracketMatch, BracketRound } from "../types";
 import { sortBracketRoundsByFlow } from "./bracket-round-order";
 
-/** Opening play-in round (e.g. "Opening — Play-in", id pi-r1 in admin). */
+/** Legacy opening play-in round (pi-r1 only — not standard upper Round 1). */
 export function isOpeningPlayInRound(label: string): boolean {
   return /opening.*play-in/i.test(label);
+}
+
+/** Bracket uses the legacy pi-r1 play-in column (pre–Challonge-style byes). */
+export function hasLegacyOpeningPlayIn(rounds: Array<{ id?: string; label: string }>): boolean {
+  return rounds.some((round) => round.id === "pi-r1" || isOpeningPlayInRound(round.label));
 }
 
 /** Extract managed round id from a match id (e.g. `lb-f-m0` → `lb-f`). */
@@ -32,6 +37,20 @@ export function isUpperBracketRound(label: string): boolean {
   return /upper/i.test(label);
 }
 
+export function isGrandFinalRoundId(id?: string | null): boolean {
+  return id === "gf" || id === "gf-reset";
+}
+
+export function isGrandFinalRoundRef(round: {
+  id?: string;
+  label: string;
+  side?: string;
+}): boolean {
+  if (round.side === "grand") return true;
+  if (isGrandFinalRoundId(round.id)) return true;
+  return /grand/i.test(round.label);
+}
+
 export function isGrandFinalRound(label: string): boolean {
   return /grand/i.test(label);
 }
@@ -50,21 +69,25 @@ export function isChampionshipMatch(match: BracketMatch, roundLabel?: string): b
   return isChampionshipRoundLabel(match.round);
 }
 
-/** Partition published rounds the same way as admin ManagedBracketView. */
+/** Partition published rounds — opening play-in is the first column of the upper bracket. */
 export function partitionDoubleElimRounds(bracket: BracketRound[]): {
-  playInRounds: BracketRound[];
   upperRounds: BracketRound[];
   lowerRounds: BracketRound[];
+  hasOpeningPlayIn: boolean;
 } {
-  const playInRounds = sortBracketRoundsByFlow(
-    bracket.filter((round) => isOpeningPlayInRound(round.label)),
-  );
+  const hasOpeningPlayIn = hasLegacyOpeningPlayIn(bracket);
   const upperRounds = sortBracketRoundsByFlow(
-    bracket.filter((round) => isUpperBracketRound(round.label) || isGrandFinalRound(round.label)),
+    bracket.filter(
+      (round) =>
+        round.id === "pi-r1" ||
+        isOpeningPlayInRound(round.label) ||
+        isUpperBracketRound(round.label) ||
+        isGrandFinalRoundRef(round),
+    ),
   );
   const lowerRounds = sortBracketRoundsByFlow(
     bracket.filter((round) => isLowerBracketRound(round.label)),
   );
 
-  return { playInRounds, upperRounds, lowerRounds };
+  return { upperRounds, lowerRounds, hasOpeningPlayIn };
 }

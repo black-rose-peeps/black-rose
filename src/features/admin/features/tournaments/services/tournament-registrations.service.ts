@@ -1,5 +1,11 @@
 import { supabase } from "@/lib/supabase";
-import type { MockTeam } from "@/lib/mock-data";
+import {
+  ADMIN_AUDIT_ACTIONS,
+  logAuditAction,
+  type RosterChangeActor,
+} from "@/features/admin/services/audit-log.service";
+import { fetchBracketState } from "@/features/admin/features/tournament-details/services/bracket.service";
+import { isTournamentConcluded } from "@/features/tournaments/utils/tournament-status";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
 import {
   assignTeamActiveTournament,
@@ -16,10 +22,20 @@ import {
   tournamentRosterRequirementError,
 } from "@/features/tournaments/utils/team-tournament-eligibility";
 import {
-  formatValorantRiotId,
-  isValorantGame,
-} from "@/features/member/utils/valorant-identity";
-import { fetchTournamentById, fetchTournaments, syncTournamentTeamCount } from "./tournaments.service";
+  formatIdentityForGame,
+  gameIdentityConfig,
+  parseGameIdentitiesFromRow,
+} from "@/features/member/utils/game-identity";
+import { fetchRosterIdentityGapsForTeam } from "@/features/member/services/member-identity.service";
+import { formatRosterIdentityGapMessage } from "@/features/member/utils/roster-identity";
+import {
+  fetchTournamentById,
+  fetchTournaments,
+  fetchTournamentsLite,
+  syncTournamentTeamCount,
+} from "./tournaments.service";
+import type { MockTeam, MockTournament } from "@/lib/mock-data";
+import { registrationNeedsReview } from "@/features/admin/features/participants/constants/registration-status";
 
 export {
   assertMemberAvailableForTournament,
@@ -27,6 +43,10 @@ export {
 } from "@/features/tournaments/utils/member-tournament-eligibility";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function currentRegistrationTimestamp(): string {
+  return new Date().toISOString();
+}
 
 /** Mark approved entrants as veterans once their event is concluded. */
 export async function concludeTournamentRegistrations(tournamentId: string): Promise<void> {
@@ -84,9 +104,7 @@ export async function hasPriorTournamentParticipation(params: {
   const tournamentIds = [...new Set(legacyRegs.map((row) => row.tournament_id as string))];
   const tournaments = await fetchTournaments();
   const concludedIds = new Set(
-    tournaments
-      .filter((t) => t.status === "Completed" || t.status === "Archived")
-      .map((t) => t.id),
+    tournaments.filter((t) => t.status === "Completed" || t.status === "Archived").map((t) => t.id),
   );
 
   return tournamentIds.some((id) => concludedIds.has(id));
@@ -116,17 +134,44 @@ async function countTournamentRegistrations(tournamentId: string): Promise<numbe
   return count ?? 0;
 }
 
-/** Align tournaments.teams_registered with approved registration rows. */
+async function countBracketParticipantRegistrations(tournamentId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("tournament_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId)
+    .in("status", ["Approved", "Previously Competed"]);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+async function fetchTournamentStatus(tournamentId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("status")
+    .eq("id", tournamentId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data?.status as string | undefined) ?? null;
+}
+
+/** Align tournaments.teams_registered with registration rows. */
 export async function reconcileTournamentTeamCount(
   tournamentId: string,
   cachedCount: number,
 ): Promise<number> {
-  const actualCount = await countTournamentRegistrations(tournamentId);
+  const status = await fetchTournamentStatus(tournamentId);
+  const actualCount = isTournamentConcluded(status ?? "")
+    ? await countBracketParticipantRegistrations(tournamentId)
+    : await countTournamentRegistrations(tournamentId);
   if (actualCount !== cachedCount) {
     await syncTournamentTeamCount(tournamentId, actualCount);
   }
   return actualCount;
 }
+
+export { countBracketParticipantRegistrations };
 
 function teamCaptainDisplayName(team: Team): string {
   const captain =
@@ -136,28 +181,39 @@ function teamCaptainDisplayName(team: Team): string {
   return captain?.displayName || captain?.username || "—";
 }
 
-async function fetchValorantIdsForMembers(memberIds: string[]): Promise<Map<string, string>> {
+async function fetchCompetitiveIdentitiesForMembers(
+  game: string,
+  memberIds: string[],
+): Promise<Map<string, string>> {
   const unique = [...new Set(memberIds.filter(Boolean))];
-  if (!unique.length) return new Map();
+  if (!unique.length || !gameIdentityConfig(game)) return new Map();
 
   const { data, error } = await supabase
     .from("member_profiles")
-    .select("member_id, valorant_game_name, valorant_tagline")
+    .select(
+      "member_id, main_game, valorant_game_name, valorant_tagline, game_identities, ingame_display_name",
+    )
     .in("member_id", unique);
 
   if (error) {
-    console.error("[registrations] valorant id lookup failed:", error.message);
+    console.error("[registrations] competitive identity lookup failed:", error.message);
     return new Map();
   }
 
   const result = new Map<string, string>();
   for (const row of data ?? []) {
     const memberId = row.member_id as string;
-    const valorantId = formatValorantRiotId(
-      (row.valorant_game_name as string | null) ?? "",
-      (row.valorant_tagline as string | null) ?? "",
-    );
-    if (valorantId) result.set(memberId, valorantId);
+    const identity = formatIdentityForGame(game, {
+      mainGame: (row.main_game as string | null) ?? "",
+      valorantGameName: (row.valorant_game_name as string | null) ?? "",
+      valorantTagline: (row.valorant_tagline as string | null) ?? "",
+      gameIdentities: parseGameIdentitiesFromRow({
+        game_identities: row.game_identities,
+        ingame_display_name: row.ingame_display_name as string | null,
+        main_game: row.main_game as string | null,
+      }),
+    });
+    if (identity) result.set(memberId, identity);
   }
   return result;
 }
@@ -187,14 +243,16 @@ function mockTeamFromLiveRoster(reg: MockTeam, liveTeam: Team): MockTeam {
 async function enrichRegistrationsWithLiveData(
   regs: MockTeam[],
   tournamentGameById: Map<string, string>,
+  liveTeamsById?: Map<string, Team>,
 ): Promise<MockTeam[]> {
   const rosterIds = [
     ...new Set(regs.map((r) => r.rosterTeamId).filter((id): id is string => !!id)),
   ];
-  const liveById = new Map<string, Team>();
+  const liveById = new Map<string, Team>(liveTeamsById);
 
-  if (rosterIds.length > 0) {
-    const teams = await fetchTeamsByIds(rosterIds);
+  const missingRosterIds = rosterIds.filter((id) => !liveById.has(id));
+  if (missingRosterIds.length > 0) {
+    const teams = await fetchTeamsByIds(missingRosterIds);
     for (const team of teams) {
       liveById.set(team.id, team);
     }
@@ -203,7 +261,23 @@ async function enrichRegistrationsWithLiveData(
   const soloMemberIds = regs
     .filter((r) => !r.rosterTeamId && r.memberUserId)
     .map((r) => r.memberUserId as string);
-  const valorantIds = await fetchValorantIdsForMembers(soloMemberIds);
+
+  const soloGames = [
+    ...new Set(
+      regs
+        .filter((r) => !r.rosterTeamId && r.memberUserId)
+        .map((r) => tournamentGameById.get(r.tournamentId))
+        .filter((g): g is string => !!g),
+    ),
+  ];
+
+  const competitiveIdsByGame = new Map<string, Map<string, string>>();
+  await Promise.all(
+    soloGames.map(async (game) => {
+      const ids = await fetchCompetitiveIdentitiesForMembers(game, soloMemberIds);
+      competitiveIdsByGame.set(game, ids);
+    }),
+  );
 
   return regs.map((reg) => {
     if (reg.rosterTeamId) {
@@ -212,15 +286,15 @@ async function enrichRegistrationsWithLiveData(
     }
 
     const game = tournamentGameById.get(reg.tournamentId);
-    if (!game || !isValorantGame(game) || !reg.memberUserId) return reg;
+    if (!game || !reg.memberUserId) return reg;
 
-    const valorantId = valorantIds.get(reg.memberUserId);
-    if (!valorantId) return reg;
+    const competitiveId = competitiveIdsByGame.get(game)?.get(reg.memberUserId);
+    if (!competitiveId) return reg;
 
     return {
       ...reg,
-      captain: valorantId,
-      members: reg.members.map((m) => ({ ...m, ign: valorantId })),
+      captain: competitiveId,
+      members: reg.members.map((m) => ({ ...m, ign: competitiveId })),
     };
   });
 }
@@ -250,7 +324,7 @@ async function insertTeamRegistrationPlayers(
 async function validateTeamForTournamentRegistration(
   tournamentId: string,
   rosterTeam: Team,
-  options?: { requireOpenRegistration?: boolean },
+  options?: { requireOpenRegistration?: boolean; skipIdentityCheck?: boolean },
 ): Promise<Awaited<ReturnType<typeof fetchTournamentById>> & object> {
   const tournament = await fetchTournamentById(tournamentId);
   if (!tournament) throw new Error("Tournament not found.");
@@ -287,6 +361,12 @@ async function validateTeamForTournamentRegistration(
   const rosterError = tournamentRosterRequirementError(rosterTeam, tournament.game);
   if (rosterError) throw new Error(rosterError);
 
+  if (!options?.skipIdentityCheck) {
+    const identityGaps = await fetchRosterIdentityGapsForTeam(rosterTeam, tournament.game);
+    const identityError = formatRosterIdentityGapMessage(rosterTeam, tournament.game, identityGaps);
+    if (identityError) throw new Error(identityError);
+  }
+
   return tournament;
 }
 
@@ -294,6 +374,72 @@ const REGISTRATION_READ_COLUMNS =
   "id, roster_team_id, member_user_id, name, tag, captain, registration_date, status, tournament_id, history";
 
 const REGISTRATION_PLAYER_COLUMNS = "registration_id, ign, role, discord";
+
+const REVIEW_QUEUE_TOURNAMENT_STATUSES = '("Completed","Archived")';
+
+function isMissingRpcError(message: string): boolean {
+  return (
+    message.includes("schema cache") ||
+    message.includes("Could not find the function") ||
+    message.includes("PGRST202")
+  );
+}
+
+function isReviewJoinFilterError(message: string): boolean {
+  return (
+    isMissingRpcError(message) ||
+    message.includes("relationship") ||
+    message.includes("Could not find a relationship")
+  );
+}
+
+async function countPendingRegistrationsNeedingReviewInMemory(): Promise<number> {
+  const { data: regs, error: regsErr } = await supabase
+    .from("tournament_registrations")
+    .select("id, status, tournament_id")
+    .in("status", ["Pending", "Previously Competed"]);
+
+  if (regsErr) throw new Error(regsErr.message);
+  if (!regs?.length) return 0;
+
+  const tournamentStatusById = await loadTournamentStatusById([
+    ...new Set(regs.map((reg) => reg.tournament_id as string)),
+  ]);
+
+  return filterRegistrationsNeedingReview(regs, tournamentStatusById).length;
+}
+
+async function fetchPendingRegistrationsForDashboardInMemory(limit = 20): Promise<MockTeam[]> {
+  const batchSize = Math.max(limit, 20);
+  const filtered: Record<string, unknown>[] = [];
+  let offset = 0;
+
+  while (filtered.length < limit) {
+    const { data: regs, error: regsErr } = await supabase
+      .from("tournament_registrations")
+      .select(REGISTRATION_READ_COLUMNS)
+      .in("status", ["Pending", "Previously Competed"])
+      .order("registration_date", { ascending: false })
+      .range(offset, offset + batchSize - 1);
+
+    if (regsErr) throw new Error(regsErr.message);
+    if (!regs?.length) break;
+
+    const tournamentStatusById = await loadTournamentStatusById([
+      ...new Set(regs.map((reg) => reg.tournament_id as string)),
+    ]);
+
+    for (const reg of filterRegistrationsNeedingReview(regs, tournamentStatusById)) {
+      filtered.push(reg);
+      if (filtered.length >= limit) break;
+    }
+
+    if (regs.length < batchSize) break;
+    offset += batchSize;
+  }
+
+  return filtered.slice(0, limit).map((reg) => rowToMockTeam(reg, []));
+}
 
 async function fetchRegistrationWithPlayers(registrationId: string): Promise<MockTeam> {
   const { data: reg, error: regErr } = await supabase
@@ -379,10 +525,66 @@ export async function fetchTournamentRegistrations(tournamentId: string): Promis
 
   const teams = regs.map((reg) => rowToMockTeam(reg, playersByReg.get(reg.id as string) ?? []));
   const tournament = await fetchTournamentById(tournamentId);
-  const gameById = new Map<string, string>(
-    tournament ? [[tournamentId, tournament.game]] : [],
-  );
+  const gameById = new Map<string, string>(tournament ? [[tournamentId, tournament.game]] : []);
   return enrichRegistrationsWithLiveData(teams, gameById);
+}
+
+async function loadTournamentStatusById(tournamentIds: string[]): Promise<Map<string, string>> {
+  if (!tournamentIds.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("id, status")
+    .in("id", tournamentIds);
+
+  if (error) throw new Error(error.message);
+  return new Map((data ?? []).map((row) => [row.id as string, row.status as string]));
+}
+
+function filterRegistrationsNeedingReview(
+  regs: Record<string, unknown>[],
+  tournamentStatusById: Map<string, string>,
+): Record<string, unknown>[] {
+  return regs.filter((reg) =>
+    registrationNeedsReview(
+      reg.status as MockTeam["status"],
+      tournamentStatusById.get(reg.tournament_id as string) ?? null,
+    ),
+  );
+}
+
+/** Dashboard slice — registration rows only, no player roster payload. */
+export async function fetchPendingRegistrationsForDashboard(limit = 20): Promise<MockTeam[]> {
+  const { data: regs, error } = await supabase
+    .from("tournament_registrations")
+    .select(`${REGISTRATION_READ_COLUMNS}, tournaments!inner(status)`)
+    .in("status", ["Pending", "Previously Competed"])
+    .not("tournaments.status", "in", REVIEW_QUEUE_TOURNAMENT_STATUSES)
+    .order("registration_date", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    if (isReviewJoinFilterError(error.message)) {
+      return fetchPendingRegistrationsForDashboardInMemory(limit);
+    }
+    throw new Error(error.message);
+  }
+
+  return (regs ?? []).map((reg) => rowToMockTeam(reg, []));
+}
+
+export async function countPendingRegistrationsNeedingReview(): Promise<number> {
+  const { data, error } = await supabase.rpc("count_pending_registrations_needing_review");
+
+  if (!error && data !== null && data !== undefined) {
+    return Number(data);
+  }
+
+  if (error && !isMissingRpcError(error.message)) {
+    throw new Error(error.message);
+  }
+
+  return countPendingRegistrationsNeedingReviewInMemory();
 }
 
 export async function fetchAllRegistrations(): Promise<MockTeam[]> {
@@ -416,10 +618,7 @@ export async function fetchAllRegistrations(): Promise<MockTeam[]> {
   return enrichRegistrationsWithLiveData(teams, gameById);
 }
 
-async function assertApprovalWithinCap(
-  tournamentId: string,
-  teamCap: number,
-): Promise<void> {
+async function assertApprovalWithinCap(tournamentId: string, teamCap: number): Promise<void> {
   const approvedCount = await countTournamentRegistrations(tournamentId);
   if (approvedCount >= teamCap) {
     throw new Error(`Registration cap reached (${teamCap}).`);
@@ -461,11 +660,7 @@ export async function updateRegistrationStatus(
   if (error) throw new Error(error.message);
 
   if (isNewApproval && tournament && existing.rosterTeamId) {
-    await assignTeamActiveTournament(
-      existing.rosterTeamId,
-      existing.tournamentId,
-      tournament.name,
-    );
+    await assignTeamActiveTournament(existing.rosterTeamId, existing.tournamentId, tournament.name);
   }
 
   if (status === "Rejected" && existing.rosterTeamId) {
@@ -480,6 +675,38 @@ export async function updateRegistrationStatus(
 
   const registrationCount = await countTournamentRegistrations(existing.tournamentId);
   await syncTournamentTeamCount(existing.tournamentId, registrationCount);
+
+  if (existing.status !== status) {
+    const tournamentName =
+      tournament?.name ?? (await fetchTournamentById(existing.tournamentId))?.name;
+    if (status === "Approved") {
+      void logAuditAction({
+        action: ADMIN_AUDIT_ACTIONS.REGISTRATION_APPROVED,
+        entityType: "registration",
+        entityId: registrationId,
+        metadata: {
+          teamName: existing.name,
+          tournamentId: existing.tournamentId,
+          tournamentName,
+          previousStatus: existing.status,
+          newStatus: status,
+        },
+      });
+    } else if (status === "Rejected") {
+      void logAuditAction({
+        action: ADMIN_AUDIT_ACTIONS.REGISTRATION_REJECTED,
+        entityType: "registration",
+        entityId: registrationId,
+        metadata: {
+          teamName: existing.name,
+          tournamentId: existing.tournamentId,
+          tournamentName,
+          previousStatus: existing.status,
+          newStatus: status,
+        },
+      });
+    }
+  }
 
   return fetchRegistrationWithPlayers(registrationId);
 }
@@ -548,22 +775,46 @@ export async function fetchRegistrationTournamentHistory(
   });
 }
 
-export async function fetchRegistrationsForTeam(rosterTeamId: string): Promise<MockTeam[]> {
+export interface FetchRegistrationsForTeamOptions {
+  /** Skip tournament list fetch when the caller already loaded tournaments. */
+  tournaments?: MockTournament[];
+  /** Reuse hydrated team rows when enriching roster registrations. */
+  liveTeamsById?: Map<string, Team>;
+}
+
+export async function fetchRegistrationsForTeam(
+  rosterTeamId: string,
+  options?: FetchRegistrationsForTeamOptions,
+): Promise<MockTeam[]> {
   const { data, error } = await supabase
     .from("tournament_registrations")
-    .select("id")
+    .select(REGISTRATION_READ_COLUMNS)
     .eq("roster_team_id", rosterTeamId)
     .order("registration_date", { ascending: false });
 
   if (error) throw new Error(error.message);
   if (!data?.length) return [];
 
-  const teams = await Promise.all(
-    data.map((row) => fetchRegistrationWithPlayers(row.id as string)),
-  );
-  const tournaments = await fetchTournaments();
+  const regIds = data.map((row) => row.id as string);
+
+  const { data: players, error: playersErr } = await supabase
+    .from("tournament_registration_players")
+    .select(REGISTRATION_PLAYER_COLUMNS)
+    .in("registration_id", regIds);
+
+  if (playersErr) throw new Error(playersErr.message);
+
+  const playersByReg = new Map<string, Record<string, unknown>[]>();
+  for (const player of players ?? []) {
+    const registrationId = player.registration_id as string;
+    if (!playersByReg.has(registrationId)) playersByReg.set(registrationId, []);
+    playersByReg.get(registrationId)!.push(player);
+  }
+
+  const teams = data.map((row) => rowToMockTeam(row, playersByReg.get(row.id as string) ?? []));
+  const tournaments = options?.tournaments ?? (await fetchTournamentsLite());
   const gameById = new Map(tournaments.map((t) => [t.id, t.game]));
-  return enrichRegistrationsWithLiveData(teams, gameById);
+  return enrichRegistrationsWithLiveData(teams, gameById, options?.liveTeamsById);
 }
 
 export async function requestCaptainTeamRegistration(
@@ -587,7 +838,10 @@ export async function requestCaptainTeamRegistration(
       await resyncRegistrationRoster(existing.id);
       const { error: updateErr } = await supabase
         .from("tournament_registrations")
-        .update({ status: "Pending" })
+        .update({
+          status: "Pending",
+          registration_date: currentRegistrationTimestamp(),
+        })
         .eq("id", existing.id);
       if (updateErr) throw new Error(updateErr.message);
       const registrationCount = await countTournamentRegistrations(tournamentId);
@@ -609,6 +863,7 @@ export async function requestCaptainTeamRegistration(
       tag: rosterTeam.tag,
       captain: teamCaptainDisplayName(rosterTeam),
       status: "Pending",
+      registration_date: currentRegistrationTimestamp(),
       history: [],
     })
     .select()
@@ -632,7 +887,9 @@ export async function addTeamToTournament(
   const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
   if (!rosterTeam) throw new Error("Team not found. Create the team under Teams first.");
 
-  const tournament = await validateTeamForTournamentRegistration(tournamentId, rosterTeam);
+  const tournament = await validateTeamForTournamentRegistration(tournamentId, rosterTeam, {
+    skipIdentityCheck: true,
+  });
 
   const existing = await fetchTeamTournamentRegistration(rosterTeamId, tournamentId);
   if (existing) throw new Error("This team is already registered for this tournament.");
@@ -651,6 +908,7 @@ export async function addTeamToTournament(
       tag: rosterTeam.tag,
       captain: teamCaptainDisplayName(rosterTeam),
       status: registrationStatus,
+      registration_date: currentRegistrationTimestamp(),
       history: [],
     })
     .select()
@@ -666,7 +924,20 @@ export async function addTeamToTournament(
     await assignTeamActiveTournament(rosterTeamId, tournamentId, tournament.name);
   }
 
-  return fetchRegistrationWithPlayers(reg.id as string);
+  const registration = await fetchRegistrationWithPlayers(reg.id as string);
+  void logAuditAction({
+    action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ADDED,
+    entityType: "registration",
+    entityId: registration.id,
+    metadata: {
+      teamName: rosterTeam.name,
+      tournamentId,
+      tournamentName: tournament.name,
+      status: registrationStatus,
+    },
+  });
+
+  return registration;
 }
 
 export interface AddTeamsToTournamentResult {
@@ -681,7 +952,9 @@ export async function addMemberToTournament(
   const tournament = await fetchTournamentById(tournamentId);
   if (!tournament) throw new Error("Tournament not found.");
   if (!isSoloTournament(tournament)) {
-    throw new Error("This tournament uses team registration. Add teams instead of individual players.");
+    throw new Error(
+      "This tournament uses team registration. Add teams instead of individual players.",
+    );
   }
 
   const registrationCount = await countTournamentRegistrations(tournamentId);
@@ -701,9 +974,11 @@ export async function addMemberToTournament(
   });
 
   let soloIgn = member.username;
-  if (isValorantGame(tournament.game)) {
-    const valorantIds = await fetchValorantIdsForMembers([member.id]);
-    soloIgn = valorantIds.get(member.id) ?? member.username;
+  const competitiveIds = await fetchCompetitiveIdentitiesForMembers(tournament.game, [member.id]);
+  const competitiveIgn = competitiveIds.get(member.id);
+
+  if (competitiveIgn) {
+    soloIgn = competitiveIgn;
   }
 
   const { data: reg, error: regErr } = await supabase
@@ -716,6 +991,7 @@ export async function addMemberToTournament(
       tag,
       captain: soloIgn,
       status: registrationStatus,
+      registration_date: currentRegistrationTimestamp(),
       history: [],
     })
     .select()
@@ -741,7 +1017,22 @@ export async function addMemberToTournament(
 
   const updatedCount = await countTournamentRegistrations(tournamentId);
   await syncTournamentTeamCount(tournamentId, updatedCount);
-  return fetchRegistrationWithPlayers(reg.id as string);
+
+  const registration = await fetchRegistrationWithPlayers(reg.id as string);
+  void logAuditAction({
+    action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ADDED,
+    entityType: "registration",
+    entityId: registration.id,
+    metadata: {
+      memberName: member.username,
+      memberId: member.id,
+      tournamentId,
+      tournamentName: tournament.name,
+      status: registrationStatus,
+    },
+  });
+
+  return registration;
 }
 
 export interface AddMembersToTournamentResult {
@@ -795,7 +1086,135 @@ export async function addTeamsToTournament(
   return { added, failed };
 }
 
-async function resyncRegistrationRoster(registrationId: string): Promise<MockTeam> {
+type RegistrationRosterSnapshot = {
+  ign: string;
+  discord: string;
+  role: string;
+  memberName: string;
+};
+
+function registrationRosterPlayerKey(
+  player: Pick<RegistrationRosterSnapshot, "ign" | "discord">,
+): string {
+  const discord = player.discord.trim().replace(/^@/, "").toLowerCase();
+  if (discord) return `discord:${discord}`;
+  return `ign:${player.ign.trim().toLowerCase()}`;
+}
+
+function snapshotFromRegistrationPlayer(row: Record<string, unknown>): RegistrationRosterSnapshot {
+  const ign = String(row.ign ?? "").trim();
+  const discord = String(row.discord ?? "").trim();
+  const role = String(row.role ?? "").trim();
+  const memberName = discord.replace(/^@/, "") || ign || "Player";
+  return { ign, discord, role, memberName };
+}
+
+function snapshotFromTeamMember(member: Team["members"][number]): RegistrationRosterSnapshot {
+  const ign = member.ign?.trim() || "";
+  const discord = (member.discordUsername || member.username || "").trim();
+  const role = member.role?.trim() || "";
+  const memberName = member.displayName?.trim() || member.username?.trim() || ign || "Player";
+  return { ign, discord, role, memberName };
+}
+
+function shouldAuditRegistrationRosterChanges(
+  tournamentStatus: string,
+  registrationStatus: string,
+  bracketPublished: boolean,
+): boolean {
+  if (registrationStatus !== "Approved") return false;
+  if (
+    tournamentStatus === "Draft" ||
+    tournamentStatus === "Registration Open" ||
+    tournamentStatus === "Registration Closed" ||
+    tournamentStatus === "Archived" ||
+    tournamentStatus === "Completed"
+  ) {
+    return false;
+  }
+  return tournamentStatus === "Live" || bracketPublished;
+}
+
+async function isTournamentBracketPublished(tournamentId: string): Promise<boolean> {
+  try {
+    const state = await fetchBracketState(tournamentId);
+    return state?.status === "published";
+  } catch {
+    return false;
+  }
+}
+
+function logLiveRegistrationRosterChanges(
+  registrationId: string,
+  tournament: { id: string; name: string; status: string },
+  team: Pick<Team, "name" | "tag">,
+  before: RegistrationRosterSnapshot[],
+  after: RegistrationRosterSnapshot[],
+  bracketPublished: boolean,
+  actor?: RosterChangeActor,
+): void {
+  const beforeKeys = new Set(before.map((player) => registrationRosterPlayerKey(player)));
+  const afterKeys = new Set(after.map((player) => registrationRosterPlayerKey(player)));
+  const actorKind = actor?.kind ?? "captain";
+  const changedAt = new Date().toISOString();
+  const baseMetadata = {
+    teamName: team.name,
+    teamTag: team.tag,
+    tournamentId: tournament.id,
+    tournamentName: tournament.name,
+    tournamentStatus: tournament.status,
+    bracketPublished,
+    changedAt,
+    actorKind,
+    ...(actor?.kind === "captain" && actor.displayName
+      ? { actorDisplayName: actor.displayName }
+      : {}),
+    ...(actor?.kind === "captain" && actor.discordUsername
+      ? { actorDiscordUsername: actor.discordUsername }
+      : {}),
+  };
+
+  for (const player of after) {
+    if (beforeKeys.has(registrationRosterPlayerKey(player))) continue;
+    void logAuditAction({
+      action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_ADDED,
+      entityType: "registration",
+      entityId: registrationId,
+      actorUsername: actor?.username,
+      metadata: {
+        ...baseMetadata,
+        memberName: player.memberName,
+        ign: player.ign,
+        role: player.role,
+      },
+    });
+  }
+
+  for (const player of before) {
+    if (afterKeys.has(registrationRosterPlayerKey(player))) continue;
+    void logAuditAction({
+      action: ADMIN_AUDIT_ACTIONS.REGISTRATION_ROSTER_MEMBER_REMOVED,
+      entityType: "registration",
+      entityId: registrationId,
+      actorUsername: actor?.username,
+      metadata: {
+        ...baseMetadata,
+        memberName: player.memberName,
+        ign: player.ign,
+        role: player.role,
+      },
+    });
+  }
+}
+
+export interface ResyncRegistrationRosterOptions {
+  actor?: RosterChangeActor;
+}
+
+async function resyncRegistrationRoster(
+  registrationId: string,
+  options?: ResyncRegistrationRosterOptions,
+): Promise<MockTeam> {
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
     .select(REGISTRATION_READ_COLUMNS)
@@ -806,6 +1225,27 @@ async function resyncRegistrationRoster(registrationId: string): Promise<MockTea
 
   const rosterTeamId = reg.roster_team_id as string | null;
   if (!rosterTeamId) return fetchRegistrationWithPlayers(registrationId);
+
+  const tournamentId = reg.tournament_id as string;
+  const registrationStatus = reg.status as string;
+
+  const { data: beforePlayers, error: beforePlayersErr } = await supabase
+    .from("tournament_registration_players")
+    .select(REGISTRATION_PLAYER_COLUMNS)
+    .eq("registration_id", registrationId);
+
+  if (beforePlayersErr) throw new Error(beforePlayersErr.message);
+
+  const beforeSnapshots = (beforePlayers ?? []).map((row) =>
+    snapshotFromRegistrationPlayer(row as Record<string, unknown>),
+  );
+
+  let tournament: Awaited<ReturnType<typeof fetchTournamentById>> | null = null;
+  try {
+    tournament = await fetchTournamentById(tournamentId);
+  } catch {
+    // Tournament lookup for audit logging is optional.
+  }
 
   const allTeams = await fetchTeams();
   const rosterTeam = allTeams.find((t) => t.id === rosterTeamId);
@@ -851,11 +1291,33 @@ async function resyncRegistrationRoster(registrationId: string): Promise<MockTea
     if (playersErr) throw new Error(playersErr.message);
   }
 
+  const afterSnapshots = activePlayers.map((member) => snapshotFromTeamMember(member));
+
+  const bracketPublished = tournament ? await isTournamentBracketPublished(tournament.id) : false;
+
+  if (
+    tournament &&
+    shouldAuditRegistrationRosterChanges(tournament.status, registrationStatus, bracketPublished)
+  ) {
+    logLiveRegistrationRosterChanges(
+      registrationId,
+      { id: tournament.id, name: tournament.name, status: tournament.status },
+      rosterTeam,
+      beforeSnapshots,
+      afterSnapshots,
+      bracketPublished,
+      options?.actor,
+    );
+  }
+
   return fetchRegistrationWithPlayers(registrationId);
 }
 
 /** Refresh tournament registration snapshots from live team rosters. */
-export async function resyncRegistrationsForTeam(rosterTeamId: string): Promise<MockTeam[]> {
+export async function resyncRegistrationsForTeam(
+  rosterTeamId: string,
+  options?: ResyncRegistrationRosterOptions,
+): Promise<MockTeam[]> {
   const { data: regs, error } = await supabase
     .from("tournament_registrations")
     .select("id")
@@ -866,12 +1328,25 @@ export async function resyncRegistrationsForTeam(rosterTeamId: string): Promise<
 
   const updated: MockTeam[] = [];
   for (const reg of regs) {
-    updated.push(await resyncRegistrationRoster(reg.id as string));
+    updated.push(await resyncRegistrationRoster(reg.id as string, options));
   }
   return updated;
 }
 
 export async function removeTeamFromTournament(registrationId: string): Promise<void> {
+  let auditExisting: MockTeam | null = null;
+  let auditTournament: Awaited<ReturnType<typeof fetchTournamentById>> | null = null;
+  try {
+    auditExisting = await fetchRegistrationWithPlayers(registrationId);
+    try {
+      auditTournament = await fetchTournamentById(auditExisting.tournamentId);
+    } catch {
+      // Tournament name for audit is optional.
+    }
+  } catch {
+    // Registration read for audit is optional; deletion uses the row fetch below.
+  }
+
   const { data: reg, error: regErr } = await supabase
     .from("tournament_registrations")
     .select("tournament_id, roster_team_id")
@@ -909,4 +1384,17 @@ export async function removeTeamFromTournament(registrationId: string): Promise<
 
     if (teamErr) throw new Error(teamErr.message);
   }
+
+  void logAuditAction({
+    action: ADMIN_AUDIT_ACTIONS.REGISTRATION_REMOVED,
+    entityType: "registration",
+    entityId: registrationId,
+    metadata: {
+      teamName: auditExisting?.name,
+      memberName: auditExisting?.memberUserId ? auditExisting.name : undefined,
+      tournamentId: auditExisting?.tournamentId,
+      tournamentName: auditTournament?.name,
+      previousStatus: auditExisting?.status,
+    },
+  });
 }

@@ -21,13 +21,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TOURNAMENT_FORMATS } from "@/features/tournaments/constants/formats";
+import { ADMIN_TOURNAMENT_STATUSES, TOURNAMENT_GAMES, TOURNAMENT_REGIONS } from "../constants";
 import {
-  ADMIN_TOURNAMENT_STATUSES,
-  TOURNAMENT_GAMES,
-  TOURNAMENT_REGIONS,
-} from "../constants";
-import { registrationCapLabel, resolveParticipationType } from "@/features/tournaments/types/participation";
+  registrationCapLabel,
+  resolveParticipationType,
+} from "@/features/tournaments/types/participation";
 import { useUpdateTournament } from "../hooks/useUpdateTournament";
+import {
+  removeTournamentRulesFiles,
+  uploadTournamentRulesFile,
+  validateTournamentRulesFile,
+} from "../services/tournament-rules-file.service";
 import type { AdminTournament, CreateTournamentFormValues } from "../types";
 import {
   applyGameToParticipationForm,
@@ -37,6 +41,8 @@ import {
   validateCreateTournamentForm,
 } from "../utils";
 import { ParticipationModeFields } from "./ParticipationModeFields";
+import { TournamentDescriptionField } from "./TournamentDescriptionField";
+import { TournamentRulesFileField } from "./TournamentRulesFileField";
 
 interface EditTournamentModalProps {
   open: boolean;
@@ -57,6 +63,9 @@ export function EditTournamentModal({
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof CreateTournamentFormValues, string>>
   >({});
+  const [rulesFile, setRulesFile] = useState<File | null>(null);
+  const [removeRulesFile, setRemoveRulesFile] = useState(false);
+  const [rulesFileError, setRulesFileError] = useState<string | null>(null);
   const { submit, isSubmitting, error, resetError } = useUpdateTournament();
 
   const selectedFormat = TOURNAMENT_FORMATS.find((f) => f.value === values.format);
@@ -68,6 +77,9 @@ export function EditTournamentModal({
     if (!open || !tournament) return;
     setValues(tournamentToFormValues(tournament));
     setFieldErrors({});
+    setRulesFile(null);
+    setRemoveRulesFile(false);
+    setRulesFileError(null);
     resetError();
   }, [open, tournament, resetError]);
 
@@ -93,8 +105,35 @@ export function EditTournamentModal({
     setFieldErrors(errors);
     if (hasFormErrors(errors)) return;
 
+    if (rulesFile) {
+      const fileError = validateTournamentRulesFile(rulesFile);
+      if (fileError) {
+        setRulesFileError(fileError);
+        return;
+      }
+    }
+    setRulesFileError(null);
+
     try {
-      const updated = await submit(tournament.id, formValuesToCreateInput(values));
+      let input = formValuesToCreateInput(values);
+
+      const clearingRulesFile = removeRulesFile && !rulesFile;
+
+      if (clearingRulesFile) {
+        input = { ...input, rulesUrl: null };
+      } else if (rulesFile) {
+        const rulesUrl = await uploadTournamentRulesFile(tournament.id, rulesFile);
+        input = { ...input, rulesUrl };
+      } else {
+        input = { ...input, rulesUrl: values.rulesUrl.trim() || null };
+      }
+
+      const updated = await submit(tournament.id, input);
+
+      if (clearingRulesFile) {
+        await removeTournamentRulesFiles(tournament.id);
+      }
+
       onUpdated(updated);
       onClose();
     } catch {
@@ -111,7 +150,7 @@ export function EditTournamentModal({
         if (!next && !isSubmitting) onClose();
       }}
     >
-      <DialogContent className="custom-scrollbar max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-xl">
+      <DialogContent className="custom-scrollbar max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Edit Tournament</DialogTitle>
           <DialogDescription>Update settings for {tournament.name}.</DialogDescription>
@@ -129,6 +168,34 @@ export function EditTournamentModal({
             />
             {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
           </div>
+
+          <TournamentDescriptionField
+            id="edit-tournament-description"
+            value={values.description}
+            onChange={(description) => updateField("description", description)}
+            disabled={isSubmitting}
+            error={fieldErrors.description}
+          />
+
+          <TournamentRulesFileField
+            id="edit-tournament-rules-file"
+            existingUrl={values.rulesUrl || tournament.rulesUrl || undefined}
+            selectedFile={rulesFile}
+            markedForRemoval={removeRulesFile}
+            onSelectFile={(file) => {
+              setRulesFile(file);
+              setRemoveRulesFile(false);
+              setRulesFileError(null);
+            }}
+            onMarkForRemoval={() => {
+              setRemoveRulesFile(true);
+              setRulesFile(null);
+              setRulesFileError(null);
+            }}
+            onUndoRemoval={() => setRemoveRulesFile(false)}
+            disabled={isSubmitting}
+            error={rulesFileError ?? undefined}
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

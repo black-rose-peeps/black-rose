@@ -2,10 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { SESSION_KEY } from "./admin-session";
 
 /** Verify admin console credentials against `admin_accounts` via Supabase RPC. */
-export async function verifyAdminCredentials(
-  username: string,
-  password: string,
-): Promise<boolean> {
+export async function verifyAdminCredentials(username: string, password: string): Promise<boolean> {
   const { data, error } = await supabase.rpc("verify_admin_login", {
     p_username: username.trim(),
     p_password: password,

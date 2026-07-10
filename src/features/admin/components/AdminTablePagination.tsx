@@ -47,7 +47,7 @@ export function AdminTablePagination({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 border-t border-border px-4 py-4 safe-bottom sm:flex-row sm:items-center sm:justify-between sm:px-6",
         className,
       )}
     >
@@ -63,7 +63,7 @@ export function AdminTablePagination({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1 font-tech text-[10px] uppercase tracking-wider"
+                className="min-h-11 gap-1 font-tech text-[10px] uppercase tracking-wider sm:min-h-8"
                 disabled={page <= 1}
                 onClick={() => onPageChange(page - 1)}
               >
@@ -73,16 +73,16 @@ export function AdminTablePagination({
 
             {pages.map((p, index) =>
               p === "ellipsis" ? (
-                <PaginationItem key={`ellipsis-${index}`}>
+                <PaginationItem key={`ellipsis-${index}`} className="hidden sm:list-item">
                   <PaginationEllipsis />
                 </PaginationItem>
               ) : (
-                <PaginationItem key={p}>
+                <PaginationItem key={p} className="hidden sm:list-item">
                   <Button
                     type="button"
                     variant={p === page ? "default" : "ghost"}
                     size="icon"
-                    className="h-8 w-8 font-tech text-xs"
+                    className="h-11 w-11 font-tech text-xs sm:h-8 sm:w-8"
                     onClick={() => onPageChange(p)}
                   >
                     {p}
@@ -96,7 +96,7 @@ export function AdminTablePagination({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1 font-tech text-[10px] uppercase tracking-wider"
+                className="min-h-11 gap-1 font-tech text-[10px] uppercase tracking-wider sm:min-h-8"
                 disabled={page >= totalPages}
                 onClick={() => onPageChange(page + 1)}
               >

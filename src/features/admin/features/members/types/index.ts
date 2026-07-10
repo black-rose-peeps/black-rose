@@ -1,5 +1,15 @@
 export type MemberVerificationStatus = "Not Verified" | "Verified";
 
+/** Discord sync Worker queue tier for Not Verified members. */
+export type MemberSyncQueueTier = "hot" | "cold" | "paused";
+
+export type MemberSyncQueueFilter = "all" | MemberSyncQueueTier | "backlog";
+
+export interface MemberSyncQueueConfig {
+  hotDays: number;
+  coldSweepIntervalMinutes: number;
+}
+
 export interface AdminMember {
   id: string;
   username: string;
@@ -12,6 +22,10 @@ export interface AdminMember {
   createdAt: string;
   avatarUrl: string | null;
   profileSlug: string;
+  /** Consecutive Discord guild 404s from the sync Worker. */
+  discordNotInGuildStrikes: number;
+  /** When set, the sync Worker skips this member until unpause or guild recovery. */
+  discordSyncPausedAt: string | null;
 }
 
 export interface CreateMemberFormValues {

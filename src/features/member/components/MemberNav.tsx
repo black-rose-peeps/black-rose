@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { IdCard, LayoutDashboard, LogOut } from "lucide-react";
+import { IdCard, LayoutDashboard, LogOut, Pencil } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
+import { BrandWordmark } from "@/features/shared/components/BrandWordmark";
 import {
   HeaderMobileMenu,
   type MobileNavSection,
@@ -63,13 +64,22 @@ export function MemberNav() {
     if (isVerifiedMember) {
       sections.push({
         title: "Console",
-        items: MEMBER_CONSOLE_NAV.map((item) => ({
-          label: item.label,
-          to: item.to,
-          search: item.to === "/teams" ? { create: false } : undefined,
-          icon: "icon" in item ? item.icon : undefined,
-          active: pathname === item.to || pathname.startsWith(`${item.to}/`),
-        })),
+        items: [
+          ...MEMBER_CONSOLE_NAV.map((item) => ({
+            label: item.label,
+            to: item.to,
+            search: item.to === "/teams" ? { create: false } : undefined,
+            icon: "icon" in item ? item.icon : undefined,
+            active: pathname === item.to || pathname.startsWith(`${item.to}/`),
+          })),
+          {
+            label: "Edit Profile",
+            to: "/dashboard/profile",
+            search: { tab: "identity" },
+            icon: Pencil,
+            active: pathname.startsWith("/dashboard/profile"),
+          },
+        ],
       });
     }
 
@@ -108,13 +118,15 @@ export function MemberNav() {
   }, [accountHref, clientSession, isVerifiedMember, pathname]);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        {/* Logo — identical to landing Header */}
-        <Link to="/" className="flex items-center">
-          <Emblem className="h-16 w-16" />
-          <span className="font-display text-xl tracking-wider-2">BLACK ROSE</span>
-        </Link>
+    <header className="fixed inset-x-0 top-0 z-50 safe-top border-b border-border/60 bg-background/70 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <HeaderMobileMenu sections={mobileSections} />
+          <Link to="/" className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-none sm:gap-0">
+            <Emblem className="h-12 w-12 shrink-0 sm:h-16 sm:w-16" />
+            <BrandWordmark />
+          </Link>
+        </div>
 
         {/* Nav links */}
         <nav className="hidden items-center gap-10 font-tech text-label-readable uppercase text-muted-foreground md:flex">
@@ -152,8 +164,7 @@ export function MemberNav() {
         </nav>
 
         {/* User area */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <HeaderMobileMenu sections={mobileSections} />
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {clientSession ? (
             <>
               {isVerifiedMember && (
@@ -184,7 +195,7 @@ export function MemberNav() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="min-h-11 cursor-pointer font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-muted-foreground"
+                className="touch-target cursor-pointer font-tech text-label-readable uppercase text-muted-foreground/50 transition hover:text-muted-foreground"
               >
                 <LogOut className="h-3.5 w-3.5 sm:hidden" />
                 <span className="hidden sm:block">Sign Out</span>

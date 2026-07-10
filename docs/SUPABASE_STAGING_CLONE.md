@@ -8,10 +8,10 @@ Use this when you want a fresh copy of real schema + data to test against, while
 
 ## Overview
 
-| Environment | Supabase project | When to use |
-|-------------|------------------|-------------|
-| **Production** | `qupypapvfdhzvmseolhi` (Blackrose-Database) | Live site on Vercel **Production** |
-| **Staging / dev** | `xjwugbbrqpwnenmlrkdh` (your dev clone) | Local `.env` / `.env.local`, Vercel **Preview** |
+| Environment       | Supabase project                            | When to use                                     |
+| ----------------- | ------------------------------------------- | ----------------------------------------------- |
+| **Production**    | `qupypapvfdhzvmseolhi` (Blackrose-Database) | Live site on Vercel **Production**              |
+| **Staging / dev** | `xjwugbbrqpwnenmlrkdh` (your dev clone)     | Local `.env` / `.env.local`, Vercel **Preview** |
 
 ```text
 Prod DB  ──dump──►  supabase/backups/*.sql  ──restore──►  Staging DB
@@ -30,12 +30,12 @@ Prod DB  ──dump──►  supabase/backups/*.sql  ──restore──►  St
 
 Install and verify before starting:
 
-| Tool | Purpose | Verify |
-|------|---------|--------|
-| [Supabase CLI](https://supabase.com/docs/guides/cli) | Dump from linked project | `npx supabase --version` |
-| [Docker Desktop](https://docs.docker.com/desktop/) | Required by `supabase db dump` | Docker running before dump |
-| [PostgreSQL client](https://www.postgresql.org/download/windows/) | `psql` for restore | `psql --version` |
-| Supabase login | CLI auth | `npx supabase login` |
+| Tool                                                              | Purpose                        | Verify                     |
+| ----------------------------------------------------------------- | ------------------------------ | -------------------------- |
+| [Supabase CLI](https://supabase.com/docs/guides/cli)              | Dump from linked project       | `npx supabase --version`   |
+| [Docker Desktop](https://docs.docker.com/desktop/)                | Required by `supabase db dump` | Docker running before dump |
+| [PostgreSQL client](https://www.postgresql.org/download/windows/) | `psql` for restore             | `psql --version`           |
+| Supabase login                                                    | CLI auth                       | `npx supabase login`       |
 
 ### Local PostgreSQL port (important on Windows)
 
@@ -53,11 +53,11 @@ This app talks to **Supabase in the cloud** for data. Local PostgreSQL is only u
 
 ### Port layout (after fix)
 
-| Service | Port |
-|---------|------|
+| Service              | Port                        |
+| -------------------- | --------------------------- |
 | `npm run dev` (Vite) | **3000** (`vite.config.ts`) |
-| Local PostgreSQL | **5432** |
-| Supabase (remote) | cloud pooler **5432** |
+| Local PostgreSQL     | **5432**                    |
+| Supabase (remote)    | cloud pooler **5432**       |
 
 ---
 
@@ -101,11 +101,11 @@ npx supabase db dump --linked -f supabase/backups/data.sql --use-copy --data-onl
 
 Expected files:
 
-| File | Contents |
-|------|----------|
-| `roles.sql` | Often empty on Supabase managed projects — OK to skip on restore |
-| `schema.sql` | Tables, RLS, functions, publications |
-| `data.sql` | All row data |
+| File         | Contents                                                         |
+| ------------ | ---------------------------------------------------------------- |
+| `roles.sql`  | Often empty on Supabase managed projects — OK to skip on restore |
+| `schema.sql` | Tables, RLS, functions, publications                             |
+| `data.sql`   | All row data                                                     |
 
 You may see a warning about circular FKs on `profile_comments`. That is normal; the restore script handles it with `session_replication_role = replica`.
 
@@ -226,11 +226,11 @@ Keep production keys **only** on Vercel Production — not in local files you us
 
 In Vercel → Project → **Settings → Environment Variables**:
 
-| Variable | Production | Preview + Development |
-|----------|------------|------------------------|
-| `VITE_SUPABASE_URL` | `https://qupypapvfdhzvmseolhi.supabase.co` | `https://xjwugbbrqpwnenmlrkdh.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | prod anon key | staging anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | prod service role | staging service role |
+| Variable                    | Production                                 | Preview + Development                      |
+| --------------------------- | ------------------------------------------ | ------------------------------------------ |
+| `VITE_SUPABASE_URL`         | `https://qupypapvfdhzvmseolhi.supabase.co` | `https://xjwugbbrqpwnenmlrkdh.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY`    | prod anon key                              | staging anon key                           |
+| `SUPABASE_SERVICE_ROLE_KEY` | prod service role                          | staging service role                       |
 
 This keeps preview deploys off the live database.
 
@@ -337,13 +337,14 @@ Normal if the project was created manually / via dashboard rather than CLI migra
 
 ## Files in this repo
 
-| Path | Purpose |
-|------|---------|
-| `scripts/restore-staging-db.ps1` | Restore `supabase/backups/*.sql` into staging |
-| `supabase/backups/` | Local dump output (gitignored) |
-| `supabase/.gitignore` | Ignores `backups/` |
-| `vite.config.ts` | Dev server port **3000** |
-| `.env.example` | Template — use staging keys in `.env.local` for dev |
+| Path                             | Purpose                                             |
+| -------------------------------- | --------------------------------------------------- |
+| `scripts/restore-supabase-db.ps1` | Restore `supabase/backups/*.sql` into any project ref |
+| `scripts/restore-staging-db.ps1` | Restore into staging (wrapper; default `xjwugbbrqpwnenmlrkdh`) |
+| `supabase/backups/`              | Local dump output (gitignored)                      |
+| `supabase/.gitignore`            | Ignores `backups/`                                  |
+| `vite.config.ts`                 | Dev server port **3000**                            |
+| `.env.example`                   | Template — use staging keys in `.env.local` for dev |
 
 ---
 
@@ -374,6 +375,7 @@ npm run dev
 
 ## Related docs
 
+- [SUPABASE_PROD_MIGRATION.md](./SUPABASE_PROD_MIGRATION.md) — migrate old prod to a **new** Supabase project (production cutover)
 - [README.md](./README.md) — Supabase tables and admin setup
 - [ADMIN_DATABASE.md](./ADMIN_DATABASE.md) — schema reference
 - [Supabase: Backup and restore using the CLI](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)

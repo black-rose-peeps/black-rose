@@ -11,15 +11,19 @@
  */
 
 import { getDiscordRedirectUri, isAllowedDiscordRedirectUri } from "@/lib/app-url";
+import { isCapacitorNative } from "@/lib/capacitor";
+import { getDiscordNativeRedirectUri } from "@/lib/discord-mobile-oauth";
 import { isDiscordPhoneOrTablet } from "@/lib/device";
 import { openDiscordAppFromUserGesture } from "@/lib/discord-url";
 import { createRandomUuid } from "@/lib/random-id";
 import {
   DISCORD_AUTHORIZED_USER_KEY,
   DISCORD_LINKED_KEY,
+  DISCORD_OAUTH_PKCE_VERIFIER_KEY,
   DISCORD_OAUTH_REDIRECT_KEY,
   DISCORD_OAUTH_STATE_KEY,
 } from "../constants";
+import { createPkcePair } from "../utils/pkce";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID ?? "";
 const DISCORD_SCOPES = ["identify", "email", "connections", "guilds.members.read"].join(" ");
@@ -27,6 +31,10 @@ const DISCORD_SCOPES = ["identify", "email", "connections", "guilds.members.read
 export interface PrepareDiscordOAuthOptions {
   /** Force the Discord consent screen (after consent_required). */
   requireConsent?: boolean;
+  /** PKCE S256 challenge — required for mobile native deep-link redirect. */
+  codeChallenge?: string;
+  /** Override redirect URI (native: discord-{CLIENT_ID}:/authorize/callback). */
+  redirectUri?: string;
 }
 
 export {
@@ -36,6 +44,11 @@ export {
   isDiscordTunnelEnvMismatch,
   usesEnvDiscordRedirectUri,
 } from "@/lib/app-url";
+
+export {
+  getDiscordNativeRedirectUri,
+  isDiscordNativeRedirectUri,
+} from "@/lib/discord-mobile-oauth";
 
 export function isDiscordOAuthConfigured(): boolean {
   return Boolean(DISCORD_CLIENT_ID);
@@ -95,13 +108,20 @@ export function getDiscordOAuthUrl(state: string, options?: PrepareDiscordOAuthO
     );
   }
 
+  const redirectUri = options?.redirectUri ?? getDiscordRedirectUri();
+
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
-    redirect_uri: getDiscordRedirectUri(),
+    redirect_uri: redirectUri,
     response_type: "code",
     scope: DISCORD_SCOPES,
     state,
   });
+
+  if (options?.codeChallenge) {
+    params.set("code_challenge", options.codeChallenge);
+    params.set("code_challenge_method", "S256");
+  }
 
   if (!options?.requireConsent && isDiscordLinked()) {
     params.set("prompt", "none");
@@ -120,7 +140,7 @@ export function clearDiscordLinked(): void {
   }
 }
 
-function persistOAuthRequest(state: string, redirectUri: string): void {
+function persistOAuthRequest(state: string, redirectUri: string, codeVerifier?: string): void {
   try {
     localStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
   } catch {
@@ -130,6 +150,18 @@ function persistOAuthRequest(state: string, redirectUri: string): void {
     localStorage.setItem(DISCORD_OAUTH_REDIRECT_KEY, redirectUri);
   } catch {
     // Ignore — redirect URI may still be recoverable from sessionStorage.
+  }
+  if (codeVerifier) {
+    try {
+      localStorage.setItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY, codeVerifier);
+    } catch {
+      // Ignore — sessionStorage may still work.
+    }
+    try {
+      sessionStorage.setItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY, codeVerifier);
+    } catch {
+      // Ignore
+    }
   }
   try {
     sessionStorage.setItem(DISCORD_OAUTH_STATE_KEY, state);
@@ -148,9 +180,34 @@ export function prepareDiscordOAuth(options?: PrepareDiscordOAuthOptions): {
   browserFallbackUrl: string;
 } {
   const state = createRandomUuid();
-  const redirectUri = getDiscordRedirectUri();
-  persistOAuthRequest(state, redirectUri);
-  return { browserFallbackUrl: getDiscordOAuthUrl(state, options) };
+  const redirectUri = options?.redirectUri ?? getDiscordRedirectUri();
+  persistOAuthRequest(state, redirectUri, undefined);
+  return {
+    browserFallbackUrl: getDiscordOAuthUrl(state, { ...options, redirectUri }),
+  };
+}
+
+/**
+ * Capacitor native shell — PKCE + discord-{CLIENT_ID}:/authorize/callback deep link.
+ * Opens Discord mobile app when installed (Discord Social SDK mobile OAuth pattern).
+ */
+export async function startDiscordOAuthNative(
+  options?: PrepareDiscordOAuthOptions,
+): Promise<string> {
+  const { verifier, challenge } = await createPkcePair();
+  const state = createRandomUuid();
+  const redirectUri = getDiscordNativeRedirectUri();
+  persistOAuthRequest(state, redirectUri, verifier);
+
+  const authorizeUrl = getDiscordOAuthUrl(state, {
+    ...options,
+    redirectUri,
+    codeChallenge: challenge,
+    requireConsent: options?.requireConsent ?? true,
+  });
+
+  window.location.assign(authorizeUrl);
+  return authorizeUrl;
 }
 
 /** Open OAuth in the Discord app (preferred — uses the app account, not the browser). */
@@ -192,8 +249,18 @@ export function clearStoredOAuthState(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
   localStorage.removeItem(DISCORD_OAUTH_REDIRECT_KEY);
+  localStorage.removeItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY);
   sessionStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
   sessionStorage.removeItem(DISCORD_OAUTH_REDIRECT_KEY);
+  sessionStorage.removeItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY);
+}
+
+export function readStoredOAuthCodeVerifier(): string | null {
+  if (typeof window === "undefined") return null;
+  return (
+    localStorage.getItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY) ??
+    sessionStorage.getItem(DISCORD_OAUTH_PKCE_VERIFIER_KEY)
+  );
 }
 
 /** Redirect URI from the OAuth request that sent the user to Discord. */
@@ -216,8 +283,14 @@ export function shouldRetryDiscordWithConsent(errorCode: string | undefined): bo
   return errorCode === "consent_required" || errorCode === "interaction_required";
 }
 
-/** Platform-aware OAuth entry — browser on mobile, Discord app on desktop. */
+/** Platform-aware OAuth entry — native PKCE in Capacitor, browser on mobile web, app on desktop. */
 export function startDiscordOAuth(options?: PrepareDiscordOAuthOptions): void {
+  if (isCapacitorNative()) {
+    startDiscordOAuthNative(options).catch((err) => {
+      console.error("[auth] Native Discord OAuth failed:", err);
+    });
+    return;
+  }
   if (isDiscordPhoneOrTablet()) {
     startDiscordOAuthInBrowser(options);
     return;
@@ -227,6 +300,12 @@ export function startDiscordOAuth(options?: PrepareDiscordOAuthOptions): void {
 
 /** Retry OAuth after consent_required — same platform rules as startDiscordOAuth. */
 export function retryDiscordOAuthAfterConsentRequired(): void {
+  if (isCapacitorNative()) {
+    startDiscordOAuthNative({ requireConsent: true }).catch((err) => {
+      console.error("[auth] Native Discord OAuth retry failed:", err);
+    });
+    return;
+  }
   startDiscordOAuth({ requireConsent: true });
 }
 

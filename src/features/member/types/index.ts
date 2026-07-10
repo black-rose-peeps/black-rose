@@ -25,10 +25,16 @@ export interface TournamentEntry {
 
 export interface UpcomingMatch {
   matchId: string;
+  tournamentId: string;
   tournamentName: string;
+  teamName: string;
   opponent: string;
   scheduledAt: string;
   round: string;
+  hasRoundSchedule?: boolean;
+  venueType?: "online" | "onsite";
+  location?: string;
+  scheduleSortKey?: string;
 }
 
 export interface MemberProfile {
@@ -50,6 +56,10 @@ export interface MemberProfile {
   socialLinks: SocialLink[];
   valorantGameName: string;
   valorantTagline: string;
+  /** Per-title in-game identities (non-Valorant). Valorant uses valorantGameName/tagline. */
+  gameIdentities: Record<string, string>;
+  /** @deprecated Use gameIdentities[mainGame] — kept for legacy reads during migration. */
+  ingameDisplayName: string;
   tournamentHistory: string[];
   activeRegistrations: TournamentEntry[];
   upcomingMatches: UpcomingMatch[];

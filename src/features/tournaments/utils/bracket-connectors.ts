@@ -1,5 +1,9 @@
+import { inferRoundIdFromMatchId } from "./bracket-display";
 import type { BracketRound } from "../types";
-import type { BracketRoundMeta, ManagedMatch } from "@/features/admin/features/tournament-details/utils/managed-bracket";
+import type {
+  BracketRoundMeta,
+  ManagedMatch,
+} from "@/features/admin/features/tournament-details/utils/managed-bracket";
 import { buildMatchSlotHints } from "./bracket-slot-hints";
 
 export type ConnectorStatus = "upcoming" | "completed" | "live";
@@ -7,8 +11,14 @@ export type ConnectorStatus = "upcoming" | "completed" | "live";
 export interface LayoutInputMatch {
   id: string;
   roundIndex: number;
+  roundId?: string;
+  label?: string;
   nextWinnerMatchId?: string | null;
   connectorStatus: ConnectorStatus;
+  teamA?: string | null;
+  teamB?: string | null;
+  confirmed?: boolean;
+  winner?: string | null;
 }
 
 /** Infer winner paths for published rounds missing explicit advancement ids. */
@@ -36,24 +46,38 @@ export function managedToLayoutMatches(
 
   return matches.map((match) => ({
     id: match.id,
+    roundId: match.roundId,
+    label: match.label,
     roundIndex: roundIndex.get(match.roundId) ?? 0,
     nextWinnerMatchId: match.winnerNext?.matchId ?? null,
     connectorStatus: match.confirmed && match.winner ? "completed" : "upcoming",
+    teamA: match.teamA,
+    teamB: match.teamB,
+    confirmed: match.confirmed,
+    winner: match.winner,
   }));
 }
 
 export function publicToLayoutMatches(rounds: BracketRound[]): LayoutInputMatch[] {
-  const inferredLinks = inferWinnerLinks(rounds);
+  const hasExplicitLinks = rounds.some((round) =>
+    round.matches.some((match) => match.winnerAdvancesTo),
+  );
+  const inferredLinks = hasExplicitLinks ? new Map<string, string>() : inferWinnerLinks(rounds);
   const layoutMatches: LayoutInputMatch[] = [];
 
   rounds.forEach((round, roundIndex) => {
     for (const match of round.matches) {
       layoutMatches.push({
         id: match.id,
+        roundId: round.id ?? inferRoundIdFromMatchId(match.id) ?? undefined,
+        label: match.label,
         roundIndex,
-        nextWinnerMatchId:
-          match.winnerAdvancesTo ?? inferredLinks.get(match.id) ?? null,
+        nextWinnerMatchId: match.winnerAdvancesTo ?? inferredLinks.get(match.id) ?? null,
         connectorStatus: match.winner ? "completed" : "upcoming",
+        teamA: match.teamA,
+        teamB: match.teamB,
+        confirmed: Boolean(match.winner),
+        winner: match.winner ?? null,
       });
     }
   });
@@ -64,6 +88,7 @@ export function publicToLayoutMatches(rounds: BracketRound[]): LayoutInputMatch[
 export function enrichPublicRounds(
   rounds: BracketRound[],
   managedMatches?: ManagedMatch[],
+  roundMetas?: BracketRoundMeta[],
 ): BracketRound[] {
   if (!managedMatches?.length) return rounds;
 
@@ -76,7 +101,7 @@ export function enrichPublicRounds(
       },
     ]),
   );
-  const slotHints = buildMatchSlotHints(managedMatches);
+  const slotHints = buildMatchSlotHints(managedMatches, roundMetas, rounds);
 
   const withLinks = rounds.map((round) => ({
     ...round,

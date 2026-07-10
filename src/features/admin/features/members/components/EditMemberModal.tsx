@@ -99,7 +99,9 @@ export function EditMemberModal({
       <DialogContent className="border-border bg-card sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-display text-xl tracking-wider">Edit Member</DialogTitle>
-          <DialogDescription>Update {member.username}&apos;s profile and verification.</DialogDescription>
+          <DialogDescription>
+            Update {member.username}&apos;s profile and verification.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

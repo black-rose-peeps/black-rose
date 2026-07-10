@@ -1,13 +1,13 @@
 import { Crown, Loader2 } from "lucide-react";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AdaptiveAlertDialog,
+  AdaptiveAlertDialogCancel,
+  AdaptiveAlertDialogContent,
+  AdaptiveAlertDialogDescription,
+  AdaptiveAlertDialogFooter,
+  AdaptiveAlertDialogHeader,
+  AdaptiveAlertDialogTitle,
+} from "@/components/ui/adaptive-alert-dialog";
 import { Button } from "@/components/ui/button";
 import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
@@ -33,26 +33,24 @@ export function TransferCaptainDialog({
   onConfirm,
 }: TransferCaptainDialogProps) {
   return (
-    <AlertDialog
+    <AdaptiveAlertDialog
       open={open}
       onOpenChange={(next) => {
         if (!next && !transferring) onClose();
       }}
     >
-      <AlertDialogContent className="rounded-none border-white/12 bg-[oklch(0.09_0_0)]">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="font-display text-xl tracking-display">
-            Transfer captaincy?
-          </AlertDialogTitle>
-          <AlertDialogDescription asChild>
+      <AdaptiveAlertDialogContent>
+        <AdaptiveAlertDialogHeader>
+          <AdaptiveAlertDialogTitle>Transfer captaincy?</AdaptiveAlertDialogTitle>
+          <AdaptiveAlertDialogDescription asChild>
             <div className="space-y-4 text-sm text-muted-foreground">
               <p>
                 You are about to make this member captain of{" "}
                 <span className="text-foreground">
                   {teamName} [{teamTag}]
                 </span>
-                . You will remain on the roster as an active member, but lose captain
-                controls such as invites, roster edits, and tournament registration.
+                . You will remain on the roster as an active member, but lose captain controls such
+                as invites, roster edits, and tournament registration.
               </p>
               {member ? (
                 <div className="flex items-center gap-3 border border-white/10 bg-white/3 px-4 py-3">
@@ -72,15 +70,15 @@ export function TransferCaptainDialog({
                 </div>
               ) : null}
             </div>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
+          </AdaptiveAlertDialogDescription>
+        </AdaptiveAlertDialogHeader>
+        <AdaptiveAlertDialogFooter>
+          <AdaptiveAlertDialogCancel
             disabled={transferring}
             className="rounded-none border-white/15 bg-transparent font-tech text-ui-readable uppercase"
           >
             Cancel
-          </AlertDialogCancel>
+          </AdaptiveAlertDialogCancel>
           <Button
             type="button"
             disabled={transferring || !member}
@@ -99,8 +97,8 @@ export function TransferCaptainDialog({
               </>
             )}
           </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </AdaptiveAlertDialogFooter>
+      </AdaptiveAlertDialogContent>
+    </AdaptiveAlertDialog>
   );
 }

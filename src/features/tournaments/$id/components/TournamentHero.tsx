@@ -27,7 +27,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
   const isOver = t.status === "Completed" || t.status === "Archived";
 
   return (
-    <section className="relative overflow-hidden border-b border-white/6 pt-24 pb-8 sm:pt-28 sm:pb-12">
+    <section className="relative overflow-hidden border-b border-white/6 site-header-offset-spaced pb-8 sm:pb-12">
       {/* Background depth */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
       <div
@@ -67,9 +67,11 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
               {t.name}
             </h1>
 
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base md:text-lg">
-              {t.description}
-            </p>
+            {t.description ? (
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base md:text-lg">
+                {t.description}
+              </p>
+            ) : null}
           </div>
 
           {/* Right — CTA */}

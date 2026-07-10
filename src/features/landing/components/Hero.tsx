@@ -9,7 +9,7 @@ export function Hero() {
   return (
     <section
       id="landing-hero"
-      className="relative isolate overflow-hidden pt-32 pb-28 md:pt-44 md:pb-40"
+      className="relative isolate overflow-hidden site-header-offset-hero pb-28 md:pb-40 md:pt-[calc(11rem+env(safe-area-inset-top,0px))]"
     >
       {/* Background layers */}
       <div className="absolute inset-0 -z-20 grid-bg opacity-50" />

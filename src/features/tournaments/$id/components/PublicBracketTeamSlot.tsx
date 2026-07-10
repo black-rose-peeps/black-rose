@@ -1,3 +1,4 @@
+import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { teamDisplayAbbr } from "../../utils/team-tags";
 
@@ -11,6 +12,8 @@ export interface PublicBracketTeamSlotProps {
   hasScores?: boolean;
   swissStatus?: "active" | "advanced" | "eliminated";
   isChampionRow?: boolean;
+  /** Top seed advanced via round-one bye (protected seed). */
+  isProtectedSeed?: boolean;
 }
 
 export function PublicBracketTeamSlot({
@@ -23,6 +26,7 @@ export function PublicBracketTeamSlot({
   hasScores = false,
   swissStatus,
   isChampionRow = false,
+  isProtectedSeed = false,
 }: PublicBracketTeamSlotProps) {
   const isTbd = name === null;
   const abbr = isTbd ? "?" : teamDisplayAbbr(name, tag);
@@ -30,10 +34,10 @@ export function PublicBracketTeamSlot({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 border-b border-border/40 px-2 py-1.5 last:border-0",
-        isChampionRow && "bg-amber-400/10",
-        isWinner && !isChampionRow && "bg-emerald-400/10",
-        isLoser && "opacity-60",
+        "flex items-center gap-2 border-b border-border/60 px-2 py-1.5 last:border-0",
+        isChampionRow && "bg-amber-400/12",
+        isWinner && !isChampionRow && "bg-emerald-400/12",
+        isLoser && "opacity-75",
         swissStatus === "advanced" && "bg-emerald-500/5",
         swissStatus === "eliminated" && "opacity-50",
         isTbd && "opacity-40",
@@ -50,7 +54,7 @@ export function PublicBracketTeamSlot({
         )}
       />
 
-      <span className="w-6 shrink-0 text-center text-[10px] font-tech text-muted-foreground">
+      <span className="w-6 shrink-0 text-center text-[10px] font-tech text-foreground/60">
         {abbr}
       </span>
 
@@ -65,11 +69,21 @@ export function PublicBracketTeamSlot({
               ? "font-semibold text-amber-100"
               : isWinner
                 ? "font-semibold text-foreground"
-                : "text-muted-foreground",
+                : "text-foreground/85",
         )}
       >
         {isTbd ? (placeholder ?? "TBD") : name}
       </span>
+
+      {!isTbd && isProtectedSeed && (
+        <span
+          title="Protected seed — round-one bye"
+          aria-label="Protected seed — round-one bye"
+          className="shrink-0"
+        >
+          <Shield className="h-3 w-3 text-muted-foreground/45" strokeWidth={1.5} aria-hidden />
+        </span>
+      )}
 
       {(hasScores || score !== undefined) && !isTbd && (
         <span

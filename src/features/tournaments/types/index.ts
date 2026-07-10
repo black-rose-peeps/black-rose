@@ -38,12 +38,6 @@ export interface PrizeTier {
   prize: string;
 }
 
-export interface ScheduleEntry {
-  phase: string;
-  date: string;
-  note?: string;
-}
-
 export interface RuleSection {
   title: string;
   items: string[];
@@ -73,6 +67,8 @@ export interface BracketRound {
   id?: string;
   label: string;
   matches: BracketMatch[];
+  /** Teams that received a bye this Swiss round (published from admin). */
+  swissByes?: string[];
 }
 
 export interface TournamentPlayer {
@@ -103,8 +99,8 @@ export interface TournamentDetail extends Tournament {
   organizer: string;
   contact: string;
   prizeBreakdown: PrizeTier[];
-  schedule: ScheduleEntry[];
   rules: RuleSection[];
+  rulesUrl?: string | null;
   bracket: BracketRound[];
   teams: TournamentTeam[];
   placements?: TournamentPlacementView[];

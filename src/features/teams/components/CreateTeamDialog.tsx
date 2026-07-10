@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AdaptiveModal,
+  AdaptiveModalBody,
+  AdaptiveModalContent,
+  AdaptiveModalDescription,
+  AdaptiveModalFooter,
+  AdaptiveModalHeader,
+  AdaptiveModalTitle,
+} from "@/components/ui/adaptive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -109,101 +110,104 @@ export function CreateTeamDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-none border-white/12 bg-[oklch(0.08_0_0)] p-0 gap-0">
-        <DialogHeader className="border-b border-white/8 px-6 py-5">
-          <DialogTitle className="font-display text-2xl tracking-display">Create Team</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+    <AdaptiveModal open={open} onOpenChange={onOpenChange}>
+      <AdaptiveModalContent className="flex max-w-md flex-col gap-0 border-white/12 bg-[oklch(0.08_0_0)] p-0">
+        <AdaptiveModalHeader>
+          <AdaptiveModalTitle>Create Team</AdaptiveModalTitle>
+          <AdaptiveModalDescription>
             You will be set as captain. Choose the game first — your roster role is based on that
             game, not your profile main game.
-          </DialogDescription>
-        </DialogHeader>
+          </AdaptiveModalDescription>
+        </AdaptiveModalHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-5">
-          <div className="space-y-2">
-            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-              Team Name
-            </Label>
-            <Input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Novellino eSports"
-              maxLength={40}
-              className={techFieldClass}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AdaptiveModalBody className="flex flex-col gap-5">
+            <div className="space-y-2">
+              <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+                Team Name
+              </Label>
+              <Input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Novellino eSports"
+                maxLength={40}
+                className={techFieldClass}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-              Team Tag (2–5 letters)
-            </Label>
-            <Input
-              required
-              value={tag}
-              onChange={(e) => setTag(e.target.value.toUpperCase().slice(0, 5))}
-              placeholder="NE"
-              minLength={2}
-              maxLength={5}
-              pattern="[A-Z]{2,5}"
-              className={`${techFieldClass} font-tech uppercase tracking-wider-2`}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+                Team Tag (2–5 letters)
+              </Label>
+              <Input
+                required
+                value={tag}
+                onChange={(e) => setTag(e.target.value.toUpperCase().slice(0, 5))}
+                placeholder="NE"
+                minLength={2}
+                maxLength={5}
+                pattern="[A-Z]{2,5}"
+                className={`${techFieldClass} font-tech uppercase tracking-wider-2`}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-              Primary Game
-            </Label>
-            <Select
-              value={game}
-              onValueChange={(v) => setGame(v as (typeof GAME_OPTIONS)[number]["value"])}
-            >
-              <SelectTrigger className={techFieldClass}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                {GAME_OPTIONS.filter((g) => g.value !== "Multi").map((g) => (
-                  <SelectItem key={g.value} value={g.value} className="font-tech text-xs">
-                    {g.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+                Primary Game
+              </Label>
+              <Select
+                value={game}
+                onValueChange={(v) => setGame(v as (typeof GAME_OPTIONS)[number]["value"])}
+              >
+                <SelectTrigger className={techFieldClass}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                  {GAME_OPTIONS.filter((g) => g.value !== "Multi").map((g) => (
+                    <SelectItem key={g.value} value={g.value} className="font-tech text-xs">
+                      {g.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-              Your Role on This Team
-            </Label>
-            <Select
-              value={captainRole}
-              onValueChange={(v) => setCaptainRole(v as TeamMemberRole)}
-            >
-              <SelectTrigger className={techFieldClass}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                {roleOptions.map((role) => (
-                  <SelectItem key={role} value={role} className="font-tech text-xs">
-                    {role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+                Your Role on This Team
+              </Label>
+              <Select
+                value={captainRole}
+                onValueChange={(v) => setCaptainRole(v as TeamMemberRole)}
+              >
+                <SelectTrigger className={techFieldClass}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                  {roleOptions.map((role) => (
+                    <SelectItem key={role} value={role} className="font-tech text-xs">
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex items-start gap-3 border border-white/8 bg-white/[0.02] px-4 py-3">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Teams need at least <strong className="text-foreground">{MIN_TEAM_SIZE} active members</strong>{" "}
-              for most tournaments. Max roster is {MAX_TEAM_SIZE}. You can change your role later on
-              the team page.
-            </p>
-          </div>
+            <div className="flex items-start gap-3 border border-white/8 bg-white/[0.02] px-4 py-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Teams need at least{" "}
+                <strong className="text-foreground">{MIN_TEAM_SIZE} active members</strong> for most
+                tournaments. Max roster is {MAX_TEAM_SIZE}. You can change your role later on the
+                team page.
+              </p>
+            </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-red-400">{error}</p>}
+          </AdaptiveModalBody>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+          <AdaptiveModalFooter className="sm:gap-2">
             <Button
               type="button"
               variant="outline"
@@ -220,9 +224,9 @@ export function CreateTeamDialog({
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Create Team
             </Button>
-          </DialogFooter>
+          </AdaptiveModalFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AdaptiveModalContent>
+    </AdaptiveModal>
   );
 }

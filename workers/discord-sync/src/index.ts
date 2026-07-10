@@ -1,7 +1,8 @@
 import type { Env } from "./env";
-import { getBoostWindowMinutes } from "./env";
+import { getBoostWindowMinutes, getSyncQueueConfig } from "./env";
 import { getBoostUntilMs, setBoostUntilMs } from "./boost";
 import { syncRoseRoles, type SyncSummary } from "./sync";
+import { syncMemberByDiscordId } from "./sync-member";
 
 export default {
   async scheduled(
@@ -22,16 +23,51 @@ export default {
     if (url.pathname === "/sync" && request.method === "POST") {
       if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
 
-      const promise = runSync(env);
+      const priorityNotVerified = parsePriorityNotVerified(request);
+      const promise = runSync(env, { priorityNotVerified });
       ctx.waitUntil(promise);
       const summary = await promise;
-      return Response.json(summary);
+      return Response.json({ ...summary, queueConfig: getSyncQueueConfig(env) });
+    }
+
+    if (url.pathname === "/sync/member" && request.method === "POST") {
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
+
+      let discordId = "";
+      let clearSyncState = false;
+      try {
+        const body = (await request.json()) as {
+          discordId?: string;
+          clearSyncState?: boolean;
+        };
+        discordId = body.discordId?.trim() ?? "";
+        clearSyncState = body.clearSyncState === true;
+      } catch {
+        return new Response("Invalid JSON body.", { status: 400 });
+      }
+
+      if (!discordId) {
+        return new Response("Missing discordId.", { status: 400 });
+      }
+
+      const result = await syncMemberByDiscordId(env, discordId, { clearSyncState });
+      return Response.json({
+        discordId: result.discordId,
+        status: result.status,
+        updated: result.updated,
+        hasRose: result.hasRose,
+        notInGuild: result.notInGuild,
+        syncPaused: result.syncPaused,
+      });
     }
 
     if (url.pathname === "/sync/status" && request.method === "GET") {
       if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
       const boostUntilMs = await getBoostUntilMs(env);
-      return Response.json(buildBoostStatus(boostUntilMs));
+      return Response.json({
+        ...buildBoostStatus(boostUntilMs),
+        queueConfig: getSyncQueueConfig(env),
+      });
     }
 
     if (url.pathname === "/sync/boost" && request.method === "POST") {
@@ -51,7 +87,7 @@ export default {
       const boostUntilMs = Date.now() + boostMinutes * 60 * 1000;
       await setBoostUntilMs(env, boostUntilMs);
 
-      const promise = runSync(env);
+      const promise = runSync(env, { priorityNotVerified: true });
       ctx.waitUntil(promise);
       const summary = await promise;
 
@@ -60,6 +96,7 @@ export default {
         alreadyActive: false,
         boostMinutes,
         ...buildBoostStatus(boostUntilMs),
+        queueConfig: getSyncQueueConfig(env),
         summary,
       });
     }
@@ -89,11 +126,14 @@ async function runScheduledSync(event: ScheduledEvent, env: Env): Promise<void> 
   await runSync(env);
 }
 
-async function runSync(env: Env): Promise<SyncSummary> {
+async function runSync(
+  env: Env,
+  options?: { priorityNotVerified?: boolean },
+): Promise<SyncSummary> {
   validateEnv(env);
 
   try {
-    const summary = await syncRoseRoles(env);
+    const summary = await syncRoseRoles(env, options);
     console.info("[discord-sync] Complete", summary);
     return summary;
   } catch (err) {
@@ -103,6 +143,15 @@ async function runSync(env: Env): Promise<SyncSummary> {
     );
     throw err;
   }
+}
+
+function parsePriorityNotVerified(request: Request): boolean {
+  const url = new URL(request.url);
+  const query = url.searchParams.get("priority");
+  if (query === "1" || query === "true") return true;
+
+  const header = request.headers.get("x-sync-priority")?.trim().toLowerCase();
+  return header === "1" || header === "true";
 }
 
 function validateEnv(env: Env): void {

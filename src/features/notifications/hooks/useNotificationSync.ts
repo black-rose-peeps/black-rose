@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { createDebouncedRefetch } from "@/lib/debounce-refetch";
-import { fetchActiveMemberTeams } from "@/features/tournaments/services/team-registration.service";
+import {
+  fetchActiveMemberTeamsCached,
+  invalidateMemberDataQueries,
+  loadMemberTournamentNotificationContext,
+} from "@/features/member/queries/member-data-queries";
 import { setNotificationMemberId } from "../store";
 import { syncTeamMembershipNotifications } from "../services/team-membership-notifications";
 import { syncProfileCommentNotifications } from "../services/profile-comment-notifications";
@@ -28,15 +32,23 @@ export function useNotificationSync(memberId: string | undefined) {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let subscribedTeamIds: string[] = [];
 
-    function syncAll() {
+    function syncAll(invalidate = false) {
       syncTail = syncTail.then(async () => {
         if (cancelled) return;
         try {
+          if (invalidate) {
+            invalidateMemberDataQueries(userId);
+          }
+
+          const tournamentContext = await loadMemberTournamentNotificationContext(userId);
           await Promise.all([
             syncTeamMembershipNotifications(userId),
-            syncTournamentRegistrationNotifications(userId),
-            syncTournamentRegistrationRequestNotifications(userId),
-            syncTournamentLiveNotifications(userId),
+            syncTournamentRegistrationNotifications(userId, tournamentContext),
+            syncTournamentRegistrationRequestNotifications(
+              userId,
+              tournamentContext.tournaments,
+            ),
+            syncTournamentLiveNotifications(userId, tournamentContext),
             syncProfileCommentNotifications(userId),
           ]);
         } catch (err) {
@@ -48,7 +60,7 @@ export function useNotificationSync(memberId: string | undefined) {
       return syncTail;
     }
 
-    const debouncedSyncAll = createDebouncedRefetch(() => syncAll(), 3000);
+    const debouncedSyncAll = createDebouncedRefetch(() => syncAll(true), 3000);
 
     async function teardownChannel() {
       if (!channel) return;
@@ -59,7 +71,7 @@ export function useNotificationSync(memberId: string | undefined) {
     async function refreshSubscriptionIfTeamsChanged() {
       if (cancelled) return;
       try {
-        const teams = await fetchActiveMemberTeams(userId);
+        const teams = await fetchActiveMemberTeamsCached(userId);
         const teamIds = teams.map((team) => team.id);
         if (!teamIdsEqual(subscribedTeamIds, teamIds)) {
           await subscribe();
@@ -76,7 +88,7 @@ export function useNotificationSync(memberId: string | undefined) {
 
       let teamIds: string[] = [];
       try {
-        const teams = await fetchActiveMemberTeams(userId);
+        const teams = await fetchActiveMemberTeamsCached(userId);
         teamIds = teams.map((team) => team.id);
       } catch (err) {
         if (!cancelled) {

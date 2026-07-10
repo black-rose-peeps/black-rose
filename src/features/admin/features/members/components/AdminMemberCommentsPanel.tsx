@@ -2,15 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AdaptiveAlertDialog,
+  AdaptiveAlertDialogAction,
+  AdaptiveAlertDialogCancel,
+  AdaptiveAlertDialogContent,
+  AdaptiveAlertDialogDescription,
+  AdaptiveAlertDialogFooter,
+  AdaptiveAlertDialogHeader,
+  AdaptiveAlertDialogTitle,
+} from "@/components/ui/adaptive-alert-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -27,6 +27,7 @@ import {
   deleteProfileCommentAsAdmin,
   fetchProfileCommentsAsAdmin,
 } from "@/features/member/services/profile-comments.service";
+import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
 import type { ProfileComment } from "@/features/member/types/profile-comments";
 import { clampPage, pageNumbers } from "@/lib/pagination";
 
@@ -35,11 +36,13 @@ const PAGE_SIZE = 10;
 interface AdminMemberCommentsPanelProps {
   profileMemberId: string;
   profileOwner: ProfileOwnerInfo;
+  onCommentsCountChange?: (count: number) => void;
 }
 
 export function AdminMemberCommentsPanel({
   profileMemberId,
   profileOwner,
+  onCommentsCountChange,
 }: AdminMemberCommentsPanelProps) {
   const [comments, setComments] = useState<ProfileComment[]>([]);
   const [page, setPage] = useState(1);
@@ -61,6 +64,7 @@ export function AdminMemberCommentsPanel({
         });
         setComments(data.comments);
         setTotal(data.total);
+        onCommentsCountChange?.(data.total);
         setPage(data.page);
         setTotalPages(data.totalPages);
       } catch (err) {
@@ -72,7 +76,7 @@ export function AdminMemberCommentsPanel({
         setLoading(false);
       }
     },
-    [profileMemberId],
+    [onCommentsCountChange, profileMemberId],
   );
 
   useEffect(() => {
@@ -85,8 +89,19 @@ export function AdminMemberCommentsPanel({
   async function handleDelete(commentId: string) {
     setActionId(commentId);
     setError(null);
+    const comment = comments.find((entry) => entry.id === commentId);
     try {
       await deleteProfileCommentAsAdmin({ profileMemberId, commentId });
+      void logAdminAction({
+        action: ADMIN_AUDIT_ACTIONS.PROFILE_COMMENT_DELETED,
+        entityType: "profile_comment",
+        entityId: commentId,
+        metadata: {
+          memberName: profileOwner.displayName,
+          profileSlug: profileOwner.slug,
+          bodyPreview: comment?.body.slice(0, 120),
+        },
+      });
       setDeleteTargetId(null);
       await loadPage(page);
     } catch (err) {
@@ -151,7 +166,7 @@ export function AdminMemberCommentsPanel({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+                        className="min-h-11 rounded-none font-tech text-[10px] uppercase tracking-wider-2 sm:min-h-8"
                         disabled={page <= 1}
                         onClick={() => setPage(clampPage(page - 1, totalPages))}
                       >
@@ -161,16 +176,16 @@ export function AdminMemberCommentsPanel({
 
                     {pageNumbers(page, totalPages).map((p, index) =>
                       p === "ellipsis" ? (
-                        <PaginationItem key={`ellipsis-${index}`}>
+                        <PaginationItem key={`ellipsis-${index}`} className="hidden sm:list-item">
                           <PaginationEllipsis />
                         </PaginationItem>
                       ) : (
-                        <PaginationItem key={p}>
+                        <PaginationItem key={p} className="hidden sm:list-item">
                           <Button
                             type="button"
                             variant={p === page ? "default" : "ghost"}
                             size="icon"
-                            className="h-8 w-8 font-tech text-xs"
+                            className="h-11 w-11 font-tech text-xs sm:h-8 sm:w-8"
                             onClick={() => setPage(p)}
                           >
                             {p}
@@ -184,7 +199,7 @@ export function AdminMemberCommentsPanel({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 rounded-none font-tech text-[10px] uppercase tracking-wider-2"
+                        className="min-h-11 rounded-none font-tech text-[10px] uppercase tracking-wider-2 sm:min-h-8"
                         disabled={page >= totalPages}
                         onClick={() => setPage(clampPage(page + 1, totalPages))}
                       >
@@ -198,34 +213,32 @@ export function AdminMemberCommentsPanel({
           </>
         )}
 
-        <AlertDialog
+        <AdaptiveAlertDialog
           open={deleteTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setDeleteTargetId(null);
           }}
         >
-          <AlertDialogContent className="border-border bg-card">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="font-display text-xl tracking-display">
-                Delete comment?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-sm text-muted-foreground">
+          <AdaptiveAlertDialogContent>
+            <AdaptiveAlertDialogHeader>
+              <AdaptiveAlertDialogTitle>Delete comment?</AdaptiveAlertDialogTitle>
+              <AdaptiveAlertDialogDescription>
                 This permanently removes the comment thread from this member&apos;s profile.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
+              </AdaptiveAlertDialogDescription>
+            </AdaptiveAlertDialogHeader>
+            <AdaptiveAlertDialogFooter>
+              <AdaptiveAlertDialogCancel>Cancel</AdaptiveAlertDialogCancel>
+              <AdaptiveAlertDialogAction
                 className="bg-red-500 text-white hover:bg-red-500/90"
                 onClick={() => {
                   if (deleteTargetId) void handleDelete(deleteTargetId);
                 }}
               >
                 Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </AdaptiveAlertDialogAction>
+            </AdaptiveAlertDialogFooter>
+          </AdaptiveAlertDialogContent>
+        </AdaptiveAlertDialog>
       </div>
     </TechPanel>
   );

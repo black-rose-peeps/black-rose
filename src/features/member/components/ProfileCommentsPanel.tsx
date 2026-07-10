@@ -1,24 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  EyeOff,
-  Loader2,
-  MessageSquare,
-  MessageSquarePlus,
-  Shield,
-  Send,
-} from "lucide-react";
+import { EyeOff, Loader2, MessageSquare, MessageSquarePlus, Shield, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AdaptiveAlertDialog,
+  AdaptiveAlertDialogAction,
+  AdaptiveAlertDialogCancel,
+  AdaptiveAlertDialogContent,
+  AdaptiveAlertDialogDescription,
+  AdaptiveAlertDialogFooter,
+  AdaptiveAlertDialogHeader,
+  AdaptiveAlertDialogTitle,
+} from "@/components/ui/adaptive-alert-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -292,16 +285,16 @@ function ProfileCommentsPagination({
 
             {pageNumbers(page, totalPages).map((p, index) =>
               p === "ellipsis" ? (
-                <PaginationItem key={`ellipsis-${index}`}>
+                <PaginationItem key={`ellipsis-${index}`} className="hidden sm:list-item">
                   <PaginationEllipsis />
                 </PaginationItem>
               ) : (
-                <PaginationItem key={p}>
+                <PaginationItem key={p} className="hidden sm:list-item">
                   <Button
                     type="button"
                     variant={p === page ? "default" : "ghost"}
                     size="icon"
-                    className="h-8 w-8 rounded-none font-tech text-xs"
+                    className="touch-target h-11 w-11 rounded-none font-tech text-xs sm:h-8 sm:w-8"
                     onClick={() => onPageChange(p)}
                   >
                     {p}
@@ -739,36 +732,34 @@ export function ProfileCommentsPanel({
           </>
         ) : null}
 
-        <AlertDialog
+        <AdaptiveAlertDialog
           open={deleteTargetId !== null}
           onOpenChange={(open) => {
             if (!open) setDeleteTargetId(null);
           }}
         >
-          <AlertDialogContent className="rounded-none border-white/12 bg-[oklch(0.07_0_0)]">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="font-display text-xl tracking-display">
-                Delete comment?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-sm text-muted-foreground">
+          <AdaptiveAlertDialogContent>
+            <AdaptiveAlertDialogHeader>
+              <AdaptiveAlertDialogTitle>Delete comment?</AdaptiveAlertDialogTitle>
+              <AdaptiveAlertDialogDescription>
                 {deleteDialogDescription()}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-none font-tech text-ui-readable uppercase">
+              </AdaptiveAlertDialogDescription>
+            </AdaptiveAlertDialogHeader>
+            <AdaptiveAlertDialogFooter>
+              <AdaptiveAlertDialogCancel className="rounded-none font-tech text-ui-readable uppercase">
                 Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
+              </AdaptiveAlertDialogCancel>
+              <AdaptiveAlertDialogAction
                 className="clip-cta rounded-none bg-red-500 font-tech text-ui-readable uppercase text-white hover:bg-red-500/90"
                 onClick={() => {
                   if (deleteTargetId) void handleDelete(deleteTargetId);
                 }}
               >
                 Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </AdaptiveAlertDialogAction>
+            </AdaptiveAlertDialogFooter>
+          </AdaptiveAlertDialogContent>
+        </AdaptiveAlertDialog>
       </div>
     </TechPanel>
   );

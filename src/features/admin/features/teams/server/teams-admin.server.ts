@@ -13,9 +13,7 @@ async function withdrawTeamFromTournaments(
   if (!registrations?.length) return;
 
   const registrationIds = registrations.map((row) => row.id as string);
-  const tournamentIds = [
-    ...new Set(registrations.map((row) => row.tournament_id as string)),
-  ];
+  const tournamentIds = [...new Set(registrations.map((row) => row.tournament_id as string))];
 
   const { error: playersError } = await supabase
     .from("tournament_registration_players")
@@ -59,7 +57,10 @@ export async function deleteTeamAsAdmin(teamId: string): Promise<void> {
   });
   if (!rpcError) return;
 
-  console.warn("[teams-admin] delete_team_and_members RPC failed, falling back to manual delete:", rpcError.message);
+  console.warn(
+    "[teams-admin] delete_team_and_members RPC failed, falling back to manual delete:",
+    rpcError.message,
+  );
 
   const { data: remainingRegs, error: regCheckError } = await supabase
     .from("tournament_registrations")

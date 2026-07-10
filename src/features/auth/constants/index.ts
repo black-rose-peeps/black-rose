@@ -25,6 +25,20 @@ export const DISCORD_TOURNA_ROLES_CHANNEL_LABEL = formatDiscordChannelLabel(
   import.meta.env.VITE_DISCORD_TOURNA_ROLES_CHANNEL_LABEL ?? "tourna-roles",
 );
 
+/** Discord role granted when staff approve a waitlist application. Unlocks #tourna-roles. */
+export const DISCORD_FOR_BRIEFING_ROLE_LABEL =
+  import.meta.env.VITE_DISCORD_FOR_BRIEFING_ROLE_LABEL ?? "For Briefing";
+
+/** Public copy — all staff / tournament support is on the official Discord server. */
+export const BLACK_ROSE_STAFF_CONTACT_SUMMARY =
+  "Black Rose official Discord — admins & Valorant Operations";
+
+export const BLACK_ROSE_STAFF_CONTACT_DETAIL =
+  "All tournament questions, disputes, and staff support happen on the Black Rose official Discord server. Reach admins or Valorant Operations there.";
+
+/** OAuth2 PKCE code_verifier — required for mobile native deep-link callback. */
+export const DISCORD_OAUTH_PKCE_VERIFIER_KEY = "br_discord_oauth_pkce_verifier";
+
 /** OAuth2 CSRF state — stored in localStorage and sessionStorage for cross-tab OAuth. */
 export const DISCORD_OAUTH_STATE_KEY = "br_discord_oauth_state";
 

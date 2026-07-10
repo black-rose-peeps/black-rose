@@ -1,6 +1,8 @@
 import type { AdminMember } from "@/features/admin/features/members/types";
 import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORM_ORDER } from "../constants";
 import type { MemberProfile, SocialLink, SocialPlatform } from "../types";
+import { normalizeGameKey } from "@/features/teams/constants";
+import { parseGameIdentitiesFromRow } from "./game-identity";
 import { calculateProfileCompletion } from "./profile-completion";
 
 export interface MemberProfileRow {
@@ -15,6 +17,8 @@ export interface MemberProfileRow {
   region: string;
   valorant_game_name: string | null;
   valorant_tagline: string | null;
+  ingame_display_name: string | null;
+  game_identities?: unknown;
   avatar_url: string | null;
   banner_url: string | null;
   is_public: boolean;
@@ -65,7 +69,7 @@ export function buildMemberProfile(
   });
 
   const displayName = profileRow.display_name.trim() || member.username;
-  const mainGame = profileRow.main_game?.trim() ?? "";
+  const mainGame = normalizeGameKey(profileRow.main_game?.trim() ?? "") ?? profileRow.main_game?.trim() ?? "";
   const mainRole = profileRow.main_role.trim();
   const region = profileRow.region.trim();
   const avatarUrl = profileRow.avatar_url;
@@ -79,6 +83,8 @@ export function buildMemberProfile(
     region,
     socialLinks,
   });
+
+  const gameIdentities = parseGameIdentitiesFromRow(profileRow);
 
   return {
     memberId: member.id,
@@ -98,6 +104,8 @@ export function buildMemberProfile(
     socialLinks,
     valorantGameName: profileRow.valorant_game_name?.trim() ?? "",
     valorantTagline: profileRow.valorant_tagline?.trim() ?? "",
+    gameIdentities,
+    ingameDisplayName: gameIdentities[mainGame] ?? profileRow.ingame_display_name?.trim() ?? "",
     tournamentHistory: [],
     activeRegistrations: [],
     upcomingMatches: [],

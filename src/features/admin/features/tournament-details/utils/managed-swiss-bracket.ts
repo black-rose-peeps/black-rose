@@ -6,14 +6,17 @@
 import type { BestOfFormat, BracketRoundMeta, ManagedMatch } from "./managed-bracket";
 import {
   buildPlayoffBracket,
+  normalizePlayoffRound1Pairings,
   type PlayoffRound1Pairing,
   winsRequired,
 } from "./managed-bracket";
-import { isEvenBracketFieldSize, isPowerOfTwo } from "./bracket-field";
+import { isEvenBracketFieldSize } from "./bracket-field";
+import { roundOnePairingsForSeedingMode } from "@/features/tournaments/utils/tournament-seeding";
 import {
-  firstRoundSeedPairings,
-  sequentialSeedPairings,
-} from "@/features/tournaments/utils/tournament-seeding";
+  buildSeedByTeam,
+  computeSwissTiebreakRows,
+  sortSwissTiebreakRows,
+} from "@/features/tournaments/utils/swiss-tiebreaks";
 
 export const SWISS_WINS_TO_ADVANCE = 3;
 export const SWISS_LOSSES_TO_ELIMINATE = 3;
@@ -114,10 +117,7 @@ export function recomputeSwissStateFromMatches(
   };
 }
 
-function sortTeamsByRecord(
-  teamList: string[],
-  records: Record<string, SwissTeamRecord>,
-): string[] {
+function sortTeamsByRecord(teamList: string[], records: Record<string, SwissTeamRecord>): string[] {
   return [...teamList].sort((a, b) => {
     const ra = records[a] ?? { wins: 0, losses: 0 };
     const rb = records[b] ?? { wins: 0, losses: 0 };
@@ -126,24 +126,68 @@ function sortTeamsByRecord(
   });
 }
 
-function pairTeamsGreedy(
+function pairTeamsWithRematchAvoidance(
   teamList: string[],
   records: Record<string, SwissTeamRecord>,
   played: Set<string>,
 ): { pairs: Array<[string, string]>; unpaired: string[] } {
-  const remaining = sortTeamsByRecord(teamList, records);
-  const pairs: Array<[string, string]> = [];
+  const sorted = sortTeamsByRecord(teamList, records);
+  if (sorted.length <= 1) {
+    return { pairs: [], unpaired: sorted };
+  }
 
-  while (remaining.length >= 2) {
-    const teamA = remaining.shift()!;
-    let partnerIndex = remaining.findIndex((teamB) => !played.has(pairKey(teamA, teamB)));
+  const rematchFree = findRematchFreePairing(sorted, played);
+  if (rematchFree) {
+    for (const [teamA, teamB] of rematchFree) {
+      played.add(pairKey(teamA, teamB));
+    }
+    return { pairs: rematchFree, unpaired: [] };
+  }
+
+  return pairTeamsGreedyForced(sorted, played);
+}
+
+/** Backtracking search for a rematch-free pairing of an even-sized group. */
+function findRematchFreePairing(
+  teams: string[],
+  played: Set<string>,
+): Array<[string, string]> | null {
+  if (teams.length === 0) return [];
+  if (teams.length % 2 !== 0) return null;
+
+  const [teamA, ...candidates] = teams;
+  for (let i = 0; i < candidates.length; i++) {
+    const teamB = candidates[i];
+    if (played.has(pairKey(teamA, teamB))) continue;
+
+    const remaining = [...candidates.slice(0, i), ...candidates.slice(i + 1)];
+    const sub = findRematchFreePairing(remaining, played);
+    if (sub !== null) {
+      return [[teamA, teamB], ...sub];
+    }
+  }
+
+  return null;
+}
+
+/** Last resort when no rematch-free pairing exists for the whole group. */
+function pairTeamsGreedyForced(
+  remaining: string[],
+  played: Set<string>,
+): { pairs: Array<[string, string]>; unpaired: string[] } {
+  const pairs: Array<[string, string]> = [];
+  const teams = [...remaining];
+
+  while (teams.length >= 2) {
+    const teamA = teams.shift()!;
+    let partnerIndex = teams.findIndex((teamB) => !played.has(pairKey(teamA, teamB)));
     if (partnerIndex === -1) partnerIndex = 0;
-    const teamB = remaining.splice(partnerIndex, 1)[0];
+    const teamB = teams.splice(partnerIndex, 1)[0];
     pairs.push([teamA, teamB]);
     played.add(pairKey(teamA, teamB));
   }
 
-  return { pairs, unpaired: remaining };
+  return { pairs, unpaired: teams };
 }
 
 /** Pair active teams: same-record pools first, then cross-pool for leftovers, then byes. */
@@ -151,6 +195,7 @@ export function pairSwissRoundTeams(
   activeTeams: string[],
   records: Record<string, SwissTeamRecord>,
   playedPairs: string[],
+  teamsWithBye: Set<string> = new Set(),
 ): { pairs: Array<[string, string, string]>; byes: string[] } {
   const played = new Set(playedPairs);
   const pools = new Map<string, string[]>();
@@ -173,32 +218,39 @@ export function pairSwissRoundTeams(
   });
 
   for (const [poolKey, poolTeams] of sortedPools) {
-    const { pairs, unpaired: poolLeftovers } = pairTeamsGreedy(poolTeams, records, played);
+    const { pairs, unpaired: poolLeftovers } = pairTeamsWithRematchAvoidance(
+      poolTeams,
+      records,
+      played,
+    );
     for (const [teamA, teamB] of pairs) {
       allPairs.push([teamA, teamB, poolKey]);
     }
     unpaired.push(...poolLeftovers);
   }
 
-  const crossPool = sortTeamsByRecord(unpaired, records);
-  while (crossPool.length >= 2) {
-    const teamA = crossPool.shift()!;
-    let partnerIndex = crossPool.findIndex((teamB) => !played.has(pairKey(teamA, teamB)));
-    if (partnerIndex === -1) partnerIndex = 0;
-    const teamB = crossPool.splice(partnerIndex, 1)[0];
+  let crossPool = sortTeamsByRecord(unpaired, records);
+
+  let reservedBye: string | null = null;
+  if (crossPool.length % 2 !== 0) {
+    const fromBottom = [...crossPool].reverse();
+    const eligibleIndex = fromBottom.findIndex((team) => !teamsWithBye.has(team));
+    const pick = eligibleIndex === -1 ? fromBottom[0] : fromBottom[eligibleIndex];
+    reservedBye = pick;
+    crossPool = crossPool.filter((team) => team !== pick);
+  }
+
+  const { pairs: crossPairs } = pairTeamsWithRematchAvoidance(crossPool, records, played);
+  for (const [teamA, teamB] of crossPairs) {
     const record = records[teamA] ?? { wins: 0, losses: 0 };
     const poolKey = `${record.wins}-${record.losses}`;
     allPairs.push([teamA, teamB, poolKey]);
-    played.add(pairKey(teamA, teamB));
   }
 
-  return { pairs: allPairs, byes: crossPool };
+  return { pairs: allPairs, byes: reservedBye ? [reservedBye] : [] };
 }
 
-export function buildSwissRound1(
-  teamNames: string[],
-  options?: { useTraditionalRoundOne?: boolean },
-): {
+export function buildSwissRound1(teamNames: string[]): {
   matches: ManagedMatch[];
   roundMetas: BracketRoundMeta[];
   swiss: SwissBracketState;
@@ -213,12 +265,7 @@ export function buildSwissRound1(
   const matches: ManagedMatch[] = [];
   const matchIds: string[] = [];
 
-  const useTraditional = options?.useTraditionalRoundOne === true;
-  const pairings = useTraditional
-    ? isPowerOfTwo(n)
-      ? firstRoundSeedPairings(n)
-      : sequentialSeedPairings(n)
-    : sequentialSeedPairings(n);
+  const pairings = roundOnePairingsForSeedingMode(n);
 
   for (let i = 0; i < pairings.length; i++) {
     const { seedA, seedB } = pairings[i];
@@ -282,7 +329,13 @@ export function generateSwissNextRound(
   if (activeTeams.length === 0) return null;
 
   const nextRound = currentRound + 1;
-  const { pairs, byes } = pairSwissRoundTeams(activeTeams, swiss.records, swiss.playedPairs);
+  const teamsWithBye = new Set(Object.values(swiss.byesByRound ?? {}).flat());
+  const { pairs, byes } = pairSwissRoundTeams(
+    activeTeams,
+    swiss.records,
+    swiss.playedPairs,
+    teamsWithBye,
+  );
 
   if (pairs.length === 0 && byes.length === 0) return null;
   if (activeTeams.length === 1 && byes.length === 0) return null;
@@ -350,9 +403,7 @@ export function updateSwissMatchScores(
   else if (scoreB >= required) winner = source.teamB;
 
   const nextMatches = matches.map((match) =>
-    match.id === matchId
-      ? { ...match, scoreA, scoreB, winner, confirmed: winner !== null }
-      : match,
+    match.id === matchId ? { ...match, scoreA, scoreB, winner, confirmed: winner !== null } : match,
   );
 
   const nextSwiss = recomputeSwissStateFromMatches(
@@ -420,7 +471,9 @@ export function catchUpSwissRounds(
     const currentRound = getCurrentSwissRound(nextMatches, nextRoundMetas);
     if (!isSwissRoundCompleteWithByes(nextMatches, currentRound, nextSwiss)) break;
 
-    const activeTeams = teamNames.filter((team) => getSwissTeamStatus(team, nextSwiss) === "active");
+    const activeTeams = teamNames.filter(
+      (team) => getSwissTeamStatus(team, nextSwiss) === "active",
+    );
     if (activeTeams.length === 0) break;
 
     const next = generateSwissNextRound(nextMatches, nextRoundMetas, nextSwiss, teamNames);
@@ -478,7 +531,6 @@ export function reconcileSwissFromRound(
       phase: "swiss",
       byesByRound,
       playoffsSeededTeams: undefined,
-      groupStageRecords: undefined,
     },
   );
 
@@ -515,18 +567,19 @@ export function applySwissMatchUpdates(
   return catchUpSwissRounds(matches, roundMetas, swiss, teamNames);
 }
 
-export function isSwissGroupStageComplete(
-  teamNames: string[],
-  swiss: SwissBracketState,
-): boolean {
+export function isSwissGroupStageComplete(teamNames: string[], swiss: SwissBracketState): boolean {
   return (
-    teamNames.length > 0 &&
-    teamNames.every((team) => getSwissTeamStatus(team, swiss) !== "active")
+    teamNames.length > 0 && teamNames.every((team) => getSwissTeamStatus(team, swiss) !== "active")
   );
 }
 
-export function getQualifiedTeams(teamNames: string[], swiss: SwissBracketState): string[] {
-  return getSwissStandings(teamNames, swiss)
+export function getQualifiedTeams(
+  teamNames: string[],
+  swiss: SwissBracketState,
+  matches: ManagedMatch[],
+  seedByTeam?: Map<string, number>,
+): string[] {
+  return getSwissStandingsDetailed(teamNames, swiss, matches, { seedByTeam })
     .filter((entry) => entry.status === "advanced")
     .map((entry) => entry.team);
 }
@@ -534,19 +587,21 @@ export function getQualifiedTeams(teamNames: string[], swiss: SwissBracketState)
 export function canStartSwissPlayoffs(
   teamNames: string[],
   swiss: SwissBracketState,
+  matches: ManagedMatch[],
 ): boolean {
   if (getSwissPhase(swiss) === "playoffs") return false;
   if (!isSwissGroupStageComplete(teamNames, swiss)) return false;
-  return getQualifiedTeams(teamNames, swiss).length >= 2;
+  return getQualifiedTeams(teamNames, swiss, matches).length >= 2;
 }
 
 export function validatePlayoffRound1Pairings(
   qualifiedTeams: string[],
   pairings: PlayoffRound1Pairing[],
 ): string | null {
+  const normalized = normalizePlayoffRound1Pairings(qualifiedTeams, pairings);
   const usage = new Map<string, number>();
 
-  for (const pairing of pairings) {
+  for (const pairing of normalized) {
     if (!pairing.teamA && !pairing.teamB) {
       return "Each playoff match needs at least one team (the other slot can be a bye).";
     }
@@ -579,6 +634,7 @@ export function validatePlayoffRound1Pairings(
 
 export interface StartSwissPlayoffsOptions {
   includeThirdPlaceMatch?: boolean;
+  seedByTeam?: Map<string, number>;
 }
 
 export function startSwissPlayoffs(
@@ -597,18 +653,19 @@ export function startSwissPlayoffs(
     throw new Error("Playoffs have already been started.");
   }
 
-  const qualified = getQualifiedTeams(teamNames, swiss);
+  const qualified = getQualifiedTeams(teamNames, swiss, matches, options?.seedByTeam);
   if (qualified.length < 2) {
     throw new Error("At least 2 teams must qualify before starting playoffs.");
   }
 
-  const validationError = validatePlayoffRound1Pairings(qualified, round1Pairings);
+  const normalizedPairings = normalizePlayoffRound1Pairings(qualified, round1Pairings);
+  const validationError = validatePlayoffRound1Pairings(qualified, normalizedPairings);
   if (validationError) {
     throw new Error(validationError);
   }
 
   const includeThirdPlaceMatch = options?.includeThirdPlaceMatch ?? false;
-  const playoff = buildPlayoffBracket(round1Pairings, { includeThirdPlaceMatch });
+  const playoff = buildPlayoffBracket(normalizedPairings, { includeThirdPlaceMatch });
 
   return {
     matches: [...matches, ...playoff.matches],
@@ -653,4 +710,116 @@ export function getSwissStandings(
       if (b.record.wins !== a.record.wins) return b.record.wins - a.record.wins;
       return a.record.losses - b.record.losses;
     });
+}
+
+export interface SwissStandingDetailed {
+  team: string;
+  record: SwissTeamRecord;
+  status: SwissTeamStatus;
+  rank: number;
+  matchPoints: number;
+  buchholz: number;
+  omw: number;
+  seed: number;
+}
+
+function statusFromRecord(record: SwissTeamRecord, swiss: SwissBracketState): SwissTeamStatus {
+  if (record.wins >= swiss.winsToAdvance) return "advanced";
+  if (record.losses >= swiss.lossesToEliminate) return "eliminated";
+  return "active";
+}
+
+function computeRecordsThroughRound(
+  matches: ManagedMatch[],
+  teamNames: string[],
+  swiss: SwissBracketState,
+  throughRound: number,
+): Record<string, SwissTeamRecord> {
+  const records = Object.fromEntries(
+    teamNames.map((name) => [name, { wins: 0, losses: 0 } satisfies SwissTeamRecord]),
+  );
+
+  for (const match of matches) {
+    if (match.bracketSide !== "swiss") continue;
+    if ((match.swissRound ?? 0) > throughRound) continue;
+    if (!match.confirmed || !match.winner || !match.teamA || !match.teamB) continue;
+    const loser = match.winner === match.teamA ? match.teamB : match.teamA;
+    records[match.winner].wins += 1;
+    records[loser].losses += 1;
+  }
+
+  if (swiss.byesByRound) {
+    for (const [roundStr, byeTeams] of Object.entries(swiss.byesByRound)) {
+      const roundNum = Number(roundStr);
+      if (Number.isNaN(roundNum) || roundNum > throughRound) continue;
+      for (const team of byeTeams) {
+        if (records[team]) records[team].wins += 1;
+      }
+    }
+  }
+
+  return records;
+}
+
+function buildOpponentsThroughRound(
+  matches: ManagedMatch[],
+  throughRound: number,
+): Record<string, string[]> {
+  const opponents: Record<string, string[]> = {};
+
+  const addOpponent = (teamA: string, teamB: string) => {
+    if (!opponents[teamA]) opponents[teamA] = [];
+    opponents[teamA].push(teamB);
+  };
+
+  for (const match of matches) {
+    if (match.bracketSide !== "swiss") continue;
+    if ((match.swissRound ?? 0) > throughRound) continue;
+    if (!match.confirmed || !match.winner || !match.teamA || !match.teamB) continue;
+    addOpponent(match.teamA, match.teamB);
+    addOpponent(match.teamB, match.teamA);
+  }
+
+  return opponents;
+}
+
+/** Standings with MP, Median Buchholz, OMW%, and seed tiebreakers. Optionally scoped to results through a round. */
+export function getSwissStandingsDetailed(
+  teamNames: string[],
+  swiss: SwissBracketState,
+  matches: ManagedMatch[],
+  options?: { throughRound?: number; seedByTeam?: Map<string, number> },
+): SwissStandingDetailed[] {
+  const throughRound = options?.throughRound;
+  const records =
+    throughRound !== undefined
+      ? computeRecordsThroughRound(matches, teamNames, swiss, throughRound)
+      : standingsRecords(swiss);
+
+  const opponentsMap =
+    throughRound !== undefined
+      ? buildOpponentsThroughRound(matches, throughRound)
+      : buildOpponentsThroughRound(
+          matches,
+          matches.reduce((max, match) => Math.max(max, match.swissRound ?? 0), 0),
+        );
+
+  const seedByTeam = options?.seedByTeam ?? buildSeedByTeam(teamNames);
+  const tiebreakRows = computeSwissTiebreakRows({
+    participants: teamNames,
+    records,
+    opponents: opponentsMap,
+    seedByTeam,
+  });
+
+  const rows = tiebreakRows.map((row) => ({
+    ...row,
+    status:
+      throughRound !== undefined
+        ? statusFromRecord(row.record, swiss)
+        : standingsStatus(row.team, swiss),
+    rank: 0,
+  }));
+
+  return sortSwissTiebreakRows(rows).map((row, index) => ({ ...row, rank: index + 1 }));
 }

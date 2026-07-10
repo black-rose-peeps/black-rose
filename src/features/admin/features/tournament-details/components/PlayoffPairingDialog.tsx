@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { TournamentTeam } from "@/features/tournaments/types";
 import {
   defaultPlayoffRound1Pairings,
+  normalizePlayoffRound1Pairings,
   playoffRound1MatchCount,
   type PlayoffRound1Pairing,
 } from "../utils/managed-bracket";
@@ -45,6 +46,7 @@ export function PlayoffPairingDialog({
 }: PlayoffPairingDialogProps) {
   const teamByName = useMemo(() => new Map(teams.map((team) => [team.name, team])), [teams]);
   const matchCount = playoffRound1MatchCount(qualifiedTeams.length);
+  const qualifiedKey = qualifiedTeams.join("\0");
 
   const [pairings, setPairings] = useState<PlayoffRound1Pairing[]>(() =>
     defaultPlayoffRound1Pairings(qualifiedTeams),
@@ -56,24 +58,29 @@ export function PlayoffPairingDialog({
     if (!open) return;
     setPairings(defaultPlayoffRound1Pairings(qualifiedTeams));
     setIncludeThirdPlaceMatch(qualifiedTeams.length >= 4);
-  }, [open, qualifiedTeams]);
+  }, [open, qualifiedKey]);
 
-  const validationError = validatePlayoffRound1Pairings(qualifiedTeams, pairings);
+  const normalizedPairings = useMemo(
+    () => normalizePlayoffRound1Pairings(qualifiedTeams, pairings),
+    [qualifiedTeams, pairings],
+  );
+
+  const validationError = validatePlayoffRound1Pairings(qualifiedTeams, normalizedPairings);
 
   const usedTeams = useMemo(() => {
     const used = new Set<string>();
-    for (const pairing of pairings) {
+    for (const pairing of normalizedPairings) {
       if (pairing.teamA) used.add(pairing.teamA);
       if (pairing.teamB) used.add(pairing.teamB);
     }
     return used;
-  }, [pairings]);
+  }, [normalizedPairings]);
 
   function slotOptions(
     matchIndex: number,
     slot: "teamA" | "teamB",
   ): Array<{ value: string; label: string }> {
-    const current = pairings[matchIndex]?.[slot];
+    const current = normalizedPairings[matchIndex]?.[slot];
     return [
       { value: BYE_VALUE, label: "Bye (open slot)" },
       ...qualifiedTeams
@@ -87,11 +94,11 @@ export function PlayoffPairingDialog({
 
   function updateSlot(matchIndex: number, slot: "teamA" | "teamB", raw: string) {
     const team = raw === BYE_VALUE ? null : raw;
-    setPairings((current) =>
-      current.map((pairing, index) =>
-        index === matchIndex ? { ...pairing, [slot]: team } : pairing,
-      ),
-    );
+    setPairings((current) => {
+      const next = normalizePlayoffRound1Pairings(qualifiedTeams, current);
+      next[matchIndex] = { ...next[matchIndex], [slot]: team };
+      return next;
+    });
   }
 
   function handleAutoSeed() {
@@ -100,7 +107,7 @@ export function PlayoffPairingDialog({
 
   function handleConfirm() {
     if (validationError) return;
-    onConfirm(pairings, includeThirdPlaceMatch && canIncludeThirdPlace);
+    onConfirm(normalizedPairings, includeThirdPlaceMatch && canIncludeThirdPlace);
     onOpenChange(false);
   }
 
@@ -127,8 +134,9 @@ export function PlayoffPairingDialog({
                 </DialogTitle>
                 <DialogDescription className="mt-2 max-w-lg text-sm leading-relaxed text-white/55">
                   Lock in round-one pairings for{" "}
-                  <span className="text-white/80">{qualifiedTeams.length} qualifiers</span>. Each
-                  team appears once — assign a bye only if the bracket size requires it.
+                  <span className="text-white/80">{qualifiedTeams.length} qualifiers</span> (seeded
+                  by Swiss standings). Auto-seed uses standard bracket order (#1 vs lowest, byes on
+                  open slots). Each team appears once.
                 </DialogDescription>
               </div>
             </div>
@@ -178,7 +186,7 @@ export function PlayoffPairingDialog({
                       Team A
                     </label>
                     <Select
-                      value={pairings[index]?.teamA ?? BYE_VALUE}
+                      value={normalizedPairings[index]?.teamA ?? BYE_VALUE}
                       onValueChange={(value) => updateSlot(index, "teamA", value)}
                     >
                       <SelectTrigger className="border-white/12 bg-black/20">
@@ -203,7 +211,7 @@ export function PlayoffPairingDialog({
                       Team B
                     </label>
                     <Select
-                      value={pairings[index]?.teamB ?? BYE_VALUE}
+                      value={normalizedPairings[index]?.teamB ?? BYE_VALUE}
                       onValueChange={(value) => updateSlot(index, "teamB", value)}
                     >
                       <SelectTrigger className="border-white/12 bg-black/20">
@@ -238,9 +246,7 @@ export function PlayoffPairingDialog({
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-0 top-0 h-16 bg-linear-to-b to-transparent",
-                  includeThirdPlaceMatch
-                    ? "from-orange-400/12"
-                    : "from-white/[0.03]",
+                  includeThirdPlaceMatch ? "from-orange-400/12" : "from-white/[0.03]",
                 )}
               />
               <div

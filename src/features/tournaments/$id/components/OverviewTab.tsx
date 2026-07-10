@@ -1,18 +1,22 @@
 import { useMemo } from "react";
-import { Calendar, Trophy } from "lucide-react";
+import { StaffDiscordContact } from "@/features/shared/components/StaffDiscordContact";
+import { Trophy } from "lucide-react";
 import { PodiumWinnersShowcase } from "../../components/PodiumWinnersShowcase";
 import { SwissResultsBoard } from "../../components/SwissResultsBoard";
+import { TournamentRoundSchedulePanel } from "../../components/TournamentRoundSchedulePanel";
 import { isSwissFormat } from "../../constants/formats";
 import { withTeamTags } from "../../utils/team-tags";
 import { computeSwissStandingsFromBracket } from "../../utils/swiss-standings";
+import type { RoundSchedule } from "../../utils/round-schedule";
 import type { TournamentDetail } from "../../types";
 
 interface OverviewTabProps {
   tournament: TournamentDetail;
   teamTags?: Map<string, string>;
+  roundSchedules?: Record<string, RoundSchedule> | null;
 }
 
-export function OverviewTab({ tournament: t, teamTags }: OverviewTabProps) {
+export function OverviewTab({ tournament: t, teamTags, roundSchedules }: OverviewTabProps) {
   const isDone = t.status === "Completed" || t.status === "Archived";
   const isSwiss = isSwissFormat(t.format);
 
@@ -90,29 +94,21 @@ export function OverviewTab({ tournament: t, teamTags }: OverviewTabProps) {
           </div>
         </Card>
 
-        <Card icon={<Calendar className="h-4 w-4" />} title="Tournament Schedule">
-          <ol className="relative ml-2 border-l border-white/10">
-            {t.schedule.map((entry, i) => (
-              <li key={`${entry.phase}-${i}`} className="mb-6 ml-6 last:mb-0">
-                <span className="absolute left-[-5px] mt-1.5 h-2.5 w-2.5 border border-white/20 bg-background" />
-                <div className="font-tech text-label-readable uppercase text-muted-foreground">
-                  {entry.date}
-                </div>
-                <div className="mt-1 text-sm font-medium">{entry.phase}</div>
-                {entry.note && (
-                  <div className="mt-0.5 text-xs text-muted-foreground">{entry.note}</div>
-                )}
-              </li>
-            ))}
-          </ol>
-        </Card>
+        <TournamentRoundSchedulePanel bracket={t.bracket} roundSchedules={roundSchedules} />
       </div>
 
       <div className="flex flex-col gap-6">
         <Card title="Tournament Info">
           <dl className="flex flex-col gap-4">
             <InfoRow label="Organizer" value={t.organizer} />
-            <InfoRow label="Contact" value={t.contact} />
+            <div>
+              <dt className="font-tech text-label-readable uppercase text-muted-foreground">
+                Contact
+              </dt>
+              <dd className="mt-1.5">
+                <StaffDiscordContact />
+              </dd>
+            </div>
             <InfoRow label="Format" value={t.format} />
             <InfoRow label="Region" value={t.region} />
             <InfoRow label="Registration Deadline" value={t.registrationDeadline} />
@@ -167,9 +163,7 @@ function Card({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-tech text-label-readable uppercase text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="font-tech text-label-readable uppercase text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 text-sm">{value}</dd>
     </div>
   );

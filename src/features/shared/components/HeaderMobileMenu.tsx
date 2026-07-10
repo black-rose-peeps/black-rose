@@ -31,16 +31,16 @@ export function HeaderMobileMenu({ sections }: HeaderMobileMenuProps) {
         aria-label="Open navigation menu"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="clip-tab flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/5 text-muted-foreground transition hover:border-white/20 hover:text-foreground md:hidden"
+        className="clip-tab touch-target flex shrink-0 items-center justify-center border border-white/10 bg-white/5 text-muted-foreground transition hover:border-white/20 hover:text-foreground md:hidden"
       >
         <Menu className="h-5 w-5" strokeWidth={1.5} />
       </button>
 
       <SheetContent
-        side="right"
-        className="w-[min(100vw-2rem,20rem)] border-white/10 bg-[oklch(0.06_0_0)] p-0 sm:max-w-xs"
+        side="left"
+        className="w-[min(100vw-2rem,20rem)] border-white/10 bg-[oklch(0.06_0_0)] p-0 safe-bottom sm:max-w-xs"
       >
-        <SheetHeader className="border-b border-white/8 px-6 py-5 text-left">
+        <SheetHeader className="safe-top border-b border-white/8 px-6 py-5 text-left">
           <SheetTitle className="font-display text-xl tracking-display text-foreground">
             Navigate
           </SheetTitle>

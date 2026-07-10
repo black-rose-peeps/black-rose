@@ -28,10 +28,7 @@ export function useTournaments() {
     }
   }, []);
 
-  const debouncedRefetch = useMemo(
-    () => createAdminSilentRefetch(refetch),
-    [refetch],
-  );
+  const debouncedRefetch = useMemo(() => createAdminSilentRefetch(refetch), [refetch]);
 
   useEffect(() => {
     void refetch();

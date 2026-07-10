@@ -13,9 +13,10 @@ export function ConnectorLayer({ positioned }: ConnectorLayerProps) {
   const paths: { d: string; completed?: boolean; live?: boolean; skip?: boolean }[] = [];
 
   for (const match of positioned) {
-    if (!match.nextWinnerMatchId) continue;
+    const nextId = match.visualNextWinnerMatchId ?? match.nextWinnerMatchId;
+    if (!nextId) continue;
     const from = map.get(match.id);
-    const to = map.get(match.nextWinnerMatchId);
+    const to = map.get(nextId);
     if (!from || !to) continue;
 
     const x1 = from.x + BRACKET_CARD_W;
@@ -47,16 +48,12 @@ export function ConnectorLayer({ positioned }: ConnectorLayerProps) {
           d={path.d}
           fill="none"
           stroke={
-            path.completed
-              ? "oklch(0.75 0.18 155)"
-              : path.live
-                ? "oklch(1 0 0)"
-                : "oklch(0.24 0 0)"
+            path.completed ? "oklch(0.75 0.18 155)" : path.live ? "oklch(1 0 0)" : "oklch(0.52 0 0)"
           }
-          strokeWidth={path.completed || path.live ? 2 : 1.5}
+          strokeWidth={path.completed || path.live ? 2 : 1.75}
           strokeLinecap="square"
           strokeDasharray={path.skip ? "6 4" : undefined}
-          opacity={path.completed ? 0.9 : path.live ? 0.85 : path.skip ? 0.7 : 0.55}
+          opacity={path.completed ? 0.95 : path.live ? 0.9 : path.skip ? 0.82 : 0.78}
         />
       ))}
     </svg>

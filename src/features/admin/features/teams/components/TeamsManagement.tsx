@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { Plus, UserPlus, Users } from "lucide-react";
+import { ChevronRight, Plus, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,8 +34,11 @@ import { AddTeamMemberDialog } from "./AddTeamMemberDialog";
 import { CreateTeamModal } from "./CreateTeamModal";
 import { EditTeamModal } from "./EditTeamModal";
 import { TeamRosterDialog } from "./TeamRosterDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { TeamMobileList } from "./mobile";
 
 export function TeamsManagement() {
+  const isMobile = useIsMobile();
   const { members, isLoading: membersLoading } = useMembers();
   const { teams, isLoading, error, prependTeam, updateTeam, removeTeam } = useTeams();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -63,12 +66,24 @@ export function TeamsManagement() {
     }),
     [teamGameOrder],
   );
-  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(filteredTeams, sortComparators);
+  const { sortedItems, sortKey, direction, toggleSort } = useTableSort(
+    filteredTeams,
+    sortComparators,
+  );
   const pagination = usePagination(sortedItems);
 
   useEffect(() => {
     pagination.setPage(1);
   }, [sortKey, direction, searchQuery, pagination.setPage]);
+
+  function handleEdit(team: Team) {
+    setEditingTeam(team);
+  }
+
+  function handleDelete(team: Team) {
+    resetDeleteError();
+    setDeletingTeam(team);
+  }
 
   return (
     <>
@@ -80,7 +95,7 @@ export function TeamsManagement() {
           <Button
             onClick={() => setIsCreateOpen(true)}
             size="sm"
-            className="gap-2 font-tech uppercase tracking-wider"
+            className="touch-target min-h-11 gap-2 font-tech uppercase tracking-wider md:min-h-9"
             disabled={membersLoading || members.length === 0}
             title={members.length === 0 ? "Register at least one member first" : undefined}
           >
@@ -90,68 +105,83 @@ export function TeamsManagement() {
         }
       >
         {error && (
-          <div className="px-6 pt-4">
+          <div className="px-4 pt-4 sm:px-6">
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           </div>
         )}
 
-        <div className="p-6 pt-4">
+        <div className="p-4 pt-4 sm:p-6">
           {isLoading ? (
-            <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Team
-                </TableHead>
-                <SortableTableHead
-                  label="Game"
-                  sortKey="game"
-                  activeKey={sortKey}
-                  direction={direction}
-                  onSort={toggleSort}
-                />
-                <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                  Captain
-                </TableHead>
-                <SortableTableHead
-                  label="Roster"
-                  sortKey="roster"
-                  activeKey={sortKey}
-                  direction={direction}
-                  onSort={toggleSort}
-                />
-                <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-9 w-9 shrink-0" />
-                      <Skeleton className="h-4 w-32" />
+            isMobile ? (
+              <ul className="divide-y divide-white/8 md:hidden">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <li key={i} className="flex items-start gap-3 px-4 py-4">
+                    <Skeleton className="h-11 w-11 shrink-0 rounded-none" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-3.5 w-20" />
+                      <Skeleton className="h-3 w-28" />
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-3.5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-16" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="ml-auto h-7 w-28 rounded-md" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </AdminManagementTable>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Team
+                    </TableHead>
+                    <SortableTableHead
+                      label="Game"
+                      sortKey="game"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                      Captain
+                    </TableHead>
+                    <SortableTableHead
+                      label="Roster"
+                      sortKey="roster"
+                      activeKey={sortKey}
+                      direction={direction}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i} className="hover:bg-transparent">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-9 w-9 shrink-0" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-3.5 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-7 w-28 rounded-md" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </AdminManagementTable>
+            )
           ) : teams.length === 0 ? (
             <AdminEmptyState
               eyebrow="Roster Pipeline"
@@ -214,108 +244,136 @@ export function TeamsManagement() {
                 />
               ) : (
                 <>
-              <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Team
-                    </TableHead>
-                    <SortableTableHead
-                      label="Game"
-                      sortKey="game"
-                      activeKey={sortKey}
-                      direction={direction}
-                      onSort={toggleSort}
+                  <TeamMobileList
+                    teams={pagination.paginatedItems}
+                    page={pagination.page}
+                    totalPages={pagination.totalPages}
+                    total={pagination.total}
+                    rangeStart={pagination.rangeStart}
+                    rangeEnd={pagination.rangeEnd}
+                    onPageChange={pagination.setPage}
+                    onOpen={setRosterTeam}
+                    onAddMember={setAddMemberTeam}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                  <div className="hidden md:block">
+                    <AdminManagementTable columnWidths={TEAMS_TABLE_COLUMNS}>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                            Team
+                          </TableHead>
+                          <SortableTableHead
+                            label="Game"
+                            sortKey="game"
+                            activeKey={sortKey}
+                            direction={direction}
+                            onSort={toggleSort}
+                          />
+                          <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
+                            Captain
+                          </TableHead>
+                          <SortableTableHead
+                            label="Roster"
+                            sortKey="roster"
+                            activeKey={sortKey}
+                            direction={direction}
+                            onSort={toggleSort}
+                          />
+                          <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pagination.paginatedItems.map((team) => (
+                          <TableRow
+                            key={team.id}
+                            role="button"
+                            tabIndex={0}
+                            className="cursor-pointer transition-colors hover:bg-white/3 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            onClick={() => setRosterTeam(team)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setRosterTeam(team);
+                              }
+                            }}
+                          >
+                            <TableCell className={adminTableCellClip}>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
+                                  {team.tag}
+                                </div>
+                                <span
+                                  className={cn(
+                                    "font-display text-base tracking-wider",
+                                    adminTableTextTruncate,
+                                  )}
+                                >
+                                  {team.name}
+                                </span>
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                              </div>
+                            </TableCell>
+                            <TableCell className={adminTableCellClip}>
+                              <span
+                                className={cn(
+                                  "block text-[10px] font-tech uppercase tracking-wider-2",
+                                  adminTableTextTruncate,
+                                  GAME_COLOR[team.game],
+                                )}
+                              >
+                                {team.game}
+                              </span>
+                            </TableCell>
+                            <TableCell
+                              className={cn("text-sm text-muted-foreground", adminTableCellClip)}
+                            >
+                              <span className={adminTableTextTruncate}>
+                                {getTeamCaptainUsername(team)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {countActiveMembers(team)} players
+                            </TableCell>
+                            <TableCell
+                              className="text-right"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex flex-wrap items-center justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
+                                  onClick={() => setAddMemberTeam(team)}
+                                >
+                                  <UserPlus className="h-3.5 w-3.5" />
+                                  Add
+                                </Button>
+                                <AdminRowActions
+                                  label="More"
+                                  onEdit={() => handleEdit(team)}
+                                  onDelete={() => handleDelete(team)}
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </AdminManagementTable>
+                    <AdminTablePagination
+                      page={pagination.page}
+                      totalPages={pagination.totalPages}
+                      total={pagination.total}
+                      rangeStart={pagination.rangeStart}
+                      rangeEnd={pagination.rangeEnd}
+                      onPageChange={pagination.setPage}
                     />
-                    <TableHead className="text-[10px] font-tech uppercase tracking-wider-2">
-                      Captain
-                    </TableHead>
-                    <SortableTableHead
-                      label="Roster"
-                      sortKey="roster"
-                      activeKey={sortKey}
-                      direction={direction}
-                      onSort={toggleSort}
-                    />
-                    <TableHead className="text-right text-[10px] font-tech uppercase tracking-wider-2">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagination.paginatedItems.map((team) => (
-                  <TableRow key={team.id} className="transition-colors hover:bg-secondary/40">
-                    <TableCell className={adminTableCellClip}>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-secondary text-[10px] font-tech tracking-wider-2">
-                          {team.tag}
-                        </div>
-                        <span className={cn("font-display text-base tracking-wider", adminTableTextTruncate)}>
-                          {team.name}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className={adminTableCellClip}>
-                      <span
-                        className={cn(
-                          "block text-[10px] font-tech uppercase tracking-wider-2",
-                          adminTableTextTruncate,
-                          GAME_COLOR[team.game],
-                        )}
-                      >
-                        {team.game}
-                      </span>
-                    </TableCell>
-                    <TableCell className={cn("text-sm text-muted-foreground", adminTableCellClip)}>
-                      <span className={adminTableTextTruncate}>{getTeamCaptainUsername(team)}</span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {countActiveMembers(team)} players
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-                          onClick={() => setRosterTeam(team)}
-                        >
-                          <Users className="h-3.5 w-3.5" />
-                          Roster
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 font-tech text-[10px] uppercase tracking-wider"
-                          onClick={() => setAddMemberTeam(team)}
-                        >
-                          <UserPlus className="h-3.5 w-3.5" />
-                          Add
-                        </Button>
-                        <AdminRowActions
-                          label="More"
-                          onEdit={() => setEditingTeam(team)}
-                          onDelete={() => {
-                            resetDeleteError();
-                            setDeletingTeam(team);
-                          }}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                </TableBody>
-              </AdminManagementTable>
-              <AdminTablePagination
-                page={pagination.page}
-                totalPages={pagination.totalPages}
-                total={pagination.total}
-                rangeStart={pagination.rangeStart}
-                rangeEnd={pagination.rangeEnd}
-                onPageChange={pagination.setPage}
-              />
+                  </div>
                 </>
               )}
             </>
@@ -347,6 +405,13 @@ export function TeamsManagement() {
           updateTeam(team);
           setRosterTeam(team);
         }}
+        onAddMember={
+          rosterTeam
+            ? () => {
+                setAddMemberTeam(rosterTeam);
+              }
+            : undefined
+        }
       />
 
       <AddTeamMemberDialog
@@ -358,6 +423,7 @@ export function TeamsManagement() {
         onUpdated={(team) => {
           updateTeam(team);
           if (addMemberTeam?.id === team.id) setAddMemberTeam(team);
+          if (rosterTeam?.id === team.id) setRosterTeam(team);
         }}
       />
 
