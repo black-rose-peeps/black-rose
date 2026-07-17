@@ -47,17 +47,17 @@ export function buildChampionNarrative(champion: HallOfChampionRecord): string {
   if (champion.venueType === "onsite") {
     const location = champion.venueLocation?.trim();
     const venueLine = location
-      ? ` The arena was set at ${location}.`
-      : " The arena was packed, the crowd locked in.";
+      ? ` The event was held at ${location}.`
+      : " The venue was packed, the crowd locked in.";
 
     const finalLine = isGrand
       ? `They didn't flinch. Not at match point, not in overtime — not once. The Grand Finals stage belonged to them.`
-      : `Round by round, they dismantled every roster that stood in their way. When the final match ended, the answer was clear.`;
+      : `Match by match, they outplayed every opponent that stood in their way. When the final series ended, the answer was clear.`;
 
     return (
-      `On ${date}, ${champion.teamName} walked into the Black Rose arena and didn't leave without the crown.` +
+      `On ${date}, ${champion.teamName} stepped into the Black Rose arena and didn't leave without the crown.` +
       `${venueLine} ` +
-      `Under the ${champion.game} bracket at ${champion.tournamentName}, they fought for every map, every round, every spike.` +
+      `Under the ${champion.game} bracket at ${champion.tournamentName}, they competed for every point, every round, every moment.` +
       ` ${finalLine}` +
       `${mvpLine}` +
       ` The name is now etched — permanent, uncontested, Black Rose certified.`
@@ -67,21 +67,21 @@ export function buildChampionNarrative(champion: HallOfChampionRecord): string {
   // ── Online template ─────────────────────────────────────────────────────
   if (champion.venueType === "online") {
     const finalLine = isGrand
-      ? `The Grand Finals became their stage. No crowd, no noise — just precision, trust, and a roster that executed when it counted most.`
-      : `Every series was a test of coordination and nerve. They answered every one.`;
+      ? `The Grand Finals became their stage. No crowd, no noise — just precision, focus, and a performance that held when it counted most.`
+      : `Every series was a test of consistency and nerve. They answered every one.`;
 
     return (
       `${champion.teamName} proved that distance is irrelevant when the read is right.` +
       ` Across the ${champion.game} bracket at ${champion.tournamentName}, they logged in and left their mark on ${date}.` +
       ` ${finalLine}` +
       `${mvpLine}` +
-      ` Their crown was earned in the digital battlefield — filed now as part of the Black Rose permanent record.`
+      ` Their crown was earned in the digital arena — filed now as part of the Black Rose permanent record.`
     );
   }
 
   // ── Neutral fallback ────────────────────────────────────────────────────
   const finalLine = isGrand
-    ? `They emerged from Grand Finals as ${champion.game} champions — a roster that held the line when every round mattered.`
+    ? `They emerged from Grand Finals as ${champion.game} champions — a performance that held the line when every round mattered.`
     : `They outlasted every opponent in the bracket and claimed the crown when it was on the line.`;
 
   return (

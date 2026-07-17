@@ -253,7 +253,7 @@ async function fetchValidTeamIds(ids: string[]): Promise<Set<string>> {
  */
 function applyStaticPortraits(records: HallOfChampionRecord[]): HallOfChampionRecord[] {
   return records.map((record) => {
-    if (record.portraitUrl) return record;
+    if (record.portraitUrl?.trim()) return record;
     const key = record.teamName.trim().toLowerCase().replace(/\s+/g, " ");
     const fallback = STATIC_PORTRAIT_MAP[key] ?? null;
     return fallback ? { ...record, portraitUrl: fallback } : record;

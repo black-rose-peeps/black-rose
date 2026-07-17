@@ -70,7 +70,11 @@ export function ChampionStoryDialog({ champion, open, onOpenChange }: ChampionSt
             <div className="aspect-video w-full overflow-hidden">
               <img
                 src={bgSrc}
-                alt={`${champion.teamName} championship photo`}
+                alt={
+                  champion.portraitUrl?.trim()
+                    ? `${champion.teamName} — championship photo`
+                    : `${champion.game} tournament editorial artwork`
+                }
                 className="h-full w-full object-cover object-center"
               />
             </div>
