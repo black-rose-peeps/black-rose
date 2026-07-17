@@ -1,12 +1,12 @@
-import { Crown } from "lucide-react";
+import { Crown, Monitor, Users } from "lucide-react";
 import {
   GAME_EDITORIAL_ACCENT,
+  GAME_TOURNAMENT_HEADER,
   getGameAbbrev,
 } from "@/features/tournaments/utils/tournament-display";
 import type { HallOfChampionRecord } from "../types";
-import { formatChampionDate } from "../utils/champion-narrative";
+import { crownVariantLabel, formatChampionDate } from "../utils/champion-narrative";
 import { resolveGame } from "../utils/game-mapping";
-import { ChampionPortrait } from "./ChampionPortrait";
 import { RoseStarMark } from "./RoseStarMark";
 
 interface ChampionArchiveCardProps {
@@ -15,63 +15,118 @@ interface ChampionArchiveCardProps {
   onSelect: (champion: HallOfChampionRecord) => void;
 }
 
+/**
+ * Full-bleed film-poster card.
+ * The photo (or editorial placeholder) IS the card — all metadata overlays
+ * directly on the image via a gradient scrim.
+ */
 export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchiveCardProps) {
   const game = resolveGame(champion.game);
   const accent = GAME_EDITORIAL_ACCENT[game];
+  const header = GAME_TOURNAMENT_HEADER[game];
+  const hasPhoto = Boolean(champion.portraitUrl?.trim());
+  const isTeam = champion.participationType === "team";
 
   return (
     <button
       type="button"
       onClick={() => onSelect(champion)}
-      className={`group clip-angle-lg relative flex w-full flex-col overflow-hidden border border-white/[0.07] bg-[oklch(0.055_0_0)] text-left shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset] transition duration-500 ${accent.glow} hover:shadow-[0_24px_64px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.06)_inset] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40`}
+      className={`group relative aspect-4/3 w-full overflow-hidden border border-white/10 bg-black text-left transition duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${accent.glow} hover:border-white/20`}
     >
-      <span className="pointer-events-none absolute left-0 top-0 z-20 h-5 w-5 border-l border-t border-white/20" />
-      <span className="pointer-events-none absolute right-0 top-0 z-20 h-5 w-5 border-r border-t border-white/20" />
+      {/* ── Background ───────────────────────────────────── */}
+      {hasPhoto ? (
+        <img
+          src={champion.portraitUrl!}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-[1.03]"
+        />
+      ) : (
+        <img
+          src={header}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-25 grayscale transition duration-700 group-hover:scale-[1.03]"
+        />
+      )}
 
-      <div className="relative">
-        <ChampionPortrait champion={champion} className="border-0 border-b border-white/[0.06]" />
+      {/* gradient scrim */}
+      <div className="absolute inset-0 bg-linear-to-t from-black via-black/60 to-black/10" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_140%_100%_at_50%_100%,transparent_40%,rgba(0,0,0,0.5)_100%)]" />
 
-        <div className="absolute left-3 top-3 flex items-center gap-2 border border-white/15 bg-black/75 px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.2em] text-white/90 backdrop-blur-md sm:left-4 sm:top-4 sm:px-2.5 sm:py-1">
-          <RoseStarMark size={10} className="text-amber-300/90" />#
+      {/* scanlines */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,0.15) 2px,rgba(255,255,255,0.15) 3px)",
+        }}
+      />
+
+      {/* ── Top badges ───────────────────────────────────── */}
+      <div className="absolute left-0 top-0 flex items-center gap-2 p-3 sm:p-4">
+        <span className="flex items-center gap-1.5 border border-white/20 bg-black/60 px-2 py-1 font-tech text-[9px] uppercase tracking-[0.2em] text-white/80 backdrop-blur-sm">
+          <RoseStarMark size={8} className="text-amber-300/80" />
           {String(index + 1).padStart(2, "0")}
-        </div>
+        </span>
+      </div>
 
-        <div
-          className={`absolute right-3 top-3 border px-2 py-0.5 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-md sm:right-4 sm:top-4 ${accent.tag}`}
+      <div className="absolute right-0 top-0 p-3 sm:p-4">
+        <span
+          className={`border px-2 py-1 font-tech text-[9px] uppercase tracking-[0.18em] backdrop-blur-sm ${accent.tag}`}
         >
           {getGameAbbrev(game)}
+        </span>
+      </div>
+
+      {/* ── Bottom content ───────────────────────────────── */}
+      <div className="absolute inset-x-0 bottom-0 px-4 pb-4 pt-16 sm:px-5 sm:pb-5 sm:pt-20">
+        <div className={`mb-3 h-px w-8 bg-linear-to-r ${accent.line}`} />
+
+        {/* crown label + team name */}
+        <div className="flex items-center gap-2 text-amber-300/80">
+          <Crown className="h-3 w-3 shrink-0" strokeWidth={1.5} />
+          <span className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em]">
+            {crownVariantLabel(champion.crownVariant)}
+          </span>
+        </div>
+        <p className="mt-1.5 font-display text-2xl leading-none tracking-[0.04em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:text-3xl">
+          {champion.teamName}
+        </p>
+
+        {/* meta row: format · participation · date */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {/* format */}
+          <span className="flex items-center gap-1 font-tech text-[9px] uppercase tracking-[0.15em] text-white/45">
+            {champion.format}
+          </span>
+
+          <span className="text-white/20">·</span>
+
+          {/* online / onsite derived from participationType */}
+          <span className="flex items-center gap-1 font-tech text-[9px] uppercase tracking-[0.15em] text-white/45">
+            {isTeam ? (
+              <Users className="h-2.5 w-2.5 shrink-0" strokeWidth={1.75} />
+            ) : (
+              <Monitor className="h-2.5 w-2.5 shrink-0" strokeWidth={1.75} />
+            )}
+            {isTeam ? "Team" : "Solo"}
+          </span>
+
+          <span className="text-white/20">·</span>
+
+          {/* date */}
+          <span className="font-tech text-[9px] uppercase tracking-[0.15em] text-white/40">
+            {formatChampionDate(champion.crownedAt)}
+          </span>
         </div>
       </div>
 
-      <div className="relative flex flex-1 flex-col px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
-        <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.14]" />
-
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-display text-xl leading-[1.05] tracking-[0.04em] text-white transition group-hover:text-white sm:text-2xl">
-              {champion.teamName}
-            </p>
-            <p className="mt-1 truncate font-title text-[11px] text-muted-foreground">
-              {champion.tournamentName}
-            </p>
-          </div>
-          <span className="clip-tab grid h-9 w-9 shrink-0 place-items-center border border-white/10 bg-white/[0.04] font-display text-xs tracking-display text-white/70 sm:h-10 sm:w-10">
-            {champion.teamTag}
-          </span>
-        </div>
-
-        <div className="relative mt-3 flex items-center justify-between border-t border-white/[0.08] pt-3 sm:mt-4 sm:pt-4">
-          <div className="flex items-center gap-2 text-amber-300/75">
-            <Crown className="h-3.5 w-3.5" strokeWidth={1.25} />
-            <span className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em]">
-              {formatChampionDate(champion.crownedAt)}
-            </span>
-          </div>
-          <span className="font-tech font-semibold text-[9px] uppercase tracking-[0.2em] text-white/65 transition group-hover:text-white/60 cursor-pointer">
-            Open file →
-          </span>
-        </div>
-      </div>
+      {/* corner marks */}
+      <span className="pointer-events-none absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-white/25" />
+      <span className="pointer-events-none absolute right-0 top-0 h-4 w-4 border-r-2 border-t-2 border-white/25" />
+      <span className="pointer-events-none absolute bottom-0 left-0 h-4 w-4 border-b-2 border-l-2 border-white/15" />
+      <span className="pointer-events-none absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-white/15" />
     </button>
   );
 }

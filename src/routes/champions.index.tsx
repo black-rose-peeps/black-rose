@@ -112,7 +112,9 @@ function ChampionsPage() {
             <ChampionCardsSkeleton count={6} />
           ) : error ? (
             <div className="border border-white/8 bg-card/40 px-6 py-12 text-center">
-              <p className="font-display text-xl tracking-display text-white">Archive unavailable</p>
+              <p className="font-display text-xl tracking-display text-white">
+                Archive unavailable
+              </p>
               <p className="mt-2 text-sm text-muted-foreground">{error}</p>
             </div>
           ) : champions.length === 0 ? (
