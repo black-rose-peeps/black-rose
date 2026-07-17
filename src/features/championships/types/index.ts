@@ -24,6 +24,7 @@ export interface HallOfChampionRecord {
   game: string;
   region: string;
   format: string;
+  participationType: "team" | "solo";
   prizePool: string;
   teamName: string;
   teamTag: string;
@@ -37,4 +38,8 @@ export interface HallOfChampionRecord {
   story: string | null;
   /** Grand finals vs standard final — best-effort from bracket metadata. */
   crownVariant: "grand" | "final";
+  /** Venue type derived from the final round schedule. null = not recorded. */
+  venueType: "online" | "onsite" | null;
+  /** Physical address when venueType is onsite. */
+  venueLocation: string | null;
 }
