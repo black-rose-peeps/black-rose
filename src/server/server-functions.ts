@@ -11,3 +11,7 @@ import "@/features/member/functions/member-profile.functions";
 import "@/features/member/functions/profile-comments.functions";
 import "@/features/admin/features/teams/functions/delete-team.functions";
 import "@/features/admin/features/members/functions/discord-sync.functions";
+import "@/features/game-servers/functions/palworld-status.functions";
+import "@/features/game-servers/functions/palworld-detail.functions";
+import "@/features/game-servers/functions/palworld-join.functions";
+import "@/features/game-servers/functions/palworld-players.functions";

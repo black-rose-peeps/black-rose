@@ -115,7 +115,19 @@ function AuthCallbackPage() {
 
         clearStoredOAuthState();
         setSession(user);
-        navigate({ to: getPostAuthPath(user.role), replace: true });
+        // Use the stored post-auth redirect if available, fall back to role-based default.
+        // Uses localStorage so it survives the new tab Discord opens after authorization.
+        let destination: string = getPostAuthPath(user.role);
+        try {
+          const stored = localStorage.getItem("br_post_auth_redirect");
+          if (stored && stored.startsWith("/")) {
+            destination = stored;
+            localStorage.removeItem("br_post_auth_redirect");
+          }
+        } catch {
+          // localStorage unavailable
+        }
+        navigate({ to: destination as "/dashboard" | "/waitlist", replace: true });
       } catch (err) {
         if (cancelled) return;
         clearStoredOAuthState();
