@@ -772,11 +772,13 @@ function ServerSettingsPanel({
             <SettingRow
               label="Auto-Reset Timer (h)"
               value={
-                s.bAutoResetGuildNoOnlinePlayers
-                  ? s.AutoResetGuildTimeNoOnlinePlayers != null
-                    ? `${s.AutoResetGuildTimeNoOnlinePlayers}h`
-                    : "—"
-                  : "Off"
+                s.bAutoResetGuildNoOnlinePlayers == null
+                  ? "—"
+                  : s.bAutoResetGuildNoOnlinePlayers === false
+                    ? "Off"
+                    : s.AutoResetGuildTimeNoOnlinePlayers != null
+                      ? `${s.AutoResetGuildTimeNoOnlinePlayers}h`
+                      : "—"
               }
             />
             <SettingRow
