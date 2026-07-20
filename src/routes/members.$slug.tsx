@@ -397,15 +397,24 @@ function MemberProfilePage() {
               </div>
               <div className="h-px bg-white/6" />
               {identitySummaries.length > 0 &&
-                identitySummaries.map((entry, index) => (
-                  <div key={entry.key}>
-                    {index > 0 && <div className="mb-3 h-px bg-white/6" />}
-                    <dt className="font-tech text-label-readable uppercase text-muted-foreground">
-                      {entry.label}
-                    </dt>
-                    <dd className="mt-0.5 text-sm text-emerald-400">{entry.display}</dd>
-                  </div>
-                ))}
+                identitySummaries.map((entry, index) => {
+                  // Use friendlier IGN labels for public display
+                  const displayLabel =
+                    entry.key === "Palworld"
+                      ? "Palworld IGN"
+                      : entry.key === "Where Winds Meet"
+                        ? "WWM IGN"
+                        : entry.label;
+                  return (
+                    <div key={entry.key}>
+                      {index > 0 && <div className="mb-3 h-px bg-white/6" />}
+                      <dt className="font-tech text-label-readable uppercase text-muted-foreground">
+                        {displayLabel}
+                      </dt>
+                      <dd className="mt-0.5 text-sm text-emerald-400">{entry.display}</dd>
+                    </div>
+                  );
+                })}
             </dl>
           </ProfileCard>
 

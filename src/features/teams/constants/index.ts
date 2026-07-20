@@ -5,6 +5,7 @@ export type Game =
   | "League of Legends"
   | "Teamfight Tactics"
   | "Where Winds Meet"
+  | "Palworld"
   | "Multi";
 
 export const GAME_OPTIONS: { value: Game; label: string }[] = [
@@ -12,6 +13,7 @@ export const GAME_OPTIONS: { value: Game; label: string }[] = [
   { value: "League of Legends", label: "League of Legends" },
   { value: "Teamfight Tactics", label: "Teamfight Tactics" },
   { value: "Where Winds Meet", label: "Where Winds Meet" },
+  { value: "Palworld", label: "Palworld" },
   { value: "Multi", label: "Multi-game" },
 ];
 
@@ -67,6 +69,8 @@ const TFT_ROLES: TeamMemberRole[] = ["Flex", "IGL", "Sub", "TBD"];
 
 const WWM_ROLES: TeamMemberRole[] = ["DPS", "Tank", "Healer", "Support", "Flex", "Sub", "TBD"];
 
+const PALWORLD_ROLES: TeamMemberRole[] = ["DPS", "Tank", "Support", "Flex", "Sub", "TBD"];
+
 const GENERIC_ROLES: TeamMemberRole[] = ["IGL", "Flex", "Sub", "TBD"];
 
 const GAME_ALIASES: Record<string, Game> = {
@@ -77,6 +81,7 @@ const GAME_ALIASES: Record<string, Game> = {
   tft: "Teamfight Tactics",
   "where winds meet": "Where Winds Meet",
   wwm: "Where Winds Meet",
+  palworld: "Palworld",
   multi: "Multi",
   "multi-game": "Multi",
 };
@@ -92,9 +97,7 @@ export function normalizeGameKey(game: string): Game | null {
   const exact = GAME_OPTIONS.find((g) => g.value === trimmed);
   if (exact) return exact.value;
 
-  const caseInsensitive = GAME_OPTIONS.find(
-    (g) => g.value.toLowerCase() === trimmed.toLowerCase(),
-  );
+  const caseInsensitive = GAME_OPTIONS.find((g) => g.value.toLowerCase() === trimmed.toLowerCase());
   return caseInsensitive?.value ?? null;
 }
 
@@ -109,6 +112,8 @@ export function getRoleOptionsForGame(game: string): TeamMemberRole[] {
       return TFT_ROLES;
     case "Where Winds Meet":
       return WWM_ROLES;
+    case "Palworld":
+      return PALWORLD_ROLES;
     case "Multi":
       return GENERIC_ROLES;
     default:
@@ -133,6 +138,7 @@ export const GAME_COLOR: Record<Game, string> = {
   "League of Legends": "text-blue-400",
   "Teamfight Tactics": "text-violet-400",
   "Where Winds Meet": "text-cyan-400",
+  Palworld: "text-emerald-400",
   Multi: "text-muted-foreground",
 };
 
@@ -141,6 +147,7 @@ export const GAME_ACCENT: Record<Game, string> = {
   "League of Legends": "from-blue-500/20 via-blue-500/5 to-transparent",
   "Teamfight Tactics": "from-violet-500/20 via-violet-500/5 to-transparent",
   "Where Winds Meet": "from-cyan-500/20 via-cyan-500/5 to-transparent",
+  Palworld: "from-emerald-500/20 via-emerald-500/5 to-transparent",
   Multi: "from-white/10 via-white/5 to-transparent",
 };
 

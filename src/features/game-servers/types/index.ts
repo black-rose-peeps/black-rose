@@ -38,6 +38,14 @@ export interface PalworldServerSettings {
   // Base camp
   BaseCampMaxNum: number;
   BaseCampWorkerMaxNum: number;
+  /** Max Palboxes per guild */
+  BaseCampMaxNumInGuild: number;
+  /** Auto-reset guild timer when no online players (hours) */
+  AutoResetGuildTimeNoOnlinePlayers: number;
+  bAutoResetGuildNoOnlinePlayers: boolean;
+  /** Global Palbox export/import permissions */
+  bAllowGlobalPalboxExport: boolean;
+  bAllowGlobalPalboxImport: boolean;
   // Gameplay multipliers
   ExpRate: number;
   PalCaptureRate: number;

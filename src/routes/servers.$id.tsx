@@ -171,29 +171,40 @@ function JoinServerModal({
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.1]" />
 
         {/* Header */}
-        <div className="relative flex items-start justify-between border-b border-white/8 px-5 py-5 sm:px-8 sm:py-6">
-          <div className="flex items-center gap-3">
-            <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-            </span>
-            <div>
-              <p className="font-tech text-[10px] uppercase tracking-wider text-emerald-300/70">
-                Connection Ready
-              </p>
-              <h2 className="mt-1 font-display text-3xl tracking-display text-white leading-none">
-                Join Server
-              </h2>
+        <div className="relative border-b border-white/8 px-5 py-5 sm:px-8 sm:py-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
+              <div>
+                <p className="font-tech text-[10px] uppercase tracking-wider text-emerald-300/70">
+                  Connection Ready
+                </p>
+                <h2 className="mt-1 font-display text-3xl tracking-display text-white leading-none">
+                  Join Server
+                </h2>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center border border-white/15 bg-white/5 transition-colors hover:border-white/30 hover:bg-white/10"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4 text-white/60" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center border border-white/15 bg-white/5 transition-colors hover:border-white/30 hover:bg-white/10"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4 text-white/60" />
-          </button>
+
+          {/* Security disclaimer — directly below the "Join Server" title */}
+          <div className="mt-4 flex items-start gap-3 border border-amber-400/20 bg-amber-400/4 px-4 py-3">
+            <p className="text-[11px] leading-relaxed text-amber-300/80">
+              🔒 <span className="font-semibold">Important:</span> Do not share, forward, or post
+              these credentials anywhere else. Only tag authorized members in this announcement
+              thread when access needs to be shared.
+            </p>
+          </div>
         </div>
 
         {/* Body */}
@@ -419,24 +430,75 @@ function ServerDetailSkeleton() {
 
       {/* Main skeleton */}
       <main className="relative bg-[oklch(0.05_0_0)]">
-        <div className="relative mx-auto max-w-7xl px-6 py-14">
-          <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
-            <div className="clip-angle-lg border border-white/8 bg-[oklch(0.055_0_0)] p-6">
-              <Skeleton className="mb-6 h-3 w-24 rounded-none bg-white/5" />
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="mb-2 h-3 w-14 rounded-none bg-white/5" />
-                    <Skeleton className="h-7 w-10 rounded-none bg-white/5" />
+        {/* Tab bar skeleton */}
+        <div className="relative border-b border-white/[0.07] bg-[oklch(0.055_0_0)]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="flex gap-2 py-2">
+              <Skeleton className="h-8 w-24 rounded-none bg-white/5" />
+              <Skeleton className="h-8 w-36 rounded-none bg-white/5" />
+            </div>
+          </div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-6 py-10">
+          <div className="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-start">
+            {/* World Stats panel skeleton */}
+            <div className="clip-angle-lg border border-white/8 bg-[oklch(0.055_0_0)]">
+              <div className="border-b border-white/[0.07] px-5 py-3 sm:px-6">
+                <Skeleton className="h-3 w-24 rounded-none bg-white/5" />
+              </div>
+              {/* Hero metrics row — Players / World Day / Uptime */}
+              <div className="grid grid-cols-1 divide-y divide-white/6 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="px-5 py-5 sm:px-6 sm:py-6">
+                    <Skeleton className="mb-3 h-3 w-20 rounded-none bg-white/5" />
+                    <Skeleton className="h-9 w-16 rounded-none bg-white/5" />
                   </div>
                 ))}
               </div>
+              {/* Technical metrics row — FPS / Frame Time / Palbox / Version */}
+              <div className="border-t border-white/6 bg-white/2">
+                <div className="grid grid-cols-2 divide-x divide-white/[0.06] sm:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="px-4 py-3 sm:px-5 sm:py-4">
+                      <Skeleton className="mb-2 h-2.5 w-14 rounded-none bg-white/5" />
+                      <Skeleton className="h-4 w-10 rounded-none bg-white/[0.04]" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="clip-angle-lg border border-white/8 bg-[oklch(0.055_0_0)] p-6">
-              <Skeleton className="mb-6 h-3 w-28 rounded-none bg-white/5" />
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="mb-3 h-8 w-full rounded-none bg-white/5" />
-              ))}
+
+            {/* Server Settings panel skeleton */}
+            <div className="clip-angle-lg border border-white/8 bg-[oklch(0.055_0_0)]">
+              <div className="border-b border-white/[0.07] px-5 py-3 sm:px-6">
+                <Skeleton className="h-3 w-28 rounded-none bg-white/5" />
+              </div>
+              <div className="flex flex-col divide-y divide-white/[0.05]">
+                {/* Gameplay Rates section */}
+                <div className="px-5 py-5 sm:px-6">
+                  <Skeleton className="mb-3 h-2.5 w-28 rounded-none bg-white/5" />
+                  <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <Skeleton key={i} className="mb-3 h-4 w-full rounded-none bg-white/[0.04]" />
+                    ))}
+                  </div>
+                </div>
+                {/* World Rules section */}
+                <div className="px-5 py-5 sm:px-6">
+                  <Skeleton className="mb-3 h-2.5 w-24 rounded-none bg-white/5" />
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="mb-3 h-4 w-full rounded-none bg-white/[0.04]" />
+                  ))}
+                </div>
+                {/* Guild & Palbox section */}
+                <div className="px-5 py-5 sm:px-6">
+                  <Skeleton className="mb-3 h-2.5 w-32 rounded-none bg-white/5" />
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="mb-3 h-4 w-full rounded-none bg-white/[0.04]" />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -490,77 +552,126 @@ function WorldStatsPanel({ server }: { server: PalworldServerDetail }) {
     return String(server.basecampNum);
   })();
 
-  const stats = [
-    {
-      label: "Players Online",
-      value: server.online ? `${server.currentPlayers} / ${server.maxPlayers}` : "—",
-    },
-    { label: "World Day", value: server.online ? `Day ${server.days}` : "—" },
-    { label: "Uptime", value: server.online ? formatUptime(server.uptime) : "—" },
-    {
-      label: "Server FPS",
-      value: server.online && server.serverFps > 0 ? `${server.serverFps} fps` : "—",
-    },
-    {
-      label: "Frame Time",
-      value:
-        server.online && server.serverFrameTime > 0
-          ? `${server.serverFrameTime.toFixed(2)} ms`
-          : "—",
-    },
-    { label: "Active Palbox", value: basecampDisplay },
-    {
-      label: "Base Pals",
-      value: server.online && server.maxBasePals > 0 ? `max ${server.maxBasePals}` : "—",
-    },
-    { label: "Version", value: server.version || "—" },
-  ];
-
   return (
-    <div className="clip-angle-lg relative flex flex-col border border-white/[0.07] bg-[oklch(0.055_0_0)] p-6">
+    <div className="clip-angle-lg relative flex flex-col border border-white/[0.07] bg-[oklch(0.055_0_0)]">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.15]" />
+      {/* Top neon line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-emerald-400/30 to-transparent" />
 
-      <div className="relative mb-5 font-tech text-label-readable uppercase text-muted-foreground">
-        World Stats
+      {/* Panel header */}
+      <div className="relative border-b border-white/[0.07] px-5 py-3 sm:px-6">
+        <p className="font-tech text-label-readable uppercase text-muted-foreground">World Stats</p>
       </div>
 
-      {/* Stat grid — 2 cols on mobile, 3 on sm+ so each cell isn't too narrow */}
-      <dl className="relative grid grid-cols-2 divide-x divide-white/8 border border-white/8 sm:grid-cols-3">
-        {stats.map((s) => (
-          <div key={s.label} className="p-3 sm:p-4">
-            <dt className="font-tech text-label-readable uppercase text-muted-foreground">
-              {s.label}
-            </dt>
-            <dd className="mt-1 font-display text-lg tracking-[0.06em] text-white sm:text-xl">
-              {s.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-
-      {/* Player capacity bar */}
-      {server.online && server.maxPlayers > 0 && (
-        <div className="relative mt-5">
-          <div className="mb-1.5 flex items-center justify-between font-tech text-label-readable uppercase text-muted-foreground">
-            <span>Capacity</span>
-            <span className={playerPct >= 100 ? "text-white" : "text-white/50"}>
-              {playerPct >= 100 ? "Full" : `${playerPct}%`}
-            </span>
-          </div>
-          <div className="h-px w-full bg-white/10">
-            <div
-              className={`h-px transition-all duration-700 ${
-                playerPct >= 100
-                  ? "bg-white"
-                  : playerPct >= 70
-                    ? "bg-amber-300/90"
-                    : "bg-emerald-400/80"
-              }`}
-              style={{ width: `${playerPct}%` }}
-            />
-          </div>
+      {/* ── Hero metrics — Players, World Day, Uptime ── */}
+      <div className="relative grid grid-cols-1 divide-y divide-white/6 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        {/* Players Online — primary stat with inline capacity bar */}
+        <div className="relative px-5 py-5 sm:px-6 sm:py-6">
+          <p className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            Players Online
+          </p>
+          <p
+            className={`mt-2 font-display text-3xl tracking-display sm:text-4xl ${
+              server.online && server.currentPlayers > 0 ? "text-emerald-400" : "text-white"
+            }`}
+          >
+            {server.online ? server.currentPlayers : "—"}
+            {server.online && server.maxPlayers > 0 && (
+              <span className="ml-1 font-tech text-base text-white/30 tracking-normal">
+                / {server.maxPlayers}
+              </span>
+            )}
+          </p>
+          {server.online && server.maxPlayers > 0 && (
+            <div className="mt-3">
+              <div className="mb-1 flex items-center justify-between font-tech text-[9px] uppercase tracking-wider text-white/30">
+                <span>Capacity</span>
+                <span className={playerPct >= 100 ? "text-white/60" : ""}>
+                  {playerPct >= 100 ? "Full" : `${playerPct}%`}
+                </span>
+              </div>
+              <div className="h-px w-full bg-white/10">
+                <div
+                  className={`h-px transition-all duration-700 ${
+                    playerPct >= 100
+                      ? "bg-white"
+                      : playerPct >= 70
+                        ? "bg-amber-300/90"
+                        : "bg-emerald-400/80"
+                  }`}
+                  style={{ width: `${playerPct}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* World Day */}
+        <div className="px-5 py-5 sm:px-6 sm:py-6">
+          <p className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            World Day
+          </p>
+          <p className="mt-2 font-display text-3xl tracking-display text-white sm:text-4xl">
+            {server.online ? server.days : "—"}
+            {server.online && (
+              <span className="ml-1 font-tech text-sm text-white/30 tracking-normal">days</span>
+            )}
+          </p>
+        </div>
+
+        {/* Uptime */}
+        <div className="px-5 py-5 sm:px-6 sm:py-6">
+          <p className="font-tech text-[10px] uppercase tracking-wider text-muted-foreground">
+            Uptime
+          </p>
+          <p className="mt-2 font-display text-3xl tracking-display text-white sm:text-4xl">
+            {server.online ? formatUptime(server.uptime) : "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Technical metrics — FPS, Frame Time, Palbox, Version ── */}
+      <div className="relative mt-auto border-t border-white/6 bg-white/2">
+        <dl className="grid grid-cols-2 divide-x divide-white/[0.06] sm:grid-cols-4">
+          {[
+            {
+              label: "Server FPS",
+              value: server.online && server.serverFps > 0 ? `${server.serverFps}` : "—",
+              unit: server.online && server.serverFps > 0 ? "fps" : undefined,
+            },
+            {
+              label: "Frame Time",
+              value:
+                server.online && server.serverFrameTime > 0
+                  ? server.serverFrameTime.toFixed(2)
+                  : "—",
+              unit: server.online && server.serverFrameTime > 0 ? "ms" : undefined,
+            },
+            {
+              label: "Palbox",
+              value: basecampDisplay,
+              unit: undefined,
+            },
+            {
+              label: "Version",
+              value: server.version || "—",
+              unit: undefined,
+            },
+          ].map((s) => (
+            <div key={s.label} className="px-4 py-3 sm:px-5 sm:py-4">
+              <dt className="font-tech text-[9px] uppercase tracking-wider text-muted-foreground">
+                {s.label}
+              </dt>
+              <dd className="mt-1 font-tech text-sm text-white/80">
+                {s.value}
+                {s.unit && (
+                  <span className="ml-0.5 font-tech text-[9px] text-white/30">{s.unit}</span>
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }
@@ -572,29 +683,38 @@ function WorldStatsPanel({ server }: { server: PalworldServerDetail }) {
 function ServerSettingsPanel({
   settings,
   online,
+  maxBasePals,
 }: {
   settings: Partial<PalworldServerSettings> | null;
   online: boolean;
+  maxBasePals: number;
 }) {
   const s = settings;
 
   return (
-    <div className="clip-angle-lg relative flex flex-col border border-white/[0.07] bg-[oklch(0.055_0_0)] p-6">
+    <div className="clip-angle-lg relative flex flex-col border border-white/[0.07] bg-[oklch(0.055_0_0)]">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.15]" />
+      {/* Top neon line — matches WorldStatsPanel */}
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
 
-      <div className="relative mb-5 font-tech text-label-readable uppercase text-muted-foreground">
-        Server Settings
+      {/* Panel header */}
+      <div className="relative border-b border-white/[0.07] px-5 py-3 sm:px-6">
+        <p className="font-tech text-label-readable uppercase text-muted-foreground">
+          Server Settings
+        </p>
       </div>
 
       {!online || !s ? (
-        <p className="font-tech text-[10px] uppercase tracking-wider text-white/20">
-          Settings unavailable while server is offline.
-        </p>
+        <div className="relative flex flex-1 items-center justify-center px-6 py-12">
+          <p className="font-tech text-[10px] uppercase tracking-wider text-white/20">
+            Settings unavailable while server is offline.
+          </p>
+        </div>
       ) : (
-        <div className="relative flex flex-col gap-6">
+        <div className="relative flex flex-col gap-0 divide-y divide-white/[0.05]">
           {/* Gameplay Rates */}
-          <div>
-            <div className="mb-2 font-tech text-[10px] uppercase tracking-wider text-white/30">
+          <div className="px-5 py-5 sm:px-6">
+            <div className="mb-3 font-tech text-[10px] uppercase tracking-wider text-white/30">
               Gameplay Rates
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
@@ -622,14 +742,53 @@ function ServerSettingsPanel({
           </div>
 
           {/* World Rules */}
-          <div>
-            <div className="mb-2 font-tech text-[10px] uppercase tracking-wider text-white/30">
+          <div className="px-5 py-5 sm:px-6">
+            <div className="mb-3 font-tech text-[10px] uppercase tracking-wider text-white/30">
               World Rules
             </div>
             <SettingRow label="Death Penalty" value={formatString(s.DeathPenalty)} />
             <SettingRow label="PvP" value={formatBool(s.bEnablePlayerToPlayerDamage)} />
             <SettingRow label="Friendly Fire" value={formatBool(s.bEnableFriendlyFire)} />
             <SettingRow label="Invader Enemies" value={formatBool(s.bEnableInvaderEnemy)} />
+          </div>
+
+          {/* Guild & Palbox */}
+          <div className="px-5 py-5 sm:px-6">
+            <div className="mb-3 font-tech text-[10px] uppercase tracking-wider text-white/30">
+              Guild &amp; Palbox
+            </div>
+            <SettingRow
+              label="Max Palbox / Guild"
+              value={
+                s.BaseCampMaxNumInGuild != null && s.BaseCampMaxNumInGuild > 0
+                  ? String(s.BaseCampMaxNumInGuild)
+                  : "—"
+              }
+            />
+            <SettingRow
+              label="Base Pals"
+              value={online && maxBasePals > 0 ? `max ${maxBasePals}` : "—"}
+            />
+            <SettingRow
+              label="Auto-Reset Timer (h)"
+              value={
+                s.bAutoResetGuildNoOnlinePlayers == null
+                  ? "—"
+                  : s.bAutoResetGuildNoOnlinePlayers === false
+                    ? "Off"
+                    : s.AutoResetGuildTimeNoOnlinePlayers != null
+                      ? `${s.AutoResetGuildTimeNoOnlinePlayers}h`
+                      : "—"
+              }
+            />
+            <SettingRow
+              label="Global Palbox Export"
+              value={formatBool(s.bAllowGlobalPalboxExport)}
+            />
+            <SettingRow
+              label="Global Palbox Import"
+              value={formatBool(s.bAllowGlobalPalboxImport)}
+            />
           </div>
         </div>
       )}
@@ -954,7 +1113,7 @@ function ServerDetailPage() {
                         <span
                           className={`rounded-sm px-1.5 py-0.5 font-tech text-[8px] uppercase ${
                             activeTab === tab.key
-                              ? "bg-black/15 text-background/70"
+                              ? "bg-black/80 text-white"
                               : "bg-white/8 text-white/30"
                           }`}
                         >
@@ -973,9 +1132,13 @@ function ServerDetailPage() {
               )}
 
               {activeTab === "overview" && server && (
-                <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
+                <div className="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-start">
                   <WorldStatsPanel server={server} />
-                  <ServerSettingsPanel settings={server.settings} online={server.online} />
+                  <ServerSettingsPanel
+                    settings={server.settings}
+                    online={server.online}
+                    maxBasePals={server.maxBasePals}
+                  />
                 </div>
               )}
 

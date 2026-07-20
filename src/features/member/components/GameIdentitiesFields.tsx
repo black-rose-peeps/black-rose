@@ -22,13 +22,15 @@ interface GameIdentitiesFieldsProps extends MemberIdentitySource {
   onGameIdentityChange: (game: string, value: string) => void;
 }
 
-type IdentitySection = "riot" | "wwm";
+type IdentitySection = "riot" | "wwm" | "palworld";
 
 function resolvePrimarySection(mainGame: string, focusGame?: string): IdentitySection | null {
   if (isRiotGame(mainGame)) return "riot";
   if (mainGame === "Where Winds Meet") return "wwm";
+  if (mainGame === "Palworld") return "palworld";
   if (focusGame && isRiotGame(focusGame)) return "riot";
   if (focusGame === "Where Winds Meet") return "wwm";
+  if (focusGame === "Palworld") return "palworld";
   return null;
 }
 
@@ -131,6 +133,28 @@ function WhereWindsMeetFields({
   );
 }
 
+function PalworldFields({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const config = gameIdentityConfig("Palworld");
+
+  return (
+    <>
+      <p className="mb-5 text-xs leading-relaxed text-muted-foreground">{config?.helperText}</p>
+      <div className="space-y-2">
+        <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+          {config?.fieldLabel}
+        </Label>
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={config?.fieldPlaceholder}
+          maxLength={64}
+          className={techFieldClass}
+        />
+      </div>
+    </>
+  );
+}
+
 export function GameIdentitiesFields({
   mainGame = "",
   valorantGameName,
@@ -153,20 +177,24 @@ export function GameIdentitiesFields({
     const sections: IdentitySection[] = [];
     if (primarySection !== "riot") sections.push("riot");
     if (primarySection !== "wwm") sections.push("wwm");
+    if (primarySection !== "palworld") sections.push("palworld");
     return sections;
   }, [primarySection]);
 
   const focusNeedsSecondary = Boolean(
     focusGame &&
     ((isRiotGame(focusGame) && primarySection !== "riot") ||
-      (focusGame === "Where Winds Meet" && primarySection !== "wwm")),
+      (focusGame === "Where Winds Meet" && primarySection !== "wwm") ||
+      (focusGame === "Palworld" && primarySection !== "palworld")),
   );
 
   const [otherOpen, setOtherOpen] = useState(
     () =>
       focusNeedsSecondary ||
       (secondarySections.includes("riot") && hasRiotIdentity(identitySource)) ||
-      (secondarySections.includes("wwm") && hasIdentityForGame("Where Winds Meet", identitySource)),
+      (secondarySections.includes("wwm") &&
+        hasIdentityForGame("Where Winds Meet", identitySource)) ||
+      (secondarySections.includes("palworld") && hasIdentityForGame("Palworld", identitySource)),
   );
 
   useEffect(() => {
@@ -179,7 +207,9 @@ export function GameIdentitiesFields({
       ? "Riot ID"
       : primarySection === "wwm"
         ? "Where Winds Meet"
-        : (mainConfig?.panelLabel ?? "In-Game Identity");
+        : primarySection === "palworld"
+          ? "Palworld"
+          : (mainConfig?.panelLabel ?? "In-Game Identity");
 
   return (
     <div className="mt-5 flex flex-col gap-4">
@@ -209,6 +239,11 @@ export function GameIdentitiesFields({
               valorantTagline={valorantTagline}
               onValorantGameNameChange={onValorantGameNameChange}
               onValorantTaglineChange={onValorantTaglineChange}
+            />
+          ) : primarySection === "palworld" ? (
+            <PalworldFields
+              value={gameIdentities["Palworld"] ?? ""}
+              onChange={(value) => onGameIdentityChange("Palworld", value)}
             />
           ) : (
             <WhereWindsMeetFields
@@ -267,6 +302,19 @@ export function GameIdentitiesFields({
                 <WhereWindsMeetFields
                   value={gameIdentities["Where Winds Meet"] ?? ""}
                   onChange={(value) => onGameIdentityChange("Where Winds Meet", value)}
+                />
+              </TechPanel>
+            )}
+
+            {secondarySections.includes("palworld") && (
+              <TechPanel
+                label="Palworld"
+                title="In-Game Name"
+                className={cn(focusGame === "Palworld" && "ring-1 ring-white/15")}
+              >
+                <PalworldFields
+                  value={gameIdentities["Palworld"] ?? ""}
+                  onChange={(value) => onGameIdentityChange("Palworld", value)}
                 />
               </TechPanel>
             )}
