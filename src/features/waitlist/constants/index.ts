@@ -17,7 +17,6 @@ export const WAITLIST_TEMPLATES = [
       "Game:",
       "IGN:",
       "UID (if applicable):",
-      "Rank:",
       "Nationality:",
       "Invited by / Referred by:",
       "Streaming Page: (optional)",

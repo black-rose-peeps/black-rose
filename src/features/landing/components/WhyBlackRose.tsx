@@ -4,18 +4,18 @@ import { SectionHeading } from "./SectionHeading";
 const pillars = [
   {
     n: "I",
-    title: "Professional Tournament Management",
-    body: "Well-organized brackets, structured formats, and transparent competition operated by Black Rose staff.",
+    title: "Integrity & Trust",
+    body: "We lead with honesty and transparency, and act with prudence to protect our members, our reputation, and the community we've built.",
   },
   {
     n: "II",
-    title: "Open Community Participation",
-    body: "Players, teams, clans, and guilds from any community can compete on equal ground. No gatekeeping.",
+    title: "Growth Through Passion",
+    body: "Built on love for the game, not obligation. We value patience and longevity over shortcuts — improving as players, teammates, and as a community.",
   },
   {
     n: "III",
-    title: "Competitive Integrity",
-    body: "Verified participants, enforced rulesets, and reviewed match results protect the prestige of every win.",
+    title: "Community First",
+    body: "Every win strengthens the whole, not just the individual. We listen, we lift each other up, and we give back to the community that built us.",
   },
 ];
 
@@ -37,7 +37,7 @@ export function WhyBlackRose() {
           <SectionHeading
             eyebrow="The Code"
             title="Why Black Rose"
-            description="Three principles that define every match we host."
+            description="The values that guide everything we build, host, and compete for."
             className="mb-0"
           />
           <Link

@@ -13,13 +13,16 @@ import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as TournamentsRouteImport } from './routes/tournaments'
 import { Route as TeamsRouteImport } from './routes/teams'
+import { Route as ServersRouteImport } from './routes/servers'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GuildsRouteImport } from './routes/guilds'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TournamentsIndexRouteImport } from './routes/tournaments.index'
 import { Route as TeamsIndexRouteImport } from './routes/teams.index'
+import { Route as ServersIndexRouteImport } from './routes/servers.index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as CommunityIndexRouteImport } from './routes/community.index'
 import { Route as ChampionsIndexRouteImport } from './routes/champions.index'
@@ -27,6 +30,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
 import { Route as TeamsCreateRouteImport } from './routes/teams.create'
 import { Route as TeamsIdRouteImport } from './routes/teams.$id'
+import { Route as ServersIdRouteImport } from './routes/servers.$id'
 import { Route as MembersSlugRouteImport } from './routes/members.$slug'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -62,6 +66,11 @@ const TeamsRoute = TeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServersRoute = ServersRouteImport.update({
+  id: '/servers',
+  path: '/servers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -70,6 +79,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuildsRoute = GuildsRouteImport.update({
+  id: '/guilds',
+  path: '/guilds',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -96,6 +110,11 @@ const TeamsIndexRoute = TeamsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => TeamsRoute,
+} as any)
+const ServersIndexRoute = ServersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ServersRoute,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
@@ -131,6 +150,11 @@ const TeamsIdRoute = TeamsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => TeamsRoute,
+} as any)
+const ServersIdRoute = ServersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ServersRoute,
 } as any)
 const MembersSlugRoute = MembersSlugRouteImport.update({
   id: '/members/$slug',
@@ -207,8 +231,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
+  '/guilds': typeof GuildsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/servers': typeof ServersRouteWithChildren
   '/teams': typeof TeamsRouteWithChildren
   '/tournaments': typeof TournamentsRouteWithChildren
   '/unauthorized': typeof UnauthorizedRoute
@@ -223,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/members/$slug': typeof MembersSlugRoute
+  '/servers/$id': typeof ServersIdRoute
   '/teams/$id': typeof TeamsIdRoute
   '/teams/create': typeof TeamsCreateRoute
   '/tournaments/$id': typeof TournamentsIdRoute
@@ -230,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/champions/': typeof ChampionsIndexRoute
   '/community/': typeof CommunityIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/servers/': typeof ServersIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
@@ -239,6 +267,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/guilds': typeof GuildsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/unauthorized': typeof UnauthorizedRoute
@@ -251,6 +280,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/members/$slug': typeof MembersSlugRoute
+  '/servers/$id': typeof ServersIdRoute
   '/teams/$id': typeof TeamsIdRoute
   '/teams/create': typeof TeamsCreateRoute
   '/tournaments/$id': typeof TournamentsIdRoute
@@ -258,6 +288,7 @@ export interface FileRoutesByTo {
   '/champions': typeof ChampionsIndexRoute
   '/community': typeof CommunityIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/servers': typeof ServersIndexRoute
   '/teams': typeof TeamsIndexRoute
   '/tournaments': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
@@ -270,8 +301,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
+  '/guilds': typeof GuildsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/servers': typeof ServersRouteWithChildren
   '/teams': typeof TeamsRouteWithChildren
   '/tournaments': typeof TournamentsRouteWithChildren
   '/unauthorized': typeof UnauthorizedRoute
@@ -286,6 +319,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/members/$slug': typeof MembersSlugRoute
+  '/servers/$id': typeof ServersIdRoute
   '/teams/$id': typeof TeamsIdRoute
   '/teams/create': typeof TeamsCreateRoute
   '/tournaments/$id': typeof TournamentsIdRoute
@@ -293,6 +327,7 @@ export interface FileRoutesById {
   '/champions/': typeof ChampionsIndexRoute
   '/community/': typeof CommunityIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/servers/': typeof ServersIndexRoute
   '/teams/': typeof TeamsIndexRoute
   '/tournaments/': typeof TournamentsIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
@@ -306,8 +341,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/dashboard'
+    | '/guilds'
     | '/login'
     | '/register'
+    | '/servers'
     | '/teams'
     | '/tournaments'
     | '/unauthorized'
@@ -322,6 +359,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/dashboard/profile'
     | '/members/$slug'
+    | '/servers/$id'
     | '/teams/$id'
     | '/teams/create'
     | '/tournaments/$id'
@@ -329,6 +367,7 @@ export interface FileRouteTypes {
     | '/champions/'
     | '/community/'
     | '/dashboard/'
+    | '/servers/'
     | '/teams/'
     | '/tournaments/'
     | '/admin/tournaments/$id'
@@ -338,6 +377,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/guilds'
     | '/login'
     | '/register'
     | '/unauthorized'
@@ -350,6 +390,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/dashboard/profile'
     | '/members/$slug'
+    | '/servers/$id'
     | '/teams/$id'
     | '/teams/create'
     | '/tournaments/$id'
@@ -357,6 +398,7 @@ export interface FileRouteTypes {
     | '/champions'
     | '/community'
     | '/dashboard'
+    | '/servers'
     | '/teams'
     | '/tournaments'
     | '/admin/tournaments/$id'
@@ -368,8 +410,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/dashboard'
+    | '/guilds'
     | '/login'
     | '/register'
+    | '/servers'
     | '/teams'
     | '/tournaments'
     | '/unauthorized'
@@ -384,6 +428,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/dashboard/profile'
     | '/members/$slug'
+    | '/servers/$id'
     | '/teams/$id'
     | '/teams/create'
     | '/tournaments/$id'
@@ -391,6 +436,7 @@ export interface FileRouteTypes {
     | '/champions/'
     | '/community/'
     | '/dashboard/'
+    | '/servers/'
     | '/teams/'
     | '/tournaments/'
     | '/admin/tournaments/$id'
@@ -403,8 +449,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   DashboardRoute: typeof DashboardRouteWithChildren
+  GuildsRoute: typeof GuildsRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  ServersRoute: typeof ServersRouteWithChildren
   TeamsRoute: typeof TeamsRouteWithChildren
   TournamentsRoute: typeof TournamentsRouteWithChildren
   UnauthorizedRoute: typeof UnauthorizedRoute
@@ -445,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/servers': {
+      id: '/servers'
+      path: '/servers'
+      fullPath: '/servers'
+      preLoaderRoute: typeof ServersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -457,6 +512,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guilds': {
+      id: '/guilds'
+      path: '/guilds'
+      fullPath: '/guilds'
+      preLoaderRoute: typeof GuildsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -493,6 +555,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/teams/'
       preLoaderRoute: typeof TeamsIndexRouteImport
       parentRoute: typeof TeamsRoute
+    }
+    '/servers/': {
+      id: '/servers/'
+      path: '/'
+      fullPath: '/servers/'
+      preLoaderRoute: typeof ServersIndexRouteImport
+      parentRoute: typeof ServersRoute
     }
     '/dashboard/': {
       id: '/dashboard/'
@@ -542,6 +611,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/teams/$id'
       preLoaderRoute: typeof TeamsIdRouteImport
       parentRoute: typeof TeamsRoute
+    }
+    '/servers/$id': {
+      id: '/servers/$id'
+      path: '/$id'
+      fullPath: '/servers/$id'
+      preLoaderRoute: typeof ServersIdRouteImport
+      parentRoute: typeof ServersRoute
     }
     '/members/$slug': {
       id: '/members/$slug'
@@ -709,6 +785,19 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
+interface ServersRouteChildren {
+  ServersIdRoute: typeof ServersIdRoute
+  ServersIndexRoute: typeof ServersIndexRoute
+}
+
+const ServersRouteChildren: ServersRouteChildren = {
+  ServersIdRoute: ServersIdRoute,
+  ServersIndexRoute: ServersIndexRoute,
+}
+
+const ServersRouteWithChildren =
+  ServersRoute._addFileChildren(ServersRouteChildren)
+
 interface TeamsRouteChildren {
   TeamsIdRoute: typeof TeamsIdRoute
   TeamsCreateRoute: typeof TeamsCreateRoute
@@ -741,8 +830,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   DashboardRoute: DashboardRouteWithChildren,
+  GuildsRoute: GuildsRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  ServersRoute: ServersRouteWithChildren,
   TeamsRoute: TeamsRouteWithChildren,
   TournamentsRoute: TournamentsRouteWithChildren,
   UnauthorizedRoute: UnauthorizedRoute,
