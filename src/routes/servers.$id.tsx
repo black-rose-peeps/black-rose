@@ -902,8 +902,9 @@ function ServerDetailPage() {
 
             {/* ── Tab bar ────────────────────────────────────── */}
             <div className="relative border-b border-white/[0.07] bg-[oklch(0.055_0_0)]">
-              <div className="mx-auto max-w-7xl px-6">
-                <div className="flex gap-0">
+              <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/15 to-transparent" />
+              <div className="mx-auto max-w-7xl px-4 sm:px-6">
+                <div className="flex gap-1 overflow-x-auto py-2 scrollbar-none">
                   {(
                     [
                       { key: "overview", label: "Overview" },
@@ -911,6 +912,7 @@ function ServerDetailPage() {
                         key: "players",
                         label: "Active Players",
                         icon: <Users className="h-3 w-3" />,
+                        badge: server?.online ? String(server.currentPlayers) : null,
                       },
                     ] as const
                   ).map((tab) => (
@@ -918,23 +920,23 @@ function ServerDetailPage() {
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`inline-flex items-center gap-2 border-b-2 px-5 py-4 font-tech text-[11px] uppercase tracking-[0.1em] transition-colors ${
+                      className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 font-tech text-[11px] uppercase tracking-widest transition-all duration-150 ${
                         activeTab === tab.key
-                          ? "border-white text-white"
-                          : "border-transparent text-white/40 hover:text-white/70"
+                          ? "bg-white text-background"
+                          : "text-white/45 hover:bg-white/8 hover:text-white/75"
                       }`}
                     >
                       {"icon" in tab && tab.icon}
                       {tab.label}
-                      {tab.key === "players" && server?.online && (
+                      {"badge" in tab && tab.badge !== null && (
                         <span
-                          className={`rounded-sm px-1 py-0.5 font-tech text-[8px] uppercase ${
-                            activeTab === "players"
-                              ? "bg-white/15 text-white/70"
+                          className={`rounded-sm px-1.5 py-0.5 font-tech text-[8px] uppercase ${
+                            activeTab === tab.key
+                              ? "bg-black/15 text-background/70"
                               : "bg-white/8 text-white/30"
                           }`}
                         >
-                          {server.currentPlayers}
+                          {tab.badge}
                         </span>
                       )}
                     </button>
