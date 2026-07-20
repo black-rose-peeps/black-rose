@@ -500,25 +500,31 @@ function ProfileEditPage() {
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Main Role
                   </Label>
-                  <Select
-                    key={mainGame || "no-game"}
-                    value={mainRole || undefined}
-                    onValueChange={setMainRole}
-                    disabled={!mainGame}
-                  >
-                    <SelectTrigger className={techFieldClass}>
-                      <SelectValue
-                        placeholder={mainGame ? "Select a role" : "Select a game first"}
-                      />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                      {roleOptions.map((role) => (
-                        <SelectItem key={role} value={role} className="font-tech text-xs">
-                          {role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {normalizeGameKey(mainGame) === "Palworld" ? (
+                    <p className="font-tech text-label-readable uppercase text-muted-foreground/50 py-2 text-xs">
+                      No role applicable for Palworld.
+                    </p>
+                  ) : (
+                    <Select
+                      key={mainGame || "no-game"}
+                      value={mainRole || undefined}
+                      onValueChange={setMainRole}
+                      disabled={!mainGame}
+                    >
+                      <SelectTrigger className={techFieldClass}>
+                        <SelectValue
+                          placeholder={mainGame ? "Select a role" : "Select a game first"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                        {roleOptions.map((role) => (
+                          <SelectItem key={role} value={role} className="font-tech text-xs">
+                            {role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">

@@ -74,6 +74,15 @@ const GAME_IDENTITY_CONFIG: Record<Game, Omit<GameIdentityConfig, "game">> = {
     helperText: "Used on Where Winds Meet rosters and events for that title.",
     usesValorantRiotId: false,
   },
+  Palworld: {
+    panelLabel: "Palworld",
+    panelTitle: "In-Game Identity",
+    fieldLabel: "In-Game Name",
+    fieldPlaceholder: "Your Palworld character name",
+    helperText:
+      "Used to identify you on Black Rose Palworld servers. Enter the name your guild and server members know you by.",
+    usesValorantRiotId: false,
+  },
   "League of Legends": {
     panelLabel: "League of Legends",
     panelTitle: "In-Game Identity",
