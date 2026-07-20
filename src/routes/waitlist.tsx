@@ -237,7 +237,7 @@ function WaitlistPage() {
           </div>
 
           {/* Step 3 */}
-          <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
+          {/* <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
             <StepNum n="3" />
             <div className="min-w-0">
               <p className="text-sm font-medium">Get ROSE on Discord</p>
@@ -262,11 +262,11 @@ function WaitlistPage() {
                 </p>
               </WaitlistStepDetails>
             </div>
-          </div>
+          </div> */}
 
           {/* Step 4 */}
           <div className="flex gap-4 border border-white/6 bg-white/2 px-4 py-4">
-            <StepNum n="4" />
+            <StepNum n="3" />
             <div className="min-w-0">
               <p className="text-sm font-medium">Verify here</p>
               <p className="mt-0.5 text-xs text-muted-foreground">

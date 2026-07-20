@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import heroBg from "@/assets/landing-hero-bg2.png";
 import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
 import { Emblem } from "@/features/shared/components/Emblem";
+import { HeroGameServersWidget } from "@/features/game-servers/components/GameServersOverlay";
 
 export function Hero() {
   const session = useMemberSession();
@@ -28,6 +29,9 @@ export function Hero() {
       {/* Geometric corner accents */}
       <div className="pointer-events-none absolute left-6 top-24 hidden h-32 w-32 border-l border-t border-border md:block" />
       <div className="pointer-events-none absolute right-6 top-24 hidden h-32 w-32 border-r border-t border-border md:block" />
+
+      {/* Active game servers widget — top-left, Discord overlay style */}
+      <HeroGameServersWidget />
 
       <div className="relative mx-auto flex max-w-5xl flex-col items-center px-6 text-center">
         {/* Spinning emblem */}

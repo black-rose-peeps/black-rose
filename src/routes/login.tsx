@@ -23,11 +23,13 @@ import { openDiscordAppFromUserGesture } from "@/lib/discord-url";
 
 type LoginSearch = {
   console?: string;
+  redirect_to?: string;
 };
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch => ({
     console: typeof search.console === "string" ? search.console : undefined,
+    redirect_to: typeof search.redirect_to === "string" ? search.redirect_to : undefined,
   }),
   head: () => ({
     meta: [
@@ -44,7 +46,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { console: consoleParam } = Route.useSearch();
+  const { console: consoleParam, redirect_to } = Route.useSearch();
   const isAdminConsole = consoleParam === "1";
   const [error, setError] = useState<string | null>(null);
   const [lanRedirectWarning, setLanRedirectWarning] = useState<string | null>(null);
@@ -70,6 +72,16 @@ function LoginPage() {
 
   function handleDiscordAuth() {
     setError(null);
+    // Persist the intended destination so the callback can redirect back after auth.
+    // Must use localStorage (not sessionStorage) — Discord may redirect in a new tab/window
+    // opened by the Discord app, which gets its own fresh sessionStorage.
+    if (redirect_to) {
+      try {
+        localStorage.setItem("br_post_auth_redirect", redirect_to);
+      } catch {
+        // localStorage unavailable — callback will fall back to default path
+      }
+    }
     if (!isDiscordOAuthConfigured()) {
       setError(
         "Discord sign-in is not configured. Set VITE_DISCORD_CLIENT_ID in your environment.",
