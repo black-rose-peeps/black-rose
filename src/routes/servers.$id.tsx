@@ -233,9 +233,10 @@ function JoinServerModal({
                 Password
               </p>
               {joinInfo.joinPassword ? (
-                <div className="flex items-center gap-3">
-                  <code className="min-w-0 flex-1 truncate font-mono text-xl text-white">
-                    {joinInfo.joinPassword}
+                <div className="flex items-center gap-2">
+                  {/* Always masked — copy button still copies the real value */}
+                  <code className="min-w-0 flex-1 truncate font-mono text-xl tracking-widest text-white">
+                    {"•".repeat(joinInfo.joinPassword.length)}
                   </code>
                   <CopyButton value={joinInfo.joinPassword} />
                 </div>
