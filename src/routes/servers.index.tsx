@@ -89,20 +89,20 @@ function ServerRulesPanel() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="group flex w-full items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-white/5"
+        className="group flex w-full flex-wrap items-center justify-between gap-2 px-4 py-4 transition-colors hover:bg-white/5 sm:gap-4 sm:px-6"
         aria-expanded={open}
       >
-        <div className="flex items-center gap-3">
-          <span className="h-px w-6 bg-amber-300/60" />
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+          <span className="h-px w-4 shrink-0 bg-amber-300/60 sm:w-6" />
           <p className="font-tech text-[10px] uppercase tracking-wider text-white group-hover:text-white transition-colors">
             Community Standards
           </p>
           <span className="border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 font-tech text-[8px] uppercase tracking-wider text-amber-300">
-            Applicable to All servers
+            All Servers
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="font-tech text-[10px] uppercase tracking-wider text-white/70">
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="hidden font-tech text-[10px] uppercase tracking-wider text-white/70 sm:inline">
             {open ? "Hide Rules" : "Read Server Rules"}
           </span>
           <ChevronDown
@@ -113,7 +113,7 @@ function ServerRulesPanel() {
 
       {/* Collapsible content */}
       {open && (
-        <div className="relative border-t border-amber-400/15 px-6 py-8">
+        <div className="relative border-t border-amber-400/15 px-4 py-6 sm:px-6 sm:py-8">
           <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.12]" />
 
           <div className="relative">
@@ -252,7 +252,7 @@ function ServerCard({ server }: { server: PalworldServerStatus }) {
         </div>
 
         {/* Stats strip */}
-        <dl className="relative grid grid-cols-3 divide-x divide-white/[0.08] border-y border-white/[0.08] py-3">
+        <dl className="relative sticky bottom-0 z-20 grid grid-cols-3 divide-x divide-white/[0.08] border-y border-white/[0.08] py-3 bg-[oklch(0.055_0_0)]">
           <div className="pr-3 min-w-0">
             <dt className="font-tech text-label-readable uppercase text-muted-foreground truncate">
               Players
@@ -397,13 +397,13 @@ function ServersPage() {
             Data refreshes every 60 seconds.
           </p>
 
-          {/* Stats strip */}
-          <div className="mt-10 inline-grid grid-cols-3 divide-x divide-white/8 border border-white/8 bg-white/2.5">
+          {/* Stats strip — full-width on mobile, auto-width on sm+ */}
+          <div className="mt-10 sticky bottom-0 z-20 grid w-full grid-cols-3 divide-x divide-white/8 border border-white/8 bg-white/2.5 sm:inline-grid sm:w-auto">
             {isLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="px-6 py-5">
+                  <div key={i} className="px-4 py-4 sm:px-6 sm:py-5">
                     <Skeleton className="h-9 w-10 mb-2" />
-                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-16 sm:w-24" />
                   </div>
                 ))
               : [
@@ -411,8 +411,8 @@ function ServersPage() {
                   { label: "Online Now", value: onlineCount },
                   { label: "Platform", value: "PC · PS5 · Xbox" },
                 ].map((s) => (
-                  <div key={s.label} className="px-6 py-5">
-                    <div className="font-display text-3xl tracking-display md:text-4xl">
+                  <div key={s.label} className="px-4 py-4 sm:px-6 sm:py-5">
+                    <div className="font-display text-2xl tracking-display sm:text-3xl md:text-4xl">
                       {s.value}
                     </div>
                     <div className="mt-1 font-tech text-label-readable uppercase text-muted-foreground">

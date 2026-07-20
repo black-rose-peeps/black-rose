@@ -161,7 +161,7 @@ function JoinServerModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-3xl border border-white/12 bg-[oklch(0.07_0_0)] shadow-[0_32px_80px_rgba(0,0,0,0.6)]">
+      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-white/12 bg-[oklch(0.07_0_0)] shadow-[0_32px_80px_rgba(0,0,0,0.6)]">
         {/* Corner brackets */}
         <span className="pointer-events-none absolute left-0 top-0 h-5 w-5 border-l border-t border-white/25" />
         <span className="pointer-events-none absolute right-0 top-0 h-5 w-5 border-r border-t border-white/25" />
@@ -171,7 +171,7 @@ function JoinServerModal({
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.1]" />
 
         {/* Header */}
-        <div className="relative flex items-start justify-between border-b border-white/8 px-8 py-6">
+        <div className="relative flex items-start justify-between border-b border-white/8 px-5 py-5 sm:px-8 sm:py-6">
           <div className="flex items-center gap-3">
             <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
@@ -197,7 +197,7 @@ function JoinServerModal({
         </div>
 
         {/* Body */}
-        <div className="relative px-8 py-8">
+        <div className="relative px-5 py-6 sm:px-8 sm:py-8">
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Server IP */}
             <div className="relative border border-white/10 bg-white/[0.03] px-6 py-5">
@@ -235,7 +235,7 @@ function JoinServerModal({
           </div>
 
           {/* Footer instruction */}
-          <div className="relative mt-6 flex items-center gap-3 border border-white/8 bg-white/[0.02] px-5 py-4">
+          <div className="relative mt-4 flex items-center gap-3 border border-white/8 bg-white/[0.02] px-4 py-3 sm:mt-6 sm:px-5 sm:py-4">
             <div className="absolute inset-y-0 left-0 w-px bg-emerald-400/30" />
             <p className="font-tech text-[10px] uppercase tracking-wider text-white/40 leading-relaxed">
               Palworld → Multiplayer → Join with IP → enter the address above
@@ -423,7 +423,7 @@ function ServerDetailSkeleton() {
           <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
             <div className="clip-angle-lg border border-white/8 bg-[oklch(0.055_0_0)] p-6">
               <Skeleton className="mb-6 h-3 w-24 rounded-none bg-white/5" />
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i}>
                     <Skeleton className="mb-2 h-3 w-14 rounded-none bg-white/5" />
@@ -524,14 +524,16 @@ function WorldStatsPanel({ server }: { server: PalworldServerDetail }) {
         World Stats
       </div>
 
-      {/* Stat grid */}
-      <dl className="relative grid grid-cols-3 divide-x divide-white/8 border border-white/8">
+      {/* Stat grid — 2 cols on mobile, 3 on sm+ so each cell isn't too narrow */}
+      <dl className="relative grid grid-cols-2 divide-x divide-white/8 border border-white/8 sm:grid-cols-3">
         {stats.map((s) => (
-          <div key={s.label} className="p-4">
+          <div key={s.label} className="p-3 sm:p-4">
             <dt className="font-tech text-label-readable uppercase text-muted-foreground">
               {s.label}
             </dt>
-            <dd className="mt-1 font-display text-xl tracking-[0.06em] text-white">{s.value}</dd>
+            <dd className="mt-1 font-display text-lg tracking-[0.06em] text-white sm:text-xl">
+              {s.value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -702,7 +704,56 @@ function ActivePlayersPanel({
   online: boolean;
   memberId: string | undefined;
 }) {
+  const session = useMemberSession();
   const { players, isLoading, lastUpdated, refetch } = usePalworldPlayers(serverId, memberId);
+
+  // ── Unauthenticated — show sign-in prompt ─────────────────────────────────
+  if (!session) {
+    return (
+      <div className="clip-angle-lg relative flex flex-col border border-white/[0.07] bg-[oklch(0.055_0_0)]">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.15]" />
+        <div className="relative flex flex-col items-center justify-center gap-3 py-16 text-center px-6">
+          <Lock className="h-7 w-7 text-white/15" />
+          <div>
+            <p className="font-tech text-[10px] uppercase tracking-wider text-white/40">
+              Members Only
+            </p>
+            <p className="mt-1 text-sm text-white/30">
+              Sign in to view who's currently playing on this server.
+            </p>
+          </div>
+          <Link
+            to="/login"
+            search={{ redirect_to: `/servers/${serverId}` }}
+            className="mt-1 clip-cta inline-flex h-9 items-center gap-2 bg-foreground px-5 font-tech text-[10px] uppercase tracking-wider text-background transition hover:bg-foreground/90"
+          >
+            Sign In →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Authenticated but not verified — no login redirect ────────────────────
+  if (!memberId) {
+    return (
+      <div className="clip-angle-lg relative flex flex-col border border-amber-400/15 bg-amber-400/3">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.10]" />
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-amber-400/30 to-transparent" />
+        <div className="relative flex flex-col items-center justify-center gap-3 py-16 text-center px-6">
+          <Lock className="h-7 w-7 text-amber-400/40" />
+          <div>
+            <p className="font-tech text-[10px] uppercase tracking-wider text-amber-400/70">
+              Verification Required
+            </p>
+            <p className="mt-1 text-sm text-white/30">
+              Complete verification on Discord to view the active player list.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!online) {
     return (
@@ -873,8 +924,9 @@ function ServerDetailPage() {
 
             {/* ── Tab bar ────────────────────────────────────── */}
             <div className="relative border-b border-white/[0.07] bg-[oklch(0.055_0_0)]">
-              <div className="mx-auto max-w-7xl px-6">
-                <div className="flex gap-0">
+              <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/15 to-transparent" />
+              <div className="mx-auto max-w-7xl px-4 sm:px-6">
+                <div className="flex gap-1 overflow-x-auto py-2 scrollbar-none">
                   {(
                     [
                       { key: "overview", label: "Overview" },
@@ -882,6 +934,7 @@ function ServerDetailPage() {
                         key: "players",
                         label: "Active Players",
                         icon: <Users className="h-3 w-3" />,
+                        badge: server?.online ? String(server.currentPlayers) : null,
                       },
                     ] as const
                   ).map((tab) => (
@@ -889,23 +942,23 @@ function ServerDetailPage() {
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`inline-flex items-center gap-2 border-b-2 px-5 py-4 font-tech text-[11px] uppercase tracking-[0.1em] transition-colors ${
+                      className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 font-tech text-[11px] uppercase tracking-widest transition-all duration-150 ${
                         activeTab === tab.key
-                          ? "border-white text-white"
-                          : "border-transparent text-white/40 hover:text-white/70"
+                          ? "bg-white text-background"
+                          : "text-white/45 hover:bg-white/8 hover:text-white/75"
                       }`}
                     >
                       {"icon" in tab && tab.icon}
                       {tab.label}
-                      {tab.key === "players" && server?.online && (
+                      {"badge" in tab && tab.badge !== null && (
                         <span
-                          className={`rounded-sm px-1 py-0.5 font-tech text-[8px] uppercase ${
-                            activeTab === "players"
-                              ? "bg-white/15 text-white/70"
+                          className={`rounded-sm px-1.5 py-0.5 font-tech text-[8px] uppercase ${
+                            activeTab === tab.key
+                              ? "bg-black/15 text-background/70"
                               : "bg-white/8 text-white/30"
                           }`}
                         >
-                          {server.currentPlayers}
+                          {tab.badge}
                         </span>
                       )}
                     </button>
