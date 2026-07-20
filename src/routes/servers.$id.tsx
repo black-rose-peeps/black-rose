@@ -704,10 +704,11 @@ function ActivePlayersPanel({
   online: boolean;
   memberId: string | undefined;
 }) {
+  const session = useMemberSession();
   const { players, isLoading, lastUpdated, refetch } = usePalworldPlayers(serverId, memberId);
 
-  // ── Not authenticated — show a lock state instead of empty list ───────────
-  if (!memberId) {
+  // ── Unauthenticated — show sign-in prompt ─────────────────────────────────
+  if (!session) {
     return (
       <div className="clip-angle-lg relative flex flex-col border border-white/[0.07] bg-[oklch(0.055_0_0)]">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.15]" />
@@ -728,6 +729,27 @@ function ActivePlayersPanel({
           >
             Sign In →
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Authenticated but not verified — no login redirect ────────────────────
+  if (!memberId) {
+    return (
+      <div className="clip-angle-lg relative flex flex-col border border-amber-400/15 bg-amber-400/3">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.10]" />
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-amber-400/30 to-transparent" />
+        <div className="relative flex flex-col items-center justify-center gap-3 py-16 text-center px-6">
+          <Lock className="h-7 w-7 text-amber-400/40" />
+          <div>
+            <p className="font-tech text-[10px] uppercase tracking-wider text-amber-400/70">
+              Verification Required
+            </p>
+            <p className="mt-1 text-sm text-white/30">
+              Complete verification on Discord to view the active player list.
+            </p>
+          </div>
         </div>
       </div>
     );

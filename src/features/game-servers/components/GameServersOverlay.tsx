@@ -124,7 +124,7 @@ export function HeroGameServersWidget() {
   return (
     <div className="absolute left-3 top-20 md:left-8 md:top-24 z-10 flex flex-col gap-1.5 md:gap-2">
       {/* Label — hidden on mobile to save space, visible on md+ */}
-      <p className="font-tech font-semibold text-[12px] p-2 uppercase tracking-[0.2em] text-white/40 select-none pl-1">
+      <p className="hidden md:block font-tech font-semibold text-[12px] p-2 uppercase tracking-[0.2em] text-white/40 select-none pl-1">
         Community Games
       </p>
 

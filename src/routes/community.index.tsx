@@ -46,6 +46,8 @@ interface GameCardProps {
   ctaHref: "/servers" | "/guilds";
   accentLine: string;
   accentTag: string;
+  /** "filled" = bg-white text-black; "outlined" = border+glass style */
+  ctaVariant?: "filled" | "outlined";
 }
 
 function GameCard({
@@ -59,6 +61,7 @@ function GameCard({
   ctaHref,
   accentLine,
   accentTag,
+  ctaVariant = "outlined",
 }: GameCardProps) {
   return (
     <article className="clip-angle-lg group relative flex flex-col overflow-hidden border border-white/[0.07] bg-[oklch(0.055_0_0)] shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset] transition duration-500 hover:shadow-[0_24px_64px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.06)_inset]">
@@ -125,7 +128,11 @@ function GameCard({
 
         <Link
           to={ctaHref}
-          className={`relative mt-5 clip-cta inline-flex h-11 w-full items-center justify-center gap-2 font-tech text-ui-readable uppercase transition duration-300 ${accentLine.includes("transparent") ? "bg-white text-black hover:bg-white/92 border border-transparent" : "border border-white/25 bg-white/6 text-white backdrop-blur-sm hover:bg-white/10"}`}
+          className={`relative mt-5 clip-cta inline-flex h-11 w-full items-center justify-center gap-2 font-tech text-ui-readable uppercase transition duration-300 ${
+            ctaVariant === "filled"
+              ? "bg-white text-black hover:bg-white/92 border border-transparent"
+              : "border border-white/25 bg-white/6 text-white backdrop-blur-sm hover:bg-white/10"
+          }`}
         >
           {ctaLabel}
           <span aria-hidden className="text-sm leading-none">
@@ -346,7 +353,7 @@ function CommunityPage() {
       </section>
 
       {/* ── Tab bar ────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 border-b border-white/[0.07] bg-[oklch(0.055_0_0)] backdrop-blur-md">
+      <div className="sticky sticky-below-header z-30 border-b border-white/[0.07] bg-[oklch(0.055_0_0)] backdrop-blur-md">
         <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex gap-1 overflow-x-auto py-2 scrollbar-none">
