@@ -164,7 +164,7 @@ function ApplyModal({ guild, onClose }: { guild: Guild; onClose: () => void }) {
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">
+        <div className="px-4 py-5 sm:px-6 sm:py-5">
           <p className="mb-4 text-sm leading-6 text-white/50">
             Copy the template below, fill in your details, then post it in the Black Rose Discord
             verification channel.
@@ -341,14 +341,16 @@ function GuildsPage() {
             together in the world.
           </p>
 
-          {/* Stats strip — matches servers page pattern */}
-          <div className="mt-10 inline-grid grid-cols-3 divide-x divide-white/8 border border-white/8 bg-white/2.5">
+          {/* Stats strip — 2 items, full-width on mobile */}
+          <div className="mt-10 grid w-full max-w-xl grid-cols-2 divide-x divide-white/8 border border-white/8 bg-white/2.5 sm:inline-grid sm:w-auto">
             {[
               { label: "Active Guilds", value: WWM_GUILDS.length },
               { label: "Platform", value: "PC · PS5 · Mobile" },
             ].map((s) => (
-              <div key={s.label} className="px-6 py-5">
-                <div className="font-display text-3xl tracking-display md:text-4xl">{s.value}</div>
+              <div key={s.label} className="px-4 py-4 sm:px-6 sm:py-5">
+                <div className="font-display text-2xl tracking-display sm:text-3xl md:text-4xl">
+                  {s.value}
+                </div>
                 <div className="mt-1 font-tech text-label-readable uppercase text-muted-foreground">
                   {s.label}
                 </div>

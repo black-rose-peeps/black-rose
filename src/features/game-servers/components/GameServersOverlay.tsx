@@ -3,9 +3,6 @@ import { usePalworldServers } from "../hooks/usePalworldServers";
 
 // ---------------------------------------------------------------------------
 // Game registry
-//
-// Add future games here. Games with `hasServers: true` show live server stats.
-// Games with `hasServers: false` show a static subtitle.
 // ---------------------------------------------------------------------------
 
 interface CommunityGame {
@@ -44,12 +41,11 @@ const COMMUNITY_GAMES: CommunityGame[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Single floating game icon — receives server data as props (no extra fetches)
+// Single floating game icon
 // ---------------------------------------------------------------------------
 
 interface FloatingGameIconProps {
   game: CommunityGame;
-  // For hasServers games — passed from the single hook call in HeroGameServersWidget
   onlineCount?: number;
   totalServers?: number;
   isLoadingServers?: boolean;
@@ -77,9 +73,9 @@ function FloatingGameIcon({
 
   return (
     <Link to={game.href} aria-label={game.label} className="group relative flex items-center">
-      {/* Circle icon — 56 px */}
+      {/* Circle icon — 36px on mobile, 56px on md+ */}
       <div className="relative">
-        <div className="h-14 w-14 overflow-hidden rounded-full ring-1 ring-white/20 shadow-[0_2px_16px_rgba(0,0,0,0.65)] transition-all duration-200 group-hover:ring-white/45 group-hover:scale-110">
+        <div className="h-12 w-12 md:h-14 md:w-14 overflow-hidden rounded-full ring-1 ring-white/20 shadow-[0_2px_12px_rgba(0,0,0,0.6)] transition-all duration-200 group-hover:ring-white/45 group-hover:scale-110">
           <img
             src={game.icon}
             alt={game.label}
@@ -91,22 +87,22 @@ function FloatingGameIcon({
             }}
           />
         </div>
-        {/* Live online dot — only rendered when servers are actually online */}
+        {/* Live online dot */}
         {showDot && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
+          <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2 md:h-3 md:w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400" />
+            <span className="relative inline-flex h-full w-full rounded-full bg-emerald-400" />
           </span>
         )}
       </div>
 
-      {/* Hover tooltip — slides in from left */}
-      <div className="pointer-events-none absolute left-16 flex flex-col opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0">
-        <div className="whitespace-nowrap border border-white/15 bg-black/85 px-3 py-2 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
-          <p className="font-tech text-sm uppercase tracking-widest leading-none text-white">
+      {/* Hover tooltip — slides right, same on all screen sizes */}
+      <div className="pointer-events-none absolute left-10 md:left-16 flex flex-col opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0 z-10">
+        <div className="whitespace-nowrap border border-white/15 bg-black/90 px-2.5 py-1.5 md:px-3 md:py-2 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+          <p className="font-tech text-xs md:text-sm uppercase tracking-widest leading-none text-white">
             {game.label}
           </p>
-          <p className="mt-1 font-tech text-xs uppercase tracking-[0.06em] leading-none text-white/50">
+          <p className="mt-0.5 md:mt-1 font-tech text-[9px] md:text-xs uppercase tracking-[0.06em] leading-none text-white/50">
             {tooltipSubtitle}
           </p>
         </div>
@@ -116,26 +112,26 @@ function FloatingGameIcon({
 }
 
 // ---------------------------------------------------------------------------
-// Main widget — single hook call, data passed down to each icon
+// Main overlay widget — absolute-positioned, visible on all screen sizes
 // ---------------------------------------------------------------------------
 
 export function HeroGameServersWidget() {
-  // ONE hook call — shared across all game icons that need server data
+  // Single hook call — shared across all icons that need server data
   const { servers, isLoading: isLoadingServers } = usePalworldServers();
   const onlineCount = servers.filter((s) => s.online).length;
   const totalServers = servers.length;
 
   return (
-    <div className="absolute left-8 top-24 z-10 hidden md:flex flex-col gap-2">
-      {/* "Community Games" header label */}
+    <div className="absolute left-3 top-20 md:left-8 md:top-24 z-10 flex flex-col gap-1.5 md:gap-2">
+      {/* Label — hidden on mobile to save space, visible on md+ */}
       <p className="font-tech font-semibold text-[12px] p-2 uppercase tracking-[0.2em] text-white/40 select-none pl-1">
         Community Games
       </p>
 
       {/* Line + icons side by side */}
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-1.5 md:gap-2">
         <div className="w-px self-stretch mt-0.5" />
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2 md:gap-2.5">
           {COMMUNITY_GAMES.map((game) => (
             <FloatingGameIcon
               key={game.id}

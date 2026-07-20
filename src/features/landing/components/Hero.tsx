@@ -30,7 +30,7 @@ export function Hero() {
       <div className="pointer-events-none absolute left-6 top-24 hidden h-32 w-32 border-l border-t border-border md:block" />
       <div className="pointer-events-none absolute right-6 top-24 hidden h-32 w-32 border-r border-t border-border md:block" />
 
-      {/* Active game servers widget — top-left, Discord overlay style */}
+      {/* Active game servers widget — top-left overlay, visible on all screen sizes */}
       <HeroGameServersWidget />
 
       <div className="relative mx-auto flex max-w-5xl flex-col items-center px-6 text-center">
