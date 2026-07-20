@@ -1,62 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { PalworldServerDetail, PalworldServerSettings } from "../types";
-
-const REQUEST_TIMEOUT_MS = 8_000;
-
-interface ServerConfig {
-  id: string;
-  baseUrl: string;
-  username: string;
-  password: string;
-}
-
-function getServerConfig(serverId: string): ServerConfig | null {
-  // serverId is like "server-1", "server-2", etc.
-  const num = serverId.replace("server-", "");
-  const baseUrl = process.env[`PALWORLD_SERVER_${num}_BASE_URL`];
-  const username = process.env[`PALWORLD_SERVER_${num}_USERNAME`] ?? "admin";
-  const password = process.env[`PALWORLD_SERVER_${num}_PASSWORD`];
-  if (!baseUrl || !password) return null;
-  return { id: serverId, baseUrl, username, password };
-}
-
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function extractShortName(fullName: string | undefined, fallback: string): string {
-  if (!fullName?.trim()) return fallback;
-  const parts = fullName.trim().split(/\s+/);
-  return parts[parts.length - 1] ?? fallback;
-}
-
-/** Static name map — matches the Bruno environment files */
-const SERVER_KNOWN_NAMES: Record<string, string> = {
-  "server-1": "Noir",
-  "server-2": "Noctis",
-  "server-3": "Enigma",
-  "server-4": "ACE",
-};
-
-function knownShortName(serverId: string): string {
-  return SERVER_KNOWN_NAMES[serverId] ?? serverId;
-}
-
-function knownFullName(serverId: string): string {
-  const short = SERVER_KNOWN_NAMES[serverId];
-  return short ? `Black Rose Palworld ${short}` : serverId;
-}
+import {
+  REQUEST_TIMEOUT_MS,
+  getServerConfig,
+  fetchWithTimeout,
+  extractShortName,
+  knownShortName,
+  knownFullName,
+  basicAuthHeader,
+} from "./palworld-server.utils";
 
 export const fetchPalworldServerDetail = createServerFn({ method: "POST" })
   .validator((data: { serverId: string }) => {
     if (!data?.serverId?.trim()) throw new Error("Missing serverId.");
-    // Only allow server-1 through server-4
     if (!/^server-[1-4]$/.test(data.serverId.trim())) throw new Error("Invalid serverId.");
     return { serverId: data.serverId.trim() };
   })
@@ -83,8 +39,7 @@ export const fetchPalworldServerDetail = createServerFn({ method: "POST" })
 
     if (!config) return offline;
 
-    const authHeader =
-      "Basic " + Buffer.from(`${config.username}:${config.password}`).toString("base64");
+    const authHeader = basicAuthHeader(config.username, config.password);
     const headers: Record<string, string> = {
       Accept: "application/json",
       Authorization: authHeader,

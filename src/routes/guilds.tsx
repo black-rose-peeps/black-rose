@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Copy, Check } from "lucide-react";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
@@ -81,6 +81,7 @@ function CopyButton({ value, label = "Copy" }: { value: string; label?: string }
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
+    if (!navigator.clipboard?.writeText) return;
     void navigator.clipboard.writeText(value).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -115,8 +116,20 @@ function CopyButton({ value, label = "Copy" }: { value: string; label?: string }
 function ApplyModal({ guild, onClose }: { guild: Guild; onClose: () => void }) {
   const template = buildApplicationTemplate(guild.guildKey);
 
+  // Close on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Apply to BLKRose-${guild.guildKey}`}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

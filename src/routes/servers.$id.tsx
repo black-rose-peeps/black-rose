@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { ArrowLeft, Copy, Check, Lock, X, Users } from "lucide-react";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
@@ -43,7 +43,7 @@ function formatMultiplier(value: unknown): string {
   return `×${num.toFixed(1)}`;
 }
 
-function formatBool(value: unknown): React.ReactNode {
+function formatBool(value: unknown): ReactNode {
   if (value === undefined || value === null) return <span className="text-white/30">—</span>;
   return value ? (
     <span className="text-emerald-400">Yes</span>
@@ -100,7 +100,7 @@ function StatusBadge({ online }: { online: boolean }) {
 
 interface SettingRowProps {
   label: string;
-  value: React.ReactNode;
+  value: ReactNode;
 }
 function SettingRow({ label, value }: SettingRowProps) {
   return (
@@ -264,6 +264,33 @@ function JoinServerPanel({ serverId }: JoinServerPanelProps) {
 
   // The current page path — passed to /login so user returns here after auth
   const returnPath = `/servers/${routeId}` as const;
+
+  // ── ACE server — exclusive access, connection details not public ──────────
+  // server-4 is the ACE server; its join info is intentionally withheld from
+  // all users regardless of authentication or verification status.
+  if (serverId === "server-4") {
+    return (
+      <div className="mt-8 relative flex flex-col gap-3 border border-white/8 bg-white/2 p-5 sm:flex-row sm:items-center sm:gap-5">
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-white/15 to-transparent" />
+        <div className="flex items-start gap-3 flex-1">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-white/25" />
+          <div>
+            <p className="font-tech text-[10px] uppercase tracking-wider text-white/50">
+              Exclusive Access
+            </p>
+            <p className="mt-1 text-sm leading-snug text-white/40">
+              Connection details for this server are not publicly available. Access is by invitation
+              only.
+            </p>
+          </div>
+        </div>
+        <div className="clip-cta shrink-0 inline-flex h-10 cursor-not-allowed items-center gap-2 border border-white/10 bg-white/3 px-5 font-tech text-[10px] uppercase tracking-wider text-white/25 sm:self-center">
+          <Lock className="h-3 w-3" />
+          Exclusive
+        </div>
+      </div>
+    );
+  }
 
   async function handleReveal() {
     if (!session) return;
@@ -666,8 +693,16 @@ function PlayerRow({ player, rank }: { player: PalworldPlayer; rank: number }) {
   );
 }
 
-function ActivePlayersPanel({ serverId, online }: { serverId: string; online: boolean }) {
-  const { players, isLoading, lastUpdated, refetch } = usePalworldPlayers(serverId);
+function ActivePlayersPanel({
+  serverId,
+  online,
+  memberId,
+}: {
+  serverId: string;
+  online: boolean;
+  memberId: string | undefined;
+}) {
+  const { players, isLoading, lastUpdated, refetch } = usePalworldPlayers(serverId, memberId);
 
   if (!online) {
     return (
@@ -765,6 +800,8 @@ function ActivePlayersPanel({ serverId, online }: { serverId: string; online: bo
 function ServerDetailPage() {
   const { id } = Route.useParams();
   const { server, isLoading, error } = usePalworldServerDetail(id);
+  const session = useMemberSession();
+  const memberId = session && hasFullMemberAccess(session.role) ? session.id : undefined;
   const [activeTab, setActiveTab] = useState<"overview" | "players">("overview");
 
   const serverNum = id.replace("server-", "");
@@ -890,7 +927,11 @@ function ServerDetailPage() {
               )}
 
               {activeTab === "players" && (
-                <ActivePlayersPanel serverId={id} online={server?.online ?? false} />
+                <ActivePlayersPanel
+                  serverId={id}
+                  online={server?.online ?? false}
+                  memberId={memberId}
+                />
               )}
             </div>
           </main>

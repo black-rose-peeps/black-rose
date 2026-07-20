@@ -120,8 +120,18 @@ function AuthCallbackPage() {
         let destination: string = getPostAuthPath(user.role);
         try {
           const stored = localStorage.getItem("br_post_auth_redirect");
-          if (stored && stored.startsWith("/")) {
+          // Accept only same-origin paths: must start with "/" but not "//" or "/\"
+          // (protocol-relative URLs like //evil.com would bypass the origin check)
+          if (
+            stored &&
+            stored.startsWith("/") &&
+            !stored.startsWith("//") &&
+            !stored.startsWith("/\\")
+          ) {
             destination = stored;
+            localStorage.removeItem("br_post_auth_redirect");
+          } else if (stored) {
+            // Invalid value — discard it silently
             localStorage.removeItem("br_post_auth_redirect");
           }
         } catch {
