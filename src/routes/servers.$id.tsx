@@ -278,9 +278,9 @@ function JoinServerPanel({ serverId }: JoinServerPanelProps) {
   const returnPath = `/servers/${routeId}` as const;
 
   // ── ACE server — exclusive access, connection details not public ──────────
-  // server-4 is the ACE server; its join info is intentionally withheld from
+  // server-0 is the ACE server; its join info is intentionally withheld from
   // all users regardless of authentication or verification status.
-  if (serverId === "server-4") {
+  if (serverId === "server-0") {
     return (
       <div className="mt-8 relative flex flex-col gap-3 border border-white/8 bg-white/2 p-5 sm:flex-row sm:items-center sm:gap-5">
         <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-white/15 to-transparent" />

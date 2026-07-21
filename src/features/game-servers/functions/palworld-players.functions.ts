@@ -5,6 +5,7 @@ import {
   getServerConfig,
   fetchWithTimeout,
   basicAuthHeader,
+  isConfiguredServerId,
 } from "./palworld-server.utils";
 
 /**
@@ -16,8 +17,10 @@ export const fetchPalworldPlayers = createServerFn({ method: "POST" })
   .validator((data: { serverId: string; memberId: string }) => {
     if (!data?.serverId?.trim()) throw new Error("Missing serverId.");
     if (!data?.memberId?.trim()) throw new Error("Missing memberId.");
-    if (!/^server-[1-4]$/.test(data.serverId.trim())) throw new Error("Invalid serverId.");
-    return { serverId: data.serverId.trim(), memberId: data.memberId.trim() };
+    const id = data.serverId.trim();
+    if (!/^server-\d+$/.test(id) || !isConfiguredServerId(id))
+      throw new Error("Invalid or unconfigured serverId.");
+    return { serverId: id, memberId: data.memberId.trim() };
   })
   .handler(async ({ data }): Promise<PalworldPlayersResult> => {
     // Validate the session cookie matches the claimed memberId

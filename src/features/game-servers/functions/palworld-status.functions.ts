@@ -71,11 +71,23 @@ async function queryServer(config: ServerConfig): Promise<PalworldServerStatus> 
 /**
  * Server function — proxies Palworld REST API calls server-side so credentials
  * never reach the browser. Returns safe public-facing fields only.
+ *
+ * Display order: server-1, server-2, … server-N, then server-0 (ACE) last.
  */
 export const fetchPalworldServers = createServerFn({ method: "GET" }).handler(
   async (): Promise<PalworldServersResult> => {
     const configs = loadServerConfigs();
     const servers = await Promise.all(configs.map(queryServer));
+
+    // server-0 (ACE) is pinned to the end regardless of its numeric ID.
+    servers.sort((a, b) => {
+      if (a.id === "server-0") return 1;
+      if (b.id === "server-0") return -1;
+      const numA = parseInt(a.id.replace("server-", ""), 10);
+      const numB = parseInt(b.id.replace("server-", ""), 10);
+      return numA - numB;
+    });
+
     return { servers, fetchedAt: new Date().toISOString() };
   },
 );

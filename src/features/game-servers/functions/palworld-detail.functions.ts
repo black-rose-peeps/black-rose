@@ -8,13 +8,16 @@ import {
   knownShortName,
   knownFullName,
   basicAuthHeader,
+  isConfiguredServerId,
 } from "./palworld-server.utils";
 
 export const fetchPalworldServerDetail = createServerFn({ method: "POST" })
   .validator((data: { serverId: string }) => {
     if (!data?.serverId?.trim()) throw new Error("Missing serverId.");
-    if (!/^server-[1-4]$/.test(data.serverId.trim())) throw new Error("Invalid serverId.");
-    return { serverId: data.serverId.trim() };
+    const id = data.serverId.trim();
+    if (!/^server-\d+$/.test(id) || !isConfiguredServerId(id))
+      throw new Error("Invalid or unconfigured serverId.");
+    return { serverId: id };
   })
   .handler(async ({ data }): Promise<PalworldServerDetail> => {
     const config = getServerConfig(data.serverId);
