@@ -1,17 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import { isConfiguredServerId } from "./palworld-server.utils";
 
 export interface PalworldJoinInfo {
   host: string;
   /** In-game join password shown to the player */
   joinPassword: string | null;
 }
-
-const SERVER_JOIN_INFO: Record<string, { host: string; envPasswordKey: string }> = {
-  "server-1": { host: "", envPasswordKey: "PALWORLD_SERVER_1_JOIN_PASSWORD" },
-  "server-2": { host: "", envPasswordKey: "PALWORLD_SERVER_2_JOIN_PASSWORD" },
-  "server-3": { host: "", envPasswordKey: "PALWORLD_SERVER_3_JOIN_PASSWORD" },
-  "server-4": { host: "", envPasswordKey: "PALWORLD_SERVER_4_JOIN_PASSWORD" },
-};
 
 function getJoinHost(serverId: string): string {
   const envKey = `PALWORLD_SERVER_${serverId.replace("server-", "")}_JOIN_HOST`;
@@ -32,8 +26,10 @@ export const fetchPalworldJoinInfo = createServerFn({ method: "POST" })
   .validator((data: { serverId: string; memberId: string }) => {
     if (!data?.serverId?.trim()) throw new Error("Missing serverId.");
     if (!data?.memberId?.trim()) throw new Error("Missing memberId.");
-    if (!/^server-[1-4]$/.test(data.serverId.trim())) throw new Error("Invalid serverId.");
-    return { serverId: data.serverId.trim(), memberId: data.memberId.trim() };
+    const id = data.serverId.trim();
+    if (!/^server-\d+$/.test(id) || !isConfiguredServerId(id))
+      throw new Error("Invalid or unconfigured serverId.");
+    return { serverId: id, memberId: data.memberId.trim() };
   })
   .handler(async ({ data }): Promise<PalworldJoinInfo> => {
     // Validate the session cookie matches the claimed memberId
