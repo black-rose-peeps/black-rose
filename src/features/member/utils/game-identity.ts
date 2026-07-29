@@ -99,6 +99,15 @@ const GAME_IDENTITY_CONFIG: Record<Game, Omit<GameIdentityConfig, "game">> = {
     helperText: "Uses your shared Riot ID — the same name and tagline as Valorant and League.",
     usesValorantRiotId: true,
   },
+  "Marvel Rivals": {
+    panelLabel: "Marvel Rivals",
+    panelTitle: "In-Game Identity",
+    fieldLabel: "Player Name",
+    fieldPlaceholder: "Your Marvel Rivals in-game name",
+    helperText:
+      "Used on Marvel Rivals team rosters and tournament brackets — enter the name shown in-game.",
+    usesValorantRiotId: false,
+  },
   Multi: {
     panelLabel: "Multi-game",
     panelTitle: "In-Game Identity",

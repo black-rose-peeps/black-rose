@@ -13,7 +13,8 @@ export type TournamentGame =
   | "Valorant"
   | "League of Legends"
   | "Teamfight Tactics"
-  | "Where Winds Meet";
+  | "Where Winds Meet"
+  | "Marvel Rivals";
 
 export interface Tournament {
   id: string;

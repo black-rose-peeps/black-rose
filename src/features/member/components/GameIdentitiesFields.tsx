@@ -220,7 +220,7 @@ export function GameIdentitiesFields({
       (focusGame === "Marvel Rivals" && primarySection !== "marvel-rivals")),
   );
 
-  const [otherOpen, setOtherOpen] = useState(
+  const shouldExpandOther = useMemo(
     () =>
       focusNeedsSecondary ||
       (secondarySections.includes("riot") && hasRiotIdentity(identitySource)) ||
@@ -229,11 +229,14 @@ export function GameIdentitiesFields({
       (secondarySections.includes("marvel-rivals") &&
         hasIdentityForGame("Marvel Rivals", identitySource)) ||
       (secondarySections.includes("palworld") && hasIdentityForGame("Palworld", identitySource)),
+    [focusNeedsSecondary, secondarySections, identitySource],
   );
 
+  const [otherOpen, setOtherOpen] = useState(() => shouldExpandOther);
+
   useEffect(() => {
-    if (focusNeedsSecondary) setOtherOpen(true);
-  }, [focusNeedsSecondary]);
+    if (shouldExpandOther) setOtherOpen(true);
+  }, [shouldExpandOther]);
 
   const mainConfig = mainGame ? gameIdentityConfig(mainGame) : null;
   const primaryLabel =
@@ -363,7 +366,7 @@ export function GameIdentitiesFields({
               <TechPanel
                 label="Marvel Rivals"
                 title="In-Game Name"
-                className={cn(focusGame === "Marvel Rivals    " && "ring-1 ring-white/15")}
+                className={cn(focusGame === "Marvel Rivals" && "ring-1 ring-white/15")}
               >
                 <MarvelRivalsFields
                   value={gameIdentities["Marvel Rivals"] ?? ""}
