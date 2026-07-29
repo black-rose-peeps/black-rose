@@ -17,12 +17,7 @@ export type TournamentStatus =
 export interface MockTournament {
   id: string;
   name: string;
-  game:
-    | "Valorant"
-    | "League of Legends"
-    | "Teamfight Tactics"
-    | "Where Winds Meet"
-    | "Marvel Rivals";
+  game: "Valorant" | "League of Legends" | "Teamfight Tactics" | "Where Winds Meet" | "Marvel Rivals";
   status: TournamentStatus;
   prizePool: string;
   prizeBreakdown?: PrizeTier[];

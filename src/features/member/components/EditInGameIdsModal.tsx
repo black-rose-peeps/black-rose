@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,19 +57,21 @@ export function EditInGameIdsModal({
   const [gameIdentities, setGameIdentities] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const prevOpenRef = useRef(false);
 
   const gameOptions = useMemo(() => profileGameSelectOptions(mainGame), [mainGame]);
 
   useEffect(() => {
-    if (!open) return;
-
-    const form = profileFormStateFromMember(profile);
-    setMainGame(form.mainGame);
-    setValorantGameName(form.valorantGameName);
-    setValorantTagline(form.valorantTagline);
-    setGameIdentities({ ...form.gameIdentities });
-    setSaving(false);
-    setError(null);
+    if (!prevOpenRef.current && open) {
+      const form = profileFormStateFromMember(profile);
+      setMainGame(form.mainGame);
+      setValorantGameName(form.valorantGameName);
+      setValorantTagline(form.valorantTagline);
+      setGameIdentities({ ...form.gameIdentities });
+      setSaving(false);
+      setError(null);
+    }
+    prevOpenRef.current = open;
   }, [open, profile]);
 
   async function handleSubmit(e: React.FormEvent) {

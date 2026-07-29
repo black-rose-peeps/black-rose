@@ -229,7 +229,7 @@ export function GameIdentitiesFields({
       (secondarySections.includes("marvel-rivals") &&
         hasIdentityForGame("Marvel Rivals", identitySource)) ||
       (secondarySections.includes("palworld") && hasIdentityForGame("Palworld", identitySource)),
-    [focusNeedsSecondary, secondarySections, identitySource],
+    [focusNeedsSecondary, secondarySections, valorantGameName, valorantTagline, gameIdentities],
   );
 
   const [otherOpen, setOtherOpen] = useState(() => shouldExpandOther);

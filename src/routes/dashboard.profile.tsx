@@ -657,7 +657,6 @@ function ProfileEditPage() {
             </TechPanel>
 
             <GameIdentitiesFields
-              key={`${mainGame}:${valorantGameName}:${valorantTagline}:${Object.keys(gameIdentities).sort().join(",")}`}
               mainGame={mainGame}
               focusGame={focusGame}
               valorantGameName={valorantGameName}

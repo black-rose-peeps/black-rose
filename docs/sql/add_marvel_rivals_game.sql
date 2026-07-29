@@ -1,8 +1,14 @@
 -- Add "Marvel Rivals" to game enums used by teams and tournaments.
--- Run in Supabase SQL Editor after deploying the app update.
+-- Run in Supabase SQL Editor before deploying code that emits "Marvel Rivals".
+-- The feature must not be enabled until this database enum update succeeds.
 
 -- Teams: public.teams.game → team_game
-alter type public.team_game add value if not exists 'Marvel Rivals';
+do $$
+begin
+  if exists (select 1 from pg_type where typname = 'team_game' and typnamespace = 'public'::regnamespace) then
+    execute 'alter type public.team_game add value if not exists ''Marvel Rivals''';
+  end if;
+end $$;
 
 -- Tournaments: public.tournaments.game → tournament_game (skip if your DB
 -- reuses team_game for tournaments — see diagnostic query at the bottom).

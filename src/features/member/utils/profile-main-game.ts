@@ -14,10 +14,12 @@ export function resolveProfileMainGame(raw: string | null | undefined): string {
   return trimmed;
 }
 
-/** Value persisted to member_profiles.main_game. */
+/** Value persisted to member_profiles.main_game. Returns null for non-allowlisted games. */
 export function resolveStoredMainGame(raw: string | null | undefined): string | null {
   const resolved = resolveProfileMainGame(raw);
-  return resolved || null;
+  if (!resolved) return null;
+  if ((PROFILE_GAME_OPTIONS as readonly string[]).includes(resolved)) return resolved;
+  return null;
 }
 
 export function profileGameSelectOptions(currentGame: string): readonly string[] {
