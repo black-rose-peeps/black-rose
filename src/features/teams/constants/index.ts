@@ -2,6 +2,7 @@ import type { TeamMemberRole } from "../types";
 
 export type Game =
   | "Valorant"
+  | "Marvel Rivals"
   | "League of Legends"
   | "Teamfight Tactics"
   | "Where Winds Meet"
@@ -10,6 +11,7 @@ export type Game =
 
 export const GAME_OPTIONS: { value: Game; label: string }[] = [
   { value: "Valorant", label: "Valorant" },
+  { value: "Marvel Rivals", label: "Marvel Rivals" },
   { value: "League of Legends", label: "League of Legends" },
   { value: "Teamfight Tactics", label: "Teamfight Tactics" },
   { value: "Where Winds Meet", label: "Where Winds Meet" },
@@ -38,6 +40,8 @@ export const ROLE_OPTIONS: TeamMemberRole[] = [
   "DPS",
   "Tank",
   "Healer",
+  "Vanguard",
+  "Strategist",
   "Sub",
   "TBD",
 ];
@@ -60,6 +64,15 @@ const LOL_ROLES: TeamMemberRole[] = [
   "ADC",
   "Support",
   "IGL",
+  "Flex",
+  "Sub",
+  "TBD",
+];
+
+const MARVEL_RIVALS_ROLES: TeamMemberRole[] = [
+  "Vanguard",
+  "Duelist",
+  "Strategist",
   "Flex",
   "Sub",
   "TBD",
@@ -114,6 +127,8 @@ export function getRoleOptionsForGame(game: string): TeamMemberRole[] {
       return WWM_ROLES;
     case "Palworld":
       return PALWORLD_ROLES;
+    case "Marvel Rivals":
+      return MARVEL_RIVALS_ROLES;
     case "Multi":
       return GENERIC_ROLES;
     default:
@@ -148,6 +163,7 @@ export const GAME_ACCENT: Record<Game, string> = {
   "Teamfight Tactics": "from-violet-500/20 via-violet-500/5 to-transparent",
   "Where Winds Meet": "from-cyan-500/20 via-cyan-500/5 to-transparent",
   Palworld: "from-emerald-500/20 via-emerald-500/5 to-transparent",
+  "Marvel Rivals": "from-rose-500/20 via-rose-500/5 to-transparent",
   Multi: "from-white/10 via-white/5 to-transparent",
 };
 

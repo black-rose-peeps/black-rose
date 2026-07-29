@@ -22,15 +22,17 @@ interface GameIdentitiesFieldsProps extends MemberIdentitySource {
   onGameIdentityChange: (game: string, value: string) => void;
 }
 
-type IdentitySection = "riot" | "wwm" | "palworld";
+type IdentitySection = "riot" | "wwm" | "palworld" | "marvel-rivals";
 
 function resolvePrimarySection(mainGame: string, focusGame?: string): IdentitySection | null {
   if (isRiotGame(mainGame)) return "riot";
   if (mainGame === "Where Winds Meet") return "wwm";
   if (mainGame === "Palworld") return "palworld";
+  if (mainGame === "Marvel Rivals") return "marvel-rivals";
   if (focusGame && isRiotGame(focusGame)) return "riot";
   if (focusGame === "Where Winds Meet") return "wwm";
   if (focusGame === "Palworld") return "palworld";
+  if (focusGame === "Marvel Rivals") return "marvel-rivals";
   return null;
 }
 
@@ -155,6 +157,34 @@ function PalworldFields({ value, onChange }: { value: string; onChange: (value: 
   );
 }
 
+function MarvelRivalsFields({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const config = gameIdentityConfig("Marvel Rivals");
+
+  return (
+    <>
+      <p className="mb-5 text-xs leading-relaxed text-muted-foreground">{config?.helperText}</p>
+      <div className="space-y-2">
+        <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+          {config?.fieldLabel}
+        </Label>
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={config?.fieldPlaceholder}
+          maxLength={64}
+          className={techFieldClass}
+        />
+      </div>
+    </>
+  );
+}
+
 export function GameIdentitiesFields({
   mainGame = "",
   valorantGameName,
@@ -178,6 +208,7 @@ export function GameIdentitiesFields({
     if (primarySection !== "riot") sections.push("riot");
     if (primarySection !== "wwm") sections.push("wwm");
     if (primarySection !== "palworld") sections.push("palworld");
+    if (primarySection !== "marvel-rivals") sections.push("marvel-rivals");
     return sections;
   }, [primarySection]);
 
@@ -185,7 +216,8 @@ export function GameIdentitiesFields({
     focusGame &&
     ((isRiotGame(focusGame) && primarySection !== "riot") ||
       (focusGame === "Where Winds Meet" && primarySection !== "wwm") ||
-      (focusGame === "Palworld" && primarySection !== "palworld")),
+      (focusGame === "Palworld" && primarySection !== "palworld") ||
+      (focusGame === "Marvel Rivals" && primarySection !== "marvel-rivals")),
   );
 
   const [otherOpen, setOtherOpen] = useState(
@@ -194,6 +226,8 @@ export function GameIdentitiesFields({
       (secondarySections.includes("riot") && hasRiotIdentity(identitySource)) ||
       (secondarySections.includes("wwm") &&
         hasIdentityForGame("Where Winds Meet", identitySource)) ||
+      (secondarySections.includes("marvel-rivals") &&
+        hasIdentityForGame("Marvel Rivals", identitySource)) ||
       (secondarySections.includes("palworld") && hasIdentityForGame("Palworld", identitySource)),
   );
 
@@ -209,7 +243,9 @@ export function GameIdentitiesFields({
         ? "Where Winds Meet"
         : primarySection === "palworld"
           ? "Palworld"
-          : (mainConfig?.panelLabel ?? "In-Game Identity");
+          : primarySection === "marvel-rivals"
+            ? "Marvel Rivals"
+            : (mainConfig?.panelLabel ?? "In-Game Identity");
 
   return (
     <div className="mt-5 flex flex-col gap-4">
@@ -244,6 +280,11 @@ export function GameIdentitiesFields({
             <PalworldFields
               value={gameIdentities["Palworld"] ?? ""}
               onChange={(value) => onGameIdentityChange("Palworld", value)}
+            />
+          ) : primarySection === "marvel-rivals" ? (
+            <MarvelRivalsFields
+              value={gameIdentities["Marvel Rivals"] ?? ""}
+              onChange={(value) => onGameIdentityChange("Marvel Rivals", value)}
             />
           ) : (
             <WhereWindsMeetFields
@@ -315,6 +356,18 @@ export function GameIdentitiesFields({
                 <PalworldFields
                   value={gameIdentities["Palworld"] ?? ""}
                   onChange={(value) => onGameIdentityChange("Palworld", value)}
+                />
+              </TechPanel>
+            )}
+            {secondarySections.includes("marvel-rivals") && (
+              <TechPanel
+                label="Marvel Rivals"
+                title="In-Game Name"
+                className={cn(focusGame === "Marvel Rivals    " && "ring-1 ring-white/15")}
+              >
+                <MarvelRivalsFields
+                  value={gameIdentities["Marvel Rivals"] ?? ""}
+                  onChange={(value) => onGameIdentityChange("Marvel Rivals", value)}
                 />
               </TechPanel>
             )}
