@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -41,7 +41,6 @@ import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { useMemberProfileQuery } from "@/features/member/queries/member-profile-queries";
 import { queryKeys } from "@/lib/query-keys";
 import {
-  PROFILE_GAME_OPTIONS,
   PROFILE_REGION_OPTIONS,
   SOCIAL_PLATFORM_LABELS,
   SOCIAL_PLATFORM_ORDER,
@@ -57,9 +56,33 @@ import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
 import { validateGameIdentitiesInput } from "@/features/member/utils/game-identity";
+import {
+  profileFormStateFromMember,
+  socialsFromProfile,
+  type ProfileSocialFormState,
+} from "@/features/member/utils/profile-form-state";
+import {
+  profileGameSelectOptions,
+  resolveProfileMainGame,
+} from "@/features/member/utils/profile-main-game";
 import { cn } from "@/lib/utils";
+import type { QueryClient } from "@tanstack/react-query";
 
 type ProfileTab = "identity" | "player" | "socials" | "privacy";
+
+function isProfileEditPath(path: string): boolean {
+  return path.replace(/\/+$/, "") === "/dashboard/profile";
+}
+
+function normalizeProfilePath(path: string): string {
+  return path.replace(/\/+$/, "") || path;
+}
+
+function readCachedProfileForm(memberId: string | undefined, queryClient: QueryClient) {
+  if (!memberId) return null;
+  const cached = queryClient.getQueryData<MemberProfile>(queryKeys.memberProfile(memberId));
+  return cached ? profileFormStateFromMember(cached) : null;
+}
 
 export const Route = createFileRoute("/dashboard/profile")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -78,7 +101,7 @@ export const Route = createFileRoute("/dashboard/profile")({
   component: ProfileEditPage,
 });
 
-type SocialFormState = Record<SocialPlatform, { url: string; isPublic: boolean }>;
+type SocialFormState = ProfileSocialFormState;
 
 const EMPTY_PROFILE: MemberProfile = {
   memberId: "",
@@ -106,18 +129,6 @@ const EMPTY_PROFILE: MemberProfile = {
   profileCompletion: 0,
 };
 
-function socialsFromProfile(profile: MemberProfile): SocialFormState {
-  const state = {} as SocialFormState;
-  for (const platform of SOCIAL_PLATFORM_ORDER) {
-    const link = profile.socialLinks.find((s) => s.platform === platform);
-    state[platform] = {
-      url: link?.url ?? "",
-      isPublic: link?.isPublic ?? true,
-    };
-  }
-  return state;
-}
-
 function applyProfileToForm(
   data: MemberProfile,
   setters: {
@@ -134,18 +145,18 @@ function applyProfileToForm(
     setSocials: (v: SocialFormState) => void;
   },
 ): void {
-  const normalizedGame = normalizeGameKey(data.mainGame) ?? "";
-  setters.setDisplayName(data.displayName);
-  setters.setHeadline(data.headline);
-  setters.setBio(data.bio);
-  setters.setMainGame(normalizedGame);
-  setters.setMainRole(data.mainRole);
-  setters.setRegion(data.region.trim());
-  setters.setValorantGameName(data.valorantGameName);
-  setters.setValorantTagline(data.valorantTagline);
-  setters.setGameIdentities(data.gameIdentities);
-  setters.setIsPublic(data.isPublic);
-  setters.setSocials(socialsFromProfile(data));
+  const form = profileFormStateFromMember(data);
+  setters.setDisplayName(form.displayName);
+  setters.setHeadline(form.headline);
+  setters.setBio(form.bio);
+  setters.setMainGame(form.mainGame);
+  setters.setMainRole(form.mainRole);
+  setters.setRegion(form.region);
+  setters.setValorantGameName(form.valorantGameName);
+  setters.setValorantTagline(form.valorantTagline);
+  setters.setGameIdentities({ ...form.gameIdentities });
+  setters.setIsPublic(form.isPublic);
+  setters.setSocials(form.socials);
 }
 
 function ProfileEditPage() {
@@ -155,27 +166,40 @@ function ProfileEditPage() {
   const { session, isSyncing } = useSyncedMemberSession();
   const memberId = session?.id;
   const profileQuery = useMemberProfileQuery(memberId);
-  const [profile, setProfile] = useState<MemberProfile | null>(null);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const lastHydratedPathRef = useRef<string | null>(null);
+  const lastSyncedDataUpdatedAtRef = useRef<number | null>(null);
+  const isDirtyRef = useRef(false);
+  const prevMemberIdRef = useRef<string | undefined>(undefined);
+  const cachedForm = readCachedProfileForm(memberId, queryClient);
+  const [profile, setProfile] = useState<MemberProfile | null>(
+    () => queryClient.getQueryData<MemberProfile>(queryKeys.memberProfile(memberId ?? "")) ?? null,
+  );
   const [formInitialized, setFormInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [displayName, setDisplayName] = useState("");
-  const [headline, setHeadline] = useState("");
-  const [bio, setBio] = useState("");
-  const [mainGame, setMainGame] = useState("");
-  const [mainRole, setMainRole] = useState("");
-  const [region, setRegion] = useState("");
-  const [valorantGameName, setValorantGameName] = useState("");
-  const [valorantTagline, setValorantTagline] = useState("");
-  const [gameIdentities, setGameIdentities] = useState<Record<string, string>>({});
-  const [isPublic, setIsPublic] = useState(true);
-  const [socials, setSocials] = useState<SocialFormState>(() => socialsFromProfile(EMPTY_PROFILE));
+  const [displayName, setDisplayName] = useState(() => cachedForm?.displayName ?? "");
+  const [headline, setHeadline] = useState(() => cachedForm?.headline ?? "");
+  const [bio, setBio] = useState(() => cachedForm?.bio ?? "");
+  const [mainGame, setMainGame] = useState(() => cachedForm?.mainGame ?? "");
+  const [mainRole, setMainRole] = useState(() => cachedForm?.mainRole ?? "");
+  const [region, setRegion] = useState(() => cachedForm?.region ?? "");
+  const [valorantGameName, setValorantGameName] = useState(() => cachedForm?.valorantGameName ?? "");
+  const [valorantTagline, setValorantTagline] = useState(() => cachedForm?.valorantTagline ?? "");
+  const [gameIdentities, setGameIdentities] = useState<Record<string, string>>(
+    () => cachedForm?.gameIdentities ?? {},
+  );
+  const [isPublic, setIsPublic] = useState(() => cachedForm?.isPublic ?? true);
+  const [socials, setSocials] = useState<SocialFormState>(
+    () => cachedForm?.socials ?? socialsFromProfile(EMPTY_PROFILE),
+  );
   const { celebrationOpen, maybeCelebrate, dismissCelebration } =
     useProfileCompleteCelebration(memberId);
 
   const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
+  const gameOptions = useMemo(() => profileGameSelectOptions(mainGame), [mainGame]);
 
   const normalizedRegion = region.trim();
 
@@ -196,16 +220,45 @@ function ProfileEditPage() {
   }, [mainRole, roleOptions]);
 
   useEffect(() => {
+    if (prevMemberIdRef.current === undefined) {
+      prevMemberIdRef.current = memberId;
+      return;
+    }
+    if (prevMemberIdRef.current === memberId) return;
+
+    prevMemberIdRef.current = memberId;
+    lastHydratedPathRef.current = null;
+    lastSyncedDataUpdatedAtRef.current = null;
+    isDirtyRef.current = false;
     setFormInitialized(false);
-    setProfile(null);
   }, [memberId]);
 
   useEffect(() => {
-    if (!profileQuery.data || formInitialized) return;
+    if (!isProfileEditPath(pathname)) {
+      lastHydratedPathRef.current = null;
+    }
+  }, [pathname]);
 
-    const data = profileQuery.data;
-    setProfile(data);
-    applyProfileToForm(data, {
+  useLayoutEffect(() => {
+    if (!profileQuery.data || !isProfileEditPath(pathname)) return;
+
+    const normalizedPath = normalizeProfilePath(pathname);
+    const enteredProfile = lastHydratedPathRef.current !== normalizedPath;
+    const dataUpdatedAt = profileQuery.dataUpdatedAt;
+    const dataChanged = lastSyncedDataUpdatedAtRef.current !== dataUpdatedAt;
+    const savedMainGame = resolveProfileMainGame(profileQuery.data.mainGame);
+    const formMissingSavedMainGame =
+      !isDirtyRef.current &&
+      Boolean(savedMainGame && !resolveProfileMainGame(mainGame));
+    const shouldSync =
+      enteredProfile ||
+      !formInitialized ||
+      formMissingSavedMainGame ||
+      (dataChanged && !isDirtyRef.current);
+
+    if (!shouldSync) return;
+
+    applyProfileToForm(profileQuery.data, {
       setDisplayName,
       setHeadline,
       setBio,
@@ -218,8 +271,23 @@ function ProfileEditPage() {
       setIsPublic,
       setSocials,
     });
+    setProfile(profileQuery.data);
     setFormInitialized(true);
-  }, [profileQuery.data, formInitialized]);
+    lastHydratedPathRef.current = normalizedPath;
+    lastSyncedDataUpdatedAtRef.current = dataUpdatedAt;
+    if (enteredProfile) isDirtyRef.current = false;
+  }, [
+    pathname,
+    profileQuery.data,
+    profileQuery.dataUpdatedAt,
+    formInitialized,
+    memberId,
+    mainGame,
+  ]);
+
+  const markDirty = () => {
+    isDirtyRef.current = true;
+  };
 
   useEffect(() => {
     if (profileQuery.isError && !formInitialized) {
@@ -237,14 +305,15 @@ function ProfileEditPage() {
     }
   }, [profileQuery.isSuccess, profileQuery.data, formInitialized]);
 
-  const loading = isSyncing || profileQuery.isPending;
+  const loading = isSyncing || (profileQuery.isPending && !profileQuery.data);
 
   if (!session || !hasFullMemberAccess(session.role)) return null;
   if (loading) return <MemberDashboardSkeleton />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!session || !profile) return;
+    const profileSnapshot = profile ?? profileQuery.data;
+    if (!session || !profileSnapshot) return;
 
     setSaving(true);
     setSaved(false);
@@ -262,7 +331,7 @@ function ProfileEditPage() {
     }
 
     try {
-      const previousCompletion = profile.profileCompletion;
+      const previousCompletion = profileSnapshot.profileCompletion;
       const updated = await updateMemberProfile({
         memberId: session.id,
         displayName,
@@ -283,8 +352,23 @@ function ProfileEditPage() {
       });
 
       setProfile(updated);
-      setSocials(socialsFromProfile(updated));
+      applyProfileToForm(updated, {
+        setDisplayName,
+        setHeadline,
+        setBio,
+        setMainGame,
+        setMainRole,
+        setRegion,
+        setValorantGameName,
+        setValorantTagline,
+        setGameIdentities,
+        setIsPublic,
+        setSocials,
+      });
       queryClient.setQueryData(queryKeys.memberProfile(session.id), updated);
+      lastSyncedDataUpdatedAtRef.current =
+        queryClient.getQueryState(queryKeys.memberProfile(session.id))?.dataUpdatedAt ?? null;
+      isDirtyRef.current = false;
       maybeCelebrate(previousCompletion, updated.profileCompletion);
       setSession({
         ...session,
@@ -301,9 +385,10 @@ function ProfileEditPage() {
     }
   }
 
-  const completion = profile?.profileCompletion ?? 0;
+  const completion = (profile ?? profileQuery.data)?.profileCompletion ?? 0;
+  const profileSnapshot = profile ?? profileQuery.data;
 
-  if (error && !profile) {
+  if (error && !profileSnapshot) {
     return (
       <MemberPageLayout maxWidth="max-w-3xl">
         <p className="text-sm text-red-400">{error}</p>
@@ -327,10 +412,10 @@ function ProfileEditPage() {
       <MemberHeroBanner
         eyebrow="Member Profile"
         title="Edit Profile"
-        subtitle={profile ? profileCompletionHint(completion) : undefined}
+        subtitle={profileSnapshot ? profileCompletionHint(completion) : undefined}
         emblemSize="h-40 w-40 sm:h-56 sm:w-56"
         meta={
-          profile && (
+          profileSnapshot && (
             <div className="max-w-xs">
               <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                 <span>{completion}% complete</span>
@@ -352,13 +437,13 @@ function ProfileEditPage() {
           )
         }
         actions={
-          profile && (
+          profileSnapshot && (
             <Button
               asChild
               variant="outline"
               className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
             >
-              <Link to="/members/$slug" params={{ slug: profile.slug }}>
+              <Link to="/members/$slug" params={{ slug: profileSnapshot.slug }}>
                 Preview
               </Link>
             </Button>
@@ -429,7 +514,10 @@ function ProfileEditPage() {
                 </Label>
                 <Input
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  onChange={(e) => {
+                    markDirty();
+                    setDisplayName(e.target.value);
+                  }}
                   required
                   className={techFieldClass}
                 />
@@ -441,7 +529,10 @@ function ProfileEditPage() {
                 </Label>
                 <Input
                   value={headline}
-                  onChange={(e) => setHeadline(e.target.value)}
+                  onChange={(e) => {
+                    markDirty();
+                    setHeadline(e.target.value);
+                  }}
                   placeholder="Valorant Duelist · Black Rose Member"
                   className={techFieldClass}
                 />
@@ -456,7 +547,10 @@ function ProfileEditPage() {
                 </Label>
                 <Textarea
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={(e) => {
+                    markDirty();
+                    setBio(e.target.value);
+                  }}
                   rows={5}
                   placeholder="Tell the community about yourself…"
                   className={cn(
@@ -482,12 +576,18 @@ function ProfileEditPage() {
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Main Game
                   </Label>
-                  <Select value={mainGame || undefined} onValueChange={setMainGame}>
+                  <Select
+                    value={resolveProfileMainGame(mainGame) || undefined}
+                    onValueChange={(value) => {
+                      markDirty();
+                      setMainGame(value);
+                    }}
+                  >
                     <SelectTrigger className={techFieldClass}>
                       <SelectValue placeholder="Select a game" />
                     </SelectTrigger>
                     <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                      {PROFILE_GAME_OPTIONS.map((game) => (
+                      {gameOptions.map((game) => (
                         <SelectItem key={game} value={game} className="font-tech text-xs">
                           {game}
                         </SelectItem>
@@ -508,7 +608,10 @@ function ProfileEditPage() {
                     <Select
                       key={mainGame || "no-game"}
                       value={mainRole || undefined}
-                      onValueChange={setMainRole}
+                      onValueChange={(value) => {
+                        markDirty();
+                        setMainRole(value);
+                      }}
                       disabled={!mainGame}
                     >
                       <SelectTrigger className={techFieldClass}>
@@ -531,7 +634,13 @@ function ProfileEditPage() {
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Region
                   </Label>
-                  <Select value={normalizedRegion || undefined} onValueChange={setRegion}>
+                  <Select
+                    value={normalizedRegion || undefined}
+                    onValueChange={(value) => {
+                      markDirty();
+                      setRegion(value);
+                    }}
+                  >
                     <SelectTrigger className={techFieldClass}>
                       <SelectValue placeholder="Select a region" />
                     </SelectTrigger>
@@ -553,11 +662,18 @@ function ProfileEditPage() {
               valorantGameName={valorantGameName}
               valorantTagline={valorantTagline}
               gameIdentities={gameIdentities}
-              onValorantGameNameChange={setValorantGameName}
-              onValorantTaglineChange={setValorantTagline}
-              onGameIdentityChange={(game, value) =>
-                setGameIdentities((prev) => ({ ...prev, [game]: value }))
-              }
+              onValorantGameNameChange={(value) => {
+                markDirty();
+                setValorantGameName(value);
+              }}
+              onValorantTaglineChange={(value) => {
+                markDirty();
+                setValorantTagline(value);
+              }}
+              onGameIdentityChange={(game, value) => {
+                markDirty();
+                setGameIdentities((prev) => ({ ...prev, [game]: value }));
+              }}
             />
           </TabsContent>
 
@@ -574,12 +690,13 @@ function ProfileEditPage() {
                     </span>
                     <Input
                       value={socials[platform].url}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        markDirty();
                         setSocials((s) => ({
                           ...s,
                           [platform]: { ...s[platform], url: e.target.value },
-                        }))
-                      }
+                        }));
+                      }}
                       placeholder="https://"
                       className={cn(techFieldClass, "flex-1")}
                     />
@@ -587,12 +704,13 @@ function ProfileEditPage() {
                       <Switch
                         checked={socials[platform].isPublic}
                         disabled={!socials[platform].url.trim()}
-                        onCheckedChange={(checked) =>
+                        onCheckedChange={(checked) => {
+                          markDirty();
                           setSocials((s) => ({
                             ...s,
                             [platform]: { ...s[platform], isPublic: checked },
-                          }))
-                        }
+                          }));
+                        }}
                       />
                       <span className="font-tech text-label-readable uppercase text-muted-foreground">
                         Public
@@ -613,7 +731,13 @@ function ProfileEditPage() {
                     When off, only you can view your profile at /members/your-slug.
                   </p>
                 </div>
-                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+                <Switch
+                  checked={isPublic}
+                  onCheckedChange={(checked) => {
+                    markDirty();
+                    setIsPublic(checked);
+                  }}
+                />
               </div>
             </TechPanel>
           </TabsContent>
@@ -624,7 +748,7 @@ function ProfileEditPage() {
         <div className="sticky bottom-0 z-10 -mx-4 mt-8 flex flex-wrap items-center gap-3 border-t border-white/8 bg-background/95 px-4 py-4 backdrop-blur-md safe-bottom sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:mt-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
           <Button
             type="submit"
-            disabled={saving || !profile}
+            disabled={saving || !formInitialized}
             className="clip-cta h-11 w-full rounded-none bg-white px-8 font-tech text-ui-readable uppercase text-black hover:bg-white/90 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -640,13 +764,13 @@ function ProfileEditPage() {
         </div>
       </form>
 
-      {profile && (
+      {profileSnapshot && (
         <ProfileCompleteCelebrationDialog
           open={celebrationOpen}
-          displayName={profile.displayName}
-          avatarUrl={profile.avatarUrl}
-          avatarInitials={profile.avatarInitials}
-          profileSlug={profile.slug}
+          displayName={profileSnapshot.displayName}
+          avatarUrl={profileSnapshot.avatarUrl}
+          avatarInitials={profileSnapshot.avatarInitials}
+          profileSlug={profileSnapshot.slug}
           onDismiss={dismissCelebration}
         />
       )}

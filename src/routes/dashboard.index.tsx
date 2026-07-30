@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Trophy,
   ExternalLink,
@@ -26,6 +26,7 @@ import { ActiveRegistrationsPanel } from "@/features/member/components/ActiveReg
 import { UpcomingMatchesPanel } from "@/features/member/components/UpcomingMatchesPanel";
 import { ProfileCompletionPanel } from "@/features/member/components/ProfileCompletionPanel";
 import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
+import { EditInGameIdsModal } from "@/features/member/components/EditInGameIdsModal";
 import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import { useMemberDashboardPage } from "@/features/member/hooks/useMemberDashboardPage";
 import { MemberDashboardSkeleton } from "@/features/member/components/MemberDashboardSkeleton";
@@ -49,6 +50,7 @@ export const Route = createFileRoute("/dashboard/")({
 
 function DashboardPage() {
   const { session, profile, championships, isLoading } = useMemberDashboardPage();
+  const [inGameIdsOpen, setInGameIdsOpen] = useState(false);
   const { celebrationOpen, celebrateIfUnseen, openCelebration, dismissCelebration } =
     useProfileCompleteCelebration(session?.id);
 
@@ -202,20 +204,19 @@ function DashboardPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">No in-game IDs set</p>
                       <p className="text-xs text-muted-foreground/60">
-                        Add identities per game on the Player tab — required when registering for
+                        Add your main game and in-game IDs — required when registering for
                         tournaments outside your main game.
                       </p>
                     </div>
                   </div>
                   <Button
-                    asChild
+                    type="button"
                     variant="outline"
                     className="rounded-none border-white/10 font-tech text-ui-readable uppercase"
+                    onClick={() => setInGameIdsOpen(true)}
                   >
-                    <Link to="/dashboard/profile" search={{ tab: "player" }}>
-                      <Pencil className="h-3.5 w-3.5" />
-                      {mainConfig ? "Set In-Game IDs" : "Set Main Game & IDs"}
-                    </Link>
+                    <Pencil className="h-3.5 w-3.5" />
+                    {mainConfig ? "Set In-Game IDs" : "Set Main Game & IDs"}
                   </Button>
                 </>
               );
@@ -253,14 +254,13 @@ function DashboardPage() {
                   </p>
                 )}
                 <Button
-                  asChild
+                  type="button"
                   variant="outline"
                   className="rounded-none border-white/10 font-tech text-ui-readable uppercase"
+                  onClick={() => setInGameIdsOpen(true)}
                 >
-                  <Link to="/dashboard/profile" search={{ tab: "player" }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit In-Game IDs
-                  </Link>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit In-Game IDs
                 </Button>
               </>
             );
@@ -365,6 +365,13 @@ function DashboardPage() {
         avatarInitials={p.avatarInitials}
         profileSlug={p.slug}
         onDismiss={dismissCelebration}
+      />
+
+      <EditInGameIdsModal
+        open={inGameIdsOpen}
+        onOpenChange={setInGameIdsOpen}
+        profile={p}
+        memberId={session.id}
       />
     </MemberPageLayout>
   );

@@ -11,6 +11,7 @@ export const GAME_FILTERS: (typeof ALL_GAMES | TournamentGame)[] = [
   "League of Legends",
   "Teamfight Tactics",
   "Where Winds Meet",
+  "Marvel Rivals",
 ];
 
 export const STATUS_FILTERS: (typeof ALL_STATUSES | TournamentStatus)[] = [
@@ -27,6 +28,7 @@ export const GAME_LABELS: Record<TournamentGame, string> = {
   "League of Legends": "League of Legends · 5v5",
   "Teamfight Tactics": "Teamfight Tactics · 8",
   "Where Winds Meet": "Where Winds Meet",
+  "Marvel Rivals": "Marvel Rivals · 6v6",
 };
 
 export const STATUS_CONFIG: Record<

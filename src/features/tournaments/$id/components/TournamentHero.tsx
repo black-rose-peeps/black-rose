@@ -8,6 +8,7 @@ const GAME_TAG_COLOR: Record<TournamentDetail["game"], string> = {
   "League of Legends": "text-blue-400",
   "Teamfight Tactics": "text-violet-400",
   "Where Winds Meet": "text-cyan-400",
+  "Marvel Rivals": "text-amber-400",
 };
 
 const GAME_GLOW: Record<TournamentDetail["game"], string> = {
@@ -15,6 +16,7 @@ const GAME_GLOW: Record<TournamentDetail["game"], string> = {
   "League of Legends": "from-blue-950/40 via-transparent to-transparent",
   "Teamfight Tactics": "from-violet-950/40 via-transparent to-transparent",
   "Where Winds Meet": "from-cyan-950/40 via-transparent to-transparent",
+  "Marvel Rivals": "from-amber-950/40 via-transparent to-transparent",
 };
 
 interface TournamentHeroProps {

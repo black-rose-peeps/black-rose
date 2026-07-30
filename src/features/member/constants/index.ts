@@ -21,6 +21,7 @@ export const SOCIAL_PLATFORM_ORDER: SocialPlatform[] = [
 ];
 
 export const PROFILE_GAME_OPTIONS = [
+  "Marvel Rivals",
   "Valorant",
   "League of Legends",
   "Teamfight Tactics",

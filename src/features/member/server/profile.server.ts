@@ -14,12 +14,12 @@ import {
 import { sanitizeSocialLinksForViewer } from "../utils/social-links";
 import { sanitizeHttpUrl } from "../utils/validate-social-url";
 import { normalizeValorantTagline } from "../utils/valorant-identity";
-import { normalizeGameKey } from "@/features/teams/constants";
 import {
   sanitizeGameIdentities,
   validateGameIdentitiesInput,
   isRiotGame,
 } from "../utils/game-identity";
+import { resolveStoredMainGame } from "../utils/profile-main-game";
 import type { MemberProfile } from "../types";
 import {
   MEMBER_READ_COLUMNS,
@@ -419,7 +419,7 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
   const valorantGameName = input.valorantGameName.trim();
   const valorantTagline = normalizeValorantTagline(input.valorantTagline);
   const gameIdentities = sanitizeGameIdentities(input.gameIdentities);
-  const mainGame = input.mainGame?.trim() ? normalizeGameKey(input.mainGame.trim()) : null;
+  const mainGame = resolveStoredMainGame(input.mainGame);
   const legacyIngameName =
     mainGame && !isRiotGame(mainGame) ? (gameIdentities[mainGame] ?? null) : null;
 

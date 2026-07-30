@@ -9,11 +9,7 @@ export type TournamentStatus =
   | "Completed"
   | "Archived";
 
-export type TournamentGame =
-  | "Valorant"
-  | "League of Legends"
-  | "Teamfight Tactics"
-  | "Where Winds Meet";
+export type TournamentGame = "Valorant" | "League of Legends" | "Teamfight Tactics" | "Where Winds Meet" | "Marvel Rivals";
 
 export interface Tournament {
   id: string;
