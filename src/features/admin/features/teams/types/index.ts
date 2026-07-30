@@ -6,6 +6,7 @@ export interface CreateTeamInput {
   name: string;
   tag: string;
   game: Team["game"];
+  gameId?: string; // New foreign key to games table
   captainMemberId: string;
   captainRole?: TeamMemberRole;
 }

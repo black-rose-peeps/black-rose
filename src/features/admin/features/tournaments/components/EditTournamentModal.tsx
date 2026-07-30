@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TOURNAMENT_FORMATS } from "@/features/tournaments/constants/formats";
-import { ADMIN_TOURNAMENT_STATUSES, TOURNAMENT_GAMES, TOURNAMENT_REGIONS } from "../constants";
+import { ADMIN_TOURNAMENT_STATUSES, TOURNAMENT_REGIONS } from "../constants";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import {
   registrationCapLabel,
   resolveParticipationType,
@@ -67,6 +68,8 @@ export function EditTournamentModal({
   const [removeRulesFile, setRemoveRulesFile] = useState(false);
   const [rulesFileError, setRulesFileError] = useState<string | null>(null);
   const { submit, isSubmitting, error, resetError } = useUpdateTournament();
+  const { data: activeGames } = useActiveGames();
+  const availableGames = activeGames?.map((g) => g.display_name) || [];
 
   const selectedFormat = TOURNAMENT_FORMATS.find((f) => f.value === values.format);
   const capLabel = registrationCapLabel(
@@ -222,7 +225,7 @@ export function EditTournamentModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TOURNAMENT_GAMES.map((game) => (
+                  {availableGames.map((game) => (
                     <SelectItem key={game} value={game}>
                       {game}
                     </SelectItem>

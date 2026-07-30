@@ -1,5 +1,3 @@
-import type { TournamentGame } from "./index";
-
 /** Team rosters vs direct individual registration. */
 export type ParticipationType = "team" | "solo";
 
@@ -20,7 +18,7 @@ export const WWM_MODE_OPTIONS: { value: WwmMode; label: string; description: str
 ];
 
 export function resolveParticipationType(
-  game: TournamentGame,
+  game: string,
   wwmMode?: WwmMode | null,
 ): ParticipationType {
   if (game === "Teamfight Tactics") return "solo";
@@ -32,7 +30,7 @@ export function isSoloTournament(tournament: { participationType?: Participation
   return tournament.participationType === "solo";
 }
 
-export function defaultWwmModeForGame(game: TournamentGame): WwmMode | null {
+export function defaultWwmModeForGame(game: string): WwmMode | null {
   return game === "Where Winds Meet" ? "group_strategy" : null;
 }
 

@@ -2,11 +2,12 @@ import valorantHeader from "@/assets/valorant-tournament-header.jpg";
 import lolHeader from "@/assets/lol-tournament-header.jpg";
 import tftHeader from "@/assets/tft-tournament-header.jpg";
 import wwmHeader from "@/assets/wwm-tournament-header.jpg";
-import type { TournamentGame, TournamentStatus } from "../types";
+import type { TournamentStatus } from "../types";
 import type { MockTournament } from "@/lib/mock-data";
 import { resolveTournamentStatus } from "./tournament-status";
 
-export const GAME_ABBREVIATIONS: Record<TournamentGame, string> = {
+// Legacy abbreviations - will be replaced with dynamic data from games table
+export const GAME_ABBREVIATIONS: Record<string, string> = {
   Valorant: "VAL",
   "League of Legends": "LoL",
   "Teamfight Tactics": "TFT",
@@ -14,11 +15,28 @@ export const GAME_ABBREVIATIONS: Record<TournamentGame, string> = {
   "Marvel Rivals": "MR",
 };
 
-export function getGameAbbrev(game: TournamentGame): string {
-  return GAME_ABBREVIATIONS[game];
+export function getGameAbbrev(game: string): string {
+  return GAME_ABBREVIATIONS[game] || game.substring(0, 3).toUpperCase();
 }
 
-export const GAME_TOURNAMENT_HEADER: Record<TournamentGame, string> = {
+// Default accent for games not in the legacy constant
+export const DEFAULT_ACCENT = {
+  line: "from-white/80 via-white/20 to-transparent",
+  tag: "border-white/35 text-white bg-white/8",
+  cta: "hover:shadow-[0_0_28px_rgba(255,255,255,0.3)]",
+  glow: "group-hover:border-white/25",
+};
+
+export function getGameAccent(game: string) {
+  return GAME_EDITORIAL_ACCENT[game] || DEFAULT_ACCENT;
+}
+
+export function getGameHeader(game: string): string {
+  return GAME_TOURNAMENT_HEADER[game] || "/og-hero.png";
+}
+
+// Legacy tournament headers - will be replaced with dynamic data from games table
+export const GAME_TOURNAMENT_HEADER: Record<string, string> = {
   Valorant: valorantHeader,
   "League of Legends": lolHeader,
   "Teamfight Tactics": tftHeader,
@@ -28,7 +46,7 @@ export const GAME_TOURNAMENT_HEADER: Record<TournamentGame, string> = {
 
 /** Editorial accent tokens — neon edge + tag styling per title. */
 export const GAME_EDITORIAL_ACCENT: Record<
-  TournamentGame,
+  string,
   { line: string; tag: string; cta: string; glow: string }
 > = {
   Valorant: {
@@ -64,7 +82,7 @@ export const GAME_EDITORIAL_ACCENT: Record<
 };
 
 /** @deprecated Use GAME_TOURNAMENT_HEADER — kept for any gradient fallbacks. */
-export const GAME_COVER_GRADIENT: Record<TournamentGame, string> = {
+export const GAME_COVER_GRADIENT: Record<string, string> = {
   Valorant: "from-red-950 via-red-900/60 to-zinc-950",
   "League of Legends": "from-blue-950 via-blue-900/60 to-zinc-950",
   "Teamfight Tactics": "from-violet-950 via-violet-900/60 to-zinc-950",

@@ -1,11 +1,11 @@
 import { TOURNAMENT_FORMATS } from "@/features/tournaments/constants/formats";
 import type { CreateTournamentFormValues } from "../types";
 import type { TournamentStatus } from "@/lib/mock-data";
-import type { TournamentGame } from "@/features/tournaments/types";
 
 export { TOURNAMENT_FORMATS };
 
-export const TOURNAMENT_GAMES: TournamentGame[] = [
+// Legacy games - will be replaced with dynamic games from database
+export const TOURNAMENT_GAMES: string[] = [
   "Valorant",
   "League of Legends",
   "Teamfight Tactics",

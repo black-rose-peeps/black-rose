@@ -20,6 +20,8 @@ export const SOCIAL_PLATFORM_ORDER: SocialPlatform[] = [
   "discord",
 ];
 
+// PROFILE_GAME_OPTIONS is now dynamic - fetched from games table
+// Legacy fallback for backward compatibility
 export const PROFILE_GAME_OPTIONS = [
   "Marvel Rivals",
   "Valorant",

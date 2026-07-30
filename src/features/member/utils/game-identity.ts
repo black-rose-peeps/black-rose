@@ -1,4 +1,3 @@
-import { PROFILE_GAME_OPTIONS } from "../constants";
 import { normalizeGameKey, type Game } from "@/features/teams/constants";
 import {
   formatValorantRiotId,
@@ -7,6 +6,8 @@ import {
   validateValorantIdentityInput,
 } from "./valorant-identity";
 
+// Legacy fallback - will be replaced with dynamic games from database
+import { PROFILE_GAME_OPTIONS } from "../constants";
 export const IDENTITY_GAMES = PROFILE_GAME_OPTIONS;
 
 /** Riot titles share one Riot ID (game name + tagline) on a single account. */
@@ -47,6 +48,11 @@ export interface GameIdentityConfig {
   fieldPlaceholder: string;
   helperText: string;
   usesValorantRiotId: boolean;
+  // Dynamic game fields from database
+  identityGroup?: string | null;
+  identityFieldLabel?: string | null;
+  identityFieldPlaceholder?: string | null;
+  identityHelperText?: string | null;
 }
 
 export interface MemberIdentitySource {
@@ -197,12 +203,21 @@ export function listConfiguredIdentitySummaries(
   return summaries;
 }
 
-export function sanitizeGameIdentities(identities: Record<string, string>): Record<string, string> {
+export function sanitizeGameIdentities(identities: Record<string, string>, availableGames?: string[]): Record<string, string> {
   const result: Record<string, string> = {};
+  // Include legacy games
   for (const game of IDENTITY_GAMES) {
     if (isRiotGame(game)) continue;
     const value = identities[game]?.trim();
     if (value) result[game] = value;
+  }
+  // Include dynamic games
+  if (availableGames) {
+    for (const game of availableGames) {
+      if (isRiotGame(game) || IDENTITY_GAMES.includes(game as any)) continue;
+      const value = identities[game]?.trim();
+      if (value) result[game] = value;
+    }
   }
   return result;
 }
@@ -240,13 +255,14 @@ export function validateGameIdentitiesInput(source: {
   valorantGameName: string;
   valorantTagline: string;
   gameIdentities: Record<string, string>;
-}): string | null {
+}, availableGames?: string[]): string | null {
   const valorantError = validateValorantIdentityInput(
     source.valorantGameName,
     source.valorantTagline,
   );
   if (valorantError) return valorantError;
 
+  // Validate legacy games
   for (const game of IDENTITY_GAMES) {
     if (isRiotGame(game)) continue;
     const config = gameIdentityConfig(game);
@@ -255,6 +271,18 @@ export function validateGameIdentitiesInput(source: {
     if (!name) continue;
     if (name.length < 2 || name.length > 64) {
       return `${config.fieldLabel} for ${config.panelLabel} must be 2–64 characters.`;
+    }
+  }
+
+  // Validate dynamic games
+  if (availableGames) {
+    for (const game of availableGames) {
+      if (isRiotGame(game) || IDENTITY_GAMES.includes(game as any)) continue;
+      const name = source.gameIdentities[game]?.trim();
+      if (!name) continue;
+      if (name.length < 2 || name.length > 64) {
+        return `${game} in-game ID must be 2–64 characters.`;
+      }
     }
   }
 

@@ -24,6 +24,7 @@ import { StatusPill } from "@/features/admin/components/ui";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
 import { GAME_LABELS } from "@/features/tournaments/constants";
+import { getGameAbbrev } from "@/features/tournaments/utils/tournament-display";
 import type { TournamentStatus } from "@/lib/mock-data";
 import { useTournaments } from "../hooks";
 import type { AdminTournament } from "../types";
@@ -274,7 +275,7 @@ export function TournamentsManagement() {
                                   adminTableTextTruncate,
                                 )}
                               >
-                                {GAME_LABELS[t.game]} · {t.region}
+                                {GAME_LABELS[t.game] || t.game} · {t.format} · {t.region}
                               </div>
                             </div>
                           </TableCell>

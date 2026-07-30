@@ -17,7 +17,7 @@ export type TournamentStatus =
 export interface MockTournament {
   id: string;
   name: string;
-  game: "Valorant" | "League of Legends" | "Teamfight Tactics" | "Where Winds Meet" | "Marvel Rivals";
+  game: string;
   status: TournamentStatus;
   prizePool: string;
   prizeBreakdown?: PrizeTier[];
@@ -33,6 +33,12 @@ export interface MockTournament {
   description?: string | null;
   /** Optional link to the full official ruleset for this event. */
   rulesUrl?: string | null;
+  /** Game header image URL from games table */
+  tournamentHeaderImage?: string | null;
+  /** Game color class from games table */
+  gameColorClass?: string | null;
+  /** Game accent class from games table */
+  gameAccentClass?: string | null;
 }
 
 export interface MockPlayer {

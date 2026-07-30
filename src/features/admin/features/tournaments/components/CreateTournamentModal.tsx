@@ -24,9 +24,9 @@ import { TOURNAMENT_FORMATS } from "@/features/tournaments/constants/formats";
 import {
   ADMIN_TOURNAMENT_STATUSES,
   DEFAULT_CREATE_TOURNAMENT_FORM,
-  TOURNAMENT_GAMES,
   TOURNAMENT_REGIONS,
 } from "../constants";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import {
   registrationCapLabel,
   resolveParticipationType,
@@ -63,6 +63,8 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
   const [rulesFileError, setRulesFileError] = useState<string | null>(null);
   const [createdTournamentId, setCreatedTournamentId] = useState<string | null>(null);
   const { submit, isSubmitting, error, resetError } = useCreateTournament();
+  const { data: activeGames } = useActiveGames();
+  const availableGames = activeGames?.map((g) => g.display_name) || [];
 
   const selectedFormat = TOURNAMENT_FORMATS.find((f) => f.value === values.format);
   const capLabel = registrationCapLabel(
@@ -78,6 +80,13 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
     setCreatedTournamentId(null);
     resetError();
   }, [open, resetError]);
+
+  // Set default game to first available game if current game is not in available games
+  useEffect(() => {
+    if (availableGames.length > 0 && !availableGames.includes(values.game)) {
+      setValues((prev) => ({ ...prev, game: availableGames[0] }));
+    }
+  }, [availableGames, values.game]);
 
   function updateField<K extends keyof CreateTournamentFormValues>(
     key: K,
@@ -109,7 +118,8 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
     setRulesFileError(null);
 
     try {
-      const input = formValuesToCreateInput({ ...values, rulesUrl: "" });
+      const currentGameData = activeGames?.find((g) => g.display_name === values.game);
+      const input = formValuesToCreateInput({ ...values, rulesUrl: "" }, currentGameData);
       let tournament = createdTournamentId
         ? await updateTournament(createdTournamentId, input)
         : await submit(input);
@@ -201,7 +211,7 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TOURNAMENT_GAMES.map((game) => (
+                  {availableGames.map((game) => (
                     <SelectItem key={game} value={game}>
                       {game}
                     </SelectItem>

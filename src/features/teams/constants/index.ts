@@ -1,5 +1,7 @@
 import type { TeamMemberRole } from "../types";
+import type { Game as DbGame } from "@/features/admin/features/games/services/games.service";
 
+// Legacy type for backward compatibility during migration
 export type Game =
   | "Valorant"
   | "Marvel Rivals"
@@ -9,6 +11,7 @@ export type Game =
   | "Palworld"
   | "Multi";
 
+// Hardcoded options for fallback (will be replaced with dynamic data)
 export const GAME_OPTIONS: { value: Game; label: string }[] = [
   { value: "Valorant", label: "Valorant" },
   { value: "Marvel Rivals", label: "Marvel Rivals" },
@@ -18,6 +21,17 @@ export const GAME_OPTIONS: { value: Game; label: string }[] = [
   { value: "Palworld", label: "Palworld" },
   { value: "Multi", label: "Multi-game" },
 ];
+
+// Convert database game to legacy Game type
+export function dbGameToLegacyGame(dbGame: DbGame): Game {
+  if (dbGame.name === "Multi") return "Multi";
+  return dbGame.name as Game;
+}
+
+// Convert legacy Game to database game name
+export function legacyGameToDbName(game: Game): string {
+  return game;
+}
 
 export const ROLE_OPTIONS: TeamMemberRole[] = [
   "IGL",
@@ -172,3 +186,13 @@ export const GAME_ACCENT: Record<Game, string> = {
 
 export const MAX_TEAM_SIZE = 7; // 5 starters + 2 subs
 export const MIN_TEAM_SIZE = 5;
+
+// Get color from database game, fallback to legacy mapping
+export function getGameColor(dbGame: DbGame): string {
+  return dbGame.color_class;
+}
+
+// Get accent from database game, fallback to legacy mapping
+export function getGameAccent(dbGame: DbGame): string {
+  return dbGame.accent_class;
+}

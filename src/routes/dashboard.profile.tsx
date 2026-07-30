@@ -54,6 +54,7 @@ import { ProfileCompleteCelebrationDialog } from "@/features/member/components/P
 import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
 import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
 import { validateGameIdentitiesInput } from "@/features/member/utils/game-identity";
 import {
@@ -198,8 +199,17 @@ function ProfileEditPage() {
   const { celebrationOpen, maybeCelebrate, dismissCelebration } =
     useProfileCompleteCelebration(memberId);
 
+  const { data: activeGames } = useActiveGames();
+  const availableGames = useMemo(
+    () => activeGames?.map((g) => g.display_name) || [],
+    [activeGames],
+  );
+
   const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
-  const gameOptions = useMemo(() => profileGameSelectOptions(mainGame), [mainGame]);
+  const gameOptions = useMemo(
+    () => profileGameSelectOptions(mainGame, availableGames),
+    [mainGame, availableGames],
+  );
 
   const normalizedRegion = region.trim();
 
@@ -319,11 +329,14 @@ function ProfileEditPage() {
     setSaved(false);
     setError(null);
 
-    const identityError = validateGameIdentitiesInput({
-      valorantGameName,
-      valorantTagline,
-      gameIdentities,
-    });
+    const identityError = validateGameIdentitiesInput(
+      {
+        valorantGameName,
+        valorantTagline,
+        gameIdentities,
+      },
+      availableGames,
+    );
     if (identityError) {
       setSaving(false);
       setError(identityError);
@@ -662,6 +675,7 @@ function ProfileEditPage() {
               valorantGameName={valorantGameName}
               valorantTagline={valorantTagline}
               gameIdentities={gameIdentities}
+              games={activeGames}
               onValorantGameNameChange={(value) => {
                 markDirty();
                 setValorantGameName(value);

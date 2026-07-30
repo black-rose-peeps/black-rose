@@ -23,6 +23,8 @@ export type TeamMemberRole =
   | "DPS"
   | "Tank"
   | "Healer"
+  | "Vanguard"
+  | "Strategist"
   | "Sub"
   | "TBD";
 

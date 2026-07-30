@@ -21,7 +21,12 @@ import {
 } from "@/components/ui/select";
 import { updateTeam } from "@/features/admin/features/teams/services/teams.service";
 import { techFieldClass } from "@/features/member/components/MemberShell";
-import { GAME_OPTIONS } from "@/features/teams/constants";
+import {
+  GAME_OPTIONS,
+  dbGameToLegacyGame,
+  legacyGameToDbName,
+} from "@/features/teams/constants";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import type { Team } from "@/features/teams/types";
 
 interface EditTeamDialogProps {
@@ -32,11 +37,20 @@ interface EditTeamDialogProps {
 }
 
 export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeamDialogProps) {
+  const { data: dbGames, isLoading: gamesLoading } = useActiveGames();
   const [name, setName] = useState(team.name);
   const [tag, setTag] = useState(team.tag);
   const [game, setGame] = useState(team.game);
+  const [gameId, setGameId] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Convert database games to legacy format for backward compatibility
+  const gameOptions = dbGames
+    ? dbGames
+        .filter((g) => g.name !== "Multi") // Exclude Multi-game from team creation
+        .map((g) => ({ value: dbGameToLegacyGame(g), label: g.display_name, id: g.id }))
+    : GAME_OPTIONS.filter((g) => g.value !== "Multi");
 
   useEffect(() => {
     if (!open) return;
@@ -45,6 +59,12 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
     setGame(team.game);
     setError(null);
   }, [open, team]);
+
+  // Update gameId when game changes
+  useEffect(() => {
+    const selectedGame = dbGames?.find((g) => g.name === legacyGameToDbName(game));
+    setGameId(selectedGame?.id);
+  }, [game, dbGames]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +76,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
         name: name.trim(),
         tag: tag.trim().toUpperCase(),
         game,
+        gameId,
       });
       onUpdated(updated);
       onOpenChange(false);
@@ -124,13 +145,13 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
               <Select
                 value={game}
                 onValueChange={(v) => setGame(v as Team["game"])}
-                disabled={Boolean(team.activeTournamentId)}
+                disabled={Boolean(team.activeTournamentId) || gamesLoading}
               >
                 <SelectTrigger id="team-game" className={techFieldClass}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                  {GAME_OPTIONS.filter((g) => g.value !== "Multi").map((g) => (
+                  {gameOptions.map((g) => (
                     <SelectItem key={g.value} value={g.value} className="font-tech text-xs">
                       {g.label}
                     </SelectItem>
