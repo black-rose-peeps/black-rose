@@ -404,7 +404,9 @@ function MemberProfilePage() {
                       ? "Palworld IGN"
                       : entry.key === "Where Winds Meet"
                         ? "WWM IGN"
-                        : entry.label;
+                        : entry.key === "Marvel Rivals"
+                          ? "Marvel Rivals IGN"
+                          : entry.label;
                   return (
                     <div key={entry.key}>
                       {index > 0 && <div className="mb-3 h-px bg-white/6" />}

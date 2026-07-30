@@ -10,6 +10,7 @@ export const TOURNAMENT_GAMES: TournamentGame[] = [
   "League of Legends",
   "Teamfight Tactics",
   "Where Winds Meet",
+  "Marvel Rivals",
 ];
 
 export const TOURNAMENT_REGIONS = ["PH", "SEA", "APAC", "Global"] as const;

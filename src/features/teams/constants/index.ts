@@ -95,6 +95,8 @@ const GAME_ALIASES: Record<string, Game> = {
   "where winds meet": "Where Winds Meet",
   wwm: "Where Winds Meet",
   palworld: "Palworld",
+  "marvel rivals": "Marvel Rivals",
+  mr: "Marvel Rivals",
   multi: "Multi",
   "multi-game": "Multi",
 };
@@ -154,6 +156,7 @@ export const GAME_COLOR: Record<Game, string> = {
   "Teamfight Tactics": "text-violet-400",
   "Where Winds Meet": "text-cyan-400",
   Palworld: "text-emerald-400",
+  "Marvel Rivals": "text-amber-400",
   Multi: "text-muted-foreground",
 };
 

@@ -11,6 +11,7 @@ export const GAME_ABBREVIATIONS: Record<TournamentGame, string> = {
   "League of Legends": "LoL",
   "Teamfight Tactics": "TFT",
   "Where Winds Meet": "WWM",
+  "Marvel Rivals": "MR",
 };
 
 export function getGameAbbrev(game: TournamentGame): string {
@@ -22,6 +23,7 @@ export const GAME_TOURNAMENT_HEADER: Record<TournamentGame, string> = {
   "League of Legends": lolHeader,
   "Teamfight Tactics": tftHeader,
   "Where Winds Meet": wwmHeader,
+  "Marvel Rivals": "/marvel-rivals.png",
 };
 
 /** Editorial accent tokens — neon edge + tag styling per title. */
@@ -53,6 +55,12 @@ export const GAME_EDITORIAL_ACCENT: Record<
     cta: "hover:shadow-[0_0_28px_rgba(34,211,238,0.28)]",
     glow: "group-hover:border-cyan-400/25",
   },
+  "Marvel Rivals": {
+    line: "from-amber-400/90 via-yellow-500/25 to-transparent",
+    tag: "border-amber-400/35 text-amber-100 bg-amber-500/8",
+    cta: "hover:shadow-[0_0_28px_rgba(251,191,36,0.32)]",
+    glow: "group-hover:border-amber-400/25",
+  },
 };
 
 /** @deprecated Use GAME_TOURNAMENT_HEADER — kept for any gradient fallbacks. */
@@ -61,6 +69,7 @@ export const GAME_COVER_GRADIENT: Record<TournamentGame, string> = {
   "League of Legends": "from-blue-950 via-blue-900/60 to-zinc-950",
   "Teamfight Tactics": "from-violet-950 via-violet-900/60 to-zinc-950",
   "Where Winds Meet": "from-cyan-950 via-cyan-900/60 to-zinc-950",
+  "Marvel Rivals": "from-amber-950 via-yellow-900/50 to-zinc-950",
 };
 
 export function formatShortDate(value: string): string {

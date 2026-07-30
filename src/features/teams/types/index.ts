@@ -1,3 +1,5 @@
+import type { Game } from "../constants";
+
 export type TeamMemberStatus = "captain" | "active" | "invited" | "removed";
 
 export type TeamMemberRole =
@@ -42,7 +44,7 @@ export interface Team {
   id: string;
   name: string;
   tag: string;
-  game: "Valorant" | "League of Legends" | "Teamfight Tactics" | "Where Winds Meet" | "Multi";
+  game: Game;
   captainUserId: string;
   members: TeamMember[];
   createdAt: string;
