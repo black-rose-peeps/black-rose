@@ -161,8 +161,9 @@ async function fetchTournamentStatus(tournamentId: string): Promise<string | nul
 export async function reconcileTournamentTeamCount(
   tournamentId: string,
   cachedCount: number,
+  tournamentStatus?: string,
 ): Promise<number> {
-  const status = await fetchTournamentStatus(tournamentId);
+  const status = tournamentStatus ?? (await fetchTournamentStatus(tournamentId));
   const actualCount = isTournamentConcluded(status ?? "")
     ? await countBracketParticipantRegistrations(tournamentId)
     : await countTournamentRegistrations(tournamentId);

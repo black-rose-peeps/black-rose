@@ -26,6 +26,7 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
   const accent = getGameAccent(game) || DEFAULT_ACCENT;
   const header = getGameHeader(game);
   const hasPhoto = Boolean(champion.portraitUrl?.trim());
+  const hasTournamentHeader = Boolean(champion.tournamentHeaderImage?.trim());
   const isTeam = champion.participationType === "team";
 
   return (
@@ -41,6 +42,13 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-[1.03]"
+        />
+      ) : hasTournamentHeader ? (
+        <img
+          src={champion.tournamentHeaderImage!}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-40 transition duration-700 group-hover:scale-[1.03]"
         />
       ) : (
         <img

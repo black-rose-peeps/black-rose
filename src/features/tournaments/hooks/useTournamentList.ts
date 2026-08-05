@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseClient } from "@/lib/supabase";
 import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import { fetchTournaments } from "../services";
@@ -8,44 +9,54 @@ import type { MockTournament } from "@/lib/mock-data";
 
 export type PublicTournament = MockTournament & { status: TournamentStatus };
 
-export function useTournamentList() {
-  const [tournaments, setTournaments] = useState<PublicTournament[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const TOURNAMENTS_QUERY_KEY = ["tournaments"] as const;
 
-  const refetch = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) {
-      setIsLoading(true);
-      setError(null);
-    }
-    try {
+// Global ref to track if subscription is already set up
+const isSubscribedRef = { current: false };
+
+export function useTournamentList() {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: TOURNAMENTS_QUERY_KEY,
+    queryFn: async () => {
       const all = await fetchTournaments();
-      setTournaments(getPublicTournaments(all));
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tournaments.");
-    } finally {
-      if (!options?.silent) setIsLoading(false);
-    }
-  }, []);
+      return getPublicTournaments(all);
+    },
+    staleTime: 30_000, // 30 seconds - tournaments change frequently
+    gcTime: 5 * 60_000, // 5 minutes
+  });
 
   useEffect(() => {
-    void refetch();
-    const debouncedRefetch = createDebouncedRefetch(refetch, 3000);
+    // Only set up subscription once globally
+    if (isSubscribedRef.current) return;
+
+    const debouncedRefetch = createDebouncedRefetch(
+      () => queryClient.invalidateQueries({ queryKey: TOURNAMENTS_QUERY_KEY }),
+      3000,
+    );
 
     const supabase = getSupabaseClient();
     const channel = supabase
       .channel("tournaments-public-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
-        debouncedRefetch({ silent: true });
+        debouncedRefetch();
       })
       .subscribe();
+
+    isSubscribedRef.current = true;
 
     return () => {
       debouncedRefetch.cancel();
       supabase.removeChannel(channel);
+      isSubscribedRef.current = false;
     };
-  }, [refetch]);
+  }, [queryClient]);
 
-  return { tournaments, isLoading, error, refetch };
+  return {
+    tournaments: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: query.refetch,
+  };
 }

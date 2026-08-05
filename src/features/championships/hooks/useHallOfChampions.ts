@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchHallOfChampions } from "../services/hall-of-champions.service";
+import { useTournamentList, TOURNAMENTS_QUERY_KEY } from "@/features/tournaments/hooks";
 import type { HallOfChampionRecord } from "../types";
 
 /** Dev-only stub injected when the local DB has no champion rows. Remove once
@@ -10,15 +12,16 @@ const DEV_STUB_CHAMPION: HallOfChampionRecord = {
   tournamentName: "Black Rose x VALORANT PH Community Tournament",
   game: "Valorant",
   region: "SEA",
-  format: "Single Elimination",
-  participationType: "team",
-  prizePool: "₱30,000",
+  format: "Double Elimination",
+  participationType: "team" as const,
+  prizePool: "₱10,000",
   teamName: "Zorvex",
-  teamTag: "ZX",
+  teamTag: "ZRX",
   teamId: null,
   mvp: null,
   crownedAt: "2026-07-11",
   portraitUrl: "/Zorvex_Champ_Blackrose_x_Valorant.jpg",
+  tournamentHeaderImage: null,
   story: null,
   crownVariant: "grand",
   venueType: "onsite" as const,
@@ -26,38 +29,24 @@ const DEV_STUB_CHAMPION: HallOfChampionRecord = {
 };
 
 export function useHallOfChampions() {
-  const [champions, setChampions] = useState<HallOfChampionRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use shared tournament data to avoid duplicate fetches
+  const { tournaments } = useTournamentList();
 
-  useEffect(() => {
-    let cancelled = false;
+  const query = useQuery({
+    queryKey: ["hall-of-champions"],
+    queryFn: async () => {
+      const rows = await fetchHallOfChampions(tournaments);
+      // In local dev the DB is empty — inject a stub so the portrait wiring
+      // is verifiable without needing prod data.
+      return import.meta.env.DEV && rows.length === 0 ? [DEV_STUB_CHAMPION] : rows;
+    },
+    staleTime: 60_000, // 1 minute
+    gcTime: 5 * 60_000, // 5 minutes
+  });
 
-    async function load() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const rows = await fetchHallOfChampions();
-        // In local dev the DB is empty — inject a stub so the portrait wiring
-        // is verifiable without needing prod data.
-        const result = import.meta.env.DEV && rows.length === 0 ? [DEV_STUB_CHAMPION] : rows;
-        if (!cancelled) setChampions(result);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load champions");
-          setChampions([]);
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return { champions, isLoading, error };
+  return {
+    champions: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error?.message ?? null,
+  };
 }

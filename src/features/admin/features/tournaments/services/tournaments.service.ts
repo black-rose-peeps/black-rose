@@ -200,6 +200,7 @@ async function hydrateTournament(tournament: MockTournament): Promise<MockTourna
   const teamsRegistered = await reconcileTournamentTeamCount(
     tournament.id,
     tournament.teamsRegistered,
+    tournament.status,
   );
   const withCount =
     teamsRegistered === tournament.teamsRegistered
@@ -437,7 +438,7 @@ export async function updateTournamentStatus(
     await syncTournamentChampionArchive(tournamentId, completed.name);
   } else if (previous && isTournamentConcluded(previous.status)) {
     await deleteTournamentChampion(tournamentId);
-    await reconcileTournamentTeamCount(tournamentId, previous.teamsRegistered);
+    await reconcileTournamentTeamCount(tournamentId, previous.teamsRegistered, status);
   }
 
   const updated = rowToTournament(data);
@@ -580,7 +581,7 @@ export async function updateTournament(
     !isTournamentConcluded(updated.status)
   ) {
     await deleteTournamentChampion(id);
-    await reconcileTournamentTeamCount(id, previous.teamsRegistered);
+    await reconcileTournamentTeamCount(id, previous.teamsRegistered, updated.status);
   }
 
   updated = await reopenRegistrationIfDeadlineExtended(previous, updated);
