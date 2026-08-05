@@ -2,8 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
 import { StatusPill } from "@/features/admin/components/ui";
-import { GAME_LABELS } from "@/features/tournaments/constants";
-import type { AdminTournament } from "../types";
+import type { AdminTournament } from "../../types";
 
 interface TournamentMobileListProps {
   tournaments: AdminTournament[];
@@ -47,7 +46,7 @@ export function TournamentMobileList({
                   <StatusPill status={tournament.status} />
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {GAME_LABELS[tournament.game]} · {tournament.region}
+                  {tournament.game} · {tournament.region}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-tech text-label-readable uppercase text-muted-foreground">
                   <span>{tournament.format}</span>

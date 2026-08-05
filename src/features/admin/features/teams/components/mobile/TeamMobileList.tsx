@@ -1,7 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminTablePagination } from "@/features/admin/components/AdminTablePagination";
-import { GAME_COLOR } from "@/features/teams/constants";
 import type { Team } from "../../types";
 import { countActiveMembers, getTeamCaptainUsername } from "../../utils";
 import { TeamMobileRowActions } from "./TeamMobileRowActions";
@@ -50,12 +49,7 @@ export function TeamMobileList({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-base tracking-wider">{team.name}</p>
-                  <p
-                    className={cn(
-                      "mt-0.5 font-tech text-label-readable uppercase",
-                      GAME_COLOR[team.game],
-                    )}
-                  >
+                  <p className="mt-0.5 font-tech text-label-readable uppercase text-foreground/90">
                     {team.game}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">

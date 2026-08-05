@@ -1,10 +1,11 @@
-import { ALL_GAMES, ALL_STATUSES, GAME_FILTERS, STATUS_CONFIG, STATUS_FILTERS } from "../constants";
-import type { TournamentGame, TournamentStatus } from "../types";
+import { ALL_GAMES, ALL_STATUSES, STATUS_CONFIG, STATUS_FILTERS } from "../constants";
+import type { TournamentStatus } from "../types";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 
 interface TournamentFiltersProps {
-  activeGame: typeof ALL_GAMES | TournamentGame;
+  activeGame: typeof ALL_GAMES | string;
   activeStatus: typeof ALL_STATUSES | TournamentStatus;
-  onGameChange: (g: typeof ALL_GAMES | TournamentGame) => void;
+  onGameChange: (g: typeof ALL_GAMES | string) => void;
   onStatusChange: (s: typeof ALL_STATUSES | TournamentStatus) => void;
   filteredCount: number;
   totalCount: number;
@@ -47,13 +48,16 @@ export function TournamentFilters({
   filteredCount,
   totalCount,
 }: TournamentFiltersProps) {
+  const { data: games } = useActiveGames();
+  const gameFilters = [ALL_GAMES, ...(games?.map((g) => g.display_name) || [])];
+
   return (
     <div className="flex flex-col gap-5">
       {/* Game row */}
       <div className="flex flex-col gap-2.5">
         <span className="text-sm font-tech uppercase tracking-wider-2 text-foreground">Game</span>
         <div className="flex flex-wrap gap-2">
-          {GAME_FILTERS.map((g) => (
+          {gameFilters.map((g) => (
             <Chip key={g} label={g} active={activeGame === g} onClick={() => onGameChange(g)} />
           ))}
         </div>

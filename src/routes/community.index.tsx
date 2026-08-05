@@ -68,8 +68,8 @@ function GameCard({
       {/* Cyberpunk corner brackets */}
       <span className="pointer-events-none absolute left-0 top-0 z-10 h-5 w-5 border-l border-t border-white/20" />
       <span className="pointer-events-none absolute right-0 top-0 z-10 h-5 w-5 border-r border-t border-white/20" />
-      <span className="pointer-events-none absolute bottom-0 left-0 z-10 h-5 w-5 border-b border-l border-white/15" />
-      <span className="pointer-events-none absolute bottom-0 right-0 z-10 h-5 w-5 border-b border-r border-white/15" />
+      <span className="pointer-events-none absolute bottom-0 left-0 z-10 h-5 w-5 border-l border-white/15" />
+      <span className="pointer-events-none absolute bottom-0 right-0 z-10 h-5 w-5 border-r border-white/15" />
 
       {/* Banner image */}
       <Link
@@ -325,7 +325,7 @@ function CommunityPage() {
       <Header />
 
       {/* ── Page hero ─────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-white/6 site-header-offset-hero pb-20">
+      <section className="relative overflow-hidden site-header-offset-hero pb-20">
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-60" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_70%_60%_at_50%_0%,rgba(255,255,255,0.06),transparent)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-background to-transparent" />

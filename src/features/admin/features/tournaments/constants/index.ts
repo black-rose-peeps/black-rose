@@ -1,17 +1,8 @@
 import { TOURNAMENT_FORMATS } from "@/features/tournaments/constants/formats";
 import type { CreateTournamentFormValues } from "../types";
 import type { TournamentStatus } from "@/lib/mock-data";
-import type { TournamentGame } from "@/features/tournaments/types";
 
 export { TOURNAMENT_FORMATS };
-
-export const TOURNAMENT_GAMES: TournamentGame[] = [
-  "Valorant",
-  "League of Legends",
-  "Teamfight Tactics",
-  "Where Winds Meet",
-  "Marvel Rivals",
-];
 
 export const TOURNAMENT_REGIONS = ["PH", "SEA", "APAC", "Global"] as const;
 
@@ -36,7 +27,7 @@ export const ADMIN_TOURNAMENT_STATUSES: TournamentStatus[] = [
 
 export const DEFAULT_CREATE_TOURNAMENT_FORM: CreateTournamentFormValues = {
   name: "",
-  game: "Valorant",
+  game: "",
   format: "Single Elimination",
   prizeCurrency: "PHP",
   prizeAmount: "",

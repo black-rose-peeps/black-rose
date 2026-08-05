@@ -34,6 +34,8 @@ export interface HallOfChampionRecord {
   crownedAt: string;
   /** Official champion pictorial when uploaded; null shows editorial placeholder. */
   portraitUrl: string | null;
+  /** Tournament header image used as fallback when portraitUrl is absent. */
+  tournamentHeaderImage: string | null;
   /** Custom editorial copy; auto-generated narrative when absent. */
   story: string | null;
   /** Grand finals vs standard final — best-effort from bracket metadata. */

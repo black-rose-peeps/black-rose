@@ -20,13 +20,4 @@ export const SOCIAL_PLATFORM_ORDER: SocialPlatform[] = [
   "discord",
 ];
 
-export const PROFILE_GAME_OPTIONS = [
-  "Marvel Rivals",
-  "Valorant",
-  "League of Legends",
-  "Teamfight Tactics",
-  "Where Winds Meet",
-  "Palworld",
-] as const;
-
 export const PROFILE_REGION_OPTIONS = ["PH", "SEA", "APAC", "Global"] as const;

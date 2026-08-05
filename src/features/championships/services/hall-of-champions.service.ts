@@ -184,6 +184,7 @@ function rowToRecord(
     mvp: row.mvp,
     crownedAt: row.completed_at ?? tournament?.startDate ?? row.created_at,
     portraitUrl: row.portrait_url ?? null,
+    tournamentHeaderImage: tournament?.tournamentHeaderImage ?? null,
     story: row.story ?? null,
     crownVariant,
     venueType: venue.venueType,
@@ -335,9 +336,10 @@ async function deriveFromBrackets(
   return derived.filter((row): row is HallOfChampionRecord => row !== null);
 }
 
-export async function fetchHallOfChampions(): Promise<HallOfChampionRecord[]> {
-  const [archiveRows, tournaments] = await Promise.all([fetchArchiveRows(), fetchTournaments()]);
-  const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
+export async function fetchHallOfChampions(tournaments?: MockTournament[]): Promise<HallOfChampionRecord[]> {
+  const archiveRows = await fetchArchiveRows();
+  const allTournaments = tournaments ?? (await fetchTournaments());
+  const tournamentById = new Map(allTournaments.map((t) => [t.id, t]));
 
   const archiveTournamentIds = new Set(archiveRows.map((row) => row.tournament_id));
   const visibleArchiveRows = archiveRows.filter((row) => {
@@ -380,7 +382,7 @@ export async function fetchHallOfChampions(): Promise<HallOfChampionRecord[]> {
     ),
   );
 
-  const fromBrackets = await deriveFromBrackets(tournaments, archiveTournamentIds);
+  const fromBrackets = await deriveFromBrackets(allTournaments, archiveTournamentIds);
   const merged = [...fromArchive, ...fromBrackets];
 
   merged.sort((a, b) => new Date(b.crownedAt).getTime() - new Date(a.crownedAt).getTime());

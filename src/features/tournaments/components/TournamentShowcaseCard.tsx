@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { GAME_LABELS, STATUS_CONFIG } from "../constants";
+import { STATUS_CONFIG } from "../constants";
 import {
   isPendingCaptainRegistrationStatus,
   isRegisteredCaptainStatus,
@@ -8,9 +8,10 @@ import {
 import {
   formatShortDate,
   formatSlotLabel,
-  GAME_EDITORIAL_ACCENT,
-  GAME_TOURNAMENT_HEADER,
+  getGameAccent,
+  getGameHeader,
   getGameAbbrev,
+  DEFAULT_ACCENT,
 } from "../utils/tournament-display";
 import { TournamentCardCtaSkeleton } from "./SelectTeamRegistrationSkeleton";
 import type { Tournament } from "../types";
@@ -86,8 +87,16 @@ export function TournamentShowcaseCard({
   captainRegistrationLoading = false,
 }: TournamentShowcaseCardProps) {
   const status = STATUS_CONFIG[t.status];
-  const accent = GAME_EDITORIAL_ACCENT[t.game];
-  const cover = GAME_TOURNAMENT_HEADER[t.game];
+  // Use dynamic game styling if available, otherwise fall back to legacy constants
+  const accent = t.gameAccentClass
+    ? {
+        line: t.gameAccentClass,
+        tag: t.gameColorClass ? `border-${t.gameColorClass}/35 text-${t.gameColorClass} bg-${t.gameColorClass}/8` : DEFAULT_ACCENT.tag,
+        cta: DEFAULT_ACCENT.cta,
+        glow: DEFAULT_ACCENT.glow,
+      }
+    : getGameAccent(t.game);
+  const cover = t.tournamentHeaderImage || getGameHeader(t.game);
   const cta = resolveCardCta(t.status, captainRegistrationStatus);
   const showCtaSkeleton = captainRegistrationLoading && t.status === "Registration Open";
   const deadlineLabel =
@@ -169,11 +178,15 @@ export function TournamentShowcaseCard({
         <div className="relative">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-tech text-label-readable uppercase text-muted-foreground">
-              {GAME_LABELS[t.game]}
+              {t.game}
             </span>
             <span className="text-white/15">·</span>
             <span className="border border-white/10 px-1.5 py-px font-tech text-label-readable uppercase text-white/50">
               {t.format}
+            </span>
+            <span className="text-white/15">·</span>
+            <span className="font-tech text-label-readable uppercase text-white/50">
+              {t.region}
             </span>
           </div>
 

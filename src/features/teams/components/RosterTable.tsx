@@ -18,7 +18,8 @@ import {
 import { MemberNameStack } from "@/features/member/components/MemberNameStack";
 import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { isValorantGame } from "@/features/member/utils/valorant-identity";
-import { getRoleOptionsForGame } from "../constants";
+import { getRoleOptionsForGame, legacyGameToDbName } from "../constants";
+import { useActiveGames, useGameRoles } from "@/features/admin/features/games/hooks/useGames";
 import type { Team, TeamMember, TeamMemberRole } from "../types";
 
 interface RosterTableProps {
@@ -85,14 +86,16 @@ function RosterRoleField({
   currentUserId,
   isCaptain,
   onRoleChange,
+  gameRoles,
 }: {
   member: TeamMember;
   team: Team;
   currentUserId: string;
   isCaptain: boolean;
   onRoleChange?: (member: TeamMember, role: TeamMemberRole) => void;
+  gameRoles?: any[];
 }) {
-  const roleOptions = getRoleOptionsForGame(team.game);
+  const roleOptions = getRoleOptionsForGame(team.game, gameRoles);
   const isMe = member.userId === currentUserId;
   const canEdit =
     onRoleChange &&
@@ -208,6 +211,7 @@ function RosterMobileCard({
   onRemove,
   onTransferCaptain,
   onRoleChange,
+  gameRoles,
 }: {
   member: TeamMember;
   team: Team;
@@ -219,6 +223,7 @@ function RosterMobileCard({
   onRemove?: (member: TeamMember) => void;
   onTransferCaptain?: (member: TeamMember) => void;
   onRoleChange?: (member: TeamMember, role: TeamMemberRole) => void;
+  gameRoles?: any[];
 }) {
   const isMe = member.userId === currentUserId;
 
@@ -268,6 +273,7 @@ function RosterMobileCard({
             currentUserId={currentUserId}
             isCaptain={isCaptain}
             onRoleChange={onRoleChange}
+            gameRoles={gameRoles}
           />
         </dd>
       </dl>
@@ -286,6 +292,10 @@ export function RosterTable({
   emptyMessage = "No members in this section.",
   showStatusColumn = true,
 }: RosterTableProps) {
+  const { data: activeGames } = useActiveGames();
+  const gameDbName = legacyGameToDbName(team.game);
+  const game = activeGames?.find(g => g.name === gameDbName);
+  const { data: gameRoles } = useGameRoles(game?.id || "");
   const isCaptain = team.captainUserId === currentUserId;
   const showIgnColumn = !isValorantGame(team.game);
   const visible = members ?? team.members.filter((m) => m.status !== "removed");
@@ -312,6 +322,7 @@ export function RosterTable({
             onRemove={onRemove}
             onTransferCaptain={onTransferCaptain}
             onRoleChange={onRoleChange}
+            gameRoles={gameRoles}
           />
         ))}
       </div>
@@ -404,6 +415,7 @@ export function RosterTable({
                       currentUserId={currentUserId}
                       isCaptain={isCaptain}
                       onRoleChange={onRoleChange}
+                      gameRoles={gameRoles}
                     />
                   </td>
 

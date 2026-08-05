@@ -13,18 +13,21 @@ import {
   isRiotGame,
   type MemberIdentitySource,
 } from "@/features/member/utils/game-identity";
+import { normalizeGameKey } from "@/features/teams/constants";
 import { cn } from "@/lib/utils";
+import type { Game } from "@/features/admin/features/games/services/games.service";
 
 interface GameIdentitiesFieldsProps extends MemberIdentitySource {
   focusGame?: string;
   onValorantGameNameChange: (value: string) => void;
   onValorantTaglineChange: (value: string) => void;
   onGameIdentityChange: (game: string, value: string) => void;
+  games?: Game[];
 }
 
-type IdentitySection = "riot" | "wwm" | "palworld" | "marvel-rivals";
+type IdentitySection = "riot" | "wwm" | "palworld" | "marvel-rivals" | "dynamic";
 
-function resolvePrimarySection(mainGame: string, focusGame?: string): IdentitySection | null {
+function resolvePrimarySection(mainGame: string, focusGame?: string, games?: Game[]): IdentitySection | null {
   if (isRiotGame(mainGame)) return "riot";
   if (mainGame === "Where Winds Meet") return "wwm";
   if (mainGame === "Palworld") return "palworld";
@@ -33,6 +36,9 @@ function resolvePrimarySection(mainGame: string, focusGame?: string): IdentitySe
   if (focusGame === "Where Winds Meet") return "wwm";
   if (focusGame === "Palworld") return "palworld";
   if (focusGame === "Marvel Rivals") return "marvel-rivals";
+  // Check if it's a dynamic game - use both exact and normalized comparison
+  if (games && games.some(g => g.display_name === mainGame || normalizeGameKey(g.display_name) === normalizeGameKey(mainGame))) return "dynamic";
+  if (focusGame && games && games.some(g => g.display_name === focusGame || normalizeGameKey(g.display_name) === normalizeGameKey(focusGame))) return "dynamic";
   return null;
 }
 
@@ -110,11 +116,13 @@ function RiotIdFields({
 function WhereWindsMeetFields({
   value,
   onChange,
+  games,
 }: {
   value: string;
   onChange: (value: string) => void;
+  games?: Game[];
 }) {
-  const config = gameIdentityConfig("Where Winds Meet");
+  const config = gameIdentityConfig("Where Winds Meet", games);
 
   return (
     <>
@@ -135,8 +143,8 @@ function WhereWindsMeetFields({
   );
 }
 
-function PalworldFields({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const config = gameIdentityConfig("Palworld");
+function PalworldFields({ value, onChange, games }: { value: string; onChange: (value: string) => void; games?: Game[] }) {
+  const config = gameIdentityConfig("Palworld", games);
 
   return (
     <>
@@ -160,11 +168,13 @@ function PalworldFields({ value, onChange }: { value: string; onChange: (value: 
 function MarvelRivalsFields({
   value,
   onChange,
+  games,
 }: {
   value: string;
   onChange: (value: string) => void;
+  games?: Game[];
 }) {
-  const config = gameIdentityConfig("Marvel Rivals");
+  const config = gameIdentityConfig("Marvel Rivals", games);
 
   return (
     <>
@@ -185,6 +195,41 @@ function MarvelRivalsFields({
   );
 }
 
+function DynamicGameFields({
+  game,
+  value,
+  onChange,
+  games,
+}: {
+  game: string;
+  value: string;
+  onChange: (value: string) => void;
+  games?: Game[];
+}) {
+  const gameData = games?.find(g => normalizeGameKey(g.display_name) === normalizeGameKey(game));
+  const fieldLabel = gameData?.identity_field_label || "In-Game ID";
+  const fieldPlaceholder = gameData?.identity_field_placeholder || "Your in-game name";
+  const helperText = gameData?.identity_helper_text || "Used on team rosters and tournament brackets.";
+
+  return (
+    <>
+      <p className="mb-5 text-xs leading-relaxed text-muted-foreground">{helperText}</p>
+      <div className="space-y-2">
+        <Label className="font-tech text-label-readable uppercase text-muted-foreground">
+          {fieldLabel}
+        </Label>
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={fieldPlaceholder}
+          maxLength={64}
+          className={techFieldClass}
+        />
+      </div>
+    </>
+  );
+}
+
 export function GameIdentitiesFields({
   mainGame = "",
   valorantGameName,
@@ -194,6 +239,7 @@ export function GameIdentitiesFields({
   onValorantGameNameChange,
   onValorantTaglineChange,
   onGameIdentityChange,
+  games,
 }: GameIdentitiesFieldsProps) {
   const identitySource: MemberIdentitySource = {
     mainGame,
@@ -202,22 +248,28 @@ export function GameIdentitiesFields({
     gameIdentities,
   };
 
-  const primarySection = resolvePrimarySection(mainGame, focusGame);
+  const primarySection = resolvePrimarySection(mainGame, focusGame, games);
   const secondarySections = useMemo(() => {
     const sections: IdentitySection[] = [];
     if (primarySection !== "riot") sections.push("riot");
     if (primarySection !== "wwm") sections.push("wwm");
     if (primarySection !== "palworld") sections.push("palworld");
     if (primarySection !== "marvel-rivals") sections.push("marvel-rivals");
+    // Add dynamic section if there are dynamic games
+    // If primary is dynamic, still add it to show other dynamic games (excluding the main one)
+    if (games && games.length > 0) {
+      sections.push("dynamic");
+    }
     return sections;
-  }, [primarySection]);
+  }, [primarySection, games]);
 
   const focusNeedsSecondary = Boolean(
     focusGame &&
     ((isRiotGame(focusGame) && primarySection !== "riot") ||
       (focusGame === "Where Winds Meet" && primarySection !== "wwm") ||
       (focusGame === "Palworld" && primarySection !== "palworld") ||
-      (focusGame === "Marvel Rivals" && primarySection !== "marvel-rivals")),
+      (focusGame === "Marvel Rivals" && primarySection !== "marvel-rivals") ||
+      (games && games.some(g => normalizeGameKey(g.display_name) === normalizeGameKey(focusGame)) && primarySection !== "dynamic")),
   );
 
   const shouldExpandOther = useMemo(
@@ -225,11 +277,12 @@ export function GameIdentitiesFields({
       focusNeedsSecondary ||
       (secondarySections.includes("riot") && hasRiotIdentity(identitySource)) ||
       (secondarySections.includes("wwm") &&
-        hasIdentityForGame("Where Winds Meet", identitySource)) ||
+        hasIdentityForGame("Where Winds Meet", identitySource, games)) ||
       (secondarySections.includes("marvel-rivals") &&
-        hasIdentityForGame("Marvel Rivals", identitySource)) ||
-      (secondarySections.includes("palworld") && hasIdentityForGame("Palworld", identitySource)),
-    [focusNeedsSecondary, secondarySections, valorantGameName, valorantTagline, gameIdentities],
+        hasIdentityForGame("Marvel Rivals", identitySource, games)) ||
+      (secondarySections.includes("palworld") && hasIdentityForGame("Palworld", identitySource, games)) ||
+      (secondarySections.includes("dynamic") && games && games.some(g => hasIdentityForGame(g.display_name, identitySource, games))),
+    [focusNeedsSecondary, secondarySections, valorantGameName, valorantTagline, gameIdentities, games],
   );
 
   const [otherOpen, setOtherOpen] = useState(() => shouldExpandOther);
@@ -238,7 +291,7 @@ export function GameIdentitiesFields({
     if (shouldExpandOther) setOtherOpen(true);
   }, [shouldExpandOther]);
 
-  const mainConfig = mainGame ? gameIdentityConfig(mainGame) : null;
+  const mainConfig = mainGame ? gameIdentityConfig(mainGame, games) : null;
   const primaryLabel =
     primarySection === "riot"
       ? "Riot ID"
@@ -248,7 +301,9 @@ export function GameIdentitiesFields({
           ? "Palworld"
           : primarySection === "marvel-rivals"
             ? "Marvel Rivals"
-            : (mainConfig?.panelLabel ?? "In-Game Identity");
+            : primarySection === "dynamic"
+              ? mainConfig?.panelLabel ?? mainGame
+              : (mainConfig?.panelLabel ?? "In-Game Identity");
 
   return (
     <div className="mt-5 flex flex-col gap-4">
@@ -283,16 +338,26 @@ export function GameIdentitiesFields({
             <PalworldFields
               value={gameIdentities["Palworld"] ?? ""}
               onChange={(value) => onGameIdentityChange("Palworld", value)}
+              games={games}
             />
           ) : primarySection === "marvel-rivals" ? (
             <MarvelRivalsFields
               value={gameIdentities["Marvel Rivals"] ?? ""}
               onChange={(value) => onGameIdentityChange("Marvel Rivals", value)}
+              games={games}
+            />
+          ) : primarySection === "dynamic" ? (
+            <DynamicGameFields
+              game={mainConfig?.panelLabel || mainGame}
+              value={gameIdentities[mainConfig?.panelLabel || mainGame] ?? ""}
+              onChange={(value) => onGameIdentityChange(mainConfig?.panelLabel || mainGame, value)}
+              games={games}
             />
           ) : (
             <WhereWindsMeetFields
               value={gameIdentities["Where Winds Meet"] ?? ""}
               onChange={(value) => onGameIdentityChange("Where Winds Meet", value)}
+              games={games}
             />
           )}
         </TechPanel>
@@ -374,6 +439,35 @@ export function GameIdentitiesFields({
                 />
               </TechPanel>
             )}
+            {games && secondarySections.includes("dynamic") &&
+              games
+                .filter(g => 
+                  !isRiotGame(g.display_name) && 
+                  g.display_name !== "Where Winds Meet" && 
+                  g.display_name !== "Palworld" && 
+                  g.display_name !== "Marvel Rivals" &&
+                  // Exclude the main game if it's a dynamic game
+                  !(primarySection === "dynamic" && normalizeGameKey(g.display_name) === normalizeGameKey(mainGame))
+                )
+                .map((game) => {
+                  const gameConfig = gameIdentityConfig(game.display_name, games);
+                  return (
+                    <TechPanel
+                      key={game.id}
+                      label={game.display_name}
+                      title={gameConfig?.fieldLabel || "In-Game Name"}
+                      className={cn(focusGame === game.display_name && "ring-1 ring-white/15")}
+                    >
+                      <DynamicGameFields
+                        game={game.display_name}
+                        value={gameIdentities[game.display_name] ?? ""}
+                        onChange={(value) => onGameIdentityChange(game.display_name, value)}
+                        games={games}
+                      />
+                    </TechPanel>
+                  );
+                })
+            }
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -382,7 +476,7 @@ export function GameIdentitiesFields({
         <p className="text-xs text-muted-foreground">
           Registering for{" "}
           <span className="text-foreground">
-            {gameIdentityConfig(focusGame)?.panelLabel ?? focusGame}
+            {gameIdentityConfig(focusGame, games)?.panelLabel ?? focusGame}
           </span>
           ?{" "}
           {isRiotGame(focusGame)

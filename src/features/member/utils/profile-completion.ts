@@ -12,11 +12,10 @@ export function calculateProfileCompletion(profile: {
 }): number {
   let score = 0;
 
-  if (profile.avatarUrl?.trim()) score += 18;
-  if (profile.displayName.trim()) score += 12;
-  if (profile.bio.trim()) score += 24;
-  if (profile.mainGame.trim()) score += 24;
-  if (profile.mainRole.trim()) score += 12;
+  if (profile.avatarUrl?.trim()) score += 20;
+  if (profile.displayName.trim()) score += 14;
+  if (profile.bio.trim()) score += 28;
+  if (profile.mainGame.trim()) score += 28;
   if (profile.region.trim()) score += 10;
 
   return Math.min(100, score);
@@ -33,6 +32,6 @@ export function profileCompletionHint(completion: number): string {
   if (completion >= 75) {
     return "Add a bio, or finish your remaining game details.";
   }
-  if (completion >= 50) return "Set your main game, role, and region to boost your profile.";
+  if (completion >= 50) return "Set your main game and region to boost your profile.";
   return "Add your avatar, bio, and game info to get started.";
 }

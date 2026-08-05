@@ -12,6 +12,7 @@ import {
 import type { AdminTournament, CreateTournamentFormValues, CreateTournamentInput } from "../types";
 import type { CreateTournamentFieldErrors } from "../types";
 import { TOURNAMENT_DESCRIPTION_MAX_LENGTH } from "../constants";
+import type { Game } from "@/features/admin/features/games/types";
 
 export const BRACKET_TEAM_COUNT_SINGLE = 8;
 export const BRACKET_TEAM_COUNT_DOUBLE = 16;
@@ -60,15 +61,20 @@ export function tournamentToFormValues(tournament: AdminTournament): CreateTourn
 
 export function applyGameToParticipationForm(
   game: CreateTournamentFormValues["game"],
+  gameData?: Game,
 ): Pick<CreateTournamentFormValues, "wwmMode"> {
-  if (game === "Where Winds Meet") {
+  // Check if game has WWM mode based on identity_group
+  if (gameData?.identity_group && gameData.identity_group !== "") {
     return { wwmMode: defaultWwmModeForGame(game) ?? "group_strategy" };
   }
   return { wwmMode: "" };
 }
 
-export function formValuesToCreateInput(values: CreateTournamentFormValues): CreateTournamentInput {
-  const wwmMode = values.game === "Where Winds Meet" ? values.wwmMode || "group_strategy" : null;
+export function formValuesToCreateInput(
+  values: CreateTournamentFormValues,
+  gameData?: Game,
+): CreateTournamentInput {
+  const wwmMode = gameData?.identity_group && gameData.identity_group !== "" ? values.wwmMode || "group_strategy" : null;
 
   return {
     name: values.name.trim(),
@@ -156,8 +162,9 @@ export function validateCreateTournamentForm(
     errors.teamCap = "Registration cap must be an even number.";
   }
 
+  // WWM mode validation - only required for Where Winds Meet
   if (values.game === "Where Winds Meet" && !values.wwmMode) {
-    errors.wwmMode = "Select a Where Winds Meet mode.";
+    errors.wwmMode = "Select a game mode.";
   }
 
   return errors;

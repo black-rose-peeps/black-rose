@@ -11,6 +11,7 @@ import {
   WWM_MODE_OPTIONS,
   resolveParticipationType,
 } from "@/features/tournaments/types/participation";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 
 interface ParticipationModeFieldsProps {
   values: CreateTournamentFormValues;
@@ -25,8 +26,12 @@ export function ParticipationModeFields({
   fieldErrors,
   onWwmModeChange,
 }: ParticipationModeFieldsProps) {
-  const showWwmMode = values.game === "Where Winds Meet";
-  const isTftSolo = values.game === "Teamfight Tactics";
+  const { data: activeGames } = useActiveGames();
+  const currentGame = activeGames?.find((g) => g.display_name === values.game);
+  
+  // Check if game has WWM mode or TFT solo participation based on game identity_group
+  const showWwmMode = currentGame?.identity_group === "Where Winds Meet";
+  const isTftSolo = currentGame?.identity_group === "Teamfight Tactics";
   const participationType = resolveParticipationType(values.game, values.wwmMode || null);
 
   if (!showWwmMode && !isTftSolo) return null;

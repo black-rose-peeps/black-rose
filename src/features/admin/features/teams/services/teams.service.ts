@@ -27,7 +27,9 @@ import { fetchMemberById } from "@/features/admin/features/members/services/memb
 
 export function rosterActorFromMemberSession(): RosterChangeActor | undefined {
   const session = getSession();
-  const username = session?.username?.trim();
+  if (!session) return undefined;
+
+  const username = session.username?.trim();
   if (!username) return undefined;
 
   const discordUsername = session.discordUsername?.trim() || username;
@@ -363,7 +365,7 @@ async function insertOrReactivateTeamMember(
 }
 
 const TEAM_LIST_COLUMNS =
-  "id, name, tag, game, captain_user_id, created_at, active_tournament_id, active_tournament_name";
+  "id, name, tag, game, game_id, captain_user_id, created_at, active_tournament_id, active_tournament_name";
 
 const TEAM_MEMBER_LIST_COLUMNS =
   "team_id, user_id, username, display_name, avatar_initials, ign, role, status, joined_at";
@@ -464,6 +466,11 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 
   await assertMemberAvailableForGame(captain.id, input.game);
 
+  // Validate gameId is resolved
+  if (!input.gameId) {
+    throw new Error("Game ID must be resolved from active games before creating team.");
+  }
+
   // Insert team
   const { data: teamRow, error: teamErr } = await supabase
     .from("teams")
@@ -471,6 +478,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
       name: input.name,
       tag: input.tag,
       game: input.game,
+      game_id: input.gameId,
       captain_user_id: captain.id,
     })
     .select()
@@ -704,7 +712,7 @@ export async function fetchTeamById(teamId: string): Promise<Team | null> {
 
 export async function updateTeam(
   teamId: string,
-  input: Pick<CreateTeamInput, "name" | "tag" | "game">,
+  input: Pick<CreateTeamInput, "name" | "tag" | "game" | "gameId">,
 ): Promise<Team> {
   const existing = await fetchTeamWithMembers(teamId);
   if (input.game !== existing.game) {
@@ -716,12 +724,18 @@ export async function updateTeam(
     );
   }
 
+  // Validate gameId is resolved
+  if (!input.gameId) {
+    throw new Error("Game ID must be resolved from active games before updating team.");
+  }
+
   const { error } = await supabase
     .from("teams")
     .update({
       name: input.name,
       tag: input.tag,
       game: input.game,
+      game_id: input.gameId,
     })
     .eq("id", teamId);
 

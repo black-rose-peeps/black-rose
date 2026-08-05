@@ -23,6 +23,8 @@ export type TeamMemberRole =
   | "DPS"
   | "Tank"
   | "Healer"
+  | "Vanguard"
+  | "Strategist"
   | "Sub"
   | "TBD";
 
@@ -45,6 +47,7 @@ export interface Team {
   name: string;
   tag: string;
   game: Game;
+  gameId?: string; // Foreign key to games table for dynamic games
   captainUserId: string;
   members: TeamMember[];
   createdAt: string;

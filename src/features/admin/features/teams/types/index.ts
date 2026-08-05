@@ -6,6 +6,7 @@ export interface CreateTeamInput {
   name: string;
   tag: string;
   game: Team["game"];
+  gameId: string; // Foreign key to games table - required for dynamic games
   captainMemberId: string;
   captainRole?: TeamMemberRole;
 }

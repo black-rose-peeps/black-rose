@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { getSupabaseClient } from "@/lib/supabase";
 import { createDebouncedRefetch } from "@/lib/debounce-refetch";
 import {
@@ -6,12 +7,14 @@ import {
   invalidateMemberDataQueries,
   loadMemberTournamentNotificationContext,
 } from "@/features/member/queries/member-data-queries";
+import { TOURNAMENTS_QUERY_KEY } from "@/features/tournaments/hooks";
 import { setNotificationMemberId } from "../store";
 import { syncTeamMembershipNotifications } from "../services/team-membership-notifications";
 import { syncProfileCommentNotifications } from "../services/profile-comment-notifications";
 import { syncTournamentRegistrationRequestNotifications } from "../services/tournament-registration-request-notifications";
 import { syncTournamentRegistrationNotifications } from "../services/tournament-registration-notifications";
 import { syncTournamentLiveNotifications } from "../services/tournament-live-notifications";
+import type { MockTournament } from "@/lib/mock-data";
 
 function teamIdsEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -21,6 +24,8 @@ function teamIdsEqual(a: string[], b: string[]): boolean {
 
 /** Keep member notifications in sync via Supabase Realtime. */
 export function useNotificationSync(memberId: string | undefined) {
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     setNotificationMemberId(memberId ?? null);
     if (!memberId) return;
@@ -32,15 +37,28 @@ export function useNotificationSync(memberId: string | undefined) {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let subscribedTeamIds: string[] = [];
 
-    function syncAll(invalidate = false) {
+    async function syncAll(invalidate = false) {
       syncTail = syncTail.then(async () => {
         if (cancelled) return;
         try {
           if (invalidate) {
             invalidateMemberDataQueries(userId);
+            queryClient.invalidateQueries({ queryKey: TOURNAMENTS_QUERY_KEY });
           }
 
-          const tournamentContext = await loadMemberTournamentNotificationContext(userId);
+          // Fetch current tournament data for each sync
+          const cachedTournaments = await queryClient.ensureQueryData({
+            queryKey: TOURNAMENTS_QUERY_KEY,
+            queryFn: async () => {
+              const { fetchTournaments } = await import("@/features/tournaments/services");
+              return fetchTournaments();
+            },
+            staleTime: 60_000,
+          });
+
+          const tournamentContext = await loadMemberTournamentNotificationContext(userId, {
+            tournaments: cachedTournaments,
+          });
           await Promise.all([
             syncTeamMembershipNotifications(userId),
             syncTournamentRegistrationNotifications(userId, tournamentContext),
@@ -163,5 +181,5 @@ export function useNotificationSync(memberId: string | undefined) {
       void teardownChannel();
       setNotificationMemberId(null);
     };
-  }, [memberId]);
+  }, [memberId, queryClient]);
 }

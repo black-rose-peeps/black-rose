@@ -25,7 +25,7 @@ import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { useMembers } from "@/features/admin/features/members/hooks";
 import { compareByOrder } from "@/features/admin/utils/sort-comparators";
 import { matchesAdminTeamDirectorySearch } from "@/features/admin/utils/search";
-import { GAME_COLOR, GAME_OPTIONS } from "@/features/teams/constants";
+import { GAME_OPTIONS } from "@/features/teams/constants";
 import { useTeams } from "../hooks";
 import type { Team } from "../types";
 import { countActiveMembers, getTeamCaptainUsername } from "../utils";
@@ -320,9 +320,8 @@ export function TeamsManagement() {
                             <TableCell className={adminTableCellClip}>
                               <span
                                 className={cn(
-                                  "block text-[10px] font-tech uppercase tracking-wider-2",
+                                  "block text-[10px] font-tech uppercase tracking-wider-2 text-foreground/90",
                                   adminTableTextTruncate,
-                                  GAME_COLOR[team.game],
                                 )}
                               >
                                 {team.game}
