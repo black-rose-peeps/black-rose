@@ -10,7 +10,6 @@ import {
   AdaptiveModalHeader,
   AdaptiveModalTitle,
 } from "@/components/ui/adaptive-modal";
-import { GAME_COLOR } from "@/features/teams/constants";
 import {
   createTournamentRegistrationRequest,
   fetchMemberTeamsForTournamentRequest,
@@ -147,12 +146,7 @@ export function RequestTournamentRegistrationDialog({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-sm">{team.name}</p>
-                          <p
-                            className={cn(
-                              "mt-0.5 font-tech text-label-readable uppercase",
-                              GAME_COLOR[team.game],
-                            )}
-                          >
+                          <p className="mt-0.5 font-tech text-label-readable uppercase text-foreground/90">
                             {team.game}
                           </p>
                           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">

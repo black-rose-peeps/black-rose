@@ -32,7 +32,7 @@ import {
   dbGameToLegacyGame,
   legacyGameToDbName,
 } from "@/features/teams/constants";
-import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
+import { useActiveGames, useGameRoles } from "@/features/admin/features/games/hooks/useGames";
 import type { Team } from "@/features/teams/types";
 import type { TeamMemberRole } from "@/features/teams/types";
 import type { Game as DbGame } from "@/features/admin/features/games/services/games.service";
@@ -58,6 +58,7 @@ export function CreateTeamDialog({
   const [captainRole, setCaptainRole] = useState<TeamMemberRole>("TBD");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: gameRoles } = useGameRoles(gameId || "");
 
   // Convert database games to legacy format for backward compatibility
   const gameOptions = dbGames
@@ -66,7 +67,7 @@ export function CreateTeamDialog({
         .map((g) => ({ value: dbGameToLegacyGame(g), label: g.display_name, id: g.id }))
     : GAME_OPTIONS.filter((g) => g.value !== "Multi");
 
-  const roleOptions = getRoleOptionsForGame(game);
+  const roleOptions = getRoleOptionsForGame(game, gameRoles);
 
   useEffect(() => {
     if (!open) return;

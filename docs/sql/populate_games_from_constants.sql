@@ -13,20 +13,20 @@ truncate table public.game_roles cascade;
 truncate table public.games cascade;
 
 -- Insert Riot games (shared identity group)
-insert into public.games (name, slug, display_name, identity_group, identity_field_label, identity_field_placeholder, identity_helper_text, color_class, accent_class, is_active, sort_order) values
-('Valorant', 'valorant', 'Valorant', 'riot', 'Riot ID', '', 'Used on Valorant team rosters and tournament brackets — even when Valorant is not your profile main game.', 'text-red-400', 'from-red-500/20 via-red-500/5 to-transparent', true, 1),
-('League of Legends', 'league-of-legends', 'League of Legends', 'riot', 'Riot ID', 'SummonerName#TAG', 'Uses your shared Riot ID — the same name and tagline as Valorant and TFT.', 'text-blue-400', 'from-blue-500/20 via-blue-500/5 to-transparent', true, 2),
-('Teamfight Tactics', 'teamfight-tactics', 'Teamfight Tactics', 'riot', 'Riot ID', 'PlayerName#TAG', 'Uses your shared Riot ID — the same name and tagline as Valorant and League.', 'text-violet-400', 'from-violet-500/20 via-violet-500/5 to-transparent', true, 3);
+insert into public.games (name, slug, display_name, identity_group, identity_field_label, identity_field_placeholder, identity_helper_text, accent_class, is_active, sort_order) values
+('Valorant', 'valorant', 'Valorant', 'riot', 'Riot ID', '', 'Used on Valorant team rosters and tournament brackets — even when Valorant is not your profile main game.', 'from-red-500/20 via-red-500/5 to-transparent', true, 1),
+('League of Legends', 'league-of-legends', 'League of Legends', 'riot', 'Riot ID', 'SummonerName#TAG', 'Uses your shared Riot ID — the same name and tagline as Valorant and TFT.', 'from-blue-500/20 via-blue-500/5 to-transparent', true, 2),
+('Teamfight Tactics', 'teamfight-tactics', 'Teamfight Tactics', 'riot', 'Riot ID', 'PlayerName#TAG', 'Uses your shared Riot ID — the same name and tagline as Valorant and League.', 'from-violet-500/20 via-violet-500/5 to-transparent', true, 3);
 
 -- Insert individual games
-insert into public.games (name, slug, display_name, identity_group, identity_field_label, identity_field_placeholder, identity_helper_text, color_class, accent_class, is_active, sort_order) values
-('Where Winds Meet', 'where-winds-meet', 'Where Winds Meet', null, 'Character Name', 'Your in-game character name', 'Used on Where Winds Meet rosters and events for that title.', 'text-cyan-400', 'from-cyan-500/20 via-cyan-500/5 to-transparent', true, 4),
-('Palworld', 'palworld', 'Palworld', null, 'In-Game Name', 'Your Palworld character name', 'Used to identify you on Black Rose Palworld servers. Enter the name your guild and server members know you by.', 'text-emerald-400', 'from-emerald-500/20 via-emerald-500/5 to-transparent', true, 5),
-('Marvel Rivals', 'marvel-rivals', 'Marvel Rivals', null, 'Player Name', 'Your Marvel Rivals in-game name', 'Used on Marvel Rivals team rosters and tournament brackets — enter the name shown in-game.', 'text-amber-400', 'from-rose-500/20 via-rose-500/5 to-transparent', true, 6);
+insert into public.games (name, slug, display_name, identity_group, identity_field_label, identity_field_placeholder, identity_helper_text, accent_class, is_active, sort_order) values
+('Where Winds Meet', 'where-winds-meet', 'Where Winds Meet', null, 'Character Name', 'Your in-game character name', 'Used on Where Winds Meet rosters and events for that title.', 'from-cyan-500/20 via-cyan-500/5 to-transparent', true, 4),
+('Palworld', 'palworld', 'Palworld', null, 'In-Game Name', 'Your Palworld character name', 'Used to identify you on Black Rose Palworld servers. Enter the name your guild and server members know you by.', 'from-emerald-500/20 via-emerald-500/5 to-transparent', true, 5),
+('Marvel Rivals', 'marvel-rivals', 'Marvel Rivals', null, 'Player Name', 'Your Marvel Rivals in-game name', 'Used on Marvel Rivals team rosters and tournament brackets — enter the name shown in-game.', 'from-rose-500/20 via-rose-500/5 to-transparent', true, 6);
 
 -- Insert Multi-game option (for teams only, not profiles)
-insert into public.games (name, slug, display_name, identity_group, identity_field_label, identity_field_placeholder, identity_helper_text, color_class, accent_class, is_active, sort_order) values
-('Multi', 'multi', 'Multi-game', null, 'In-Game ID', '', '', 'text-muted-foreground', 'from-white/10 via-white/5 to-transparent', true, 7);
+insert into public.games (name, slug, display_name, identity_group, identity_field_label, identity_field_placeholder, identity_helper_text, accent_class, is_active, sort_order) values
+('Multi', 'multi', 'Multi-game', null, 'In-Game ID', '', '', 'from-white/10 via-white/5 to-transparent', true, 7);
 
 -- Insert game roles from current constants
 -- Data sourced from src/features/teams/constants/index.ts

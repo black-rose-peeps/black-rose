@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { GAME_LABELS, STATUS_CONFIG } from "../constants";
+import { STATUS_CONFIG } from "../constants";
 import {
   isPendingCaptainRegistrationStatus,
   isRegisteredCaptainStatus,
@@ -178,7 +178,7 @@ export function TournamentShowcaseCard({
         <div className="relative">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-tech text-label-readable uppercase text-muted-foreground">
-              {GAME_LABELS[t.game] || t.game}
+              {t.game}
             </span>
             <span className="text-white/15">·</span>
             <span className="border border-white/10 px-1.5 py-px font-tech text-label-readable uppercase text-white/50">

@@ -14,15 +14,6 @@ export const STATUS_FILTERS: (typeof ALL_STATUSES | TournamentStatus)[] = [
   "Archived",
 ];
 
-// Legacy game labels - will be replaced with dynamic data from games table
-export const GAME_LABELS: Record<string, string> = {
-  Valorant: "Valorant · 5v5",
-  "League of Legends": "League of Legends · 5v5",
-  "Teamfight Tactics": "Teamfight Tactics · 8",
-  "Where Winds Meet": "Where Winds Meet",
-  "Marvel Rivals": "Marvel Rivals · 6v6",
-};
-
 export const STATUS_CONFIG: Record<
   TournamentStatus,
   { label: string; dot: string; badge: string }

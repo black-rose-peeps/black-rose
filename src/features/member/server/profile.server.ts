@@ -421,7 +421,8 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
 
   const valorantGameName = input.valorantGameName.trim();
   const valorantTagline = normalizeValorantTagline(input.valorantTagline);
-  const gameIdentities = sanitizeGameIdentities(input.gameIdentities, Object.keys(input.gameIdentities));
+  // Don't filter out dynamic games - allow all games that have values
+  const gameIdentities = input.gameIdentities;
   const mainGame = resolveStoredMainGame(input.mainGame);
   const legacyIngameName =
     mainGame && !isRiotGame(mainGame) ? (gameIdentities[mainGame] ?? null) : null;

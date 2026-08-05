@@ -10,9 +10,9 @@ export interface GameFormData {
   identity_field_label: string;
   identity_field_placeholder: string;
   identity_helper_text: string;
-  color_class: string;
   accent_class: string;
   tournament_header_image: string;
+  icon: string;
   is_active: boolean;
   sort_order: string;
 }

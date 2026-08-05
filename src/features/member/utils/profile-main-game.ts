@@ -1,4 +1,3 @@
-import { PROFILE_GAME_OPTIONS } from "../constants";
 import { normalizeGameKey } from "@/features/teams/constants";
 
 /** Canonical main game for profile forms — keeps saved values selectable in the UI. */
@@ -24,7 +23,7 @@ export function resolveStoredMainGame(raw: string | null | undefined): string | 
 /** Get game select options - should be called with dynamic games from useActiveGames hook */
 export function profileGameSelectOptions(
   currentGame: string,
-  availableGames: readonly string[] = PROFILE_GAME_OPTIONS as readonly string[],
+  availableGames: readonly string[] = [],
 ): readonly string[] {
   const resolved = resolveProfileMainGame(currentGame);
   if (resolved && !availableGames.includes(resolved)) {

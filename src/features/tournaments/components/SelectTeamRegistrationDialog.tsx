@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle2, Trophy, Users } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
   AdaptiveModalBody,
   AdaptiveModalContent,
   AdaptiveModalDescription,
+  AdaptiveModalFooter,
   AdaptiveModalHeader,
   AdaptiveModalTitle,
 } from "@/components/ui/adaptive-modal";
-import { GAME_COLOR } from "@/features/teams/constants";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
+import { useMemberProfileQuery } from "@/features/member/queries/member-profile-queries";
+import { fetchRosterIdentityGapsForTeams } from "@/features/member/services/member-identity.service";
+import { gameIdentityConfig } from "@/features/member/utils/game-identity";
+import { tournamentRosterIdentityError } from "@/features/member/utils/roster-identity";
 import {
   countActiveRosterMembers,
   getRequiredRosterSizeForTournament,
@@ -21,9 +26,6 @@ import {
   fetchCaptainTeamsForTournament,
   requestCaptainTeamRegistration,
 } from "@/features/tournaments/services/team-registration.service";
-import { fetchRosterIdentityGapsForTeams } from "@/features/member/services/member-identity.service";
-import { gameIdentityConfig } from "@/features/member/utils/game-identity";
-import { tournamentRosterIdentityError } from "@/features/member/utils/roster-identity";
 import type { RosterIdentityGap } from "@/features/member/utils/roster-identity";
 import { cn } from "@/lib/utils";
 import type { Team } from "@/features/teams/types";
@@ -57,6 +59,7 @@ export function SelectTeamRegistrationDialog({
     Map<string, RosterIdentityGap[]>
   >(() => new Map());
   const hasLoadedTeams = useRef(false);
+  const { data: activeGames } = useActiveGames();
 
   useEffect(() => {
     hasLoadedTeams.current = false;
@@ -80,7 +83,7 @@ export function SelectTeamRegistrationDialog({
         const compatible = eligible.filter(
           (team) => team.game === "Multi" || team.game === tournamentGame,
         );
-        const gaps = await fetchRosterIdentityGapsForTeams(compatible, tournamentGame);
+        const gaps = await fetchRosterIdentityGapsForTeams(compatible, tournamentGame, activeGames);
         if (cancelled) return;
         setTeams(compatible);
         setIdentityGapsByTeamId(gaps);
@@ -128,9 +131,9 @@ export function SelectTeamRegistrationDialog({
     ? tournamentRosterRequirementError(selectedTeam, tournamentGame)
     : null;
   const selectedTeamIdentityError = selectedTeam
-    ? tournamentRosterIdentityError(selectedTeam, tournamentGame, selectedTeamGaps)
+    ? tournamentRosterIdentityError(selectedTeam, tournamentGame, selectedTeamGaps, activeGames)
     : null;
-  const gameIdentityLabel = gameIdentityConfig(tournamentGame)?.panelLabel ?? tournamentGame;
+  const gameIdentityLabel = gameIdentityConfig(tournamentGame, activeGames)?.panelLabel ?? tournamentGame;
   const anyRosterEligible = teams.some((team) =>
     meetsTournamentRosterRequirement(team, tournamentGame),
   );
@@ -222,12 +225,7 @@ export function SelectTeamRegistrationDialog({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-sm">{team.name}</p>
-                          <p
-                            className={cn(
-                              "mt-0.5 font-tech text-label-readable uppercase",
-                              GAME_COLOR[team.game],
-                            )}
-                          >
+                          <p className="mt-0.5 font-tech text-label-readable uppercase text-muted-foreground">
                             {team.game}
                           </p>
                           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">

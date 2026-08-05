@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMemberProfileQuery } from "@/features/member/queries/member-profile-queries";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import {
   formatIdentityForGame,
   gameIdentityConfig,
@@ -23,6 +24,7 @@ export function TournamentGameIdentityGate({
 }: TournamentGameIdentityGateProps) {
   const profileQuery = useMemberProfileQuery(memberId);
   const profile = profileQuery.data;
+  const { data: activeGames } = useActiveGames();
 
   if (profileQuery.isPending) {
     return <RegisterNowButtonSkeleton />;
@@ -39,7 +41,7 @@ export function TournamentGameIdentityGate({
     return <>{children}</>;
   }
 
-  const config = gameIdentityConfig(tournamentGame);
+  const config = gameIdentityConfig(tournamentGame, activeGames);
   const gameLabel = config?.panelLabel ?? tournamentGame;
   const riotTournament = isRiotGame(tournamentGame);
 

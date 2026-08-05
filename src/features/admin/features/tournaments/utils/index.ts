@@ -64,7 +64,7 @@ export function applyGameToParticipationForm(
   gameData?: Game,
 ): Pick<CreateTournamentFormValues, "wwmMode"> {
   // Check if game has WWM mode based on identity_group
-  if (gameData?.identity_group === "Where Winds Meet") {
+  if (gameData?.identity_group && gameData.identity_group !== "") {
     return { wwmMode: defaultWwmModeForGame(game) ?? "group_strategy" };
   }
   return { wwmMode: "" };
@@ -74,7 +74,7 @@ export function formValuesToCreateInput(
   values: CreateTournamentFormValues,
   gameData?: Game,
 ): CreateTournamentInput {
-  const wwmMode = gameData?.identity_group === "Where Winds Meet" ? values.wwmMode || "group_strategy" : null;
+  const wwmMode = gameData?.identity_group && gameData.identity_group !== "" ? values.wwmMode || "group_strategy" : null;
 
   return {
     name: values.name.trim(),
@@ -162,10 +162,9 @@ export function validateCreateTournamentForm(
     errors.teamCap = "Registration cap must be an even number.";
   }
 
-  // WWM mode validation - will be checked dynamically by game identity_group
-  // This is kept as a fallback for legacy data
+  // WWM mode validation - only required for Where Winds Meet
   if (values.game === "Where Winds Meet" && !values.wwmMode) {
-    errors.wwmMode = "Select a Where Winds Meet mode.";
+    errors.wwmMode = "Select a game mode.";
   }
 
   return errors;

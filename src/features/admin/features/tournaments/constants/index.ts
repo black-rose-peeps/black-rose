@@ -4,15 +4,6 @@ import type { TournamentStatus } from "@/lib/mock-data";
 
 export { TOURNAMENT_FORMATS };
 
-// Legacy games - will be replaced with dynamic games from database
-export const TOURNAMENT_GAMES: string[] = [
-  "Valorant",
-  "League of Legends",
-  "Teamfight Tactics",
-  "Where Winds Meet",
-  "Marvel Rivals",
-];
-
 export const TOURNAMENT_REGIONS = ["PH", "SEA", "APAC", "Global"] as const;
 
 /** Public tournament hero blurb — keep in sync with DB check constraint. */
@@ -36,7 +27,7 @@ export const ADMIN_TOURNAMENT_STATUSES: TournamentStatus[] = [
 
 export const DEFAULT_CREATE_TOURNAMENT_FORM: CreateTournamentFormValues = {
   name: "",
-  game: "Valorant",
+  game: "",
   format: "Single Elimination",
   prizeCurrency: "PHP",
   prizeAmount: "",

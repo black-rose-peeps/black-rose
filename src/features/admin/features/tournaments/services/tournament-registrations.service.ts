@@ -36,6 +36,7 @@ import {
 } from "./tournaments.service";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import { registrationNeedsReview } from "@/features/admin/features/participants/constants/registration-status";
+import { getActiveGames } from "@/features/admin/features/games/services/games.service";
 
 export {
   assertMemberAvailableForTournament,
@@ -186,7 +187,7 @@ async function fetchCompetitiveIdentitiesForMembers(
   memberIds: string[],
 ): Promise<Map<string, string>> {
   const unique = [...new Set(memberIds.filter(Boolean))];
-  if (!unique.length || !gameIdentityConfig(game)) return new Map();
+  if (!unique.length) return new Map();
 
   const { data, error } = await supabase
     .from("member_profiles")
@@ -362,8 +363,9 @@ async function validateTeamForTournamentRegistration(
   if (rosterError) throw new Error(rosterError);
 
   if (!options?.skipIdentityCheck) {
-    const identityGaps = await fetchRosterIdentityGapsForTeam(rosterTeam, tournament.game);
-    const identityError = formatRosterIdentityGapMessage(rosterTeam, tournament.game, identityGaps);
+    const activeGames = await getActiveGames();
+    const identityGaps = await fetchRosterIdentityGapsForTeam(rosterTeam, tournament.game, activeGames);
+    const identityError = formatRosterIdentityGapMessage(rosterTeam, tournament.game, identityGaps, activeGames);
     if (identityError) throw new Error(identityError);
   }
 

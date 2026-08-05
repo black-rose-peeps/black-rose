@@ -20,7 +20,7 @@ import { markTeamInviteRead } from "@/features/notifications/store";
 import { CreateTeamDialog } from "@/features/teams/components/CreateTeamDialog";
 import { TeamsEmptyState } from "@/features/teams/components/TeamsEmptyState";
 import { TeamInviteCard } from "@/features/teams/components/TeamInviteCard";
-import { GAME_COLOR, GAME_ACCENT } from "@/features/teams/constants";
+import { GAME_ACCENT } from "@/features/teams/constants";
 import { useMemberTeamMembershipRealtime } from "@/features/teams/hooks/useTeamMembersRealtime";
 import { fetchTeamsChampionshipMap } from "@/features/championships/services/championship.service";
 import { ChampionMarkGroup } from "@/features/championships/components/ChampionMarkGroup";
@@ -77,7 +77,7 @@ function TeamSummaryCard({
                 <Crown className="h-4 w-4 text-white/40" aria-label="You are the captain" />
               )}
             </div>
-            <span className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}>
+            <span className="font-tech text-label-readable uppercase text-foreground/90">
               {team.game}
             </span>
             <div className="mt-1 text-xs text-muted-foreground">

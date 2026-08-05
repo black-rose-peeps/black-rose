@@ -24,13 +24,19 @@ import {
 } from "@/components/ui/select";
 import { useCreateGame, useUpdateGame, useGamesWithRoles, useAddGameRole } from "../hooks/useGames";
 import type { GameFormData } from "../types";
-import { COLOR_CLASS_OPTIONS, ACCENT_CLASS_OPTIONS, IDENTITY_GROUP_OPTIONS } from "../constants";
+import { ACCENT_CLASS_OPTIONS, IDENTITY_GROUP_OPTIONS } from "../constants";
 import {
   GAME_HEADER_ACCEPT,
   GAME_HEADER_MAX_BYTES,
   validateGameHeaderImage,
   uploadGameHeaderImage,
 } from "../services/game-header-image.service";
+import {
+  GAME_ICON_ACCEPT,
+  GAME_ICON_MAX_BYTES,
+  validateGameIconImage,
+  uploadGameIconImage,
+} from "../services/game-icon-image.service";
 
 interface CreateGameModalProps {
   open: boolean;
@@ -48,12 +54,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
   const [headerImageFile, setHeaderImageFile] = useState<File | null>(null);
   const [headerImageError, setHeaderImageError] = useState<string | null>(null);
   const [headerImagePreview, setHeaderImagePreview] = useState<string | null>(null);
-
-  // Filter out colors already used by other games
-  const availableColors = useMemo(() => {
-    const usedColors = new Set(existingGames?.map((g) => g.color_class) || []);
-    return COLOR_CLASS_OPTIONS.filter((c) => !usedColors.has(c.value));
-  }, [existingGames]);
+  const [iconImageFile, setIconImageFile] = useState<File | null>(null);
+  const [iconImageError, setIconImageError] = useState<string | null>(null);
+  const [iconImagePreview, setIconImagePreview] = useState<string | null>(null);
 
   const availableAccents = useMemo(() => {
     const usedAccents = new Set(existingGames?.map((g) => g.accent_class) || []);
@@ -67,9 +70,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
     identity_field_label: "",
     identity_field_placeholder: "",
     identity_helper_text: "",
-    color_class: "text-muted-foreground",
     accent_class: "from-white/10 via-white/5 to-transparent",
     tournament_header_image: "",
+    icon: "",
     is_active: true,
     sort_order: "0",
   });
@@ -107,6 +110,39 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
     setHeaderImageError(null);
   };
 
+  // Handle icon image file selection
+  const handleIconImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setIconImageFile(null);
+      setIconImagePreview(null);
+      setIconImageError(null);
+      return;
+    }
+
+    const error = validateGameIconImage(file);
+    if (error) {
+      setIconImageError(error);
+      setIconImageFile(null);
+      setIconImagePreview(null);
+      return;
+    }
+
+    setIconImageError(null);
+    setIconImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => setIconImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleIconImageRemove = () => {
+    setIconImageFile(null);
+    setIconImagePreview(null);
+    setIconImageError(null);
+  };
+
   // Auto-generate slug and display name from name
   const handleNameChange = (value: string) => {
     const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -134,9 +170,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         identity_field_label: formData.identity_field_label || null,
         identity_field_placeholder: formData.identity_field_placeholder || null,
         identity_helper_text: formData.identity_helper_text || null,
-        color_class: formData.color_class,
         accent_class: formData.accent_class,
         tournament_header_image: null,
+        icon: formData.icon || null,
         is_active: formData.is_active,
         sort_order: parseInt(formData.sort_order) || 0,
       });
@@ -146,6 +182,13 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         const imageUrl = await uploadGameHeaderImage(result.id, headerImageFile);
         // Update game with image URL
         await updateGame.mutateAsync({ id: result.id, input: { tournament_header_image: imageUrl } });
+      }
+
+      // Upload icon image if provided
+      if (result && iconImageFile) {
+        const imageUrl = await uploadGameIconImage(result.id, iconImageFile);
+        // Update game with image URL
+        await updateGame.mutateAsync({ id: result.id, input: { icon: imageUrl } });
       }
 
       // Add roles after game is created
@@ -165,9 +208,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         identity_field_label: "",
         identity_field_placeholder: "",
         identity_helper_text: "",
-        color_class: "text-muted-foreground",
         accent_class: "from-white/10 via-white/5 to-transparent",
         tournament_header_image: "",
+        icon: "",
         is_active: true,
         sort_order: "0",
       });
@@ -176,6 +219,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
       setHeaderImageFile(null);
       setHeaderImagePreview(null);
       setHeaderImageError(null);
+      setIconImageFile(null);
+      setIconImagePreview(null);
+      setIconImageError(null);
     } catch (err) {
       console.error("Failed to create game:", err);
     }
@@ -183,7 +229,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
 
   return (
     <AdaptiveModal open={open} onOpenChange={onOpenChange}>
-      <AdaptiveModalContent className="max-w-2xl">
+      <AdaptiveModalContent>
         <AdaptiveModalHeader>
           <AdaptiveModalTitle>Add New Game</AdaptiveModalTitle>
           <AdaptiveModalDescription>
@@ -191,14 +237,14 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
           </AdaptiveModalDescription>
         </AdaptiveModalHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
           <AdaptiveModalBody>
-            <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+            <Tabs defaultValue="basic" className="w-full flex flex-col min-h-0">
+              <TabsList className="grid w-full grid-cols-2 shrink-0">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="identity">Identity</TabsTrigger>
               </TabsList>
-              <TabsContent value="basic" className="space-y-4 mt-4">
+              <TabsContent value="basic" className="space-y-4 mt-4 overflow-y-auto min-h-0">
                 <div className="space-y-2">
                   <Label>Game Name</Label>
                   <Input
@@ -212,44 +258,24 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Color Class</Label>
-                    <Select
-                      value={formData.color_class}
-                      onValueChange={(value) => setFormData({ ...formData, color_class: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select color" />
-                      </SelectTrigger>
-                      <SelectContent>
-                    {availableColors.map((color) => (
-                      <SelectItem key={color.value} value={color.value}>
-                        <span className={color.preview}>{color.label}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Accent Class</Label>
-                <Select
-                  value={formData.accent_class}
-                  onValueChange={(value) => setFormData({ ...formData, accent_class: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select accent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableAccents.map((accent) => (
-                      <SelectItem key={accent.value} value={accent.value}>
-                        {accent.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label>Accent Class</Label>
+                  <Select
+                    value={formData.accent_class}
+                    onValueChange={(value) => setFormData({ ...formData, accent_class: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select accent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableAccents.map((accent) => (
+                        <SelectItem key={accent.value} value={accent.value}>
+                          <span className={accent.textColor}>{accent.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -276,6 +302,50 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                   Only active games appear in dropdowns
                 </p>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Game Icon</Label>
+              <div className="space-y-3">
+                {iconImagePreview ? (
+                  <div className="relative group">
+                    <img
+                      src={iconImagePreview}
+                      alt="Icon preview"
+                      className="w-20 h-20 object-cover rounded-md border border-border"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={handleIconImageRemove}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-20 h-20 border-2 border-dashed border-border rounded-md hover:border-primary/50 transition-colors">
+                    <label htmlFor="icon-image-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                      <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                      <p className="text-xs text-muted-foreground">Icon</p>
+                    </label>
+                    <input
+                      id="icon-image-upload"
+                      type="file"
+                      accept={GAME_ICON_ACCEPT}
+                      onChange={handleIconImageChange}
+                      className="hidden"
+                    />
+                  </div>
+                )}
+                {iconImageError && (
+                  <p className="text-xs text-destructive">{iconImageError}</p>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Recommended: Square image, max {Math.round(GAME_ICON_MAX_BYTES / (1024 * 1024))}MB
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -368,7 +438,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
               )}
             </div>
               </TabsContent>
-              <TabsContent value="identity" className="space-y-4 mt-4">
+              <TabsContent value="identity" className="space-y-4 mt-4 overflow-y-auto min-h-0">
                 <div className="space-y-2">
                   <Label>Identity Group</Label>
                   <Select

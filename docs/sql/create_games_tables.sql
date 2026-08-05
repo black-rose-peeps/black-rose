@@ -11,7 +11,6 @@ create table if not exists public.games (
   identity_field_label text,
   identity_field_placeholder text,
   identity_helper_text text,
-  color_class text not null default 'text-muted-foreground',
   accent_class text not null default 'from-white/10 via-white/5 to-transparent',
   is_active boolean not null default true,
   sort_order integer not null default 0,

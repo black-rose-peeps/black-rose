@@ -1,5 +1,5 @@
 import type { TeamMemberRole } from "../types";
-import type { Game as DbGame } from "@/features/admin/features/games/services/games.service";
+import type { Game as DbGame, GameRole } from "@/features/admin/features/games/services/games.service";
 
 // Legacy type for backward compatibility during migration
 export type Game =
@@ -127,12 +127,25 @@ export function normalizeGameKey(game: string): Game | null {
   if (exact) return exact.value;
 
   const caseInsensitive = GAME_OPTIONS.find((g) => g.value.toLowerCase() === trimmed.toLowerCase());
-  return caseInsensitive?.value ?? null;
+  if (caseInsensitive) return caseInsensitive.value;
+
+  // For dynamic games not in legacy list, return the trimmed value as-is
+  // This allows dynamic games to be handled throughout the system
+  return trimmed as Game;
 }
 
 /** Main role options filtered by the member's or team's primary game. */
-export function getRoleOptionsForGame(game: string): TeamMemberRole[] {
-  switch (normalizeGameKey(game)) {
+export function getRoleOptionsForGame(game: string, gameRoles?: GameRole[]): TeamMemberRole[] {
+  const normalized = normalizeGameKey(game);
+  
+  // If dynamic game roles are explicitly provided (even if empty), use them
+  // This allows games with 0 roles to show no roles instead of falling back to legacy
+  if (gameRoles !== undefined) {
+    return gameRoles.map(r => r.role_name as TeamMemberRole);
+  }
+  
+  // Fall back to legacy hardcoded roles only when no dynamic data is provided
+  switch (normalized) {
     case "Valorant":
       return VALORANT_ROLES;
     case "League of Legends":
@@ -156,23 +169,14 @@ export function getRoleOptionsForGame(game: string): TeamMemberRole[] {
 export function resolveRoleForGame(
   role: TeamMemberRole | string | null | undefined,
   game: string,
+  gameRoles?: GameRole[],
 ): TeamMemberRole {
-  const options = getRoleOptionsForGame(game);
+  const options = getRoleOptionsForGame(game, gameRoles);
   if (role && options.includes(role as TeamMemberRole)) {
     return role as TeamMemberRole;
   }
   return "TBD";
 }
-
-export const GAME_COLOR: Record<Game, string> = {
-  Valorant: "text-red-400",
-  "League of Legends": "text-blue-400",
-  "Teamfight Tactics": "text-violet-400",
-  "Where Winds Meet": "text-cyan-400",
-  Palworld: "text-emerald-400",
-  "Marvel Rivals": "text-amber-400",
-  Multi: "text-muted-foreground",
-};
 
 export const GAME_ACCENT: Record<Game, string> = {
   Valorant: "from-red-500/20 via-red-500/5 to-transparent",
@@ -186,11 +190,6 @@ export const GAME_ACCENT: Record<Game, string> = {
 
 export const MAX_TEAM_SIZE = 7; // 5 starters + 2 subs
 export const MIN_TEAM_SIZE = 5;
-
-// Get color from database game, fallback to legacy mapping
-export function getGameColor(dbGame: DbGame): string {
-  return dbGame.color_class;
-}
 
 // Get accent from database game, fallback to legacy mapping
 export function getGameAccent(dbGame: DbGame): string {

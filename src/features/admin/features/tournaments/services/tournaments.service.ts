@@ -65,7 +65,6 @@ interface TournamentRowWithGames {
   game_id: string | null;
   games: {
     tournament_header_image: string | null;
-    color_class: string | null;
     accent_class: string | null;
   } | null;
 }
@@ -80,7 +79,6 @@ function rowToTournament(row: TournamentRowWithGames | Record<string, unknown>):
   // Safely access nested games data
   const gamesData = (row as TournamentRowWithGames).games;
   const tournamentHeaderImage = gamesData?.tournament_header_image ?? null;
-  const gameColorClass = gamesData?.color_class ?? null;
   const gameAccentClass = gamesData?.accent_class ?? null;
 
   return {
@@ -102,7 +100,6 @@ function rowToTournament(row: TournamentRowWithGames | Record<string, unknown>):
     rulesUrl: (row.rules_url as string | null) ?? null,
     // Game styling data from join - nested under games object
     tournamentHeaderImage,
-    gameColorClass,
     gameAccentClass,
   };
 }
@@ -218,7 +215,7 @@ const TOURNAMENT_LIST_COLUMNS =
 
 // Join with games table to get game styling data
 const TOURNAMENT_WITH_GAME_COLUMNS =
-  "id, name, game, status, prize_pool, prize_breakdown, start_date, registration_deadline, teams_registered, team_cap, format, region, participation_type, wwm_mode, description, rules_url, game_id, games(tournament_header_image, color_class, accent_class)";
+  "id, name, game, status, prize_pool, prize_breakdown, start_date, registration_deadline, teams_registered, team_cap, format, region, participation_type, wwm_mode, description, rules_url, game_id, games(tournament_header_image, accent_class)";
 
 const TOURNAMENT_NOTIFICATION_COLUMNS = "id, name, status";
 
@@ -331,7 +328,7 @@ export async function createTournament(input: CreateTournamentInput): Promise<Mo
   // Look up game_id from games table based on game name
   const { data: gameData, error: gameError } = await supabase
     .from("games")
-    .select("id, tournament_header_image, color_class, accent_class")
+    .select("id, tournament_header_image, accent_class")
     .eq("display_name", input.game)
     .maybeSingle();
 

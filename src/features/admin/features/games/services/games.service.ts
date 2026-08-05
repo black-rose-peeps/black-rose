@@ -9,9 +9,9 @@ export interface Game {
   identity_field_label: string | null;
   identity_field_placeholder: string | null;
   identity_helper_text: string | null;
-  color_class: string;
   accent_class: string;
   tournament_header_image: string | null;
+  icon: string | null;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -37,9 +37,9 @@ export interface CreateGameInput {
   identity_field_label?: string | null;
   identity_field_placeholder?: string | null;
   identity_helper_text?: string | null;
-  color_class?: string;
   accent_class?: string;
   tournament_header_image?: string | null;
+  icon?: string | null;
   is_active?: boolean;
   sort_order?: number;
 }
@@ -52,9 +52,9 @@ export interface UpdateGameInput {
   identity_field_label?: string | null;
   identity_field_placeholder?: string | null;
   identity_helper_text?: string | null;
-  color_class?: string;
   accent_class?: string;
   tournament_header_image?: string | null;
+  icon?: string | null;
   is_active?: boolean;
   sort_order?: number;
 }
@@ -148,9 +148,9 @@ export async function createGame(input: CreateGameInput): Promise<Game> {
       identity_field_label: input.identity_field_label || null,
       identity_field_placeholder: input.identity_field_placeholder || null,
       identity_helper_text: input.identity_helper_text || null,
-      color_class: input.color_class || "text-muted-foreground",
       accent_class: input.accent_class || "from-white/10 via-white/5 to-transparent",
       tournament_header_image: input.tournament_header_image || null,
+      icon: input.icon || null,
       is_active: input.is_active !== undefined ? input.is_active : true,
       sort_order: sortOrder,
     })
@@ -170,9 +170,9 @@ export async function updateGame(id: string, input: UpdateGameInput): Promise<Ga
   if (input.identity_field_label !== undefined) updateData.identity_field_label = input.identity_field_label;
   if (input.identity_field_placeholder !== undefined) updateData.identity_field_placeholder = input.identity_field_placeholder;
   if (input.identity_helper_text !== undefined) updateData.identity_helper_text = input.identity_helper_text;
-  if (input.color_class !== undefined) updateData.color_class = input.color_class;
   if (input.accent_class !== undefined) updateData.accent_class = input.accent_class;
   if (input.tournament_header_image !== undefined) updateData.tournament_header_image = input.tournament_header_image;
+  if (input.icon !== undefined) updateData.icon = input.icon;
   if (input.is_active !== undefined) updateData.is_active = input.is_active;
   if (input.sort_order !== undefined) updateData.sort_order = input.sort_order;
 
