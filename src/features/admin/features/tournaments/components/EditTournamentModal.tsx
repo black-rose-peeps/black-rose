@@ -178,17 +178,7 @@ export function EditTournamentModal({
     try {
       const currentGameData = activeGames?.find((g) => g.display_name === values.game);
 
-      // Auto-update status to 'Registration Open' if registration deadline is in the future
-      let finalValues = { ...values };
-      if (values.registrationDeadline) {
-        const deadlineDate = new Date(values.registrationDeadline);
-        const now = new Date();
-        if (deadlineDate > now) {
-          finalValues = { ...finalValues, status: "Registration Open" };
-        }
-      }
-
-      let input = formValuesToCreateInput({ ...finalValues, rulesUrl: "" }, currentGameData);
+      let input = formValuesToCreateInput({ ...values, rulesUrl: "" }, currentGameData);
 
       const clearingRulesFile = removeRulesFile && !rulesFile;
 

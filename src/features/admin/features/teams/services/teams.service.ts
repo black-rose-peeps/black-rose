@@ -466,6 +466,11 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 
   await assertMemberAvailableForGame(captain.id, input.game);
 
+  // Validate gameId is resolved
+  if (!input.gameId) {
+    throw new Error("Game ID must be resolved from active games before creating team.");
+  }
+
   // Insert team
   const { data: teamRow, error: teamErr } = await supabase
     .from("teams")
@@ -473,7 +478,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
       name: input.name,
       tag: input.tag,
       game: input.game,
-      game_id: input.gameId, // Set game_id when available
+      game_id: input.gameId,
       captain_user_id: captain.id,
     })
     .select()
@@ -719,13 +724,18 @@ export async function updateTeam(
     );
   }
 
+  // Validate gameId is resolved
+  if (!input.gameId) {
+    throw new Error("Game ID must be resolved from active games before updating team.");
+  }
+
   const { error } = await supabase
     .from("teams")
     .update({
       name: input.name,
       tag: input.tag,
       game: input.game,
-      game_id: input.gameId, // Set game_id when available
+      game_id: input.gameId,
     })
     .eq("id", teamId);
 

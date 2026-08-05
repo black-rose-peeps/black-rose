@@ -188,10 +188,8 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
     setIconImageError(null);
   };
 
-  // Auto-generate slug and display name from name
   const handleNameChange = (value: string) => {
-    const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    setFormData({ ...formData, name: value, slug, display_name: value });
+    setFormData({ ...formData, name: value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -289,8 +287,31 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                     placeholder="Valorant"
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Slug</Label>
+                  <Input
+                    value={formData.slug}
+                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                    placeholder="valorant"
+                    required
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Slug and display name will be auto-generated from this name
+                    URL-friendly identifier for the game
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Display Name</Label>
+                  <Input
+                    value={formData.display_name}
+                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                    placeholder="Valorant"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Human-readable name shown in UI
                   </p>
                 </div>
 

@@ -35,7 +35,7 @@ function gameToCommunityGame(game: Game): CommunityGame {
   return {
     id: game.id,
     label: game.display_name,
-    icon: game.icon || "/src/assets/black-rose-emblem.png", // Fallback icon if none provided
+    icon: game.icon || "/BR Text white.png", // Fallback icon if none provided
     hasServers,
     subtitle: hasServers ? undefined : "Community",
     href,

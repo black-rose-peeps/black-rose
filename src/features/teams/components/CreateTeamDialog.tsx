@@ -89,6 +89,9 @@ export function CreateTeamDialog({
             ? normalizedGame
             : "Valorant";
         setGame(nextGame);
+        // Resolve gameId from dbGames
+        const selectedGame = dbGames?.find((g) => dbGameToLegacyGame(g) === nextGame);
+        setGameId(selectedGame?.id);
         setCaptainRole(resolveRoleForGame(profile.mainRole, nextGame));
       })
       .catch(() => {});
@@ -96,7 +99,7 @@ export function CreateTeamDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, memberId]);
+  }, [open, memberId, dbGames]);
 
   useEffect(() => {
     setCaptainRole((current) => resolveRoleForGame(current, game));
@@ -114,6 +117,10 @@ export function CreateTeamDialog({
     setError(null);
 
     try {
+      if (!gameId) {
+        setError("Game must be selected before creating a team.");
+        return;
+      }
       const team = await createTeam({
         name: name.trim(),
         tag: tag.trim().toUpperCase(),
@@ -241,7 +248,7 @@ export function CreateTeamDialog({
             </Button>
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !gameId}
               className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

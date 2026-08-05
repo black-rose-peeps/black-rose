@@ -33,7 +33,7 @@ export function useHallOfChampions() {
   const { tournaments } = useTournamentList();
 
   const query = useQuery({
-    queryKey: ["hall-of-champions"],
+    queryKey: ["hall-of-champions", TOURNAMENTS_QUERY_KEY],
     queryFn: async () => {
       const rows = await fetchHallOfChampions(tournaments);
       // In local dev the DB is empty — inject a stub so the portrait wiring
@@ -42,6 +42,7 @@ export function useHallOfChampions() {
     },
     staleTime: 60_000, // 1 minute
     gcTime: 5 * 60_000, // 5 minutes
+    enabled: tournaments.length > 0, // Only run when tournaments are loaded
   });
 
   return {

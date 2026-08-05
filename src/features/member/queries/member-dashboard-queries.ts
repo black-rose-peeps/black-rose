@@ -3,6 +3,7 @@ import { fetchMemberTournamentDashboard } from "@/features/member/services/membe
 import { tryGetAppQueryClient } from "@/lib/app-query";
 import { queryKeys } from "@/lib/query-keys";
 import { MEMBER_READ_QUERY_OPTIONS } from "./member-query-options";
+import { TOURNAMENTS_QUERY_KEY } from "@/features/tournaments/hooks";
 import type { MockTournament } from "@/lib/mock-data";
 
 export function memberTournamentDashboardQueryOptions(
@@ -10,9 +11,9 @@ export function memberTournamentDashboardQueryOptions(
   tournaments?: MockTournament[],
 ) {
   return queryOptions({
-    queryKey: queryKeys.memberDashboard(memberId ?? ""),
+    queryKey: [...queryKeys.memberDashboard(memberId ?? ""), TOURNAMENTS_QUERY_KEY],
     queryFn: () => fetchMemberTournamentDashboard(memberId!, { tournaments }),
-    enabled: !!memberId,
+    enabled: !!memberId && !!tournaments && tournaments.length > 0,
     ...MEMBER_READ_QUERY_OPTIONS,
   });
 }

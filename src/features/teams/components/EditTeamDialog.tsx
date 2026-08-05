@@ -72,6 +72,10 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
     setError(null);
 
     try {
+      if (!gameId) {
+        setError("Game must be selected before updating team.");
+        return;
+      }
       const updated = await updateTeam(team.id, {
         name: name.trim(),
         tag: tag.trim().toUpperCase(),

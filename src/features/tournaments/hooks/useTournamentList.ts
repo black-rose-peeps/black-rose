@@ -11,8 +11,10 @@ export type PublicTournament = MockTournament & { status: TournamentStatus };
 
 export const TOURNAMENTS_QUERY_KEY = ["tournaments"] as const;
 
-// Global ref to track if subscription is already set up
-const isSubscribedRef = { current: false };
+// Reference-counted subscription lifecycle
+let subscriptionCount = 0;
+let channel: ReturnType<ReturnType<typeof getSupabaseClient>["channel"]> | null = null;
+let debouncedRefetch: ReturnType<typeof createDebouncedRefetch> | null = null;
 
 export function useTournamentList() {
   const queryClient = useQueryClient();
@@ -28,28 +30,37 @@ export function useTournamentList() {
   });
 
   useEffect(() => {
-    // Only set up subscription once globally
-    if (isSubscribedRef.current) return;
+    subscriptionCount++;
 
-    const debouncedRefetch = createDebouncedRefetch(
-      () => queryClient.invalidateQueries({ queryKey: TOURNAMENTS_QUERY_KEY }),
-      3000,
-    );
+    // Set up subscription on first mount
+    if (subscriptionCount === 1) {
+      debouncedRefetch = createDebouncedRefetch(
+        () => queryClient.invalidateQueries({ queryKey: TOURNAMENTS_QUERY_KEY }),
+        3000,
+      );
 
-    const supabase = getSupabaseClient();
-    const channel = supabase
-      .channel("tournaments-public-list")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
-        debouncedRefetch();
-      })
-      .subscribe();
-
-    isSubscribedRef.current = true;
+      const supabase = getSupabaseClient();
+      channel = supabase
+        .channel("tournaments-public-list")
+        .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
+          debouncedRefetch?.();
+        })
+        .subscribe();
+    }
 
     return () => {
-      debouncedRefetch.cancel();
-      supabase.removeChannel(channel);
-      isSubscribedRef.current = false;
+      subscriptionCount--;
+
+      // Clean up subscription when last instance unmounts
+      if (subscriptionCount === 0) {
+        debouncedRefetch?.cancel();
+        if (channel) {
+          const supabase = getSupabaseClient();
+          supabase.removeChannel(channel);
+          channel = null;
+        }
+        debouncedRefetch = null;
+      }
     };
   }, [queryClient]);
 

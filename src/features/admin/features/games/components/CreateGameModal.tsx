@@ -57,6 +57,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
   const [iconImageFile, setIconImageFile] = useState<File | null>(null);
   const [iconImageError, setIconImageError] = useState<string | null>(null);
   const [iconImagePreview, setIconImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const availableAccents = useMemo(() => {
     const usedAccents = new Set(existingGames?.map((g) => g.accent_class) || []);
@@ -161,6 +162,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const result = await createGame.mutateAsync({
         name: formData.name,
@@ -177,24 +179,41 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         sort_order: parseInt(formData.sort_order) || 0,
       });
 
+      if (!result) {
+        throw new Error("Failed to create game: no result returned");
+      }
+
       // Upload header image if provided
-      if (result && headerImageFile) {
-        const imageUrl = await uploadGameHeaderImage(result.id, headerImageFile);
-        // Update game with image URL
-        await updateGame.mutateAsync({ id: result.id, input: { tournament_header_image: imageUrl } });
+      if (headerImageFile) {
+        try {
+          const imageUrl = await uploadGameHeaderImage(result.id, headerImageFile);
+          await updateGame.mutateAsync({ id: result.id, input: { tournament_header_image: imageUrl } });
+        } catch (uploadErr) {
+          console.error("Failed to upload header image:", uploadErr);
+          // Continue without header image - game is still valid
+        }
       }
 
       // Upload icon image if provided
-      if (result && iconImageFile) {
-        const imageUrl = await uploadGameIconImage(result.id, iconImageFile);
-        // Update game with image URL
-        await updateGame.mutateAsync({ id: result.id, input: { icon: imageUrl } });
+      if (iconImageFile) {
+        try {
+          const imageUrl = await uploadGameIconImage(result.id, iconImageFile);
+          await updateGame.mutateAsync({ id: result.id, input: { icon: imageUrl } });
+        } catch (uploadErr) {
+          console.error("Failed to upload icon image:", uploadErr);
+          // Continue without icon image - game is still valid
+        }
       }
 
       // Add roles after game is created
-      if (result && tempRoles.length > 0) {
+      if (tempRoles.length > 0) {
         for (const roleName of tempRoles) {
-          await addRole.mutateAsync({ gameId: result.id, roleName });
+          try {
+            await addRole.mutateAsync({ gameId: result.id, roleName });
+          } catch (roleErr) {
+            console.error(`Failed to add role "${roleName}":`, roleErr);
+            // Continue with remaining roles - game is still valid
+          }
         }
       }
 
@@ -224,6 +243,8 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
       setIconImageError(null);
     } catch (err) {
       console.error("Failed to create game:", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -496,8 +517,8 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createGame.isPending}>
-              {createGame.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Create Game
             </Button>
           </AdaptiveModalFooter>

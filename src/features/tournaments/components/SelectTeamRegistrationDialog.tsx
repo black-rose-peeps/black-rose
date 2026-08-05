@@ -66,7 +66,7 @@ export function SelectTeamRegistrationDialog({
     setTeams([]);
     setSelectedTeamId("");
     setIdentityGapsByTeamId(new Map());
-  }, [tournamentId, captainUserId]);
+  }, [tournamentId, captainUserId, tournamentGame]);
 
   useEffect(() => {
     if (!open) {
@@ -80,9 +80,20 @@ export function SelectTeamRegistrationDialog({
     fetchCaptainTeamsForTournament(captainUserId, tournamentId)
       .then(async (eligible) => {
         if (cancelled) return;
-        const compatible = eligible.filter(
-          (team) => team.game === "Multi" || team.game === tournamentGame,
-        );
+        // Resolve tournament gameId from activeGames
+        const tournamentGameRecord = activeGames?.find((g) => g.display_name === tournamentGame);
+        const tournamentGameId = tournamentGameRecord?.id;
+        const compatible = eligible.filter((team) => {
+          if (team.game === "Multi") return true;
+          if (team.game === tournamentGame) {
+            // For dynamic games, also validate gameId matches
+            if (tournamentGameId && team.gameId) {
+              return team.gameId === tournamentGameId;
+            }
+            return true;
+          }
+          return false;
+        });
         const gaps = await fetchRosterIdentityGapsForTeams(compatible, tournamentGame, activeGames);
         if (cancelled) return;
         setTeams(compatible);

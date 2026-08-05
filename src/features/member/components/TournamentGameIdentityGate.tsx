@@ -37,7 +37,7 @@ export function TournamentGameIdentityGate({
     gameIdentities: profile?.gameIdentities ?? {},
   };
 
-  if (profile && hasIdentityForGame(tournamentGame, source)) {
+  if (profile && hasIdentityForGame(tournamentGame, source, activeGames)) {
     return <>{children}</>;
   }
 

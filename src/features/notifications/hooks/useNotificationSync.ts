@@ -37,26 +37,24 @@ export function useNotificationSync(memberId: string | undefined) {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let subscribedTeamIds: string[] = [];
 
-    // Ensure tournaments are prefetched before any sync happens
-    const prefetchPromise = queryClient.ensureQueryData({
-      queryKey: TOURNAMENTS_QUERY_KEY,
-      queryFn: async () => {
-        const { fetchTournaments } = await import("@/features/tournaments/services");
-        return fetchTournaments();
-      },
-      staleTime: 60_000,
-    });
-
     async function syncAll(invalidate = false) {
       syncTail = syncTail.then(async () => {
         if (cancelled) return;
         try {
           if (invalidate) {
             invalidateMemberDataQueries(userId);
+            queryClient.invalidateQueries({ queryKey: TOURNAMENTS_QUERY_KEY });
           }
 
-          // Wait for tournaments to be prefetched before syncing
-          const cachedTournaments = await prefetchPromise;
+          // Fetch current tournament data for each sync
+          const cachedTournaments = await queryClient.ensureQueryData({
+            queryKey: TOURNAMENTS_QUERY_KEY,
+            queryFn: async () => {
+              const { fetchTournaments } = await import("@/features/tournaments/services");
+              return fetchTournaments();
+            },
+            staleTime: 60_000,
+          });
 
           const tournamentContext = await loadMemberTournamentNotificationContext(userId, {
             tournaments: cachedTournaments,

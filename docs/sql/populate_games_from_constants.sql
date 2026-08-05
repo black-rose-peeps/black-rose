@@ -8,9 +8,11 @@
 -- - src/features/teams/constants/index.ts (GAME_OPTIONS, GAME_COLOR, GAME_ACCENT)
 -- - src/features/member/utils/game-identity.ts (GAME_IDENTITY_CONFIG)
 
--- Clear existing data (safe to re-run)
-truncate table public.game_roles cascade;
-truncate table public.games cascade;
+-- Clear existing seed data (idempotent - only removes rows matching seed data)
+delete from public.game_roles where game_id in (
+  select id from public.games where slug in ('valorant', 'league-of-legends', 'teamfight-tactics', 'where-winds-meet', 'palworld', 'marvel-rivals', 'multi')
+);
+delete from public.games where slug in ('valorant', 'league-of-legends', 'teamfight-tactics', 'where-winds-meet', 'palworld', 'marvel-rivals', 'multi');
 
 -- Insert Riot games (shared identity group)
 insert into public.games (name, slug, display_name, identity_group, identity_field_label, identity_field_placeholder, identity_helper_text, accent_class, is_active, sort_order) values
