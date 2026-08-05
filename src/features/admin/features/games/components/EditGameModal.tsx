@@ -192,6 +192,12 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
     setFormData({ ...formData, name: value });
   };
 
+  const handleSlugChange = (value: string) => {
+    // Normalize to lowercase URL-safe slug
+    const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    setFormData({ ...formData, slug: normalized });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!game) return;
@@ -234,6 +240,9 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
       setIconImagePreview(null);
       setIconImageError(null);
     } catch (err) {
+      if (err instanceof Error && err.message.includes("duplicate key")) {
+        throw new Error("A game with this slug already exists. Please choose a different slug.");
+      }
       console.error("Failed to update game:", err);
     }
   };
@@ -290,21 +299,23 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Slug</Label>
+                  <Label htmlFor="game-slug">Slug</Label>
                   <Input
+                    id="game-slug"
                     value={formData.slug}
-                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                    onChange={(e) => handleSlugChange(e.target.value)}
                     placeholder="valorant"
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    URL-friendly identifier for the game
+                    URL-friendly identifier for the game (auto-normalized)
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Display Name</Label>
+                  <Label htmlFor="game-display-name">Display Name</Label>
                   <Input
+                    id="game-display-name"
                     value={formData.display_name}
                     onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
                     placeholder="Valorant"

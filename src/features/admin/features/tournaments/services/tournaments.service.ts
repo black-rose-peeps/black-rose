@@ -520,7 +520,9 @@ export async function updateTournament(
   }
 
   if (!gameData) {
-    throw new Error(`Game "${input.game}" not found in games table. Please ensure the game exists.`);
+    throw new Error(
+      `Game "${input.game}" not found in games table. Please ensure the game exists.`,
+    );
   }
 
   const gameId = gameData.id;

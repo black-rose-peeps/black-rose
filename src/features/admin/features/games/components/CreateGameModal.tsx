@@ -187,7 +187,10 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
       if (headerImageFile) {
         try {
           const imageUrl = await uploadGameHeaderImage(result.id, headerImageFile);
-          await updateGame.mutateAsync({ id: result.id, input: { tournament_header_image: imageUrl } });
+          await updateGame.mutateAsync({
+            id: result.id,
+            input: { tournament_header_image: imageUrl },
+          });
         } catch (uploadErr) {
           console.error("Failed to upload header image:", uploadErr);
           // Continue without header image - game is still valid
@@ -341,6 +344,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                       variant="destructive"
                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={handleIconImageRemove}
+                      aria-label="Remove icon image"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -385,6 +389,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                       variant="destructive"
                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={handleHeaderImageRemove}
+                      aria-label="Remove header image"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -431,7 +436,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                       }
                     }}
                   />
-                  <Button type="button" size="sm" onClick={handleAddTempRole}>
+                  <Button type="button" size="sm" onClick={handleAddTempRole} aria-label="Add role">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -450,6 +455,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                         size="sm"
                         className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300"
                         onClick={() => handleRemoveTempRole(index)}
+                        aria-label={`Remove role: ${role}`}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

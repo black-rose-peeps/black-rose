@@ -178,6 +178,13 @@ export function EditTournamentModal({
     try {
       const currentGameData = activeGames?.find((g) => g.display_name === values.game);
 
+      // Require game metadata before converting form values
+      if (!currentGameData) {
+        throw new Error(
+          `Game metadata for "${values.game}" not found. Please ensure the game is active and available.`,
+        );
+      }
+
       let input = formValuesToCreateInput({ ...values, rulesUrl: "" }, currentGameData);
 
       const clearingRulesFile = removeRulesFile && !rulesFile;
