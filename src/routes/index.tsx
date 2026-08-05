@@ -30,9 +30,9 @@ function Index() {
       <main>
         <Hero />
         <FeaturedTournaments />
-        <WhyBlackRose />
-        <HallOfChampions />
         <CtaBand />
+        <HallOfChampions />
+        <WhyBlackRose />
       </main>
       <Footer />
     </div>
