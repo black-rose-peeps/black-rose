@@ -235,7 +235,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         if (iconImageFailed) failures.push("icon");
         if (rolesFailed) failures.push("roles");
         toast.success(
-          `Game "${formData.display_name}" created successfully (failed to upload: ${failures.join(", ")})`,
+          `Game "${formData.display_name}" created successfully (failed during setup: ${failures.join(", ")})`,
         );
       } else {
         toast.success(`Game "${formData.display_name}" created successfully`);

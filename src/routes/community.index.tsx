@@ -57,7 +57,7 @@ function CommunityPage() {
 
           <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
             We act with honesty, integrity, and transparency — in leadership, gameplay, and
-            community decisions. Trust and loyalty is our foundation.
+            community decisions. Trust and loyalty are our foundation.
           </p>
         </div>
       </section>

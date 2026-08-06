@@ -158,8 +158,8 @@ function LoginPage() {
           <DiscordButton onClick={handleDiscordAuth} label="Continue with Discord" />
           {isNativeApp ? (
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Opens Discord in your browser to sign in with your account, then returns to
-              Black Rose.
+              Opens Discord in your browser to sign in with your account, then returns to Black
+              Rose.
             </p>
           ) : isMobileLogin ? (
             <p className="text-center text-xs leading-relaxed text-muted-foreground">

@@ -39,6 +39,7 @@ export function GameCard({
       {/* Banner image */}
       <Link
         to={ctaHref}
+        tabIndex={-1}
         className="relative block h-48 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 sm:h-56"
       >
         <img

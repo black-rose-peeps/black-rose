@@ -2,47 +2,53 @@ interface EventCardProps {
   title: string;
   date: string;
   description: string;
-  /** YouTube video ID for embed, or null for image-only events */
-  youtubeVideoId?: string;
-  /** Image source for static events (when youtubeVideoId is not provided) */
-  imageSrc?: string;
-  accentLine: string;
   accentTag: string;
   /** Index for numbered marker (1-based) */
   index?: number;
 }
 
+interface VideoEventCardProps extends EventCardProps {
+  youtubeVideoId: string;
+  imageSrc?: never;
+}
+
+interface ImageEventCardProps extends EventCardProps {
+  youtubeVideoId?: never;
+  imageSrc: string;
+}
+
+export type EventCardWithMedia = VideoEventCardProps | ImageEventCardProps;
+
 export function EventCard({
   title,
   date,
   description,
-  youtubeVideoId,
-  imageSrc,
-  accentLine,
   accentTag,
   index,
-}: EventCardProps) {
+  ...mediaProps
+}: EventCardWithMedia) {
   return (
     <article className="group relative flex h-full flex-col overflow-hidden border border-white/[0.07] bg-[oklch(0.055_0_0)] transition duration-500 hover:shadow-[0_24px_64px_rgba(0,0,0,0.65)]">
       {/* Media section */}
       <div className="relative aspect-video w-full overflow-hidden">
-        {youtubeVideoId ? (
+        {"youtubeVideoId" in mediaProps ? (
           <iframe
-            src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+            src={`https://www.youtube-nocookie.com/embed/${mediaProps.youtubeVideoId}`}
             title={title}
             className="h-full w-full"
+            loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         ) : (
           <>
             <img
-              src={imageSrc}
+              src={mediaProps.imageSrc}
               alt={title}
               className="h-full w-full object-cover object-center brightness-[0.7] saturate-[0.7] transition duration-700 group-hover:brightness-90 group-hover:saturate-90"
             />
             {/* Gradient fade only for static images */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.055_0_0)] via-[oklch(0.055_0_0/0.35)] to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-[oklch(0.055_0_0)] via-[oklch(0.055_0_0/0.35)] to-transparent" />
           </>
         )}
 
