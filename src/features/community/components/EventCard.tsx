@@ -1,0 +1,81 @@
+interface EventCardProps {
+  title: string;
+  date: string;
+  description: string;
+  /** YouTube video ID for embed, or null for image-only events */
+  youtubeVideoId?: string;
+  /** Image source for static events (when youtubeVideoId is not provided) */
+  imageSrc?: string;
+  accentLine: string;
+  accentTag: string;
+  /** Index for numbered marker (1-based) */
+  index?: number;
+}
+
+export function EventCard({
+  title,
+  date,
+  description,
+  youtubeVideoId,
+  imageSrc,
+  accentLine,
+  accentTag,
+  index,
+}: EventCardProps) {
+  return (
+    <article className="group relative flex h-full flex-col overflow-hidden border border-white/[0.07] bg-[oklch(0.055_0_0)] transition duration-500 hover:shadow-[0_24px_64px_rgba(0,0,0,0.65)]">
+      {/* Media section */}
+      <div className="relative aspect-video w-full overflow-hidden">
+        {youtubeVideoId ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+            title={title}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <>
+            <img
+              src={imageSrc}
+              alt={title}
+              className="h-full w-full object-cover object-center brightness-[0.7] saturate-[0.7] transition duration-700 group-hover:brightness-90 group-hover:saturate-90"
+            />
+            {/* Gradient fade only for static images */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.055_0_0)] via-[oklch(0.055_0_0/0.35)] to-transparent" />
+          </>
+        )}
+
+        {/* Date badge */}
+        <div
+          className={`absolute border px-2 py-0.5 font-tech text-label-readable uppercase backdrop-blur-md ${accentTag} right-3 top-3`}
+        >
+          {date}
+        </div>
+      </div>
+
+      {/* Card body */}
+      <div className="relative flex flex-1 flex-col px-5 pb-5 pt-4 md:px-8 md:py-6">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.08]" />
+
+        <div className="relative">
+          <div className="flex items-start gap-4">
+            {/* Numbered marker */}
+            {index !== undefined && (
+              <span className="font-tech text-2xl font-bold text-white/20 md:text-3xl">
+                {String(index).padStart(2, "0")}
+              </span>
+            )}
+            <h3 className="font-display text-2xl tracking-display text-white leading-tight md:text-3xl">
+              {title}
+            </h3>
+          </div>
+        </div>
+
+        <div className="relative mt-4 flex-1 border-t border-white/[0.07] pt-4">
+          <p className="text-sm leading-6 text-white/50 md:text-base">{description}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
