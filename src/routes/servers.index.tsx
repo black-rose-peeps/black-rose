@@ -408,7 +408,7 @@ function ServersPage() {
                 ))
               : [
                   { label: "Total Servers", value: servers.length },
-                  { label: "Online Now", value: onlineCount },
+                  { label: "Players Online", value: totalPlayers },
                   { label: "Platform", value: "PC · PS5 · Xbox" },
                 ].map((s) => (
                   <div key={s.label} className="px-4 py-4 sm:px-6 sm:py-5">

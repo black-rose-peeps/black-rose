@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Loader2, Search, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandInput, CommandList } from "@/components/ui/command";
 import { AdaptiveModal, AdaptiveModalContent } from "@/components/ui/adaptive-modal";
@@ -161,8 +162,11 @@ export function InviteMemberDialog({
       const updated = await inviteMemberToTeam({ teamId: team.id, memberId: member.id });
       setRecentlyInvitedIds((prev) => new Set(prev).add(member.id));
       onInvited(updated);
+      toast.success(`Invited ${member.username} to team`);
     } catch (err) {
-      setInviteError(err instanceof Error ? err.message : "Failed to invite member.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to invite member";
+      setInviteError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setInvitingId(null);
     }

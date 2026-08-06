@@ -59,31 +59,13 @@ export function shouldUseBrowserOAuthOnMobile(): boolean {
 }
 
 /**
- * Open a non-OAuth Discord link in the desktop app from a user gesture.
- * Do not use for account OAuth on mobile.
+ * Open Discord URL in browser.
+ * Discord OAuth does NOT support deep-linking for account authorization flows.
+ * See: https://github.com/discord/discord-api-docs/discussions/7259
  */
 export function openDiscordAppFromUserGesture(httpsUrl: string): void {
   if (typeof window === "undefined") return;
-
-  if (shouldUseBrowserOAuthOnMobile()) {
-    window.location.assign(httpsUrl);
-    return;
-  }
-
-  const handoffUrl = getDiscordDesktopHandoffUrl(httpsUrl);
-  if (!isDiscordAppUrl(handoffUrl)) {
-    window.location.assign(httpsUrl);
-    return;
-  }
-
-  const anchor = document.createElement("a");
-  anchor.href = handoffUrl;
-  anchor.target = "_blank";
-  anchor.rel = "noopener noreferrer";
-  anchor.style.display = "none";
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
+  window.location.assign(httpsUrl);
 }
 
 /** @deprecated Prefer openDiscordAppFromUserGesture inside a click handler. */

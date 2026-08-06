@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -220,6 +221,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         }
       }
 
+      toast.success(`Game "${formData.display_name}" created successfully`);
       onSuccess();
       onOpenChange(false);
       setFormData({
@@ -245,7 +247,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
       setIconImagePreview(null);
       setIconImageError(null);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to create game";
       console.error("Failed to create game:", err);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

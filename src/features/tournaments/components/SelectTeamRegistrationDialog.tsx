@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, CheckCircle2, Loader2, Trophy, Users } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
@@ -127,9 +128,12 @@ export function SelectTeamRegistrationDialog({
     try {
       await requestCaptainTeamRegistration(tournamentId, selectedTeamId, captainUserId);
       onRegistered();
+      toast.success("Team registered successfully");
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to register team.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to register team";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

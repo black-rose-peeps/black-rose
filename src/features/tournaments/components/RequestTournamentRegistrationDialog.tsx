@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Trophy, Users } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
@@ -87,9 +88,12 @@ export function RequestTournamentRegistrationDialog({
         requesterUserId: memberId,
       });
       onRequested();
+      toast.success("Registration request sent successfully");
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send request.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to send request";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

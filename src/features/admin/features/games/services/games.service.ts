@@ -188,6 +188,21 @@ export async function updateGame(id: string, input: UpdateGameInput): Promise<Ga
 }
 
 export async function deleteGame(id: string): Promise<void> {
+  // Check if game has any tournaments before deletion
+  const { data: tournaments, error: checkError } = await supabase
+    .from("tournaments")
+    .select("id")
+    .eq("game_id", id)
+    .limit(1);
+
+  if (checkError) throw checkError;
+
+  if (tournaments && tournaments.length > 0) {
+    throw new Error(
+      "Cannot delete game: it is still referenced by one or more tournaments. Please delete the associated tournaments first.",
+    );
+  }
+
   const { error } = await supabase.from("games").delete().eq("id", id);
   if (error) throw error;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
@@ -83,9 +84,12 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
         gameId,
       });
       onUpdated(updated);
+      toast.success(`Team "${name}" updated successfully`);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update team.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to update team";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

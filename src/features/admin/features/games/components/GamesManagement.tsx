@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AdminPageHero } from "@/features/admin/components/AdminShell";
@@ -26,8 +27,11 @@ export function GamesManagement() {
       await deleteGameMutation.mutateAsync(deletingGame.id);
       setDeletingGame(null);
       refetch();
+      toast.success(`"${deletingGame.display_name}" deleted successfully`);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete game";
       console.error("Failed to delete game:", err);
+      toast.error(errorMessage);
     }
   };
 

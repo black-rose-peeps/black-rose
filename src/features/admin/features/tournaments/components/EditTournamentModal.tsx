@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -205,8 +206,11 @@ export function EditTournamentModal({
       }
 
       onUpdated(updated);
+      toast.success(`Tournament "${values.name}" updated successfully`);
       onClose();
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update tournament";
+      toast.error(errorMessage);
       // error shown in UI
     }
   }

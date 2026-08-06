@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
 import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -353,9 +354,11 @@ export function TournamentsManagement() {
             await deleteTournamentSubmit(deletingTournament.id);
             removeTournament(deletingTournament.id);
             resetDeleteError();
+            toast.success(`Tournament "${deletingTournament.name}" deleted successfully`);
             setDeletingTournament(null);
-          } catch {
-            // deleteError shown in dialog
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Failed to delete tournament";
+            toast.error(errorMessage);
           }
         }}
       />

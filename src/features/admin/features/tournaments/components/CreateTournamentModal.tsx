@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -188,8 +189,11 @@ export function CreateTournamentModal({ open, onClose, onCreated }: CreateTourna
       }
 
       onCreated(tournament);
+      toast.success(`Tournament "${values.name}" created successfully`);
       onClose();
-    } catch {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to create tournament";
+      toast.error(errorMessage);
       // error state — createdTournamentId preserved so retry resumes the draft row
     }
   }
