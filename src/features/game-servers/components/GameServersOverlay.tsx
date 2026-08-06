@@ -27,7 +27,6 @@ function gameToCommunityGame(game: Game): CommunityGame {
   const hardcodedHrefs: Record<string, CommunityGame["href"]> = {
     "palworld": "/servers",
     "where-winds-meet": "/guilds",
-    "valorant": "/tournaments",
   };
 
   const href = hardcodedHrefs[game.slug] || "/community";

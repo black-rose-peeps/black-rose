@@ -5,9 +5,8 @@ import { Footer } from "@/features/landing/components/Footer";
 import { CommunityPortrait } from "@/features/community/components/CommunityPortrait";
 import { GuildCodeGrid } from "@/features/community/components/GuildCodeGrid";
 import { GUILD_MASTER_ATTRIBUTION } from "@/features/community/constants/guild-code";
-import { DISCORD_SERVER_INVITE } from "@/features/auth/constants";
-import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
 import { Emblem } from "@/features/shared/components/Emblem";
+import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
 import palworldBanner from "/palworld-banner.png";
 import wwmBanner from "@/assets/wwm-tournament-header.jpg";
 
@@ -149,6 +148,9 @@ function GameCard({
 // ---------------------------------------------------------------------------
 
 function OverviewTab() {
+  const session = useMemberSession();
+  const isAuthenticated = session !== null;
+
   return (
     <>
       <CommunityPortrait />
@@ -166,8 +168,8 @@ function OverviewTab() {
               Guild Code of Values
             </h2>
             <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
-              The principles that guide every decision, every match, and every interaction in the
-              Black Rose Discord and beyond.
+              We value growth, patience, and longevity. Like fine wine, we improve with time — as
+              players, as teammates, and as a guild.
             </p>
           </div>
 
@@ -206,24 +208,18 @@ function OverviewTab() {
 
         <div className="relative mx-auto max-w-3xl px-6 text-center">
           <h2 className="font-display text-3xl tracking-display md:text-4xl">
-            Ready to stand with the guild?
+            Ready to move forward as one?
           </h2>
           <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-muted-foreground md:text-lg">
-            Join the Discord, meet the roster, and compete under the Black Rose banner.
+            Individual wins strengthen the guild. When one member succeeds, we all move forward
+            together.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <DiscordAppAnchor
-              discordUrl={DISCORD_SERVER_INVITE}
+            <Link
+              to={isAuthenticated ? "/dashboard" : "/login"}
               className="clip-cta font-semibold inline-flex h-12 items-center gap-2 bg-foreground px-8 font-tech text-sm uppercase tracking-wider-2 text-background transition hover:bg-foreground/90"
             >
-              Join Discord
-              <span aria-hidden>→</span>
-            </DiscordAppAnchor>
-            <Link
-              to="/login"
-              className="clip-cta font-semibold inline-flex h-12 items-center gap-2 border border-white/15 bg-white/4 px-8 font-tech text-sm uppercase tracking-wider-2 transition hover:border-white/25 hover:bg-white/8"
-            >
-              Join Black Rose
+              {isAuthenticated ? "Go to Dashboard" : "Join Black Rose"}
               <span aria-hidden>→</span>
             </Link>
           </div>
@@ -346,8 +342,8 @@ function CommunityPage() {
           </h1>
 
           <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
-            Black Rose is a player-first guild united by competition, respect, and a code we hold
-            each other to — on and off the server.
+            We act with honesty, integrity, and transparency — in leadership, gameplay, and
+            community decisions. Trust and loyalty is our foundation.
           </p>
         </div>
       </section>

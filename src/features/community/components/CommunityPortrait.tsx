@@ -15,8 +15,8 @@ export function CommunityPortrait() {
             We move as one.
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground md:text-base">
-            Black Rose is more than brackets and brackets alone — it is the people behind every
-            match, every scrim, and every late-night call. This is us, united.
+            This guild exists for the love of the game and the community we build together.
+            Progress, recognition, and success follow passion — not the other way around.
           </p>
         </div>
 
