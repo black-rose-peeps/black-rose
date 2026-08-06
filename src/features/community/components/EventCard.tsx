@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 interface EventCardProps {
   title: string;
   date: string;
@@ -17,7 +19,12 @@ interface ImageEventCardProps extends EventCardProps {
   imageSrc: string;
 }
 
-export type EventCardWithMedia = VideoEventCardProps | ImageEventCardProps;
+interface MixedMediaEventCardProps extends EventCardProps {
+  youtubeVideoId: string;
+  imageSrc: string;
+}
+
+export type EventCardWithMedia = VideoEventCardProps | ImageEventCardProps | MixedMediaEventCardProps;
 
 export function EventCard({
   title,
@@ -27,11 +34,19 @@ export function EventCard({
   index,
   ...mediaProps
 }: EventCardWithMedia) {
+  const hasBothMedia = "youtubeVideoId" in mediaProps && "imageSrc" in mediaProps;
+  const [activeMedia, setActiveMedia] = useState<"video" | "image">(
+    hasBothMedia ? "video" : "youtubeVideoId" in mediaProps ? "video" : "image"
+  );
+
+  const showVideo = hasBothMedia ? activeMedia === "video" : "youtubeVideoId" in mediaProps;
+  const showImage = hasBothMedia ? activeMedia === "image" : "imageSrc" in mediaProps;
+
   return (
     <article className="group relative flex h-full flex-col overflow-hidden border border-white/[0.07] bg-[oklch(0.055_0_0)] transition duration-500 hover:shadow-[0_24px_64px_rgba(0,0,0,0.65)]">
       {/* Media section */}
       <div className="relative aspect-video w-full overflow-hidden">
-        {"youtubeVideoId" in mediaProps ? (
+        {showVideo && "youtubeVideoId" in mediaProps ? (
           <iframe
             src={`https://www.youtube-nocookie.com/embed/${mediaProps.youtubeVideoId}`}
             title={title}
@@ -40,7 +55,7 @@ export function EventCard({
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
-        ) : (
+        ) : showImage && "imageSrc" in mediaProps ? (
           <>
             <img
               src={mediaProps.imageSrc}
@@ -50,7 +65,7 @@ export function EventCard({
             {/* Gradient fade only for static images */}
             <div className="absolute inset-0 bg-linear-to-t from-[oklch(0.055_0_0)] via-[oklch(0.055_0_0/0.35)] to-transparent" />
           </>
-        )}
+        ) : null}
 
         {/* Date badge */}
         <div
@@ -58,6 +73,34 @@ export function EventCard({
         >
           {date}
         </div>
+
+        {/* Media toggle tabs (only when both video and image are present) */}
+        {hasBothMedia && (
+          <div className="absolute bottom-3 left-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveMedia("video")}
+              className={`px-3 py-1.5 text-xs font-tech uppercase transition ${
+                activeMedia === "video"
+                  ? "bg-white text-black"
+                  : "bg-black/50 text-white/70 hover:bg-black/70 hover:text-white"
+              }`}
+            >
+              Video
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveMedia("image")}
+              className={`px-3 py-1.5 text-xs font-tech uppercase transition ${
+                activeMedia === "image"
+                  ? "bg-white text-black"
+                  : "bg-black/50 text-white/70 hover:bg-black/70 hover:text-white"
+              }`}
+            >
+              Photo
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Card body */}

@@ -25,6 +25,7 @@ const EVENTS: EventCardWithMedia[] = [
     date: "July 11, 2026",
     description:
       "The VALORANT Creator Brawl + Black Rose Grand Finals was a July 2026 LAN at NAOS Esports Arena that combined a creator invitational with a community tournament, headlined by Black Rose and Alodia Gosiengfiao. This big community esports event in the Philippines ran alongside the VALORANT PH competitive season, featuring a creator-focused tournament where Filipino streamers and content creators competed with full broadcast treatment. The Grand Finals event hosted by Black Rose featured the Black Rose Community Valorant Tournament, with a black and gold trophy engraved with 'BLACK ROSE RISE AS ONE.' The event was positioned as grassroots PH esports meets creator culture, with packed crowds cheering, fan-art walls, and Tagalog broadcasters on stage.",
+    youtubeVideoId: "oM--cyY4EC4",
     imageSrc: valorantEventImg,
     accentTag: "border-pink-400/35 text-pink-200 bg-pink-500/8",
   },
