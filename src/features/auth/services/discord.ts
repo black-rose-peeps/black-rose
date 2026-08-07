@@ -210,22 +210,10 @@ export async function startDiscordOAuthNative(
   return authorizeUrl;
 }
 
-/** Open OAuth in the Discord app (preferred — uses the app account, not the browser). */
-export function startDiscordOAuthInApp(options?: PrepareDiscordOAuthOptions): string {
-  const { browserFallbackUrl } = prepareDiscordOAuth(options);
-  openDiscordAppFromUserGesture(browserFallbackUrl);
-  return browserFallbackUrl;
-}
-
-/** Full browser redirect — fallback when the Discord app is not installed. */
+/** Open OAuth in browser — Discord does not support deep-linking for account authorization. */
 export function startDiscordOAuthInBrowser(options?: PrepareDiscordOAuthOptions): void {
   const { browserFallbackUrl } = prepareDiscordOAuth(options);
   window.location.assign(browserFallbackUrl);
-}
-
-/** Open the in-flight OAuth authorize URL in the Discord app (foreground). */
-export function openPreparedDiscordOAuthInApp(browserFallbackUrl: string): void {
-  openDiscordAppFromUserGesture(browserFallbackUrl);
 }
 
 /** Full browser redirect for users without the Discord app installed. */
@@ -283,7 +271,7 @@ export function shouldRetryDiscordWithConsent(errorCode: string | undefined): bo
   return errorCode === "consent_required" || errorCode === "interaction_required";
 }
 
-/** Platform-aware OAuth entry — native PKCE in Capacitor, browser on mobile web, app on desktop. */
+/** Platform-aware OAuth entry — native PKCE in Capacitor, browser on all platforms. */
 export function startDiscordOAuth(options?: PrepareDiscordOAuthOptions): void {
   if (isCapacitorNative()) {
     startDiscordOAuthNative(options).catch((err) => {
@@ -291,11 +279,7 @@ export function startDiscordOAuth(options?: PrepareDiscordOAuthOptions): void {
     });
     return;
   }
-  if (isDiscordPhoneOrTablet()) {
-    startDiscordOAuthInBrowser(options);
-    return;
-  }
-  startDiscordOAuthInApp(options);
+  startDiscordOAuthInBrowser(options);
 }
 
 /** Retry OAuth after consent_required — same platform rules as startDiscordOAuth. */
@@ -306,12 +290,7 @@ export function retryDiscordOAuthAfterConsentRequired(): void {
     });
     return;
   }
-  startDiscordOAuth({ requireConsent: true });
-}
-
-/** Retry OAuth in the Discord app after a consent_required error (desktop). */
-export function retryDiscordOAuthInApp(): void {
-  startDiscordOAuthInApp({ requireConsent: true });
+  startDiscordOAuthInBrowser({ requireConsent: true });
 }
 
 /** Retry OAuth entirely in the browser. */

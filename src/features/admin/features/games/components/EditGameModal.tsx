@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -233,6 +234,7 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
 
       onSuccess();
       onOpenChange(false);
+      toast.success(`Game "${formData.display_name}" updated successfully`);
       setHeaderImageFile(null);
       setHeaderImagePreview(null);
       setHeaderImageError(null);
@@ -240,8 +242,11 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
       setIconImagePreview(null);
       setIconImageError(null);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update game";
       if (err instanceof Error && err.message.includes("duplicate key")) {
-        throw new Error("A game with this slug already exists. Please choose a different slug.");
+        toast.error("A game with this slug already exists. Please choose a different slug.");
+      } else {
+        toast.error(errorMessage);
       }
       console.error("Failed to update game:", err);
     }
@@ -254,8 +259,11 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
       setNewRoleName("");
       // onSuccess will trigger a refetch, which will update currentGame
       onSuccess();
+      toast.success(`Role "${newRoleName.trim()}" added successfully`);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to add role";
       console.error("Failed to add role:", err);
+      toast.error(errorMessage);
     }
   };
 
@@ -265,8 +273,11 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
       await removeRole.mutateAsync({ gameId: game.id, roleId });
       // onSuccess will trigger a refetch, which will update currentGame
       onSuccess();
+      toast.success("Role removed successfully");
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to remove role";
       console.error("Failed to remove role:", err);
+      toast.error(errorMessage);
     }
   };
 

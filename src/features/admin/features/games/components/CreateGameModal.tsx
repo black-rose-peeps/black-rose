@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -183,6 +184,10 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         throw new Error("Failed to create game: no result returned");
       }
 
+      let headerImageFailed = false;
+      let iconImageFailed = false;
+      let rolesFailed = false;
+
       // Upload header image if provided
       if (headerImageFile) {
         try {
@@ -193,6 +198,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
           });
         } catch (uploadErr) {
           console.error("Failed to upload header image:", uploadErr);
+          headerImageFailed = true;
           // Continue without header image - game is still valid
         }
       }
@@ -204,6 +210,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
           await updateGame.mutateAsync({ id: result.id, input: { icon: imageUrl } });
         } catch (uploadErr) {
           console.error("Failed to upload icon image:", uploadErr);
+          iconImageFailed = true;
           // Continue without icon image - game is still valid
         }
       }
@@ -215,11 +222,24 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
             await addRole.mutateAsync({ gameId: result.id, roleName });
           } catch (roleErr) {
             console.error(`Failed to add role "${roleName}":`, roleErr);
+            rolesFailed = true;
             // Continue with remaining roles - game is still valid
           }
         }
       }
 
+      // Show appropriate success message based on partial failures
+      if (headerImageFailed || iconImageFailed || rolesFailed) {
+        const failures: string[] = [];
+        if (headerImageFailed) failures.push("header image");
+        if (iconImageFailed) failures.push("icon");
+        if (rolesFailed) failures.push("roles");
+        toast.success(
+          `Game "${formData.display_name}" created successfully (failed during setup: ${failures.join(", ")})`,
+        );
+      } else {
+        toast.success(`Game "${formData.display_name}" created successfully`);
+      }
       onSuccess();
       onOpenChange(false);
       setFormData({
@@ -245,7 +265,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
       setIconImagePreview(null);
       setIconImageError(null);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to create game";
       console.error("Failed to create game:", err);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

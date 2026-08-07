@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
@@ -73,7 +74,9 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
 
     try {
       if (!gameId) {
-        setError("Game must be selected before updating team.");
+        const errorMessage = "Game must be selected before updating team.";
+        setError(errorMessage);
+        toast.error(errorMessage);
         return;
       }
       const updated = await updateTeam(team.id, {
@@ -83,9 +86,12 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
         gameId,
       });
       onUpdated(updated);
+      toast.success(`Team "${name}" updated successfully`);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update team.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to update team";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -183,7 +189,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
             </Button>
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !gameId}
               className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

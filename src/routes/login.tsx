@@ -5,21 +5,15 @@ import { AuthShell } from "@/features/auth/components/AuthShell";
 import { DiscordButton } from "@/features/auth/components/DiscordButton";
 import { useRedirectIfAuthenticated } from "@/features/auth/hooks/useRedirectIfAuthenticated";
 import {
-  continueDiscordOAuthInBrowser,
   describeDiscordRedirectUri,
   isDiscordOAuthConfigured,
   isDiscordRedirectUnreachableOnDevice,
   isDiscordRejectedLanRedirectUri,
   isDiscordTunnelEnvMismatch,
-  prepareDiscordOAuth,
-  shouldSkipDiscordAppPrompt,
   startDiscordOAuth,
 } from "@/features/auth/services/discord";
-import { DiscordAppLinkDialog } from "@/features/shared/components/DiscordAppLinkDialog";
-import { useDiscordAppLink } from "@/features/shared/hooks/useDiscordAppLink";
 import { isCapacitorNative } from "@/lib/capacitor";
 import { isDiscordPhoneOrTablet } from "@/lib/device";
-import { openDiscordAppFromUserGesture } from "@/lib/discord-url";
 
 type LoginSearch = {
   console?: string;
@@ -52,12 +46,6 @@ function LoginPage() {
   const [lanRedirectWarning, setLanRedirectWarning] = useState<string | null>(null);
   const isMobileLogin = isDiscordPhoneOrTablet();
   const isNativeApp = isCapacitorNative();
-  const {
-    pending: discordLinkPending,
-    requestDiscordAppLink,
-    confirmDiscordAppLink,
-    cancelDiscordAppLink,
-  } = useDiscordAppLink();
 
   useRedirectIfAuthenticated(!isAdminConsole);
 
@@ -113,22 +101,7 @@ function LoginPage() {
       return;
     }
     try {
-      if (isNativeApp) {
-        void startDiscordOAuth();
-        return;
-      }
-
-      if (isMobileLogin) {
-        startDiscordOAuth();
-        return;
-      }
-
-      const { browserFallbackUrl } = prepareDiscordOAuth();
-      if (shouldSkipDiscordAppPrompt()) {
-        openDiscordAppFromUserGesture(browserFallbackUrl);
-        return;
-      }
-      requestDiscordAppLink(browserFallbackUrl, "Discord sign-in", "oauth");
+      startDiscordOAuth();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not start Discord sign-in.";
       setError(message);
@@ -185,14 +158,20 @@ function LoginPage() {
           <DiscordButton onClick={handleDiscordAuth} label="Continue with Discord" />
           {isNativeApp ? (
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Opens the Discord app to sign in with your account, then returns to Black Rose.
+              Opens Discord in your browser to sign in with your account, then returns to Black
+              Rose.
             </p>
           ) : isMobileLogin ? (
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              On mobile web, Discord sign-in opens in your browser. Make sure you&apos;re logged
-              into the Discord account you want to use there.
+              Discord sign-in opens in your browser. Make sure you&apos;re logged into the Discord
+              account you want to use there.
             </p>
-          ) : null}
+          ) : (
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
+              Discord sign-in opens in your browser. Make sure you&apos;re logged into the Discord
+              account you want to use there.
+            </p>
+          )}
           {lanRedirectWarning && (
             <p className="text-center text-xs leading-relaxed text-amber-200/80">
               {lanRedirectWarning}
@@ -213,15 +192,6 @@ function LoginPage() {
           </Link>
         </p>
       </AuthShell>
-
-      {!isMobileLogin && !isNativeApp && (
-        <DiscordAppLinkDialog
-          pending={discordLinkPending}
-          onConfirm={confirmDiscordAppLink}
-          onCancel={cancelDiscordAppLink}
-          onBrowserFallback={continueDiscordOAuthInBrowser}
-        />
-      )}
     </>
   );
 }

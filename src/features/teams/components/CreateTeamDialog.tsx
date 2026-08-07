@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
@@ -130,9 +131,12 @@ export function CreateTeamDialog({
         captainRole,
       });
       onCreated(team);
+      toast.success(`Team "${name}" created successfully`);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create team.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to create team";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

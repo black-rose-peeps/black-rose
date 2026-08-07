@@ -22,22 +22,29 @@ function gameToCommunityGame(game: Game): CommunityGame {
   // Determine href based on game characteristics
   // Default to /community unless hardcoded for specific games
   const hasServers = game.slug === "palworld"; // Temporary: only Palworld has servers for now
-  
+
   // Hardcoded redirects for specific games
   const hardcodedHrefs: Record<string, CommunityGame["href"]> = {
     "palworld": "/servers",
     "where-winds-meet": "/guilds",
-    "valorant": "/tournaments",
   };
-  
+
   const href = hardcodedHrefs[game.slug] || "/community";
-  
+
+  // Map href to subtitle for tooltip consistency
+  const hrefToSubtitle: Record<CommunityGame["href"], string> = {
+    "/servers": "Servers",
+    "/tournaments": "Tournaments",
+    "/guilds": "Guilds",
+    "/community": "Community",
+  };
+
   return {
     id: game.id,
     label: game.display_name,
     icon: game.icon || "/BR Text white.png", // Fallback icon if none provided
     hasServers,
-    subtitle: hasServers ? undefined : "Community",
+    subtitle: hasServers ? undefined : hrefToSubtitle[href],
     href,
   };
 }
