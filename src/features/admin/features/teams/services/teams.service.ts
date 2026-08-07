@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import type { GameRole } from "@/features/admin/features/games/services/games.service";
 import {
   ADMIN_AUDIT_ACTIONS,
   logAdminAction,
@@ -863,7 +864,34 @@ export async function updateTeamMemberRole(
     throw new Error("You can only update your own role.");
   }
 
-  const sanitizedRole = resolveRoleForGame(role, team.game);
+  // Fetch dynamic game roles for proper role validation
+  const { data: gameRow, error: gameRowError } = await supabase
+    .from("teams")
+    .select("game_id")
+    .eq("id", teamId)
+    .single();
+
+  if (gameRowError) {
+    throw new Error(`Failed to fetch team game: ${gameRowError.message}`);
+  }
+
+  if (!gameRow?.game_id) {
+    throw new Error("Team does not have a valid game_id. Cannot update role.");
+  }
+
+  const { data: roles, error: rolesError } = await supabase
+    .from("game_roles")
+    .select("*")
+    .eq("game_id", gameRow.game_id)
+    .order("role_name", { ascending: true });
+
+  if (rolesError) {
+    throw new Error(`Failed to fetch game roles: ${rolesError.message}`);
+  }
+
+  const gameRoles: GameRole[] = roles || [];
+
+  const sanitizedRole = resolveRoleForGame(role, team.game, gameRoles);
   const { error } = await supabase
     .from("team_members")
     .update({ role: sanitizedRole })

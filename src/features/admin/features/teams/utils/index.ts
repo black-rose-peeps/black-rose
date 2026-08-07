@@ -16,6 +16,7 @@ export function formValuesToCreateTeamInput(values: CreateTeamFormValues): Creat
     tag: values.tag.trim().toUpperCase(),
     game: values.game,
     captainMemberId: values.captainMemberId,
+    gameId: values.gameId || "",
   };
 }
 
