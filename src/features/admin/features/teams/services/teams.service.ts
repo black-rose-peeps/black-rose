@@ -863,7 +863,24 @@ export async function updateTeamMemberRole(
     throw new Error("You can only update your own role.");
   }
 
-  const sanitizedRole = resolveRoleForGame(role, team.game);
+  // Fetch dynamic game roles for proper role validation
+  const { data: gameRow } = await supabase
+    .from("teams")
+    .select("game_id")
+    .eq("id", teamId)
+    .single();
+
+  let gameRoles: any[] = [];
+  if (gameRow?.game_id) {
+    const { data: roles } = await supabase
+      .from("game_roles")
+      .select("*")
+      .eq("game_id", gameRow.game_id)
+      .order("role_name", { ascending: true });
+    gameRoles = roles || [];
+  }
+
+  const sanitizedRole = resolveRoleForGame(role, team.game, gameRoles);
   const { error } = await supabase
     .from("team_members")
     .update({ role: sanitizedRole })

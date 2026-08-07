@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AdminMember } from "@/features/admin/features/members/types";
-import { ADMIN_TEAM_GAMES, DEFAULT_CREATE_TEAM_FORM } from "../constants";
+import { ADMIN_TEAM_GAMES, DEFAULT_CREATE_TEAM_FORM, dbGamesToAdminOptions } from "../constants";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import { useCreateTeam } from "../hooks";
 import type { CreateTeamFormValues, Team } from "../types";
 import {
@@ -45,7 +46,9 @@ export function CreateTeamModal({
   existingTeams,
   onCreated,
 }: CreateTeamModalProps) {
+  const { data: dbGames, isLoading: gamesLoading } = useActiveGames();
   const [values, setValues] = useState<CreateTeamFormValues>(DEFAULT_CREATE_TEAM_FORM);
+  const [gameId, setGameId] = useState<string | undefined>(undefined);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof CreateTeamFormValues, string>>
   >({});
@@ -56,9 +59,15 @@ export function CreateTeamModal({
     [members, existingTeams],
   );
 
+  // Convert database games to admin game options format
+  const gameOptions = dbGames
+    ? dbGamesToAdminOptions(dbGames)
+    : ADMIN_TEAM_GAMES;
+
   useEffect(() => {
     if (!open) return;
     setValues(DEFAULT_CREATE_TEAM_FORM);
+    setGameId(undefined);
     setFieldErrors({});
     resetError();
   }, [open, resetError]);
@@ -69,6 +78,12 @@ export function CreateTeamModal({
       setValues((prev) => ({ ...prev, captainMemberId: "" }));
     }
   }, [open, availableCaptains, values.captainMemberId]);
+
+  // Update gameId when game changes
+  useEffect(() => {
+    const selectedGame = dbGames?.find((g) => g.name === values.game);
+    setGameId(selectedGame?.id);
+  }, [values.game, dbGames]);
 
   function updateField<K extends keyof CreateTeamFormValues>(
     key: K,
@@ -96,12 +111,20 @@ export function CreateTeamModal({
       return;
     }
 
+    if (!gameId) {
+      setFieldErrors((prev) => ({ ...prev, game: "Game must be selected." }));
+      return;
+    }
+
     const errors = validateCreateTeamForm(values, existingTeams);
     setFieldErrors(errors);
     if (hasFormErrors(errors)) return;
 
     try {
-      const team = await submit(formValuesToCreateTeamInput(values));
+      const team = await submit({
+        ...formValuesToCreateTeamInput(values),
+        gameId,
+      });
       onCreated(team);
       onClose();
     } catch {
@@ -156,19 +179,20 @@ export function CreateTeamModal({
                   onValueChange={(game) =>
                     updateField("game", game as CreateTeamFormValues["game"])
                   }
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || gamesLoading}
                 >
                   <SelectTrigger id="team-game" className="bg-background/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ADMIN_TEAM_GAMES.map((g) => (
+                    {gameOptions.map((g) => (
                       <SelectItem key={g.value} value={g.value}>
                         {g.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldErrors.game && <p className="text-xs text-destructive">{fieldErrors.game}</p>}
               </div>
 
               <div className="space-y-2 sm:col-span-2">
