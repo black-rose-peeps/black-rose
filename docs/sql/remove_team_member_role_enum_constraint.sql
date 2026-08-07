@@ -3,6 +3,8 @@
 -- Run this in Supabase SQL Editor
 -- See docs/GAMES_MANAGEMENT_DEPLOYMENT.md for complete deployment guide
 
+BEGIN;
+
 -- Step 1: Create a temporary text column
 ALTER TABLE team_members ADD COLUMN role_new TEXT;
 
@@ -23,3 +25,5 @@ ALTER TABLE team_members ALTER COLUMN role SET NOT NULL;
 
 -- Step 7: Drop the old enum type (optional, if no other tables use it)
 -- DROP TYPE IF EXISTS team_member_role;
+
+COMMIT;

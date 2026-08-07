@@ -46,7 +46,7 @@ export function CreateTeamModal({
   existingTeams,
   onCreated,
 }: CreateTeamModalProps) {
-  const { data: dbGames, isLoading: gamesLoading } = useActiveGames();
+  const { data: dbGames, isLoading: gamesLoading, error: gamesError } = useActiveGames();
   const [values, setValues] = useState<CreateTeamFormValues>(DEFAULT_CREATE_TEAM_FORM);
   const [gameId, setGameId] = useState<string | undefined>(undefined);
   const [fieldErrors, setFieldErrors] = useState<
@@ -60,9 +60,8 @@ export function CreateTeamModal({
   );
 
   // Convert database games to admin game options format
-  const gameOptions = dbGames
-    ? dbGamesToAdminOptions(dbGames)
-    : ADMIN_TEAM_GAMES;
+  const gameOptions = dbGames ? dbGamesToAdminOptions(dbGames) : [];
+  const hasGamesError = !!gamesError || (!gamesLoading && !dbGames);
 
   useEffect(() => {
     if (!open) return;
@@ -179,7 +178,7 @@ export function CreateTeamModal({
                   onValueChange={(game) =>
                     updateField("game", game as CreateTeamFormValues["game"])
                   }
-                  disabled={isSubmitting || gamesLoading}
+                  disabled={isSubmitting || gamesLoading || hasGamesError}
                 >
                   <SelectTrigger id="team-game" className="bg-background/50">
                     <SelectValue />
@@ -192,6 +191,11 @@ export function CreateTeamModal({
                     ))}
                   </SelectContent>
                 </Select>
+                {hasGamesError && (
+                  <p className="text-xs text-destructive">
+                    {gamesError ? "Failed to load games. Please try again." : "No games available."}
+                  </p>
+                )}
                 {fieldErrors.game && <p className="text-xs text-destructive">{fieldErrors.game}</p>}
               </div>
 
