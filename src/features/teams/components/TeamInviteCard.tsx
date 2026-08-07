@@ -1,7 +1,7 @@
 import { Check, ChevronRight, Loader2, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { GAME_ACCENT, GAME_COLOR } from "../constants";
+import { GAME_ACCENT } from "../constants";
 import type { Team } from "../types";
 
 interface TeamInviteCardProps {
@@ -32,9 +32,7 @@ export function TeamInviteCard({
               Team Invitation
             </p>
             <h2 className="font-display text-3xl tracking-display">{team.name}</h2>
-            <span
-              className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}
-            >
+            <span className="font-tech text-label-readable uppercase text-foreground/90">
               {team.game}
             </span>
             <p className="mt-1 text-xs text-muted-foreground">

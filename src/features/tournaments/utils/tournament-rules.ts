@@ -4,10 +4,10 @@ import {
   isSwissFormat,
 } from "../constants/formats";
 import type { ParticipationType, WwmMode } from "../types/participation";
-import type { RuleSection, TournamentGame } from "../types";
+import type { RuleSection } from "../types";
 
 export interface TournamentRulesOptions {
-  game?: TournamentGame;
+  game?: string;
   /** Bracket field size (even team cap). */
   teamCap?: number;
   participationType?: ParticipationType;

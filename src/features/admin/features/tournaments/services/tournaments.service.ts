@@ -45,12 +45,41 @@ function parsePrizeBreakdown(raw: unknown): PrizeTier[] | undefined {
   return tiers.length > 0 ? tiers : undefined;
 }
 
-function rowToTournament(row: Record<string, unknown>): MockTournament {
+interface TournamentRowWithGames {
+  id: string;
+  name: string;
+  game: string;
+  status: string;
+  prize_pool: string;
+  prize_breakdown: unknown;
+  start_date: string;
+  registration_deadline: string;
+  teams_registered: number;
+  team_cap: number;
+  format: string;
+  region: string;
+  participation_type: string | null;
+  wwm_mode: string | null;
+  description: string | null;
+  rules_url: string | null;
+  game_id: string | null;
+  games: {
+    tournament_header_image: string | null;
+    accent_class: string | null;
+  } | null;
+}
+
+function rowToTournament(row: TournamentRowWithGames | Record<string, unknown>): MockTournament {
   const game = row.game as MockTournament["game"];
   const wwmMode = (row.wwm_mode as WwmMode | null) ?? null;
   const participationType =
     (row.participation_type as ParticipationType | undefined) ??
     resolveParticipationType(game, wwmMode);
+  
+  // Safely access nested games data
+  const gamesData = (row as TournamentRowWithGames).games;
+  const tournamentHeaderImage = gamesData?.tournament_header_image ?? null;
+  const gameAccentClass = gamesData?.accent_class ?? null;
 
   return {
     id: row.id as string,
@@ -69,6 +98,9 @@ function rowToTournament(row: Record<string, unknown>): MockTournament {
     wwmMode,
     description: (row.description as string | null) ?? null,
     rulesUrl: (row.rules_url as string | null) ?? null,
+    // Game styling data from join - nested under games object
+    tournamentHeaderImage,
+    gameAccentClass,
   };
 }
 
@@ -168,6 +200,7 @@ async function hydrateTournament(tournament: MockTournament): Promise<MockTourna
   const teamsRegistered = await reconcileTournamentTeamCount(
     tournament.id,
     tournament.teamsRegistered,
+    tournament.status,
   );
   const withCount =
     teamsRegistered === tournament.teamsRegistered
@@ -181,12 +214,16 @@ async function hydrateTournament(tournament: MockTournament): Promise<MockTourna
 const TOURNAMENT_LIST_COLUMNS =
   "id, name, game, status, prize_pool, prize_breakdown, start_date, registration_deadline, teams_registered, team_cap, format, region, participation_type, wwm_mode, description, rules_url";
 
+// Join with games table to get game styling data
+const TOURNAMENT_WITH_GAME_COLUMNS =
+  "id, name, game, status, prize_pool, prize_breakdown, start_date, registration_deadline, teams_registered, team_cap, format, region, participation_type, wwm_mode, description, rules_url, game_id, games(tournament_header_image, accent_class)";
+
 const TOURNAMENT_NOTIFICATION_COLUMNS = "id, name, status";
 
 export async function fetchTournamentsLite(): Promise<MockTournament[]> {
   const { data, error } = await supabase
     .from("tournaments")
-    .select(TOURNAMENT_LIST_COLUMNS)
+    .select(TOURNAMENT_WITH_GAME_COLUMNS)
     .order("start_date", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -218,7 +255,7 @@ function isActiveDashboardTournament(tournament: MockTournament): boolean {
 export async function fetchActiveTournamentsForDashboard(): Promise<MockTournament[]> {
   const { data, error } = await supabase
     .from("tournaments")
-    .select(TOURNAMENT_LIST_COLUMNS)
+    .select(TOURNAMENT_WITH_GAME_COLUMNS)
     .in("status", ["Live", "Registration Open"])
     .order("start_date", { ascending: false });
 
@@ -236,7 +273,7 @@ export async function countActiveTournaments(): Promise<number> {
 export async function fetchTournaments(): Promise<MockTournament[]> {
   const { data, error } = await supabase
     .from("tournaments")
-    .select(TOURNAMENT_LIST_COLUMNS)
+    .select(TOURNAMENT_WITH_GAME_COLUMNS)
     .order("start_date", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -247,7 +284,7 @@ export async function fetchTournaments(): Promise<MockTournament[]> {
 export async function fetchTournamentById(id: string): Promise<MockTournament | null> {
   const { data, error } = await supabase
     .from("tournaments")
-    .select(TOURNAMENT_LIST_COLUMNS)
+    .select(TOURNAMENT_WITH_GAME_COLUMNS)
     .eq("id", id)
     .single();
 
@@ -267,7 +304,7 @@ export async function fetchTournamentByIdForSsr(id: string): Promise<MockTournam
   if (!baseUrl || !apiKey) return null;
 
   const response = await fetch(
-    `${baseUrl}/rest/v1/tournaments?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(TOURNAMENT_LIST_COLUMNS)}`,
+    `${baseUrl}/rest/v1/tournaments?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(TOURNAMENT_WITH_GAME_COLUMNS)}`,
     {
       headers: {
         apikey: apiKey,
@@ -289,11 +326,29 @@ export async function getTournamentByIdSync(id: string): Promise<MockTournament 
 }
 
 export async function createTournament(input: CreateTournamentInput): Promise<MockTournament> {
+  // Look up game_id from games table based on game name
+  const { data: gameData, error: gameError } = await supabase
+    .from("games")
+    .select("id, tournament_header_image, accent_class")
+    .eq("display_name", input.game)
+    .maybeSingle();
+
+  if (gameError) {
+    throw new Error(`Failed to look up game: ${gameError.message}`);
+  }
+
+  const gameId = gameData?.id ?? null;
+  
+  if (!gameId) {
+    throw new Error(`Game "${input.game}" not found in games table. Please create the game first.`);
+  }
+
   const { data, error } = await supabase
     .from("tournaments")
     .insert({
       name: input.name,
       game: input.game,
+      game_id: gameId,
       format: input.format,
       prize_pool: input.prizePool,
       start_date: input.startDate,
@@ -383,7 +438,7 @@ export async function updateTournamentStatus(
     await syncTournamentChampionArchive(tournamentId, completed.name);
   } else if (previous && isTournamentConcluded(previous.status)) {
     await deleteTournamentChampion(tournamentId);
-    await reconcileTournamentTeamCount(tournamentId, previous.teamsRegistered);
+    await reconcileTournamentTeamCount(tournamentId, previous.teamsRegistered, status);
   }
 
   const updated = rowToTournament(data);
@@ -453,11 +508,31 @@ export async function updateTournament(
     if (teamNameErr) throw new Error(teamNameErr.message);
   }
 
+  // Look up game_id from games table based on game name
+  const { data: gameData, error: gameError } = await supabase
+    .from("games")
+    .select("id")
+    .eq("display_name", input.game)
+    .maybeSingle();
+
+  if (gameError) {
+    throw new Error(`Failed to look up game: ${gameError.message}`);
+  }
+
+  if (!gameData) {
+    throw new Error(
+      `Game "${input.game}" not found in games table. Please ensure the game exists.`,
+    );
+  }
+
+  const gameId = gameData.id;
+
   const { data, error } = await supabase
     .from("tournaments")
     .update({
       name: input.name,
       game: input.game,
+      game_id: gameId,
       format: input.format,
       prize_pool: input.prizePool,
       start_date: input.startDate,
@@ -512,7 +587,7 @@ export async function updateTournament(
     !isTournamentConcluded(updated.status)
   ) {
     await deleteTournamentChampion(id);
-    await reconcileTournamentTeamCount(id, previous.teamsRegistered);
+    await reconcileTournamentTeamCount(id, previous.teamsRegistered, updated.status);
   }
 
   updated = await reopenRegistrationIfDeadlineExtended(previous, updated);

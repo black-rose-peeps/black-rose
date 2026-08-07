@@ -1,5 +1,6 @@
 import type { Team, TeamMember } from "@/features/teams/types";
 import { gameIdentityConfig, hasIdentityForGame, type MemberIdentitySource } from "./game-identity";
+import type { Game as AdminGame } from "@/features/admin/features/games/services/games.service";
 
 export interface RosterIdentityGap {
   userId: string;
@@ -20,13 +21,12 @@ export function listRosterMembersMissingIdentity(
   team: Pick<Team, "members">,
   tournamentGame: string,
   identitiesByUserId: Map<string, MemberIdentityRecord>,
+  games?: AdminGame[],
 ): RosterIdentityGap[] {
-  if (!gameIdentityConfig(tournamentGame)) return [];
-
   const missing: RosterIdentityGap[] = [];
   for (const member of getActiveRosterMembers(team)) {
     const source = identitiesByUserId.get(member.userId);
-    if (source && hasIdentityForGame(tournamentGame, source)) continue;
+    if (source && hasIdentityForGame(tournamentGame, source, games)) continue;
 
     missing.push({
       userId: member.userId,
@@ -42,10 +42,11 @@ export function formatRosterIdentityGapMessage(
   team: Pick<Team, "name">,
   tournamentGame: string,
   gaps: RosterIdentityGap[],
+  games?: AdminGame[],
 ): string | null {
   if (gaps.length === 0) return null;
 
-  const config = gameIdentityConfig(tournamentGame);
+  const config = gameIdentityConfig(tournamentGame, games);
   const gameLabel = config?.panelLabel ?? tournamentGame;
   const idLabel = config?.fieldLabel.toLowerCase() ?? "in-game identity";
   const names = gaps.map((g) => g.displayName || g.username).join(", ");
@@ -61,6 +62,7 @@ export function tournamentRosterIdentityError(
   team: Pick<Team, "members" | "name">,
   tournamentGame: string,
   gaps: RosterIdentityGap[],
+  games?: AdminGame[],
 ): string | null {
-  return formatRosterIdentityGapMessage(team, tournamentGame, gaps);
+  return formatRosterIdentityGapMessage(team, tournamentGame, gaps, games);
 }

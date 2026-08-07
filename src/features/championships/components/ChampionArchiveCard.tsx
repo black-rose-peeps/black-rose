@@ -1,8 +1,9 @@
 import { Crown, Monitor, Users } from "lucide-react";
 import {
-  GAME_EDITORIAL_ACCENT,
-  GAME_TOURNAMENT_HEADER,
   getGameAbbrev,
+  getGameAccent,
+  getGameHeader,
+  DEFAULT_ACCENT,
 } from "@/features/tournaments/utils/tournament-display";
 import type { HallOfChampionRecord } from "../types";
 import { crownVariantLabel, formatChampionDate } from "../utils/champion-narrative";
@@ -22,9 +23,10 @@ interface ChampionArchiveCardProps {
  */
 export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchiveCardProps) {
   const game = resolveGame(champion.game);
-  const accent = GAME_EDITORIAL_ACCENT[game];
-  const header = GAME_TOURNAMENT_HEADER[game];
+  const accent = getGameAccent(game) || DEFAULT_ACCENT;
+  const header = getGameHeader(game);
   const hasPhoto = Boolean(champion.portraitUrl?.trim());
+  const hasTournamentHeader = Boolean(champion.tournamentHeaderImage?.trim());
   const isTeam = champion.participationType === "team";
 
   return (
@@ -40,6 +42,13 @@ export function ChampionArchiveCard({ champion, index, onSelect }: ChampionArchi
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-[1.03]"
+        />
+      ) : hasTournamentHeader ? (
+        <img
+          src={champion.tournamentHeaderImage!}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-40 transition duration-700 group-hover:scale-[1.03]"
         />
       ) : (
         <img

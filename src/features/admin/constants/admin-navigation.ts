@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { LayoutDashboard, ScrollText, Shield, Trophy, UserCheck, Users } from "lucide-react";
+import { LayoutDashboard, ScrollText, Shield, Trophy, UserCheck, Users, Gamepad2 } from "lucide-react";
 
 export type AdminNavItem = {
   name: string;
@@ -15,6 +15,7 @@ export const ADMIN_NAVIGATION: AdminNavItem[] = [
   { name: "Teams", href: "/admin/teams", icon: Users },
   { name: "Participants", href: "/admin/participants", icon: UserCheck },
   { name: "Audit Log", href: "/admin/audit-log", icon: ScrollText },
+  { name: "Games", href: "/admin/games", icon: Gamepad2 },
 ];
 
 export function isAdminNavActive(pathname: string, href: string, exact?: boolean): boolean {

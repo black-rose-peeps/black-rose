@@ -15,16 +15,16 @@ export function CommunityPortrait() {
             We move as one.
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground md:text-base">
-            Black Rose is more than brackets and brackets alone — it is the people behind every
-            match, every scrim, and every late-night call. This is us, united.
+            This guild exists for the love of the game and the community we build together.
+            Progress, recognition, and success follow passion — not the other way around.
           </p>
         </div>
 
-        <div className="group relative overflow-hidden border border-white/8 bg-[oklch(0.055_0_0)] clip-angle-lg shadow-[0_32px_80px_rgba(0,0,0,0.45)]">
+        <div className="group relative overflow-hidden bg-[oklch(0.055_0_0)] clip-angle-lg shadow-[0_32px_80px_rgba(0,0,0,0.45)]">
           <span className="pointer-events-none absolute left-0 top-0 z-20 h-6 w-6 border-l border-t border-white/25" />
           <span className="pointer-events-none absolute right-0 top-0 z-20 h-6 w-6 border-r border-t border-white/25" />
-          <span className="pointer-events-none absolute bottom-0 left-0 z-20 h-6 w-6 border-b border-l border-white/15" />
-          <span className="pointer-events-none absolute bottom-0 right-0 z-20 h-6 w-6 border-b border-r border-white/15" />
+          <span className="pointer-events-none absolute bottom-0 left-0 z-20 h-6 w-6 border-l border-white/15" />
+          <span className="pointer-events-none absolute bottom-0 right-0 z-20 h-6 w-6 border-r border-white/15" />
 
           <div className="relative aspect-[21/9] min-h-[220px] w-full overflow-hidden sm:min-h-[280px] md:min-h-[360px]">
             <img

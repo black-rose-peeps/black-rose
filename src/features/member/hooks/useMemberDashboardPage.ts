@@ -7,6 +7,7 @@ import {
   useMemberProfileQuery,
 } from "@/features/member/queries/member-profile-queries";
 import { useMemberTournamentDashboardQuery } from "@/features/member/queries/member-dashboard-queries";
+import { useTournamentList } from "@/features/tournaments/hooks";
 import type { MemberProfile } from "@/features/member/types";
 
 function profileFallbackFromSession(session: AppUser): MemberProfile {
@@ -48,9 +49,10 @@ export interface MemberDashboardPageState {
 export function useMemberDashboardPage(): MemberDashboardPageState {
   const { session, isSyncing } = useSyncedMemberSession();
   const memberId = session?.id;
+  const { tournaments } = useTournamentList();
 
   const profileQuery = useMemberProfileQuery(memberId);
-  const dashboardQuery = useMemberTournamentDashboardQuery(memberId);
+  const dashboardQuery = useMemberTournamentDashboardQuery(memberId, tournaments);
   const championshipsQuery = useMemberChampionshipsQuery(memberId);
 
   const profile = useMemo(() => {

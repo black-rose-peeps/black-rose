@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { GAME_COLOR } from "@/features/teams/constants";
 import { isValorantGame } from "@/features/member/utils/valorant-identity";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -96,9 +95,7 @@ export function TeamRosterDialog({
               <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <div>
                   <span className="text-muted-foreground/70">Game </span>
-                  <span
-                    className={cn("font-tech uppercase tracking-wider-2", GAME_COLOR[team.game])}
-                  >
+                  <span className="font-tech uppercase tracking-wider-2 text-foreground/90">
                     {team.game}
                   </span>
                 </div>

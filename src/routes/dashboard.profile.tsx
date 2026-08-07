@@ -53,7 +53,8 @@ import {
 import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
 import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
-import { getRoleOptionsForGame, normalizeGameKey } from "@/features/teams/constants";
+import { getRoleOptionsForGame, normalizeGameKey, legacyGameToDbName } from "@/features/teams/constants";
+import { useActiveGames, useGameRoles } from "@/features/admin/features/games/hooks/useGames";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
 import { validateGameIdentitiesInput } from "@/features/member/utils/game-identity";
 import {
@@ -198,8 +199,22 @@ function ProfileEditPage() {
   const { celebrationOpen, maybeCelebrate, dismissCelebration } =
     useProfileCompleteCelebration(memberId);
 
-  const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame), [mainGame]);
-  const gameOptions = useMemo(() => profileGameSelectOptions(mainGame), [mainGame]);
+  const { data: activeGames } = useActiveGames();
+  const availableGames = useMemo(
+    () => activeGames?.map((g) => g.display_name) || [],
+    [activeGames],
+  );
+
+  const normalizedGame = normalizeGameKey(mainGame);
+  const gameDbName = normalizedGame ? legacyGameToDbName(normalizedGame) : mainGame;
+  const game = activeGames?.find(g => g.name === gameDbName);
+  const { data: gameRoles } = useGameRoles(game?.id || "");
+
+  const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame, gameRoles), [mainGame, gameRoles]);
+  const gameOptions = useMemo(
+    () => profileGameSelectOptions(mainGame, availableGames),
+    [mainGame, availableGames],
+  );
 
   const normalizedRegion = region.trim();
 
@@ -319,11 +334,14 @@ function ProfileEditPage() {
     setSaved(false);
     setError(null);
 
-    const identityError = validateGameIdentitiesInput({
-      valorantGameName,
-      valorantTagline,
-      gameIdentities,
-    });
+    const identityError = validateGameIdentitiesInput(
+      {
+        valorantGameName,
+        valorantTagline,
+        gameIdentities,
+      },
+      availableGames,
+    );
     if (identityError) {
       setSaving(false);
       setError(identityError);
@@ -600,9 +618,9 @@ function ProfileEditPage() {
                   <Label className="font-tech text-label-readable uppercase text-muted-foreground">
                     Main Role
                   </Label>
-                  {normalizeGameKey(mainGame) === "Palworld" ? (
+                  {roleOptions.length === 0 ? (
                     <p className="font-tech text-label-readable uppercase text-muted-foreground/50 py-2 text-xs">
-                      No role applicable for Palworld.
+                      No role applicable for {mainGame || "this game"}.
                     </p>
                   ) : (
                     <Select
@@ -662,6 +680,7 @@ function ProfileEditPage() {
               valorantGameName={valorantGameName}
               valorantTagline={valorantTagline}
               gameIdentities={gameIdentities}
+              games={activeGames}
               onValorantGameNameChange={(value) => {
                 markDirty();
                 setValorantGameName(value);

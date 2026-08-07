@@ -52,7 +52,7 @@ import { ChampionshipTitlesCard } from "@/features/championships/components/Cham
 import type { ChampionshipTitle } from "@/features/championships/types";
 import { TeamRosterPanel } from "@/features/teams/components/TeamRosterPanel";
 import { TransferCaptainDialog } from "@/features/teams/components/TransferCaptainDialog";
-import { GAME_COLOR, GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
+import { GAME_ACCENT, MAX_TEAM_SIZE } from "@/features/teams/constants";
 import type { Team, TeamMember, TeamMemberRole } from "@/features/teams/types";
 import type { MockTeam } from "@/lib/mock-data";
 
@@ -385,9 +385,7 @@ function TeamDetailPage() {
                 )}
                 {isCaptain && <Crown className="h-4 w-4 text-white/40" aria-label="Captain" />}
               </div>
-              <span
-                className={`font-tech text-label-readable uppercase ${GAME_COLOR[team.game]}`}
-              >
+              <span className="font-tech text-label-readable uppercase text-foreground/90">
                 {team.game}
               </span>
               <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">

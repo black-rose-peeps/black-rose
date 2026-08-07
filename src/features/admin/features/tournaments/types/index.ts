@@ -1,13 +1,13 @@
 import type { MockTournament, TournamentStatus } from "@/lib/mock-data";
 import type { TournamentFormat } from "@/features/tournaments/constants/formats";
-import type { ParticipationType, TournamentGame, WwmMode } from "@/features/tournaments/types";
+import type { ParticipationType, WwmMode } from "@/features/tournaments/types";
 import type { PrizeCurrency } from "@/lib/currency";
 
 export type AdminTournament = MockTournament;
 
 export interface CreateTournamentInput {
   name: string;
-  game: TournamentGame;
+  game: string;
   format: TournamentFormat;
   prizePool: string;
   startDate: string;
@@ -23,7 +23,7 @@ export interface CreateTournamentInput {
 
 export interface CreateTournamentFormValues {
   name: string;
-  game: TournamentGame;
+  game: string;
   format: TournamentFormat;
   prizeCurrency: PrizeCurrency;
   prizeAmount: string;

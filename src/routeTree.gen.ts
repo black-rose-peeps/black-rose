@@ -39,6 +39,7 @@ import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminParticipantsRouteImport } from './routes/admin.participants'
+import { Route as AdminGamesRouteImport } from './routes/admin.games'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminAnnouncementsRouteImport } from './routes/admin.announcements'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin.users.index'
@@ -196,6 +197,11 @@ const AdminParticipantsRoute = AdminParticipantsRouteImport.update({
   path: '/participants',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminGamesRoute = AdminGamesRouteImport.update({
+  id: '/games',
+  path: '/games',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
   id: '/audit-log',
   path: '/audit-log',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/games': typeof AdminGamesRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
@@ -274,6 +281,7 @@ export interface FileRoutesByTo {
   '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/games': typeof AdminGamesRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/waitlist': typeof WaitlistRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/games': typeof AdminGamesRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/announcements'
     | '/admin/audit-log'
+    | '/admin/games'
     | '/admin/participants'
     | '/admin/settings'
     | '/admin/teams'
@@ -384,6 +394,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/announcements'
     | '/admin/audit-log'
+    | '/admin/games'
     | '/admin/participants'
     | '/admin/settings'
     | '/admin/teams'
@@ -420,6 +431,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/admin/announcements'
     | '/admin/audit-log'
+    | '/admin/games'
     | '/admin/participants'
     | '/admin/settings'
     | '/admin/teams'
@@ -675,6 +687,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminParticipantsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/games': {
+      id: '/admin/games'
+      path: '/games'
+      fullPath: '/admin/games'
+      preLoaderRoute: typeof AdminGamesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/audit-log': {
       id: '/admin/audit-log'
       path: '/audit-log'
@@ -750,6 +769,7 @@ const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
+  AdminGamesRoute: typeof AdminGamesRoute
   AdminParticipantsRoute: typeof AdminParticipantsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminTeamsRoute: typeof AdminTeamsRoute
@@ -761,6 +781,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAnnouncementsRoute: AdminAnnouncementsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
+  AdminGamesRoute: AdminGamesRoute,
   AdminParticipantsRoute: AdminParticipantsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminTeamsRoute: AdminTeamsRoute,

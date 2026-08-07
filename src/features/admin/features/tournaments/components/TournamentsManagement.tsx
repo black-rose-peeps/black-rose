@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { AdminRowActions } from "@/features/admin/components/AdminRowActions";
 import { ConfirmDeleteDialog } from "@/features/admin/components/ConfirmDeleteDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,7 +24,7 @@ import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { StatusPill } from "@/features/admin/components/ui";
 import { usePagination } from "@/features/admin/hooks/usePagination";
 import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
-import { GAME_LABELS } from "@/features/tournaments/constants";
+import { getGameAbbrev } from "@/features/tournaments/utils/tournament-display";
 import type { TournamentStatus } from "@/lib/mock-data";
 import { useTournaments } from "../hooks";
 import type { AdminTournament } from "../types";
@@ -274,7 +275,7 @@ export function TournamentsManagement() {
                                   adminTableTextTruncate,
                                 )}
                               >
-                                {GAME_LABELS[t.game]} · {t.region}
+                                {t.game} · {t.format} · {t.region}
                               </div>
                             </div>
                           </TableCell>
@@ -353,9 +354,11 @@ export function TournamentsManagement() {
             await deleteTournamentSubmit(deletingTournament.id);
             removeTournament(deletingTournament.id);
             resetDeleteError();
+            toast.success(`Tournament "${deletingTournament.name}" deleted successfully`);
             setDeletingTournament(null);
-          } catch {
-            // deleteError shown in dialog
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Failed to delete tournament";
+            toast.error(errorMessage);
           }
         }}
       />

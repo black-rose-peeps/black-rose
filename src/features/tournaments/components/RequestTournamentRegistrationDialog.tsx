@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Trophy, Users } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
@@ -10,7 +11,6 @@ import {
   AdaptiveModalHeader,
   AdaptiveModalTitle,
 } from "@/components/ui/adaptive-modal";
-import { GAME_COLOR } from "@/features/teams/constants";
 import {
   createTournamentRegistrationRequest,
   fetchMemberTeamsForTournamentRequest,
@@ -88,9 +88,12 @@ export function RequestTournamentRegistrationDialog({
         requesterUserId: memberId,
       });
       onRequested();
+      toast.success("Registration request sent successfully");
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send request.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to send request";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -147,12 +150,7 @@ export function RequestTournamentRegistrationDialog({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-sm">{team.name}</p>
-                          <p
-                            className={cn(
-                              "mt-0.5 font-tech text-label-readable uppercase",
-                              GAME_COLOR[team.game],
-                            )}
-                          >
+                          <p className="mt-0.5 font-tech text-label-readable uppercase text-foreground/90">
                             {team.game}
                           </p>
                           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">

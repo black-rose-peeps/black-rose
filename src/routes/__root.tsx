@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import { type ReactNode, useEffect } from "react";
 import { setAppQueryClient } from "@/lib/app-query";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import favicon from "@/assets/black-rose-emblem-black.png";
@@ -83,6 +84,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <CapacitorOAuthBridge />
+      <Toaster />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>

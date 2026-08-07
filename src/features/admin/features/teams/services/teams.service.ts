@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import type { GameRole } from "@/features/admin/features/games/services/games.service";
 import {
   ADMIN_AUDIT_ACTIONS,
   logAdminAction,
@@ -27,7 +28,9 @@ import { fetchMemberById } from "@/features/admin/features/members/services/memb
 
 export function rosterActorFromMemberSession(): RosterChangeActor | undefined {
   const session = getSession();
-  const username = session?.username?.trim();
+  if (!session) return undefined;
+
+  const username = session.username?.trim();
   if (!username) return undefined;
 
   const discordUsername = session.discordUsername?.trim() || username;
@@ -363,7 +366,7 @@ async function insertOrReactivateTeamMember(
 }
 
 const TEAM_LIST_COLUMNS =
-  "id, name, tag, game, captain_user_id, created_at, active_tournament_id, active_tournament_name";
+  "id, name, tag, game, game_id, captain_user_id, created_at, active_tournament_id, active_tournament_name";
 
 const TEAM_MEMBER_LIST_COLUMNS =
   "team_id, user_id, username, display_name, avatar_initials, ign, role, status, joined_at";
@@ -464,6 +467,11 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 
   await assertMemberAvailableForGame(captain.id, input.game);
 
+  // Validate gameId is resolved
+  if (!input.gameId) {
+    throw new Error("Game ID must be resolved from active games before creating team.");
+  }
+
   // Insert team
   const { data: teamRow, error: teamErr } = await supabase
     .from("teams")
@@ -471,6 +479,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
       name: input.name,
       tag: input.tag,
       game: input.game,
+      game_id: input.gameId,
       captain_user_id: captain.id,
     })
     .select()
@@ -704,7 +713,7 @@ export async function fetchTeamById(teamId: string): Promise<Team | null> {
 
 export async function updateTeam(
   teamId: string,
-  input: Pick<CreateTeamInput, "name" | "tag" | "game">,
+  input: Pick<CreateTeamInput, "name" | "tag" | "game" | "gameId">,
 ): Promise<Team> {
   const existing = await fetchTeamWithMembers(teamId);
   if (input.game !== existing.game) {
@@ -716,12 +725,18 @@ export async function updateTeam(
     );
   }
 
+  // Validate gameId is resolved
+  if (!input.gameId) {
+    throw new Error("Game ID must be resolved from active games before updating team.");
+  }
+
   const { error } = await supabase
     .from("teams")
     .update({
       name: input.name,
       tag: input.tag,
       game: input.game,
+      game_id: input.gameId,
     })
     .eq("id", teamId);
 
@@ -849,7 +864,34 @@ export async function updateTeamMemberRole(
     throw new Error("You can only update your own role.");
   }
 
-  const sanitizedRole = resolveRoleForGame(role, team.game);
+  // Fetch dynamic game roles for proper role validation
+  const { data: gameRow, error: gameRowError } = await supabase
+    .from("teams")
+    .select("game_id")
+    .eq("id", teamId)
+    .single();
+
+  if (gameRowError) {
+    throw new Error(`Failed to fetch team game: ${gameRowError.message}`);
+  }
+
+  if (!gameRow?.game_id) {
+    throw new Error("Team does not have a valid game_id. Cannot update role.");
+  }
+
+  const { data: roles, error: rolesError } = await supabase
+    .from("game_roles")
+    .select("*")
+    .eq("game_id", gameRow.game_id)
+    .order("role_name", { ascending: true });
+
+  if (rolesError) {
+    throw new Error(`Failed to fetch game roles: ${rolesError.message}`);
+  }
+
+  const gameRoles: GameRole[] = roles || [];
+
+  const sanitizedRole = resolveRoleForGame(role, team.game, gameRoles);
   const { error } = await supabase
     .from("team_members")
     .update({ role: sanitizedRole })

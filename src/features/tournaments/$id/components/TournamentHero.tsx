@@ -1,23 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Users, Layers, MapPin } from "lucide-react";
-import { GAME_LABELS, STATUS_CONFIG } from "../../constants";
+import { STATUS_CONFIG } from "../../constants";
 import type { TournamentDetail } from "../../types";
-
-const GAME_TAG_COLOR: Record<TournamentDetail["game"], string> = {
-  Valorant: "text-red-400",
-  "League of Legends": "text-blue-400",
-  "Teamfight Tactics": "text-violet-400",
-  "Where Winds Meet": "text-cyan-400",
-  "Marvel Rivals": "text-amber-400",
-};
-
-const GAME_GLOW: Record<TournamentDetail["game"], string> = {
-  Valorant: "from-red-950/40 via-transparent to-transparent",
-  "League of Legends": "from-blue-950/40 via-transparent to-transparent",
-  "Teamfight Tactics": "from-violet-950/40 via-transparent to-transparent",
-  "Where Winds Meet": "from-cyan-950/40 via-transparent to-transparent",
-  "Marvel Rivals": "from-amber-950/40 via-transparent to-transparent",
-};
 
 interface TournamentHeroProps {
   tournament: TournamentDetail;
@@ -32,9 +16,7 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
     <section className="relative overflow-hidden border-b border-white/6 site-header-offset-spaced pb-8 sm:pb-12">
       {/* Background depth */}
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
-      <div
-        className={`pointer-events-none absolute inset-0 bg-linear-to-br ${GAME_GLOW[t.game]}`}
-      />
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/12 to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-background to-transparent" />
 
@@ -52,10 +34,8 @@ export function TournamentHero({ tournament: t, registrationAction }: Tournament
           {/* Left — title block */}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <span
-                className={`font-tech text-label-readable uppercase ${GAME_TAG_COLOR[t.game]}`}
-              >
-                {GAME_LABELS[t.game]}
+              <span className="font-tech text-label-readable uppercase text-muted-foreground">
+                {t.game}
               </span>
               <span
                 className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-tech text-label-readable uppercase ${status.badge}`}

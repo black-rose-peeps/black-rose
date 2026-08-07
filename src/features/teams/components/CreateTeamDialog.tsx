@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AdaptiveModal,
@@ -29,9 +30,13 @@ import {
   getRoleOptionsForGame,
   normalizeGameKey,
   resolveRoleForGame,
+  dbGameToLegacyGame,
+  legacyGameToDbName,
 } from "@/features/teams/constants";
+import { useActiveGames, useGameRoles } from "@/features/admin/features/games/hooks/useGames";
 import type { Team } from "@/features/teams/types";
 import type { TeamMemberRole } from "@/features/teams/types";
+import type { Game as DbGame } from "@/features/admin/features/games/services/games.service";
 
 interface CreateTeamDialogProps {
   open: boolean;
@@ -46,14 +51,24 @@ export function CreateTeamDialog({
   memberId,
   onCreated,
 }: CreateTeamDialogProps) {
+  const { data: dbGames, isLoading: gamesLoading } = useActiveGames();
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [game, setGame] = useState<(typeof GAME_OPTIONS)[number]["value"]>("Valorant");
+  const [gameId, setGameId] = useState<string | undefined>(undefined);
   const [captainRole, setCaptainRole] = useState<TeamMemberRole>("TBD");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: gameRoles } = useGameRoles(gameId || "");
 
-  const roleOptions = getRoleOptionsForGame(game);
+  // Convert database games to legacy format for backward compatibility
+  const gameOptions = dbGames
+    ? dbGames
+        .filter((g) => g.name !== "Multi") // Exclude Multi-game from team creation
+        .map((g) => ({ value: dbGameToLegacyGame(g), label: g.display_name, id: g.id }))
+    : GAME_OPTIONS.filter((g) => g.value !== "Multi");
+
+  const roleOptions = getRoleOptionsForGame(game, gameRoles);
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +76,7 @@ export function CreateTeamDialog({
     setName("");
     setTag("");
     setGame("Valorant");
+    setGameId(undefined);
     setCaptainRole("TBD");
     setError(null);
 
@@ -74,6 +90,9 @@ export function CreateTeamDialog({
             ? normalizedGame
             : "Valorant";
         setGame(nextGame);
+        // Resolve gameId from dbGames
+        const selectedGame = dbGames?.find((g) => dbGameToLegacyGame(g) === nextGame);
+        setGameId(selectedGame?.id);
         setCaptainRole(resolveRoleForGame(profile.mainRole, nextGame));
       })
       .catch(() => {});
@@ -81,11 +100,17 @@ export function CreateTeamDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, memberId]);
+  }, [open, memberId, dbGames]);
 
   useEffect(() => {
     setCaptainRole((current) => resolveRoleForGame(current, game));
   }, [game]);
+
+  // Update gameId when game changes
+  useEffect(() => {
+    const selectedGame = dbGames?.find((g) => g.name === legacyGameToDbName(game));
+    setGameId(selectedGame?.id);
+  }, [game, dbGames]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -93,17 +118,25 @@ export function CreateTeamDialog({
     setError(null);
 
     try {
+      if (!gameId) {
+        setError("Game must be selected before creating a team.");
+        return;
+      }
       const team = await createTeam({
         name: name.trim(),
         tag: tag.trim().toUpperCase(),
         game,
+        gameId,
         captainMemberId: memberId,
-        captainRole: resolveRoleForGame(captainRole, game),
+        captainRole,
       });
       onCreated(team);
+      toast.success(`Team "${name}" created successfully`);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create team.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to create team";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -159,12 +192,13 @@ export function CreateTeamDialog({
               <Select
                 value={game}
                 onValueChange={(v) => setGame(v as (typeof GAME_OPTIONS)[number]["value"])}
+                disabled={gamesLoading}
               >
                 <SelectTrigger className={techFieldClass}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                  {GAME_OPTIONS.filter((g) => g.value !== "Multi").map((g) => (
+                  {gameOptions.map((g) => (
                     <SelectItem key={g.value} value={g.value} className="font-tech text-xs">
                       {g.label}
                     </SelectItem>
@@ -218,7 +252,7 @@ export function CreateTeamDialog({
             </Button>
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !gameId}
               className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

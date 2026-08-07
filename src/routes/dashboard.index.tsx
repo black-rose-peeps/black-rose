@@ -18,6 +18,7 @@ import {
   listConfiguredIdentitySummaries,
   mainGameIdentityConfig,
 } from "@/features/member/utils/game-identity";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +54,7 @@ function DashboardPage() {
   const [inGameIdsOpen, setInGameIdsOpen] = useState(false);
   const { celebrationOpen, celebrateIfUnseen, openCelebration, dismissCelebration } =
     useProfileCompleteCelebration(session?.id);
+  const { data: activeGames } = useActiveGames();
 
   useEffect(() => {
     if (!profile || isLoading) return;
@@ -191,8 +193,8 @@ function DashboardPage() {
 
         <DashboardSection label="Accounts" title="In-Game Identity">
           {(() => {
-            const configured = listConfiguredIdentitySummaries(p);
-            const mainConfig = mainGameIdentityConfig(p.mainGame);
+            const configured = listConfiguredIdentitySummaries(p, activeGames);
+            const mainConfig = mainGameIdentityConfig(p.mainGame, activeGames);
 
             if (configured.length === 0) {
               return (
@@ -248,7 +250,7 @@ function DashboardPage() {
                     </li>
                   ))}
                 </ul>
-                {!hasMainGameIdentity(p) && mainConfig && (
+                {!hasMainGameIdentity(p, activeGames) && mainConfig && (
                   <p className="mb-4 text-xs text-amber-400/90">
                     Your main game ({mainConfig.panelLabel}) identity is not set yet.
                   </p>

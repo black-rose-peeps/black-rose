@@ -32,6 +32,7 @@ import {
 } from "@/features/member/utils/profile-main-game";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
 import { queryKeys } from "@/lib/query-keys";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 
 interface EditInGameIdsModalProps {
   open: boolean;
@@ -59,7 +60,15 @@ export function EditInGameIdsModal({
   const [error, setError] = useState<string | null>(null);
   const prevOpenRef = useRef(false);
 
-  const gameOptions = useMemo(() => profileGameSelectOptions(mainGame), [mainGame]);
+  const { data: activeGames } = useActiveGames();
+  const availableGames = useMemo(
+    () => activeGames?.map((g) => g.display_name) || [],
+    [activeGames],
+  );
+  const gameOptions = useMemo(
+    () => profileGameSelectOptions(mainGame, availableGames),
+    [mainGame, availableGames],
+  );
 
   useEffect(() => {
     if (!prevOpenRef.current && open) {
@@ -77,11 +86,14 @@ export function EditInGameIdsModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const identityError = validateGameIdentitiesInput({
-      valorantGameName,
-      valorantTagline,
-      gameIdentities,
-    });
+    const identityError = validateGameIdentitiesInput(
+      {
+        valorantGameName,
+        valorantTagline,
+        gameIdentities,
+      },
+      availableGames,
+    );
     if (identityError) {
       setError(identityError);
       return;
@@ -166,6 +178,7 @@ export function EditInGameIdsModal({
               valorantGameName={valorantGameName}
               valorantTagline={valorantTagline}
               gameIdentities={gameIdentities}
+              games={activeGames}
               onValorantGameNameChange={setValorantGameName}
               onValorantTaglineChange={setValorantTagline}
               onGameIdentityChange={(game, value) =>

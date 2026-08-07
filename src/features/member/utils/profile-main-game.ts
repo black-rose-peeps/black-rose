@@ -1,4 +1,3 @@
-import { PROFILE_GAME_OPTIONS } from "../constants";
 import { normalizeGameKey } from "@/features/teams/constants";
 
 /** Canonical main game for profile forms — keeps saved values selectable in the UI. */
@@ -9,8 +8,7 @@ export function resolveProfileMainGame(raw: string | null | undefined): string {
   const normalized = normalizeGameKey(trimmed);
   if (normalized) return normalized;
 
-  if ((PROFILE_GAME_OPTIONS as readonly string[]).includes(trimmed)) return trimmed;
-
+  // Legacy fallback - allow any game value for dynamic games
   return trimmed;
 }
 
@@ -18,14 +16,18 @@ export function resolveProfileMainGame(raw: string | null | undefined): string {
 export function resolveStoredMainGame(raw: string | null | undefined): string | null {
   const resolved = resolveProfileMainGame(raw);
   if (!resolved) return null;
-  if ((PROFILE_GAME_OPTIONS as readonly string[]).includes(resolved)) return resolved;
-  return null;
+  // For dynamic games, allow any value
+  return resolved;
 }
 
-export function profileGameSelectOptions(currentGame: string): readonly string[] {
+/** Get game select options - should be called with dynamic games from useActiveGames hook */
+export function profileGameSelectOptions(
+  currentGame: string,
+  availableGames: readonly string[] = [],
+): readonly string[] {
   const resolved = resolveProfileMainGame(currentGame);
-  if (resolved && !(PROFILE_GAME_OPTIONS as readonly string[]).includes(resolved)) {
-    return [...PROFILE_GAME_OPTIONS, resolved];
+  if (resolved && !availableGames.includes(resolved)) {
+    return [...availableGames, resolved];
   }
-  return PROFILE_GAME_OPTIONS;
+  return availableGames;
 }

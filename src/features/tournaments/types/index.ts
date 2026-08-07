@@ -9,7 +9,7 @@ export type TournamentStatus =
   | "Completed"
   | "Archived";
 
-export type TournamentGame = "Valorant" | "League of Legends" | "Teamfight Tactics" | "Where Winds Meet" | "Marvel Rivals";
+export type TournamentGame = string; // Dynamic game names from database
 
 export interface Tournament {
   id: string;
@@ -25,6 +25,12 @@ export interface Tournament {
   region: string;
   participationType?: ParticipationType;
   wwmMode?: WwmMode | null;
+  /** Game header image URL from games table */
+  tournamentHeaderImage?: string | null;
+  /** Game color class from games table */
+  gameColorClass?: string | null;
+  /** Game accent class from games table */
+  gameAccentClass?: string | null;
 }
 
 // ── Detail-only types ────────────────────────────────────

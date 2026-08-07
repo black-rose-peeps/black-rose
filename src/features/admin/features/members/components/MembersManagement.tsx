@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { ChevronRight, Loader2, RotateCcw, Trash2, UserPlus, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -737,10 +738,12 @@ export function MembersManagement() {
             });
             removeMember(deletingMember.id);
             resetDeleteError();
+            toast.success(`Member "${deletingMember.username}" deleted successfully`);
             setDeleteMode("default");
             setDeletingMember(null);
-          } catch {
-            // deleteError shown in dialog description
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Failed to delete member";
+            toast.error(errorMessage);
           }
         }}
       />

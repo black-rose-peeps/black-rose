@@ -68,9 +68,11 @@ const FOOTER_NAV: { title: string; links: FooterLink[] }[] = [
   {
     title: "Connect",
     links: [
-      { label: "Guild Code of Values", to: "/community" },
-      { label: "Why Black Rose", to: "/", hash: "why-black-rose" },
       { label: "Discord Server", href: DISCORD_SERVER_INVITE },
+      { label: "Facebook Page", href: "https://www.facebook.com/BlackRoseHQ" },
+      { label: "Facebook Group", href: "https://www.facebook.com/share/g/19Cb1nZZQY/" },
+      { label: "YouTube", href: "https://www.youtube.com/@BlackRoseAsia" },
+      { label: "Instagram", href: "https://www.instagram.com/blackrose.asia" },
     ],
   },
 ];

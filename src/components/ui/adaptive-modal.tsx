@@ -73,13 +73,22 @@ const AdaptiveModalContent = React.forwardRef<
           {!hideMobileHandle && mobileSide === "bottom" ? (
             <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-white/20" aria-hidden />
           ) : null}
-          {children}
+          <div className="flex flex-col h-full min-h-0">
+            {children}
+          </div>
         </SheetContent>
       );
     }
 
     return (
-      <DialogContent ref={ref} className={cn("rounded-none sm:rounded-none", className)} {...props}>
+      <DialogContent 
+        ref={ref} 
+        className={cn(
+          "flex flex-col max-h-[90vh] max-w-2xl rounded-none sm:rounded-none overflow-hidden",
+          className
+        )} 
+        {...props}
+      >
         {children}
       </DialogContent>
     );
@@ -113,7 +122,7 @@ AdaptiveModalFooter.displayName = "AdaptiveModalFooter";
 const AdaptiveModalBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5",
+      "custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5",
       className,
     )}
     {...props}

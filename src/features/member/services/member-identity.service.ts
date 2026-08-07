@@ -7,6 +7,7 @@ import {
   type RosterIdentityGap,
 } from "@/features/member/utils/roster-identity";
 import { parseGameIdentitiesFromRow } from "@/features/member/utils/game-identity";
+import type { Game as AdminGame } from "@/features/admin/features/games/services/games.service";
 
 export async function fetchMemberIdentityRecords(
   memberIds: string[],
@@ -79,15 +80,17 @@ export async function fetchMemberIdentityRecords(
 export async function fetchRosterIdentityGapsForTeam(
   team: Team,
   tournamentGame: string,
+  games?: AdminGame[],
 ): Promise<RosterIdentityGap[]> {
   const memberIds = getActiveRosterMembers(team).map((m) => m.userId);
   const identities = await fetchMemberIdentityRecords(memberIds);
-  return listRosterMembersMissingIdentity(team, tournamentGame, identities);
+  return listRosterMembersMissingIdentity(team, tournamentGame, identities, games);
 }
 
 export async function fetchRosterIdentityGapsForTeams(
   teams: Team[],
   tournamentGame: string,
+  games?: AdminGame[],
 ): Promise<Map<string, RosterIdentityGap[]>> {
   const memberIds = [
     ...new Set(teams.flatMap((team) => getActiveRosterMembers(team).map((m) => m.userId))),
@@ -97,7 +100,7 @@ export async function fetchRosterIdentityGapsForTeams(
   return new Map(
     teams.map((team) => [
       team.id,
-      listRosterMembersMissingIdentity(team, tournamentGame, identities),
+      listRosterMembersMissingIdentity(team, tournamentGame, identities, games),
     ]),
   );
 }

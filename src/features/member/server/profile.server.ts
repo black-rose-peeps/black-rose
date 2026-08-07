@@ -409,16 +409,20 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
   if (profileError) throw new Error(profileError.message);
   if (!profile) throw new Error("Profile not found. Sign in again to create your profile.");
 
-  const identityError = validateGameIdentitiesInput({
-    valorantGameName: input.valorantGameName,
-    valorantTagline: input.valorantTagline,
-    gameIdentities: input.gameIdentities,
-  });
+  const identityError = validateGameIdentitiesInput(
+    {
+      valorantGameName: input.valorantGameName,
+      valorantTagline: input.valorantTagline,
+      gameIdentities: input.gameIdentities,
+    },
+    Object.keys(input.gameIdentities),
+  );
   if (identityError) throw new Error(identityError);
 
   const valorantGameName = input.valorantGameName.trim();
   const valorantTagline = normalizeValorantTagline(input.valorantTagline);
-  const gameIdentities = sanitizeGameIdentities(input.gameIdentities);
+  // Don't filter out dynamic games - allow all games that have values
+  const gameIdentities = input.gameIdentities;
   const mainGame = resolveStoredMainGame(input.mainGame);
   const legacyIngameName =
     mainGame && !isRiotGame(mainGame) ? (gameIdentities[mainGame] ?? null) : null;

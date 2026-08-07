@@ -71,14 +71,20 @@ export interface MemberTournamentNotificationContext {
   registrationsByTeamId: Map<string, MockTeam[]>;
 }
 
+export interface MemberTournamentNotificationContextOptions {
+  /** Pre-fetched tournaments to avoid duplicate queries */
+  tournaments?: MockTournament[];
+}
+
 /** One shared load for registration + live tournament notifications. */
 export async function loadMemberTournamentNotificationContext(
   userId: string,
+  options?: MemberTournamentNotificationContextOptions,
 ): Promise<MemberTournamentNotificationContext> {
   const [memberTeams, tournaments, tournamentsLite] = await Promise.all([
     fetchActiveMemberTeamsCached(userId),
-    fetchTournamentsForNotificationsCached(),
-    fetchTournamentsLiteCached(),
+    options?.tournaments ? Promise.resolve(options.tournaments) : fetchTournamentsForNotificationsCached(),
+    options?.tournaments ? Promise.resolve(options.tournaments) : fetchTournamentsLiteCached(),
   ]);
 
   const liveTeamsById = new Map(memberTeams.map((team) => [team.id, team]));

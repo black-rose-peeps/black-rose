@@ -12,6 +12,11 @@ import { resolveRoundId } from "@/features/tournaments/utils/bracket-round-order
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import type { TournamentEntry, UpcomingMatch } from "../types";
 
+export interface MemberTournamentDashboardOptions {
+  /** Pre-fetched tournaments to avoid duplicate queries */
+  tournaments?: MockTournament[];
+}
+
 export interface MemberTournamentDashboard {
   activeRegistrations: TournamentEntry[];
   upcomingMatches: UpcomingMatch[];
@@ -96,10 +101,11 @@ function extractUpcomingMatches(
 
 export async function fetchMemberTournamentDashboard(
   memberId: string,
+  options?: MemberTournamentDashboardOptions,
 ): Promise<MemberTournamentDashboard> {
   const [teams, tournaments] = await Promise.all([
     fetchTeamsForUser(memberId),
-    fetchTournamentsLite(),
+    options?.tournaments ?? fetchTournamentsLite(),
   ]);
 
   const tournamentById = new Map(tournaments.map((t) => [t.id, t]));

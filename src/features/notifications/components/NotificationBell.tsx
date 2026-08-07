@@ -153,6 +153,7 @@ function NotificationPanel({
 
             const teamInviteMatch = n.href?.match(/^\/teams\/([^/]+)$/);
             const memberProfileMatch = n.href?.match(/^\/members\/([^/]+)$/);
+            const tournamentMatch = n.href?.match(/^\/tournaments\/([^/]+)$/);
 
             return (
               <li key={n.id}>
@@ -184,6 +185,18 @@ function NotificationPanel({
                   <Link
                     to="/members/$slug"
                     params={{ slug: memberProfileMatch[1] }}
+                    onClick={() => {
+                      onRead(n.id);
+                      onClose();
+                    }}
+                    className="block"
+                  >
+                    {content}
+                  </Link>
+                ) : tournamentMatch ? (
+                  <Link
+                    to="/tournaments/$id"
+                    params={{ id: tournamentMatch[1] }}
                     onClick={() => {
                       onRead(n.id);
                       onClose();
