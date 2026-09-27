@@ -50,8 +50,9 @@ export function Hero() {
         </h1>
 
         <p className="mt-8 max-w-2xl text-balance text-base text-muted-foreground md:text-lg animate-rise">
-          Compete. Rise. Dominate. Join community-driven esports tournaments hosted by Black Rose
-          and prove yourself against the best.
+          Play. Connect. Rise Together. Black Rose is a gaming guild built around community, shared
+          experiences, and a passion for games. Join our members across different worlds, take part
+          in guild activities and tournaments, and #RiseAsOne.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row animate-rise">
