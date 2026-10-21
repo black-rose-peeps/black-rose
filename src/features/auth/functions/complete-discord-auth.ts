@@ -31,6 +31,9 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
     return { code: data.code.trim(), redirectUri, codeVerifier };
   })
   .handler(async ({ data }): Promise<CompleteDiscordAuthResult> => {
+    const { assertTrustedOrigin, issueMemberSession } =
+      await import("../server/trusted-session.server");
+    assertTrustedOrigin();
     const { exchangeDiscordCodeForToken, fetchDiscordUser, fetchDiscordConnections } =
       await import("../server/discord-api.server");
     const { upsertMemberFromDiscord } = await import("../server/member-auth.server");
@@ -56,7 +59,7 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
       }
     }
 
-    let member = await upsertMemberFromDiscord(discordUser, hasRoseRole);
+    const member = await upsertMemberFromDiscord(discordUser, hasRoseRole);
 
     const displayName = discordUser.global_name?.trim() || discordUser.username;
     const avatarUrl = buildDiscordAvatarUrl(discordUser.id, discordUser.avatar);
@@ -82,5 +85,6 @@ export const completeDiscordAuth = createServerFn({ method: "POST" })
       profileSlug: profileRow.slug,
     };
 
+    issueMemberSession(member.id);
     return { user };
   });

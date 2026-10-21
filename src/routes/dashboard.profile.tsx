@@ -1,16 +1,16 @@
-import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useBlocker,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  CheckCircle,
-  Loader2,
-  User,
-  Gamepad2,
-  Share2,
-  Eye,
-  Sparkles,
-} from "lucide-react";
+import { legacyProfileGamesSearch } from "@/features/shared/utils/hub-search";
+import { MemberSelect } from "@/features/member/components/MemberSelect";
+import { ArrowLeft, User, Share2, Eye, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,14 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+
 import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import {
   MemberHeroBanner,
@@ -33,12 +26,13 @@ import {
   TechPanel,
   techFieldClass,
 } from "@/features/member/components/MemberShell";
-import { GameIdentitiesFields } from "@/features/member/components/GameIdentitiesFields";
+import { ProfileEditorActions } from "@/features/member/components/ProfileEditorActions";
 import { MemberDashboardSkeleton } from "@/features/member/components/MemberDashboardSkeleton";
 import { useSyncedMemberSession } from "@/features/auth/hooks/useSyncedMemberSession";
 import { setSession } from "@/features/auth/store/session";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
 import { useMemberProfileQuery } from "@/features/member/queries/member-profile-queries";
+
 import { queryKeys } from "@/lib/query-keys";
 import {
   PROFILE_REGION_OPTIONS,
@@ -53,20 +47,20 @@ import {
 import { ProfileCompleteCelebrationDialog } from "@/features/member/components/ProfileCompleteCelebrationDialog";
 import { useProfileCompleteCelebration } from "@/features/member/hooks/useProfileCompleteCelebration";
 import type { MemberProfile, SocialPlatform } from "@/features/member/types";
-import { getRoleOptionsForGame, normalizeGameKey, legacyGameToDbName } from "@/features/teams/constants";
-import { useActiveGames, useGameRoles } from "@/features/admin/features/games/hooks/useGames";
+
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
-import { validateGameIdentitiesInput } from "@/features/member/utils/game-identity";
+
 import {
   profileFormStateFromMember,
   socialsFromProfile,
   type ProfileSocialFormState,
 } from "@/features/member/utils/profile-form-state";
-import {
-  profileGameSelectOptions,
-  resolveProfileMainGame,
-} from "@/features/member/utils/profile-main-game";
+import { resolveProfileMainGame } from "@/features/member/utils/profile-main-game";
 import { cn } from "@/lib/utils";
+import {
+  profileEditorHasChanges,
+  shouldGuardProfileExit,
+} from "@/features/member/utils/profile-editor";
 import type { QueryClient } from "@tanstack/react-query";
 
 type ProfileTab = "identity" | "player" | "socials" | "privacy";
@@ -99,6 +93,10 @@ export const Route = createFileRoute("/dashboard/profile")({
   head: () => ({
     meta: [{ title: "Edit Profile — Black Rose" }],
   }),
+  beforeLoad: ({ search }) => {
+    const destination = legacyProfileGamesSearch(search);
+    if (destination) throw redirect({ to: "/dashboard", search: destination, replace: true });
+  },
   component: ProfileEditPage,
 });
 
@@ -187,7 +185,9 @@ function ProfileEditPage() {
   const [mainGame, setMainGame] = useState(() => cachedForm?.mainGame ?? "");
   const [mainRole, setMainRole] = useState(() => cachedForm?.mainRole ?? "");
   const [region, setRegion] = useState(() => cachedForm?.region ?? "");
-  const [valorantGameName, setValorantGameName] = useState(() => cachedForm?.valorantGameName ?? "");
+  const [valorantGameName, setValorantGameName] = useState(
+    () => cachedForm?.valorantGameName ?? "",
+  );
   const [valorantTagline, setValorantTagline] = useState(() => cachedForm?.valorantTagline ?? "");
   const [gameIdentities, setGameIdentities] = useState<Record<string, string>>(
     () => cachedForm?.gameIdentities ?? {},
@@ -198,23 +198,6 @@ function ProfileEditPage() {
   );
   const { celebrationOpen, maybeCelebrate, dismissCelebration } =
     useProfileCompleteCelebration(memberId);
-
-  const { data: activeGames } = useActiveGames();
-  const availableGames = useMemo(
-    () => activeGames?.map((g) => g.display_name) || [],
-    [activeGames],
-  );
-
-  const normalizedGame = normalizeGameKey(mainGame);
-  const gameDbName = normalizedGame ? legacyGameToDbName(normalizedGame) : mainGame;
-  const game = activeGames?.find(g => g.name === gameDbName);
-  const { data: gameRoles } = useGameRoles(game?.id || "");
-
-  const roleOptions = useMemo(() => getRoleOptionsForGame(mainGame, gameRoles), [mainGame, gameRoles]);
-  const gameOptions = useMemo(
-    () => profileGameSelectOptions(mainGame, availableGames),
-    [mainGame, availableGames],
-  );
 
   const normalizedRegion = region.trim();
 
@@ -228,11 +211,36 @@ function ProfileEditPage() {
     return PROFILE_REGION_OPTIONS;
   }, [normalizedRegion]);
 
-  useEffect(() => {
-    if (mainRole && !roleOptions.includes(mainRole as (typeof roleOptions)[number])) {
-      setMainRole("");
-    }
-  }, [mainRole, roleOptions]);
+  const dirty =
+    formInitialized &&
+    Boolean(
+      profile &&
+      profileEditorHasChanges(profileFormStateFromMember(profile), {
+        displayName,
+        headline,
+        bio,
+        mainGame,
+        mainRole,
+        region,
+        valorantGameName,
+        valorantTagline,
+        gameIdentities,
+        isPublic,
+        socials,
+      }),
+    );
+
+  useLayoutEffect(() => {
+    isDirtyRef.current = dirty;
+  }, [dirty]);
+
+  useBlocker({
+    shouldBlockFn: ({ next }) =>
+      (shouldGuardProfileExit(isDirtyRef.current || saving, next.pathname) ||
+        ((isDirtyRef.current || saving) && Boolean(legacyProfileGamesSearch(next.search)))) &&
+      !window.confirm("Discard your unsaved profile changes and leave?"),
+    enableBeforeUnload: () => isDirtyRef.current || saving,
+  });
 
   useEffect(() => {
     if (prevMemberIdRef.current === undefined) {
@@ -263,8 +271,7 @@ function ProfileEditPage() {
     const dataChanged = lastSyncedDataUpdatedAtRef.current !== dataUpdatedAt;
     const savedMainGame = resolveProfileMainGame(profileQuery.data.mainGame);
     const formMissingSavedMainGame =
-      !isDirtyRef.current &&
-      Boolean(savedMainGame && !resolveProfileMainGame(mainGame));
+      !isDirtyRef.current && Boolean(savedMainGame && !resolveProfileMainGame(mainGame));
     const shouldSync =
       enteredProfile ||
       !formInitialized ||
@@ -302,7 +309,30 @@ function ProfileEditPage() {
 
   const markDirty = () => {
     isDirtyRef.current = true;
+    setSaved(false);
+    setError(null);
   };
+
+  function discardChanges() {
+    if (!profile || !dirty || saving) return;
+    if (!window.confirm("Discard all unsaved profile changes?")) return;
+    applyProfileToForm(profile, {
+      setDisplayName,
+      setHeadline,
+      setBio,
+      setMainGame,
+      setMainRole,
+      setRegion,
+      setValorantGameName,
+      setValorantTagline,
+      setGameIdentities,
+      setIsPublic,
+      setSocials,
+    });
+    isDirtyRef.current = false;
+    setSaved(false);
+    setError(null);
+  }
 
   useEffect(() => {
     if (profileQuery.isError && !formInitialized) {
@@ -328,25 +358,11 @@ function ProfileEditPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const profileSnapshot = profile ?? profileQuery.data;
-    if (!session || !profileSnapshot) return;
+    if (!session || !profileSnapshot || saving || !dirty) return;
 
     setSaving(true);
     setSaved(false);
     setError(null);
-
-    const identityError = validateGameIdentitiesInput(
-      {
-        valorantGameName,
-        valorantTagline,
-        gameIdentities,
-      },
-      availableGames,
-    );
-    if (identityError) {
-      setSaving(false);
-      setError(identityError);
-      return;
-    }
 
     try {
       const previousCompletion = profileSnapshot.profileCompletion;
@@ -415,7 +431,7 @@ function ProfileEditPage() {
   }
 
   return (
-    <MemberPageLayout maxWidth="max-w-3xl">
+    <MemberPageLayout maxWidth="max-w-5xl">
       <Button
         asChild
         variant="ghost"
@@ -461,326 +477,298 @@ function ProfileEditPage() {
               variant="outline"
               className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 bg-white/5 font-tech text-ui-readable uppercase"
             >
-              <Link to="/members/$slug" params={{ slug: profileSnapshot.slug }}>
-                Preview
+              <Link to="/br/$slug" params={{ slug: profileSnapshot.slug }}>
+                View saved profile
               </Link>
             </Button>
           )
         }
       />
 
-      <form onSubmit={handleSubmit}>
-        <Tabs
-          value={tab}
-          onValueChange={(v) =>
-            navigate({
-              to: "/dashboard/profile",
-              search: { tab: v as ProfileTab, ...(focusGame ? { focusGame } : {}) },
-            })
-          }
-          className="gap-6"
-        >
-          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border border-white/8 bg-[oklch(0.07_0_0)] p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabsTrigger
-              value="identity"
-              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
-            >
-              <User className="mr-1.5 h-3.5 w-3.5" />
-              Identity
-            </TabsTrigger>
-            <TabsTrigger
-              value="player"
-              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
-            >
-              <Gamepad2 className="mr-1.5 h-3.5 w-3.5" />
-              Player
-            </TabsTrigger>
-            <TabsTrigger
-              value="socials"
-              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
-            >
-              <Share2 className="mr-1.5 h-3.5 w-3.5" />
-              Socials
-            </TabsTrigger>
-            <TabsTrigger
-              value="privacy"
-              className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
-            >
-              <Eye className="mr-1.5 h-3.5 w-3.5" />
-              Privacy
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="identity" className="mt-0">
-            <TechPanel label="Photo" title="Avatar">
-              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <MemberAvatar
-                  avatarUrl={profile?.avatarUrl ?? null}
-                  initials={displayName.slice(0, 2).toUpperCase() || "BR"}
-                  className="h-24 w-24 shrink-0 text-3xl"
-                />
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Your avatar comes from Discord and updates when you sign in again.
-                </p>
-              </div>
-            </TechPanel>
-
-            <div className="mt-5 grid gap-5">
-              <div className="space-y-2">
-                <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                  Display Name
-                </Label>
-                <Input
-                  value={displayName}
-                  onChange={(e) => {
-                    markDirty();
-                    setDisplayName(e.target.value);
-                  }}
-                  required
-                  className={techFieldClass}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                  Headline
-                </Label>
-                <Input
-                  value={headline}
-                  onChange={(e) => {
-                    markDirty();
-                    setHeadline(e.target.value);
-                  }}
-                  placeholder="Valorant Duelist · Black Rose Member"
-                  className={techFieldClass}
-                />
-                <p className="text-sm text-muted-foreground/60">
-                  Shown under your name on your public profile.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                  Bio
-                </Label>
-                <Textarea
-                  value={bio}
-                  onChange={(e) => {
-                    markDirty();
-                    setBio(e.target.value);
-                  }}
-                  rows={5}
-                  placeholder="Tell the community about yourself…"
-                  className={cn(
-                    techFieldClass,
-                    "custom-scrollbar max-h-48 resize-y overflow-y-auto",
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Any bio text counts toward profile completion.
-                </p>
-              </div>
+      <form onSubmit={handleSubmit} aria-label="Edit your profile">
+        <div className="min-w-0">
+          <Tabs
+            value={tab}
+            onValueChange={(v) =>
+              navigate({
+                to: "/dashboard/profile",
+                search: { tab: v as ProfileTab, ...(focusGame ? { focusGame } : {}) },
+                resetScroll: false,
+              })
+            }
+            orientation="vertical"
+            className="gap-6 lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start"
+          >
+            <div className="lg:hidden">
+              <Label htmlFor="profile-section" className="mb-2 block text-sm text-muted-foreground">
+                Profile section
+              </Label>
+              <MemberSelect
+                id="profile-section"
+                label="Profile section"
+                value={tab}
+                options={[
+                  { value: "identity", label: "Identity" },
+                  { value: "socials", label: "Social links" },
+                  { value: "privacy", label: "Privacy" },
+                ]}
+                onValueChange={(value) =>
+                  void navigate({
+                    to: "/dashboard/profile",
+                    search: { tab: value as ProfileTab },
+                    resetScroll: false,
+                  })
+                }
+              />
             </div>
-          </TabsContent>
+            <TabsList
+              aria-label="Profile sections"
+              className="hidden h-auto w-full flex-col items-stretch justify-start gap-1 rounded-none border border-white/10 bg-[oklch(0.07_0_0)] p-1 lg:sticky lg:top-24 lg:flex [&>button]:min-h-20 [&>button]:justify-start [&>button]:whitespace-normal [&>button]:text-left [&>button]:border-l-2 [&>button]:border-transparent [&>button[data-state=active]]:border-white"
+            >
+              <TabsTrigger
+                value="identity"
+                className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
+              >
+                <User className="mr-1.5 h-3.5 w-3.5" />
+                <span>
+                  Identity
+                  <span className="mt-1 block font-sans text-xs normal-case text-muted-foreground">
+                    Name, headline and bio
+                  </span>
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="socials"
+                className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
+              >
+                <Share2 className="mr-1.5 h-3.5 w-3.5" />
+                <span>
+                  Social links
+                  <span className="mt-1 block font-sans text-xs normal-case text-muted-foreground">
+                    Where members can find you
+                  </span>
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="privacy"
+                className="min-h-11 shrink-0 flex-none rounded-none px-4 font-tech text-ui-readable uppercase data-[state=active]:bg-white/10 data-[state=active]:text-foreground sm:flex-1"
+              >
+                <Eye className="mr-1.5 h-3.5 w-3.5" />
+                <span>
+                  Privacy
+                  <span className="mt-1 block font-sans text-xs normal-case text-muted-foreground">
+                    Who can see your profile
+                  </span>
+                </span>
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="player" className="mt-0">
-            <TechPanel label="Competitive" title="Player Info">
-              <p className="mb-5 text-xs leading-relaxed text-muted-foreground">
-                Your main game determines which in-game identity fields appear below for rosters and
-                brackets.
-              </p>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                    Main Game
-                  </Label>
-                  <Select
-                    value={resolveProfileMainGame(mainGame) || undefined}
-                    onValueChange={(value) => {
-                      markDirty();
-                      setMainGame(value);
-                    }}
-                  >
-                    <SelectTrigger className={techFieldClass}>
-                      <SelectValue placeholder="Select a game" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                      {gameOptions.map((game) => (
-                        <SelectItem key={game} value={game} className="font-tech text-xs">
-                          {game}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="min-w-0">
+              <TabsContent value="identity" className="mt-0">
+                <fieldset disabled={saving || !formInitialized} className="min-w-0">
+                  <h2 className="mb-2 font-display text-2xl">Identity</h2>
+                  <p className="mb-6 text-sm text-muted-foreground">
+                    Introduce yourself to the Black Rose community.
+                  </p>
+                  <TechPanel label="Photo" title="Avatar">
+                    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                      <MemberAvatar
+                        avatarUrl={profile?.avatarUrl ?? null}
+                        initials={displayName.slice(0, 2).toUpperCase() || "BR"}
+                        className="h-24 w-24 shrink-0 text-3xl"
+                      />
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        Your avatar comes from Discord and updates when you sign in again.
+                      </p>
+                    </div>
+                  </TechPanel>
 
-                <div className="space-y-2">
-                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                    Main Role
-                  </Label>
-                  {roleOptions.length === 0 ? (
-                    <p className="font-tech text-label-readable uppercase text-muted-foreground/50 py-2 text-xs">
-                      No role applicable for {mainGame || "this game"}.
-                    </p>
-                  ) : (
-                    <Select
-                      key={mainGame || "no-game"}
-                      value={mainRole || undefined}
+                  <div className="mt-5 space-y-2">
+                    <Label htmlFor="profile-region">Region</Label>
+                    <MemberSelect
+                      id="profile-region"
+                      label="Region"
+                      value={normalizedRegion || "__none__"}
+                      options={[
+                        { value: "__none__", label: "Select a region" },
+                        ...regionOptions.map((option) => ({ value: option, label: option })),
+                      ]}
+                      disabled={saving || !formInitialized}
                       onValueChange={(value) => {
                         markDirty();
-                        setMainRole(value);
+                        setRegion(value === "__none__" ? "" : value);
                       }}
-                      disabled={!mainGame}
-                    >
-                      <SelectTrigger className={techFieldClass}>
-                        <SelectValue
-                          placeholder={mainGame ? "Select a role" : "Select a game first"}
-                        />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                        {roleOptions.map((role) => (
-                          <SelectItem key={role} value={role} className="font-tech text-xs">
-                            {role}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label className="font-tech text-label-readable uppercase text-muted-foreground">
-                    Region
-                  </Label>
-                  <Select
-                    value={normalizedRegion || undefined}
-                    onValueChange={(value) => {
-                      markDirty();
-                      setRegion(value);
-                    }}
-                  >
-                    <SelectTrigger className={techFieldClass}>
-                      <SelectValue placeholder="Select a region" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                      {regionOptions.map((option) => (
-                        <SelectItem key={option} value={option} className="font-tech text-xs">
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </TechPanel>
-
-            <GameIdentitiesFields
-              mainGame={mainGame}
-              focusGame={focusGame}
-              valorantGameName={valorantGameName}
-              valorantTagline={valorantTagline}
-              gameIdentities={gameIdentities}
-              games={activeGames}
-              onValorantGameNameChange={(value) => {
-                markDirty();
-                setValorantGameName(value);
-              }}
-              onValorantTaglineChange={(value) => {
-                markDirty();
-                setValorantTagline(value);
-              }}
-              onGameIdentityChange={(game, value) => {
-                markDirty();
-                setGameIdentities((prev) => ({ ...prev, [game]: value }));
-              }}
-            />
-          </TabsContent>
-
-          <TabsContent value="socials" className="mt-0">
-            <TechPanel label="Links" title="Social Profiles" noPadding>
-              <ul className="divide-y divide-white/6">
-                {SOCIAL_PLATFORM_ORDER.map((platform) => (
-                  <li
-                    key={platform}
-                    className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
-                  >
-                    <span className="w-36 shrink-0 font-tech text-label-readable uppercase text-muted-foreground">
-                      {SOCIAL_PLATFORM_LABELS[platform]}
-                    </span>
-                    <Input
-                      value={socials[platform].url}
-                      onChange={(e) => {
-                        markDirty();
-                        setSocials((s) => ({
-                          ...s,
-                          [platform]: { ...s[platform], url: e.target.value },
-                        }));
-                      }}
-                      placeholder="https://"
-                      className={cn(techFieldClass, "flex-1")}
                     />
-                    <div className="flex shrink-0 items-center gap-2">
+                  </div>
+
+                  <div className="mt-5 grid gap-5">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="profile-display-name"
+                        className="font-tech text-label-readable uppercase text-muted-foreground"
+                      >
+                        Display Name
+                      </Label>
+                      <Input
+                        id="profile-display-name"
+                        value={displayName}
+                        onChange={(e) => {
+                          markDirty();
+                          setDisplayName(e.target.value);
+                        }}
+                        required
+                        className={techFieldClass}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="profile-headline"
+                        className="font-tech text-label-readable uppercase text-muted-foreground"
+                      >
+                        Headline
+                      </Label>
+                      <Input
+                        id="profile-headline"
+                        value={headline}
+                        onChange={(e) => {
+                          markDirty();
+                          setHeadline(e.target.value);
+                        }}
+                        placeholder="Valorant Duelist · Black Rose Member"
+                        className={techFieldClass}
+                      />
+                      <p className="text-sm text-muted-foreground/60">
+                        Shown under your name on your public profile.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="profile-bio"
+                        className="font-tech text-label-readable uppercase text-muted-foreground"
+                      >
+                        Bio
+                      </Label>
+                      <Textarea
+                        id="profile-bio"
+                        value={bio}
+                        onChange={(e) => {
+                          markDirty();
+                          setBio(e.target.value);
+                        }}
+                        rows={5}
+                        placeholder="Tell the community about yourself…"
+                        className={cn(
+                          techFieldClass,
+                          "custom-scrollbar max-h-48 resize-y overflow-y-auto",
+                        )}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Share the games you play and what you enjoy outside the arena.
+                      </p>
+                    </div>
+                  </div>
+                </fieldset>
+              </TabsContent>
+
+              <TabsContent value="socials" className="mt-0">
+                <fieldset disabled={saving || !formInitialized} className="min-w-0">
+                  <h2 className="mb-2 font-display text-2xl">Social links</h2>
+                  <p className="mb-6 text-sm text-muted-foreground">
+                    Add a full https:// link. Choose visibility separately for each platform.
+                  </p>
+                  <TechPanel label="Links" title="Social Profiles" noPadding>
+                    <ul className="divide-y divide-white/6">
+                      {SOCIAL_PLATFORM_ORDER.map((platform) => (
+                        <li
+                          key={platform}
+                          className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
+                        >
+                          <Label
+                            htmlFor={`profile-social-${platform}`}
+                            className="w-28 shrink-0 font-tech text-label-readable uppercase text-muted-foreground"
+                          >
+                            {SOCIAL_PLATFORM_LABELS[platform]}
+                          </Label>
+                          <Input
+                            id={`profile-social-${platform}`}
+                            type="url"
+                            value={socials[platform].url}
+                            onChange={(e) => {
+                              markDirty();
+                              setSocials((s) => ({
+                                ...s,
+                                [platform]: { ...s[platform], url: e.target.value },
+                              }));
+                            }}
+                            placeholder="https://"
+                            className={cn(techFieldClass, "flex-1")}
+                          />
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Switch
+                              aria-label={`Show ${SOCIAL_PLATFORM_LABELS[platform]} link publicly`}
+                              checked={socials[platform].isPublic}
+                              disabled={!socials[platform].url.trim()}
+                              onCheckedChange={(checked) => {
+                                markDirty();
+                                setSocials((s) => ({
+                                  ...s,
+                                  [platform]: { ...s[platform], isPublic: checked },
+                                }));
+                              }}
+                            />
+                            <span className="font-tech text-label-readable uppercase text-muted-foreground">
+                              Public
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </TechPanel>
+                </fieldset>
+              </TabsContent>
+
+              <TabsContent value="privacy" className="mt-0">
+                <fieldset disabled={saving || !formInitialized} className="min-w-0">
+                  <h2 className="mb-2 font-display text-2xl">Privacy</h2>
+                  <p className="mb-6 text-sm text-muted-foreground">
+                    Control access to your profile. Social links have their own visibility switches.
+                  </p>
+                  <TechPanel label="Visibility" title="Profile Access">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <Label htmlFor="profile-public" className="text-sm font-medium">
+                          Public profile
+                        </Label>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          When off, your member profile is hidden from other visitors.
+                        </p>
+                      </div>
                       <Switch
-                        checked={socials[platform].isPublic}
-                        disabled={!socials[platform].url.trim()}
+                        id="profile-public"
+                        checked={isPublic}
                         onCheckedChange={(checked) => {
                           markDirty();
-                          setSocials((s) => ({
-                            ...s,
-                            [platform]: { ...s[platform], isPublic: checked },
-                          }));
+                          setIsPublic(checked);
                         }}
                       />
-                      <span className="font-tech text-label-readable uppercase text-muted-foreground">
-                        Public
-                      </span>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </TechPanel>
-          </TabsContent>
-
-          <TabsContent value="privacy" className="mt-0">
-            <TechPanel label="Visibility" title="Profile Access">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium">Public profile</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    When off, only you can view your profile at /members/your-slug.
-                  </p>
-                </div>
-                <Switch
-                  checked={isPublic}
-                  onCheckedChange={(checked) => {
-                    markDirty();
-                    setIsPublic(checked);
-                  }}
-                />
-              </div>
-            </TechPanel>
-          </TabsContent>
-        </Tabs>
-
-        <Separator className="my-8 hidden bg-white/8 lg:block" />
-
-        <div className="sticky bottom-0 z-10 -mx-4 mt-8 flex flex-wrap items-center gap-3 border-t border-white/8 bg-background/95 px-4 py-4 backdrop-blur-md safe-bottom sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:mt-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-          <Button
-            type="submit"
-            disabled={saving || !formInitialized}
-            className="clip-cta h-11 w-full rounded-none bg-white px-8 font-tech text-ui-readable uppercase text-black hover:bg-white/90 sm:w-auto"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Save Profile
-          </Button>
-          {saved && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
-              <CheckCircle className="h-3.5 w-3.5" />
-              Saved
-            </span>
-          )}
-          {error && <p className="w-full text-sm text-red-400 sm:w-auto">{error}</p>}
+                  </TechPanel>
+                </fieldset>
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
+
+        <ProfileEditorActions
+          dirty={dirty}
+          saving={saving}
+          saved={saved}
+          initialized={formInitialized}
+          error={error}
+          onDiscard={discardChanges}
+        />
       </form>
 
       {profileSnapshot && (

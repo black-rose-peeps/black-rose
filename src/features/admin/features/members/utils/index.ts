@@ -77,11 +77,18 @@ export function formValuesToCreateInput(values: CreateMemberFormValues): CreateM
 }
 
 export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
-  const profiles = row.member_profiles as
-    | { avatar_url?: string | null; slug?: string | null; display_name?: string | null }
-    | Array<{ avatar_url?: string | null; slug?: string | null; display_name?: string | null }>
-    | null
-    | undefined;
+  type DirectoryProfile = {
+    avatar_url?: string | null;
+    slug?: string | null;
+    display_name?: string | null;
+    main_game?: string | null;
+    main_role?: string | null;
+    game_identities?: unknown;
+    valorant_game_name?: string | null;
+    valorant_tagline?: string | null;
+    ingame_display_name?: string | null;
+  };
+  const profiles = row.member_profiles as DirectoryProfile | DirectoryProfile[] | null | undefined;
   const profile = Array.isArray(profiles) ? profiles[0] : profiles;
   const avatarUrl = profile?.avatar_url?.trim() || null;
   const profileSlug = resolveMemberProfileSlug(profile?.slug, row.username as string);
@@ -98,6 +105,29 @@ export function rowToAdminMember(row: Record<string, unknown>): AdminMember {
     createdAt: row.created_at as string,
     avatarUrl,
     profileSlug,
+    ...(Object.hasOwn(row, "member_profiles")
+      ? {
+          mainGame: profile?.main_game?.trim() ?? "",
+          mainRole: profile?.main_role?.trim() ?? "",
+          gameIdentities: Object.fromEntries(
+            Object.entries(
+              profile?.game_identities &&
+                typeof profile.game_identities === "object" &&
+                !Array.isArray(profile.game_identities)
+                ? profile.game_identities
+                : {},
+            )
+              .filter(
+                (entry): entry is [string, string] =>
+                  typeof entry[1] === "string" && !!entry[1].trim(),
+              )
+              .map(([key, value]) => [key, value.trim()]),
+          ),
+          valorantGameName: profile?.valorant_game_name?.trim() ?? "",
+          valorantTagline: profile?.valorant_tagline?.trim() ?? "",
+          ingameDisplayName: profile?.ingame_display_name?.trim() ?? "",
+        }
+      : {}),
     discordNotInGuildStrikes: Number(row.discord_not_in_guild_strikes ?? 0),
     discordSyncPausedAt: (row.discord_sync_paused_at as string | null | undefined) ?? null,
   };

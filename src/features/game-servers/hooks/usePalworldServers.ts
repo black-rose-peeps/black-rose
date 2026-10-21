@@ -15,8 +15,9 @@ export interface UsePalworldServersResult {
   lastUpdated: Date | null;
 }
 
-export function usePalworldServers(): UsePalworldServersResult {
+export function usePalworldServers(enabled = true): UsePalworldServersResult {
   const query = useQuery({
+    enabled,
     queryKey: PALWORLD_SERVERS_QUERY_KEY,
     queryFn: async () => {
       const result = await fetchPalworldServers();
@@ -27,14 +28,14 @@ export function usePalworldServers(): UsePalworldServersResult {
     },
     staleTime: POLL_INTERVAL_MS, // Data is stale after poll interval
     gcTime: 5 * 60_000, // 5 minutes
-    refetchInterval: POLL_INTERVAL_MS, // Auto-refetch every 60 seconds
+    refetchInterval: enabled ? POLL_INTERVAL_MS : false,
   });
 
   return {
-    servers: query.data?.servers ?? [],
+    servers: enabled ? (query.data?.servers ?? []) : [],
     isLoading: query.isLoading,
     error: query.error?.message ?? null,
-    refetch: query.refetch,
+    refetch: async () => (enabled ? query.refetch() : undefined),
     lastUpdated: query.data?.lastUpdated ?? null,
   };
 }

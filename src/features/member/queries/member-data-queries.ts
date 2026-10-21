@@ -1,8 +1,5 @@
 import { fetchTeamsForUser } from "@/features/admin/features/teams/services/teams.service";
-import {
-  fetchTournamentsForNotifications,
-  fetchTournamentsLite,
-} from "@/features/admin/features/tournaments/services/tournaments.service";
+import { fetchTournamentsLite } from "@/features/admin/features/tournaments/services/tournaments.service";
 import {
   fetchRegistrationsForTeam,
   type FetchRegistrationsForTeamOptions,
@@ -12,11 +9,16 @@ import type { Team } from "@/features/teams/types";
 import type { MockTeam, MockTournament } from "@/lib/mock-data";
 import { tryGetAppQueryClient } from "@/lib/app-query";
 import { queryKeys } from "@/lib/query-keys";
+import { MEMBER_READ_QUERY_OPTIONS } from "./member-query-options";
 
 async function fetchQuery<T>(key: readonly unknown[], queryFn: () => Promise<T>): Promise<T> {
   const client = tryGetAppQueryClient();
   if (!client) return queryFn();
-  return client.fetchQuery({ queryKey: key, queryFn });
+  return client.fetchQuery({
+    queryKey: key,
+    queryFn,
+    staleTime: MEMBER_READ_QUERY_OPTIONS.staleTime,
+  });
 }
 
 export function invalidateMemberDataQueries(userId: string): void {
@@ -27,7 +29,7 @@ export function invalidateMemberDataQueries(userId: string): void {
   void client.invalidateQueries({ queryKey: queryKeys.memberProfile(userId) });
   void client.invalidateQueries({ queryKey: queryKeys.memberChampionships(userId) });
   void client.invalidateQueries({ queryKey: queryKeys.tournamentsLite() });
-  void client.invalidateQueries({ queryKey: queryKeys.tournamentsNotifications() });
+
   void client.invalidateQueries({ queryKey: ["team-registrations"] });
 }
 
@@ -47,9 +49,7 @@ export async function fetchTournamentsLiteCached(): Promise<MockTournament[]> {
 export async function fetchTournamentsForNotificationsCached(): Promise<
   Pick<MockTournament, "id" | "name" | "status">[]
 > {
-  return fetchQuery(queryKeys.tournamentsNotifications(), () =>
-    fetchTournamentsForNotifications(),
-  );
+  return fetchTournamentsLiteCached();
 }
 
 export async function fetchTeamRegistrationsCached(
@@ -83,7 +83,9 @@ export async function loadMemberTournamentNotificationContext(
 ): Promise<MemberTournamentNotificationContext> {
   const [memberTeams, tournaments, tournamentsLite] = await Promise.all([
     fetchActiveMemberTeamsCached(userId),
-    options?.tournaments ? Promise.resolve(options.tournaments) : fetchTournamentsForNotificationsCached(),
+    options?.tournaments
+      ? Promise.resolve(options.tournaments)
+      : fetchTournamentsForNotificationsCached(),
     options?.tournaments ? Promise.resolve(options.tournaments) : fetchTournamentsLiteCached(),
   ]);
 

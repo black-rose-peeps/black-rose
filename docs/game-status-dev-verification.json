@@ -1,0 +1,118 @@
+{
+  "status": "local application verification passed",
+  "branch": "work/local-development",
+  "head": "3453afe",
+  "production_executed": false,
+  "database_writes_performed_for_this_followup": false,
+  "new_migration_required": false,
+  "bot_or_worker_changes": false,
+  "approved_history_policy": "Existing teams, tournaments, registrations, championships and historical pages stay accessible; inactive games leave new selections and current game/profile/membership displays.",
+  "tests": {
+    "passed": 221,
+    "failed": 0,
+    "skipped": 0,
+    "log_in_hermes_scratch": "game-visibility-tests-final.log"
+  },
+  "production_build": {
+    "status": "passed",
+    "log_in_hermes_scratch": "game-visibility-build-final.log"
+  },
+  "scoped_lint": {
+    "errors": 0,
+    "warnings": 1,
+    "warning": "Existing GameIdentitiesFields useMemo identitySource dependency warning; confirmed in the previous expanded lint JSON before this follow-up",
+    "whole_repository_lint_clean": false
+  },
+  "typecheck": {
+    "current_diagnostics": 18,
+    "archived_head_baseline_diagnostics": 18,
+    "added_diagnostic_headers": 0,
+    "removed_diagnostic_headers": 0,
+    "normalization": "checkout paths, source positions and equivalent quoted-union ordering",
+    "status": "baseline errors remain; TypeScript itself does not pass",
+    "log_in_hermes_scratch": "game-visibility-typecheck-final.log"
+  },
+  "regressions": [
+    "active-only My Games list, editor and inactive focus/deep-link rejection",
+    "generic unavailable saved Main Game label, original preference retained and no false dirty/reload warning",
+    "hidden dirty drafts restored after reactivation and hidden pending operations guarded",
+    "public accepted projection checks game is_active outside cached common-profile data",
+    "public/Overview Main Game, role and identity projections are non-mutating and fail closed on catalog errors",
+    "shared Riot identity labels list only active titles and support legacy/case aliases",
+    "legacy identity forms cannot restore hardcoded inactive primary/secondary titles",
+    "team create/edit options do not fall back to hardcoded inactive games or submit stale new assignments",
+    "team list/detail mapper preserves game_id for historical saved-game editing",
+    "game-server icons and direct-route boundaries hide inactive content and disable new polling",
+    "catalog mutations invalidate member workspace queries without deleting profile/history cache values"
+  ],
+  "browser_fixtures": [
+    {
+      "script_in_hermes_scratch": "my-games-browser-qa.mjs",
+      "result_in_hermes_scratch": "my-games-browser-qa.json",
+      "scenarios": ["desktop", "mobile"],
+      "status": "passed",
+      "checks": [
+        "active to inactive to reactivated",
+        "saved preference, profiles, memberships and write counters unchanged by visibility toggles",
+        "inactive title absent from list/editor/Main Game options",
+        "zero visibility-only reload warnings",
+        "existing independent saves, scroll, real-edit guards and retry regression flows"
+      ],
+      "page_errors": 0,
+      "remote_writes": 0
+    },
+    {
+      "script_in_hermes_scratch": "public-memberships-browser-qa.mjs",
+      "result_in_hermes_scratch": "public-memberships-browser-qa.json",
+      "scenarios": ["desktop", "mobile", "private-profile guest"],
+      "status": "passed",
+      "checks": [
+        "Aion acceptance and Valorant main preference disappear on deactivation",
+        "membership returns on reactivation",
+        "historical event remains visible",
+        "profile privacy and right-sidebar placement retained"
+      ],
+      "page_errors": 0,
+      "remote_writes": 0
+    },
+    {
+      "script_in_hermes_scratch": "game-status-server-browser-qa.mjs",
+      "result_in_hermes_scratch": "game-status-server-browser-qa.json",
+      "scenarios": [
+        "desktop /servers",
+        "desktop /servers/server-1",
+        "mobile /servers",
+        "mobile /servers/server-1"
+      ],
+      "status": "passed",
+      "checks": [
+        "inactive direct URLs show generic unavailable state",
+        "reactivation mounts expected fixture status/detail fetches",
+        "deactivation again unmounts content with zero server-function calls on the new document"
+      ],
+      "page_errors": 0,
+      "remote_writes": 0
+    }
+  ],
+  "guild_browser_fixture": {
+    "script_in_hermes_scratch": "guild-game-visibility-browser-qa.mjs",
+    "result_in_hermes_scratch": "guild-game-visibility-browser-qa.json",
+    "scenarios": ["desktop /guilds", "mobile /guilds"],
+    "status": "passed",
+    "checks": [
+      "inactive direct URL withholds game-specific guild promotion/application content",
+      "reactivation restores content",
+      "deactivation hides it again"
+    ],
+    "page_errors": 0,
+    "remote_writes": 0
+  },
+  "fixture_limits": "Browser services/session/catalog toggles were isolated fixtures, not real authenticated admin updates, database saves, live Palworld API calls or real OAuth. No production data or downstream Worker was exercised.",
+  "refresh_behavior": "Existing active-catalog reads now use member freshness (60 seconds) and focus refresh; catalog mutations invalidate same-client workspace/catalog queries. This is not instantaneous cross-session push or new polling.",
+  "manual_release_checks": [
+    "real-account authentication rehearsal",
+    "authorized target-specific catalog/read-permission preflight",
+    "approved status toggle and reactivation against the deployed environment"
+  ],
+  "deployment_guide": "game-status-visibility.md"
+}

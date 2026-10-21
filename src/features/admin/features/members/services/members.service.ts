@@ -7,11 +7,11 @@ import { rowToAdminMember } from "../utils";
 
 const MEMBER_SYNC_COLUMNS = "discord_not_in_guild_strikes, discord_sync_paused_at";
 
-const ADMIN_MEMBER_LIST_COLUMNS = `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
+const ADMIN_MEMBER_LIST_COLUMNS = `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name, main_game, main_role, game_identities, valorant_game_name, valorant_tagline, ingame_display_name)`;
 
-const ADMIN_MEMBER_DETAIL_COLUMNS = `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}, member_profiles(avatar_url, slug, display_name)`;
+const ADMIN_MEMBER_DETAIL_COLUMNS = ADMIN_MEMBER_LIST_COLUMNS;
 
-const ADMIN_MEMBER_MUTATION_COLUMNS = `id, username, discord_username, discord_id, status, registered_at, created_at, ${MEMBER_SYNC_COLUMNS}`;
+const ADMIN_MEMBER_MUTATION_COLUMNS = ADMIN_MEMBER_LIST_COLUMNS;
 
 function throwMemberUniqueViolation(error: { message: string }): never {
   const msg = error.message;
@@ -45,13 +45,21 @@ export async function countVerifiedMembers(): Promise<number> {
 }
 
 export async function fetchMembers(): Promise<AdminMember[]> {
-  const { data, error } = await supabase
-    .from("members")
-    .select(ADMIN_MEMBER_LIST_COLUMNS)
-    .order("created_at", { ascending: false });
-
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(rowToAdminMember);
+  // Explicitly walk the API row limit: directory filters/export cover the whole roster.
+  const members: AdminMember[] = [];
+  const batchSize = 1000;
+  for (let from = 0; ; ) {
+    const { data, error } = await supabase
+      .from("members")
+      .select(ADMIN_MEMBER_LIST_COLUMNS)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + batchSize - 1);
+    if (error) throw new Error(error.message);
+    if (!data?.length) return members;
+    members.push(...data.map(rowToAdminMember));
+    from += data.length;
+  }
 }
 
 export async function fetchMemberById(id: string): Promise<AdminMember | null> {

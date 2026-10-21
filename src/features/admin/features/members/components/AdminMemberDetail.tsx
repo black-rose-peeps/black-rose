@@ -267,7 +267,7 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
                     size="sm"
                     className="mt-2 clip-cta rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
                   >
-                    <Link to="/members/$slug" params={{ slug: profile.slug }} target="_blank">
+                    <Link to="/br/$slug" params={{ slug: profile.slug }} target="_blank">
                       Public Profile
                       <ExternalLink className="h-3 w-3" />
                     </Link>
@@ -341,7 +341,7 @@ export function AdminMemberDetail({ member, profile, isLoading, error }: AdminMe
                 size="sm"
                 className="clip-cta rounded-none border-white/15 font-tech text-[10px] uppercase tracking-wider-2"
               >
-                <Link to="/members/$slug" params={{ slug: profile.slug }} target="_blank">
+                <Link to="/br/$slug" params={{ slug: profile.slug }} target="_blank">
                   Public Profile
                   <ExternalLink className="h-3 w-3" />
                 </Link>

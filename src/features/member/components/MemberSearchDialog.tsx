@@ -106,7 +106,7 @@ export function MemberSearchDialog({ open, onOpenChange }: MemberSearchDialogPro
 
   function openProfile(slug: string) {
     onOpenChange(false);
-    navigate({ to: "/members/$slug", params: { slug } });
+    navigate({ to: "/br/$slug", params: { slug } });
   }
 
   return (

@@ -1,7 +1,9 @@
 import { fetchPublishedBracketPayload } from "@/features/admin/features/tournament-details/services/bracket.service";
-import { fetchTeamsForUser } from "@/features/admin/features/teams/services/teams.service";
-import { fetchTournamentsLite } from "@/features/admin/features/tournaments/services/tournaments.service";
-import { fetchRegistrationsForTeam } from "@/features/tournaments/services/team-registration.service";
+import {
+  fetchMemberTeamsCached,
+  fetchTournamentsLiteCached,
+  fetchTeamRegistrationsCached,
+} from "../queries/member-data-queries";
 import type { BracketRound } from "@/features/tournaments/types";
 import {
   formatRoundScheduleDate,
@@ -104,8 +106,8 @@ export async function fetchMemberTournamentDashboard(
   options?: MemberTournamentDashboardOptions,
 ): Promise<MemberTournamentDashboard> {
   const [teams, tournaments] = await Promise.all([
-    fetchTeamsForUser(memberId),
-    options?.tournaments ?? fetchTournamentsLite(),
+    fetchMemberTeamsCached(memberId),
+    options?.tournaments ?? fetchTournamentsLiteCached(),
   ]);
 
   const tournamentById = new Map(tournaments.map((t) => [t.id, t]));
@@ -114,7 +116,7 @@ export async function fetchMemberTournamentDashboard(
 
   await Promise.all(
     teams.map(async (team) => {
-      const regs = await fetchRegistrationsForTeam(team.id, {
+      const regs = await fetchTeamRegistrationsCached(team.id, {
         tournaments,
         liveTeamsById,
       });
@@ -131,10 +133,7 @@ export async function fetchMemberTournamentDashboard(
     if (!tournament) continue;
 
     if (isConcludedTournamentStatus(tournament.status)) {
-      if (
-        registration.status === "Approved" ||
-        registration.status === "Previously Competed"
-      ) {
+      if (registration.status === "Approved" || registration.status === "Previously Competed") {
         tournamentHistory.push(tournament.name);
       }
       continue;
@@ -182,8 +181,7 @@ export async function fetchMemberTournamentDashboard(
   );
 
   activeRegistrations.sort(
-    (a, b) =>
-      (a.status === "Pending" ? 0 : 1) - (b.status === "Pending" ? 0 : 1),
+    (a, b) => (a.status === "Pending" ? 0 : 1) - (b.status === "Pending" ? 0 : 1),
   );
 
   upcomingMatches.sort((a, b) => {

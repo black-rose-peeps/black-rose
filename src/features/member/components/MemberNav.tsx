@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { IdCard, LayoutDashboard, LogOut, Pencil } from "lucide-react";
+import { Gamepad2, IdCard, LayoutDashboard, LogOut, Pencil } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { BrandWordmark } from "@/features/shared/components/BrandWordmark";
 import {
@@ -15,20 +16,23 @@ import { NotificationBell } from "@/features/notifications/components/Notificati
 import { MemberSearchButton } from "@/features/member/components/MemberSearchButton";
 import { setNotificationMemberId } from "@/features/notifications/store";
 import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
+import { isHubPathActive } from "@/features/shared/utils/hub-search";
 
 const MEMBER_CONSOLE_NAV = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { label: "Teams", to: "/teams" },
 ] as const;
 
 const PUBLIC_NAV = [
   { label: "Tournaments", to: "/tournaments" },
-  { label: "Champions", to: "/champions" },
+
   { label: "Community", to: "/community" },
 ] as const;
 
 export function MemberNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const dashboardView = useRouterState({
+    select: (s) => (s.location.search as { view?: string }).view,
+  });
   const [hydrated, setHydrated] = useState(false);
   const session = useMemberSession();
   // Avoid SSR/client mismatch: localStorage session is unavailable during server render.
@@ -49,13 +53,17 @@ export function MemberNav() {
   useMemberAccessSync();
 
   const accountHref = isVerifiedMember
-    ? { to: "/members/$slug" as const, params: { slug: profileSlug } }
+    ? { to: "/br/$slug" as const, params: { slug: profileSlug } }
     : { to: getPostAuthPath(clientSession?.role ?? "not_verified") };
 
-  function handleSignOut() {
-    setNotificationMemberId(null);
-    clearSession();
-    window.location.href = "/";
+  async function handleSignOut() {
+    try {
+      await clearSession();
+      setNotificationMemberId(null);
+      window.location.href = "/";
+    } catch {
+      toast.error("Could not sign out. Please try again.");
+    }
   }
 
   const mobileSections = useMemo((): MobileNavSection[] => {
@@ -68,10 +76,20 @@ export function MemberNav() {
           ...MEMBER_CONSOLE_NAV.map((item) => ({
             label: item.label,
             to: item.to,
-            search: item.to === "/teams" ? { create: false } : undefined,
+            search: {},
             icon: "icon" in item ? item.icon : undefined,
-            active: pathname === item.to || pathname.startsWith(`${item.to}/`),
+            active:
+              isHubPathActive(pathname, "dashboard") &&
+              !pathname.startsWith("/dashboard/profile") &&
+              dashboardView !== "games",
           })),
+          {
+            label: "My Games",
+            to: "/dashboard",
+            search: { view: "games" },
+            icon: Gamepad2,
+            active: pathname === "/dashboard" && dashboardView === "games",
+          },
           {
             label: "Edit Profile",
             to: "/dashboard/profile",
@@ -88,7 +106,11 @@ export function MemberNav() {
       items: PUBLIC_NAV.map(({ label, to }) => ({
         label,
         to,
-        active: pathname === to || pathname.startsWith(`${to}/`),
+        search: {},
+        active:
+          to === "/tournaments"
+            ? isHubPathActive(pathname, "tournaments")
+            : pathname === to || pathname.startsWith(`${to}/`),
       })),
     });
 
@@ -96,8 +118,8 @@ export function MemberNav() {
       const accountActive =
         accountHref.to === "/waitlist"
           ? pathname === "/waitlist"
-          : accountHref.to === "/members/$slug" && "params" in accountHref
-            ? pathname === `/members/${accountHref.params.slug}`
+          : accountHref.to === "/br/$slug" && "params" in accountHref
+            ? pathname === `/br/${accountHref.params.slug}`
             : pathname === "/dashboard/profile";
 
       sections.push({
@@ -115,7 +137,7 @@ export function MemberNav() {
     }
 
     return sections;
-  }, [accountHref, clientSession, isVerifiedMember, pathname]);
+  }, [accountHref, clientSession, isVerifiedMember, pathname, dashboardView]);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 safe-top border-b border-border/60 bg-background/70 backdrop-blur-md">
@@ -133,13 +155,14 @@ export function MemberNav() {
           {isVerifiedMember && (
             <div className="flex items-center gap-6">
               {MEMBER_CONSOLE_NAV.map((item) => {
-                const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                const active = isHubPathActive(pathname, "dashboard");
                 const Icon = "icon" in item ? item.icon : null;
                 return (
                   <Link
                     key={item.label}
                     to={item.to}
-                    search={item.to === "/teams" ? { create: false } : undefined}
+                    search={{}}
+                    aria-current={active ? "page" : undefined}
                     className={`inline-flex items-center gap-1.5 font-semibold text-sm transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
                   >
                     {Icon ? <Icon className="h-3 w-3" /> : null}
@@ -150,11 +173,16 @@ export function MemberNav() {
             </div>
           )}
           {PUBLIC_NAV.map(({ label, to }) => {
-            const active = pathname === to || pathname.startsWith(`${to}/`);
+            const active =
+              to === "/tournaments"
+                ? isHubPathActive(pathname, "tournaments")
+                : pathname === to || pathname.startsWith(`${to}/`);
             return (
               <Link
                 key={label}
                 to={to}
+                search={{}}
+                aria-current={active ? "page" : undefined}
                 className={`transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
               >
                 {label}

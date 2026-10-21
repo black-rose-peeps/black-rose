@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
 import { CornerAccents } from "@/features/member/components/MemberShell";
+
 import type { TournamentEntry } from "@/features/member/types";
 import { cn } from "@/lib/utils";
 
@@ -73,14 +74,13 @@ export function ActiveRegistrationsPanel({ entries }: ActiveRegistrationsPanelPr
           <li
             key={`${entry.tournamentId}-${entry.teamTag}`}
             className={cn(
-              "relative overflow-hidden border bg-[oklch(0.06_0_0)] card-depth clip-tab",
+              "relative min-w-0 overflow-hidden border bg-[oklch(0.06_0_0)] card-depth clip-tab",
               status.border,
             )}
           >
             <CornerAccents />
             <span aria-hidden className={cn("absolute inset-y-0 left-0 w-0.5", status.bar)} />
-
-            <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex flex-col gap-4 p-4 sm:p-5">
               <div className="min-w-0 flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
@@ -89,11 +89,13 @@ export function ActiveRegistrationsPanel({ entries }: ActiveRegistrationsPanelPr
                   >
                     [{entry.teamTag}]
                   </Badge>
-                  <span className="truncate text-sm text-muted-foreground">{entry.teamName}</span>
+                  <span className="break-words text-sm text-muted-foreground">
+                    {entry.teamName}
+                  </span>
                 </div>
 
                 <div className="min-w-0">
-                  <p className="font-display text-base font-semibold leading-snug tracking-display text-foreground">
+                  <p className="break-words font-display text-base font-semibold leading-snug tracking-display text-foreground">
                     {entry.tournamentName}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -116,9 +118,6 @@ export function ActiveRegistrationsPanel({ entries }: ActiveRegistrationsPanelPr
                     status.text,
                   )}
                 >
-                  {entry.status === "Pending" && (
-                    <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-amber-400" />
-                  )}
                   {StatusIcon && <StatusIcon className="h-3 w-3" />}
                   {status.label}
                 </div>
@@ -127,7 +126,7 @@ export function ActiveRegistrationsPanel({ entries }: ActiveRegistrationsPanelPr
               <Button
                 asChild
                 variant="outline"
-                className="clip-cta h-10 shrink-0 rounded-none border-white/12 bg-white/[0.03] font-tech text-ui-readable uppercase hover:bg-white/8"
+                className="clip-cta min-h-11 shrink-0 self-start rounded-none border-white/12 bg-white/[0.03] font-tech text-ui-readable uppercase hover:bg-white/8 sm:self-center"
               >
                 <Link to="/tournaments/$id" params={{ id: entry.tournamentId }}>
                   View tournament

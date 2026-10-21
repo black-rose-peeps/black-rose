@@ -24,19 +24,16 @@ import { createTeam } from "@/features/admin/features/teams/services/teams.servi
 import { fetchMemberProfileById } from "@/features/member/services/member-profile.service";
 import { techFieldClass } from "@/features/member/components/MemberShell";
 import {
-  GAME_OPTIONS,
   MAX_TEAM_SIZE,
   MIN_TEAM_SIZE,
   getRoleOptionsForGame,
   normalizeGameKey,
   resolveRoleForGame,
   dbGameToLegacyGame,
-  legacyGameToDbName,
 } from "@/features/teams/constants";
 import { useActiveGames, useGameRoles } from "@/features/admin/features/games/hooks/useGames";
 import type { Team } from "@/features/teams/types";
 import type { TeamMemberRole } from "@/features/teams/types";
-import type { Game as DbGame } from "@/features/admin/features/games/services/games.service";
 
 interface CreateTeamDialogProps {
   open: boolean;
@@ -51,22 +48,21 @@ export function CreateTeamDialog({
   memberId,
   onCreated,
 }: CreateTeamDialogProps) {
-  const { data: dbGames, isLoading: gamesLoading } = useActiveGames();
+  const { data: dbGames, isLoading: gamesLoading, isError: gamesError } = useActiveGames();
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
-  const [game, setGame] = useState<(typeof GAME_OPTIONS)[number]["value"]>("Valorant");
-  const [gameId, setGameId] = useState<string | undefined>(undefined);
+  const [game, setGame] = useState<Team["game"] | "">("");
   const [captainRole, setCaptainRole] = useState<TeamMemberRole>("TBD");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { data: gameRoles } = useGameRoles(gameId || "");
 
   // Convert database games to legacy format for backward compatibility
-  const gameOptions = dbGames
-    ? dbGames
-        .filter((g) => g.name !== "Multi") // Exclude Multi-game from team creation
-        .map((g) => ({ value: dbGameToLegacyGame(g), label: g.display_name, id: g.id }))
-    : GAME_OPTIONS.filter((g) => g.value !== "Multi");
+  const gameOptions = (gamesLoading || gamesError ? [] : (dbGames ?? []))
+    .filter((g) => g.is_active && g.name !== "Multi")
+    .map((g) => ({ value: dbGameToLegacyGame(g), label: g.display_name, id: g.id }));
+  const selectedGame = gameOptions.find((option) => option.value === game);
+  const gameId = selectedGame?.id;
+  const { data: gameRoles } = useGameRoles(gameId || "");
 
   const roleOptions = getRoleOptionsForGame(game, gameRoles);
 
@@ -75,8 +71,7 @@ export function CreateTeamDialog({
 
     setName("");
     setTag("");
-    setGame("Valorant");
-    setGameId(undefined);
+    setGame("");
     setCaptainRole("TBD");
     setError(null);
 
@@ -85,14 +80,8 @@ export function CreateTeamDialog({
       .then((profile) => {
         if (cancelled || !profile) return;
         const normalizedGame = normalizeGameKey(profile.mainGame);
-        const nextGame =
-          normalizedGame && GAME_OPTIONS.some((g) => g.value === normalizedGame)
-            ? normalizedGame
-            : "Valorant";
+        const nextGame = normalizedGame ?? "";
         setGame(nextGame);
-        // Resolve gameId from dbGames
-        const selectedGame = dbGames?.find((g) => dbGameToLegacyGame(g) === nextGame);
-        setGameId(selectedGame?.id);
         setCaptainRole(resolveRoleForGame(profile.mainRole, nextGame));
       })
       .catch(() => {});
@@ -100,17 +89,11 @@ export function CreateTeamDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, memberId, dbGames]);
+  }, [open, memberId]);
 
   useEffect(() => {
     setCaptainRole((current) => resolveRoleForGame(current, game));
   }, [game]);
-
-  // Update gameId when game changes
-  useEffect(() => {
-    const selectedGame = dbGames?.find((g) => g.name === legacyGameToDbName(game));
-    setGameId(selectedGame?.id);
-  }, [game, dbGames]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -118,15 +101,15 @@ export function CreateTeamDialog({
     setError(null);
 
     try {
-      if (!gameId) {
+      if (!selectedGame) {
         setError("Game must be selected before creating a team.");
         return;
       }
       const team = await createTeam({
         name: name.trim(),
         tag: tag.trim().toUpperCase(),
-        game,
-        gameId,
+        game: selectedGame.value,
+        gameId: selectedGame.id,
         captainMemberId: memberId,
         captainRole,
       });
@@ -190,12 +173,12 @@ export function CreateTeamDialog({
                 Primary Game
               </Label>
               <Select
-                value={game}
-                onValueChange={(v) => setGame(v as (typeof GAME_OPTIONS)[number]["value"])}
-                disabled={gamesLoading}
+                value={selectedGame?.value ?? ""}
+                onValueChange={(v) => setGame(v as Team["game"])}
+                disabled={gamesLoading || gamesError || gameOptions.length === 0}
               >
                 <SelectTrigger className={techFieldClass}>
-                  <SelectValue />
+                  <SelectValue placeholder="Select an active game" />
                 </SelectTrigger>
                 <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
                   {gameOptions.map((g) => (
@@ -205,6 +188,13 @@ export function CreateTeamDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {gamesError ? (
+                <p role="alert" className="text-sm text-red-400">
+                  Unable to load active games.
+                </p>
+              ) : !gamesLoading && gameOptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No active games available.</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">

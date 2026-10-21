@@ -332,7 +332,7 @@ function ThreadReplyMessage({
     <article className="relative flex items-start gap-3 pl-4 sm:gap-4">
       <span aria-hidden className="absolute bottom-2 left-0 top-0 w-px bg-white/15" />
       <Link
-        to="/members/$slug"
+        to="/br/$slug"
         params={{ slug: reply.author.slug }}
         className="shrink-0 transition hover:opacity-90"
       >
@@ -528,7 +528,7 @@ export function ProfileCommentThread({
       <article className="p-4 sm:p-5">
         <div className="flex items-start gap-3 sm:gap-4">
           <Link
-            to="/members/$slug"
+            to="/br/$slug"
             params={{ slug: comment.author.slug }}
             className="shrink-0 transition hover:opacity-90"
           >

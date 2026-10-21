@@ -4,10 +4,11 @@ import { BrandWordmark } from "@/features/shared/components/BrandWordmark";
 import { HeaderMobileMenu } from "@/features/shared/components/HeaderMobileMenu";
 import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
 import { MemberNav } from "@/features/member/components/MemberNav";
+import { isHubPathActive } from "@/features/shared/utils/hub-search";
 
 const GUEST_NAV = [
   { label: "Tournaments", to: "/tournaments" as const },
-  { label: "Champions", to: "/champions" as const },
+
   { label: "Community", to: "/community" as const },
 ] as const;
 
@@ -16,11 +17,9 @@ function GuestHeader() {
 
   function isGuestNavActive(item: (typeof GUEST_NAV)[number]): boolean {
     if (item.to === "/tournaments") {
-      return pathname === "/tournaments" || pathname.startsWith("/tournaments/");
+      return isHubPathActive(pathname, "tournaments");
     }
-    if (item.to === "/champions") {
-      return pathname === "/champions" || pathname.startsWith("/champions/");
-    }
+
     if (item.to === "/community") {
       return pathname === "/community" || pathname.startsWith("/community/");
     }
@@ -32,6 +31,7 @@ function GuestHeader() {
       items: GUEST_NAV.map((item) => ({
         label: item.label,
         to: item.to,
+        search: {},
         active: isGuestNavActive(item),
       })),
     },
@@ -53,6 +53,8 @@ function GuestHeader() {
             <Link
               key={item.label}
               to={item.to}
+              search={{}}
+              aria-current={isGuestNavActive(item) ? "page" : undefined}
               className={`font-semibold text-sm transition-colors hover:text-foreground ${
                 isGuestNavActive(item) ? "text-foreground" : ""
               }`}

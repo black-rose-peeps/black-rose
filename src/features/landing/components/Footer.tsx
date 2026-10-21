@@ -51,7 +51,7 @@ const FOOTER_NAV: { title: string; links: FooterLink[] }[] = [
     title: "Explore",
     links: [
       { label: "Tournaments", to: "/tournaments" },
-      { label: "Hall of Champions", to: "/champions" },
+      { label: "Hall of Champions", to: "/tournaments", search: { view: "champions" } },
       { label: "Community", to: "/community" },
       { label: "Open Events", to: "/", hash: "tournaments" },
     ],
@@ -61,7 +61,7 @@ const FOOTER_NAV: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "Join Black Rose", to: "/login" },
       { label: "Dashboard", to: "/dashboard" },
-      { label: "My Teams", to: "/teams", search: { create: false } },
+      { label: "My Teams", to: "/dashboard", search: { view: "teams" } },
       { label: "My Profile", to: "/dashboard/profile" },
     ],
   },
@@ -86,7 +86,10 @@ export function Footer() {
       <div className="relative mx-auto max-w-7xl px-6 py-16">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
           <div>
-            <Link to="/" className="inline-flex items-center gap-3 transition-opacity hover:opacity-90">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-3 transition-opacity hover:opacity-90"
+            >
               <Emblem className="h-10 w-10 opacity-80" />
               <span className="font-display text-2xl tracking-wider-2">BLACK ROSE</span>
             </Link>

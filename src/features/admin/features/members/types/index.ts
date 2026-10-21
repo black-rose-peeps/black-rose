@@ -22,6 +22,13 @@ export interface AdminMember {
   createdAt: string;
   avatarUrl: string | null;
   profileSlug: string;
+  /** Profile fields are optional for older mutation/sync responses. */
+  mainGame?: string;
+  mainRole?: string;
+  gameIdentities?: Record<string, string>;
+  valorantGameName?: string;
+  valorantTagline?: string;
+  ingameDisplayName?: string;
   /** Consecutive Discord guild 404s from the sync Worker. */
   discordNotInGuildStrikes: number;
   /** When set, the sync Worker skips this member until unpause or guild recovery. */

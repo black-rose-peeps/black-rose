@@ -6,6 +6,7 @@ import { Footer } from "@/features/landing/components/Footer";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePalworldServers } from "@/features/game-servers/hooks/usePalworldServers";
+import { ActivePalworldBoundary } from "@/features/game-servers/components/ActivePalworldBoundary";
 import type { PalworldServerStatus } from "@/features/game-servers/types";
 
 export const Route = createFileRoute("/servers/")({
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/servers/")({
       {
         name: "description",
         content:
-          "Live status overview of Black Rose Palworld community game servers. Check player counts, uptime, and world progress.",
+          "Live status overview of Black Rose community game servers. Check player counts, uptime, and world progress.",
       },
     ],
   }),
@@ -338,6 +339,14 @@ function ServerCardSkeleton() {
 // Page
 // ---------------------------------------------------------------------------
 function ServersPage() {
+  return (
+    <ActivePalworldBoundary>
+      <ServersPageContent />
+    </ActivePalworldBoundary>
+  );
+}
+
+function ServersPageContent() {
   const { servers, isLoading, lastUpdated, refetch } = usePalworldServers();
 
   const onlineCount = servers.filter((s) => s.online).length;
