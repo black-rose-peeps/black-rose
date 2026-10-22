@@ -7,7 +7,7 @@ Community esports platform for **Black Rose**. Manage game profiles and membersh
 ## Features
 
 - **My Games:** per-game identities, roles and character details, with an independent Main Game preference.
-- **Memberships:** member applications, admin rosters and acceptance notifications.
+- **Memberships:** member applications, admin rosters and acceptance notifications; optional Discord-role approval after saving a valid IGN and applying.
 - **Profiles:** privacy controls and public `/br/{slug}` links showing accepted affiliations.
 - **Teams and tournaments:** rosters, invites, registrations, brackets and Hall of Champions.
 - **Admin console:** manage members, games and the tournament lifecycle.
@@ -48,9 +48,9 @@ Never commit environment files or expose server secrets with a `VITE_` prefix. M
 | `npm run preview`                          | Preview production build |
 | `npm run lint`                             | ESLint                   |
 | `npm run format`                           | Prettier                 |
-| `node --import tsx --test tests/*.test.ts` | Regression tests         |
+| `node --experimental-test-module-mocks --import tsx --test tests/*.test.ts` | Regression tests         |
 
-Discord tooling is documented in [docs/discord-bot.md](docs/discord-bot.md). Automatic Discord-based **game acceptance is deferred**; this update uses manual admin acceptance.
+Discord tooling is documented in [docs/discord-bot.md](docs/discord-bot.md). Optional [Discord-based game acceptance](docs/discord-game-membership-automation.md) is implemented and rehearsed on Dev. The Worker code is deployed with automation **disabled**; production SQL and explicit Worker/website activation remain separate requirements.
 
 ## Key routes
 

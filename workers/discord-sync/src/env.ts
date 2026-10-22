@@ -8,6 +8,9 @@ export const SUBREQUEST_STARTUP_COST = 2;
 export const SUBREQUEST_MARGIN = 2;
 
 export interface Env {
+  DISCORD_GAME_MEMBERSHIP_ENABLED?: string;
+  DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF?: string;
+  DISCORD_GAME_MEMBERSHIP_BATCH_SIZE?: string;
   DISCORD_BOT_TOKEN: string;
   DISCORD_GUILD_ID: string;
   DISCORD_ROSE_ROLE_ID?: string;
@@ -34,8 +37,7 @@ export interface Env {
 export function getMaxMembersPerRun(env: Env): number {
   const parsed = Number.parseInt(env.SYNC_BATCH_SIZE ?? "22", 10);
   const configured = Number.isFinite(parsed) && parsed >= 1 ? parsed : 22;
-  const budget =
-    WORKERS_FREE_SUBREQUEST_BUDGET - SUBREQUEST_STARTUP_COST - SUBREQUEST_MARGIN;
+  const budget = WORKERS_FREE_SUBREQUEST_BUDGET - SUBREQUEST_STARTUP_COST - SUBREQUEST_MARGIN;
   const worstCasePerMember = 2;
   const maxForFreeTier = Math.floor(budget / worstCasePerMember);
   return Math.min(configured, maxForFreeTier, 500);

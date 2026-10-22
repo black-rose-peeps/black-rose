@@ -66,4 +66,4 @@ Before an authorized production release:
 
 For recovery, roll back to a compatible application version or forward-fix the display logic. If an authorized operator deactivated the wrong game, reactivate that catalog entry rather than reconstructing profiles or accepting memberships again. Keep database contents and audit history intact. A UI rollback may restore the earlier inactive-game display behavior; it should not require deleting any data.
 
-Discord-based automatic acceptance remains **deferred and unimplemented**. See `discord-game-membership-automation.md`; game visibility work neither enables it nor changes the shared bot/Worker.
+The visibility release itself does not enable Discord acceptance. The later optional integration is implemented/rehearsed on Dev and remains separately gated; see `discord-game-membership-automation.md` for its additional SQL and activation requirements.

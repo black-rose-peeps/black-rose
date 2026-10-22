@@ -1,119 +1,128 @@
-# Discord-based game membership acceptance — deferred implementation
+# Discord-based game membership acceptance
 
-## Status and release boundary
+## Status
 
-**Planning documentation only. Automatic acceptance is not implemented, enabled, migrated or deployed.** The user explicitly deferred this work while public-profile placement and admin usability are improved. Existing manual acceptance, saved-IGN requirements and member actions remain unchanged.
+**Dev verification and independent reviews passed; production activation remains gated.** Both ordering defects were reproduced before repair and now pass the Dev regressions. Core security/logic and Worker scheduling reviews found no blocking issues. Original applied migrations remain unchanged.
 
-Merging the current website changes into main does **not** enable Discord-based acceptance. A website release may retain the manual workflow. Before promotion, explicitly choose either **manual membership only** or a **separately implemented, tested and approved automation release**. Do not treat this document as an executable migration or permission to deploy the shared bot.
+Implemented locally on `feat/discord-game-membership-automation`; **not activated in production**. Both SQL migrations are installed on Dev `xjwugbbrqpwnenmlrkdh`: expand version `20261021183148`, then observation-ordering version `20261021192946`. The rollback-only rehearsals passed **57 assertion groups** (43 main + 14 ordering). Preservation evidence: `discord-game-membership-dev-verification.json`.
 
-For the current website's actual schema prerequisites, authentication cutover and preservation checks, follow `game-membership-deployment.md` and `game-workspace-redesign.md` first.
+Dev verification did not access production data, start a live bot or deploy the Worker. The subsequent release is explicitly code-only: production Wrangler configuration sets `DISCORD_GAME_MEMBERSHIP_ENABLED=false` and the expected production project reference. Publishing that code does not activate game-membership automation or apply production SQL.
 
-## Intended outcome
+**Environment warning:** Dev-verification preflight found local application settings selecting Prod, not Dev. The shared Worker's deployed bindings are now confirmed Prod-bound with game automation disabled. Connecting the management tool to Dev changes neither runtime. Recheck effective local settings and prepare matching isolated Dev browser/server keys and a Dev Worker endpoint before a real Dev application/sync test. Do not use production-bound sync buttons or unqualified bot/deploy aliases as Dev tests.
 
-An existing website member who holds an approved game-specific role in the official Discord server should be accepted for that game without an administrator repeatedly reviewing the website application. Discord game roles are membership evidence, not gameplay roles, Main Game preferences or global ROSE verification.
+### Verified code-only release
 
-Automation must not fill or overwrite IGN, character class, gameplay role, server, faction, region, Main Game, privacy settings or unrelated game identities. A shared Riot ID must not create memberships in every Riot title.
+- Source commit: `69a1bbb88ff37ec725a5c62a1d8727484dd6dd7d` on `feat/discord-game-membership-automation`.
+- Worker: `blackrose-discord-sync`; version `98578f1b-e107-4c18-b1d7-5c53a8a69f62`, deployed October 22, 2026 at `08:39 UTC`.
+- Cloudflare deployment read-back confirmed this version at 100% traffic, `DISCORD_GAME_MEMBERSHIP_ENABLED=false`, and expected project `efchfvreaotskrdlweze`.
+- Native Node `GET /health` returned HTTP 200 with `ok: true`. Existing bot-token, Supabase service-key and sync-secret bindings remain present; no secret values were printed or changed.
+- Schedule: `*/15 * * * *`. No production membership SQL was applied and no manual sync/write endpoint was invoked during release verification.
 
-## Role mappings supplied by the owner
+## Rules
 
-Preserve these IDs as **strings**, including in JavaScript and JSON; do not convert them through `Number`. Discord labels below are recorded exactly as supplied. Resolve each target to the existing catalog's stable game ID separately in each environment; do not create another Games catalog or assume Dev and Prod UUIDs match.
+| Situation | Result |
+| --- | --- |
+| Verified Discord-linked member saves valid IGN, applies and already holds the matching game role | Accepted immediately in the same transaction. |
+| Valid saved IGN and Apply, but no role or Discord proof unavailable | Applying; normal manual review remains possible. |
+| Missing/invalid saved IGN | Apply rejected. Optional class, gameplay role, server and faction remain optional. Riot games require valid Riot ID syntax. |
+| Role/profile exists, but no explicit application | No membership invented, including other games sharing a Riot identity. |
+| Applying member later receives role | Gateway or rotating recovery sweep can accept. |
+| Confirmed role loss/guild departure | Only Discord-managed Accepted becomes Inactive; profile/history retained. |
+| Role returns and identity remains valid | Discord-managed Inactive can become Accepted again. |
+| Member leaves/withdraws | Left/Interested respected until another explicit Apply. |
+| Admin changes or explicitly saves a status | Automation ownership cleared. Manual acceptance and overrides are preserved; a new explicit Apply can release a manual Applying override. |
+| Inactive game, deleted role, missing/disabled mapping, timeout, 403, 429, malformed response | No inferred role loss or mass revocation. |
 
-| Discord role label supplied | Discord role ID       | Intended existing game                                                                      |
-| --------------------------- | --------------------- | ------------------------------------------------------------------------------------------- |
-| WoW Forever                 | `1548977405069234256` | World of Warcraft: Forever / WoW Forever — confirm the exact catalog entry, not generic WoW |
-| Aion                        | `1547101455125577789` | Aion 2                                                                                      |
-| Valorant                    | `1465129387182522450` | Valorant                                                                                    |
-| Palword                     | `1475345886434295898` | Palworld                                                                                    |
-| League of Legends           | `1465128743726219287` | League of Legends                                                                           |
-| Marvel Rivals               | `1331615176784482306` | Marvel Rivals                                                                               |
-| Wind                        | `1439483814182129695` | Where Winds Meet                                                                            |
+Reconciliation does not alter ROSE verification, admin privileges, Main Game, character details, privacy or unrelated identities. Acceptance notifications use genuine audit transitions. Browser-supplied roles are never evidence.
 
-Before activation, verify that every role still exists in the intended guild, is the correct membership signal and is mapped to exactly one intended game. Role names are descriptive only; matching uses role IDs. Multiple mapped roles should support multiple memberships. For several roles mapped to one game, membership evidence must be aggregated before considering removal.
+## Approved mappings
 
-## Existing code and the shared-environment hazard
+Guild: `1193921905795792906`. All seven roles were confirmed present with a read-only Discord request. IDs remain strings. Catalog UUIDs are resolved per environment; missing/ambiguous games abort installation rather than importing Dev data.
 
-The inspected implementation currently synchronizes **ROSE verification**, not per-game membership:
+| Owner label | Role ID | Game |
+| --- | --- | --- |
+| WoW Forever | `1548977405069234256` | World of Warcraft Forever / WoW Forever |
+| Aion | `1547101455125577789` | Aion 2 |
+| Valorant | `1465129387182522450` | Valorant |
+| Palword | `1475345886434295898` | Palworld |
+| League of Legends | `1465128743726219287` | League of Legends |
+| Marvel Rivals | `1331615176784482306` | Marvel Rivals |
+| Wind | `1439483814182129695` | Where Winds Meet |
 
-- `scripts/discord-role-bot.ts` starts the Gateway listener in `src/features/auth/server/discord-role-bot.server.ts`.
-- The listener consumes member-update role arrays and calls `applyVerificationFromRoleIds` in `discord-verification.server.ts`.
-- `workers/discord-sync/src/index.ts` exposes scheduled/manual synchronization. `sync-member.ts` creates its own Supabase client from the Worker's environment and updates verification/strike state.
-- `src/features/auth/server/discord-worker-sync.server.ts` calls the separately configured Worker. Member verification refresh and admin sync paths can invoke it.
+The reader validates role configuration before member lookup and forces a fresh check before reconciliation. Only Discord `404` / `10007` Unknown Member proves guild absence. Gateway event roles are hints; the adapter fetches current REST evidence. SQL RPCs are service-only; do not submit browser evidence through another service endpoint.
 
-**Local source/configuration inspection found:**
+## SQL order and verification
 
-- The local application's browser database is Dev `xjwugbbrqpwnenmlrkdh`.
-- Its Worker endpoint points to the existing `blackrose-discord-sync` service.
-- `workers/discord-sync/wrangler.toml` names that same service, has no named Dev environment, and its database URL targets Prod `efchfvreaotskrdlweze`.
-- **The deployed Worker's current secrets/configuration have not been verified.** Repository configuration is evidence of a cross-environment risk, not proof of a production write or of live configuration parity.
+1. Complete the five foundation migrations/authentication cutover in `main-production-sql-rollout.md`.
+2. Add `sql/20261021_discord_game_membership_expand.sql`, then the required `sql/20261022_discord_game_membership_observation_ordering.sql` forward repair before any activation. It introduces private mappings, ownership/evidence, updated manual writer, atomic reconciliation and the bounded queue. Existing October 19 SQL is immutable. This is not an idempotent replay script: inspect history/schema first.
+3. **Dev only:** run all of `sql/20261021_discord_game_membership_verify.sql` and `sql/20261022_discord_game_membership_ordering_verify.sql`. Synthetic records and actual service/browser privilege checks end in `ROLLBACK`. On error, issue `ROLLBACK` immediately. Never use this fixture as a production migration.
+4. Read back mappings, function signatures/grants and preservation checks before deploying callers. New RPCs use invoker security; `anon`/`authenticated` cannot execute them or read private mappings/audits.
 
-A Dev website database does not isolate an independently configured Worker. UI/browser fixtures must intercept sync calls and mutations; do not use real verification/admin sync buttons as a Dev test until the endpoint's actual target is proven safe. Do not run the existing unqualified Worker dev/deploy aliases assuming they select a Dev database.
+Dev results: **57 SQL groups passed**, no persisted fixture members, seven mappings installed. Before/after counts and ordered checksums match for members, legacy/per-game profiles, games, game roles, memberships and events. Legacy checksum comparison excludes the four new membership fields (`discord_managed`, `discord_observed_at`, `membership_decided_at`, `discord_suppressed`) and event `discord_evidence`. Expand matches the recorded statement after trimming outer whitespace; ordering repair matches normalized SQL with comments/whitespace removed, not a raw-byte comparison.
 
-Before future testing, provision a separately named Dev Worker or isolated local sync process with Dev-only database credentials and a separate sync secret. Add fail-closed expected-project and guild checks before any writes; the proposed guards are not present yet. Keep production cron, ROSE verification and deployed Worker settings untouched during preparation. Sharing the existing bot identity still shares Discord permissions, credentials and operational limits; a separate test bot/guild gives stronger isolation when practical. Do not rotate the shared token or change its permissions/intents as part of routine Dev testing.
+Combined regression suite: **338 passed**, no failures/skips; website build, Worker typecheck and changed-file lint passed. Root TypeScript has the same **18 pre-existing diagnostics** as archived HEAD, with no additions. Repository-wide lint is not clean; unrelated existing findings were not rewritten. Two-session blocking/concurrency and real-account runtime smoke checks remain unexercised rollout gates; single-session SQL and transport fixtures do not prove them.
 
-## Policy decisions required before implementation
+## Runtime controls
 
-These are recommendations, **not approved or current behavior**:
+Set server-only controls separately in website, optional Node bot and Worker:
 
-| Case                                                              | Recommended future behavior / decision needed                                                                                                                                                                                                                  |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Valid mapped role on an existing linked member                    | Accept automatically, including members who already held the role before rollout. Decide whether a website application is unnecessary; that best matches the owner's goal.                                                                                     |
-| Role holder has no saved IGN/profile                              | Prefer accepting the affiliation and separately flagging missing profile details. Current SQL rejects acceptance without a saved nonblank IGN; this requires an explicit, versioned policy/schema change, not fabricated profile data or bypassing validation. |
-| Role is confirmed removed                                         | Prefer Inactive only for Discord-managed acceptance, preserving profiles and history. Confirm this with the owner before implementing.                                                                                                                         |
-| Member leaves Discord                                             | Decide the membership outcome separately from ROSE verification. Require an authoritative absence, not an ambiguous fetch failure.                                                                                                                             |
-| Member selects Leave while still holding the role                 | Decide whether Discord-managed games direct them to manage the role in Discord, or an explicit opt-out suppresses reacceptance. Avoid silently reaccepting immediately after a website leave.                                                                  |
-| Administrator makes an exception                                  | Define an explicit audited override/suppression and how it is cleared. Do not have periodic sync silently fight manual decisions.                                                                                                                              |
-| Existing manually accepted record lacks the role                  | Preserve it by default; do not revoke manual acceptance during initial reconciliation. Decide whether/how records become Discord-managed.                                                                                                                      |
-| Catalog game inactive, role deleted or mapping disabled           | Preserve history and surface configuration issues; do not mass-revoke on a broken mapping. Define deliberate deactivation/removal policy.                                                                                                                      |
-| Discord timeout, 403, rate limit or malformed/incomplete response | Keep the last known membership state, record the error and retry. An API failure is not proof that a role was removed.                                                                                                                                         |
-| Discord user not linked to a website member                       | Do not invent a website account. Reconcile after a legitimate sign-in/link and during subsequent runs.                                                                                                                                                         |
+- `DISCORD_GAME_MEMBERSHIP_ENABLED=true`: exact opt-in; missing/other values keep manual/legacy ROSE behavior.
+- `DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF`: exact intended project reference. Enabled wrong-project/guild checks reject before database work.
+- `DISCORD_GUILD_ID=1193921905795792906` and existing authorized `DISCORD_BOT_TOKEN`.
+- Worker optional `DISCORD_GAME_MEMBERSHIP_BATCH_SIZE`: default/max `8`.
 
-Discord-confirmed acceptance must not grant admin rights or silently change ROSE verification. Keep the existing public profile privacy check; only accepted game names/icons belong in the public membership projection.
+Website/Node uses `VITE_SUPABASE_URL` (fallback `SUPABASE_URL`) and matching server credential. Worker has independent `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `SYNC_SECRET`. All keys must match the selected project. Keep secrets out of `VITE_` variables, chat and Git. Restart/redeploy after settings changes rather than relying on cached clients switching targets.
 
-## Future implementation work — not prepared yet
+## Request budget
 
-1. **Authority and schema:** record the approved policies; add a new forward migration for role mappings, sync provenance/observations, overrides and service-only transactional reconciliation. Keep already-applied SQL immutable. Review the existing acceptance/IGN guards and audit actor constraints together; never impersonate an administrator to get around them.
-2. **Atomic writer:** match the trusted guild + Discord user to the existing member and mapped game. Serialize against current membership/profile changes using compatible member-row locking. Record source, role/guild evidence, old/new status, reason and observation time in the audit trail. Keep unrelated profile fields untouched and enforce active-game policy.
-3. **Idempotency and ordering:** repeated observations must not create duplicate events or rows. Prevent stale/out-of-order events and concurrent manual actions from overwriting newer decisions; fetch an authoritative current role snapshot when needed. Store enough provenance to distinguish manual from Discord-managed acceptance.
-4. **Integration:** reuse the existing bot rather than introducing a conflicting role-management bot. Choose one canonical reconciliation writer, then connect real-time events, first-login reconciliation and periodic recovery as appropriate. Existing verification queues may not cover every already-Verified member; game-role recovery must cover all relevant linked members.
-5. **Operational controls:** disabled-by-default activation, dry-run diff, bounded batches, retry/backoff, safe logs, sync health/last observation and explicit mapping errors. Preserve existing ROSE verification behavior. Do not log tokens, sync secrets or full unnecessary Discord payloads.
-6. **UI:** show a concise Discord-managed/source indicator and useful incomplete-profile/sync-error state. Adjust member Apply/Leave and admin override controls to the chosen policy; do not show controls that periodic sync will immediately undo.
+Apply's membership data layer uses **one indexed saved-profile/member/game join plus one atomic RPC**, with existing authentication reads additional. Concurrent identical Applies share the work. Recovery uses one bounded queue RPC and at most one batch reconciliation RPC, not per-member/game Supabase queries. Empty queue needs one read. The ordering repair keeps unchanged status, membership `updated_at` and audit events untouched while advancing a necessary private observation checkpoint; this adds no RPC/request.
 
-No schema/RPC names, migration versions, feature flags or deployment commands in this section should be assumed to exist. Author and test the actual artifacts during the future implementation.
+The combined Worker preserves its 50-request budget and two-request margin. Enabled ROSE work is capped at 36; 12 are reserved for a cold game batch: queue + initial metadata + eight member reads + fresh metadata + reconciliation. Selected Verified-member removal checks run before the hot queue when that reservation is active, so the smaller ROSE allowance cannot consume their reserved slots first. Legacy OFF order and explicit Not Verified priority mode are unchanged. Attempts are charged before fetching, including failures/retries. Budgeted requests reject redirects so hidden redirect hops cannot bypass the counter. Tests exercise the 48-request boundary. Existing recovery cadence is reused; rotation delay depends on population/batch size, not instant all-member backfill.
 
-## Promotion and activation checklist
+These controls are not a billing guarantee. Monitor actual Supabase compute/egress and Worker CPU/requests. References: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) and [Supabase egress](https://supabase.com/docs/guides/platform/manage-your-usage/egress).
 
-### Before any production execution
+## Manual CLI rollout
 
-- [ ] Obtain separate implementation/deployment approval and settle all policy decisions above.
-- [ ] Recheck effective browser/server **and Worker** project targets, actual deployed Worker configuration, guild, role IDs, catalog game IDs and Discord permissions. Record facts without exposing secrets.
-- [ ] Recheck Prod schema/migration drift read-only under authorization; Dev/Prod equivalence has not been established.
-- [ ] Prepare versioned forward SQL, service/RLS grants, tests, application compatibility order and recovery controls. Do not promote Dev data, UUID assumptions or credentials.
-- [ ] Rehearse on isolated Dev first. Preserve before/after counts/checksums for existing members, profiles, identities, catalog rows and unrelated memberships.
-- [ ] Obtain an appropriate backup/restore point before authorized production migrations and first activation.
+### Isolated Dev
 
-### Dev acceptance proof
+`workers/discord-sync/wrangler.dev.toml` names `blackrose-discord-membership-dev`, targets Dev, has no cron/secrets and disables automation by default. From `workers/discord-sync`, with dependencies installed:
 
-- [ ] Each supplied role maps to its intended game, including Aion→Aion 2, Wind→Where Winds Meet and the specific WoW Forever entry.
-- [ ] Existing role holders reconcile without a new role-change event; newly linked accounts reconcile after sign-in.
-- [ ] Duplicate/reordered events, missed events, reconnects and concurrent admin/member actions preserve correct state and audit idempotency.
-- [ ] Multi-role members affect only mapped games; ROSE verification, Main Game and character information are unchanged.
-- [ ] Missing IGN, applying/inactive/left states, manual acceptance/overrides, inactive games, missing accounts and guild departure follow the explicitly approved policy.
-- [ ] Removed roles are distinguished from failed/rate-limited/partial responses; network failure never mass-revokes acceptance.
-- [ ] Spoofed browser role IDs and untrusted callers cannot invoke acceptance; only the intended server principal can reconcile.
-- [ ] Public privacy and removed-acceptance visibility still work; exports/rosters reflect real membership rather than merely identity presence.
-- [ ] Dry-run mode reports changes without writes; wrong-project/guild guards fail closed.
+```bash
+npx --no-install wrangler deploy --dry-run --config wrangler.dev.toml
+```
 
-### Separately authorized production rollout
+This bundles without deploying. Before an authorized Dev deployment, securely provision `SUPABASE_SERVICE_ROLE_KEY`, `SYNC_SECRET` and `DISCORD_BOT_TOKEN` through Wrangler's interactive `secret put <NAME> --config wrangler.dev.toml` flow. Verify Dev key pairing/schema, then explicitly enable the Dev flag and deploy with that same Dev config. Do not use the unqualified root deploy alias.
 
-- [ ] Install reviewed additive migrations before deploying new callers; keep automation disabled.
-- [ ] Configure production-specific secrets and explicit target checks without replacing the existing shared Worker accidentally.
-- [ ] Verify current manual membership, authentication and ROSE verification paths before activation.
-- [ ] Run a dry-run reconciliation, inspect proposed changes and approve a small production batch first.
-- [ ] Enable bounded reconciliation, verify actual rows/audit and unchanged unrelated data, then broaden gradually.
-- [ ] Monitor failed mappings, retries, drift and unintended changes. Record what was actually prepared, applied, deployed and verified separately.
+Authenticated `POST /sync/game-memberships` accepts only optional boolean `dryRun`. `{}` defaults to dry-run; `{"dryRun":false}` explicitly writes a bounded batch. It returns aggregate counts only. Use `Authorization: Bearer <environment SYNC_SECRET>` via secure operator tooling; never use the shared production endpoint as a Dev test.
 
-## Recovery
+Optional Gateway process, after preparing a complete ignored Dev environment file:
 
-Disable **game-membership automation only** first; keep the existing website and ROSE verification available. Pause new game-membership jobs/events or gate their writer. Preserve mappings, observations and audit history for diagnosis.
+```bash
+node --env-file=.env.discord-membership-dev.local --import tsx/esm scripts/discord-role-bot.ts
+```
 
-Use reviewed compensating changes only for records demonstrably changed by the faulty run, accounting for later legitimate manual/member actions. Disabling automation does not undo prior acceptance; a bulk reversal must not overwrite newer decisions. Prefer a forward fix. Do not drop populated tables, delete profiles, reset Prod, replace Prod with Dev, or roll back unrelated migrations to undo this feature. Document exact disable/compensation commands only after the future implementation provides and tests them.
+That environment file is an operator prerequisite, not created here. The Worker recovery path does not require a continuously running Gateway process; Gateway adds faster role-change wake-ups.
+
+### Production: separate authorization required
+
+1. Inspect production schema/catalog drift and deployed targets under separate approval. Save suitable backup and before-state checks. All intended games must exist unambiguously.
+2. Freeze member/admin membership writes and all bot jobs, drain in-flight actions, then install both reviewed additional SQL files after the foundation migrations. Keep activation disabled until checks and compatible callers are ready. Promote source/SQL, never Dev data, fixture rows, keys or UUID assumptions.
+3. Deploy compatible website and Worker with production settings. The production Worker configuration now explicitly includes disabled activation and expected project `efchfvreaotskrdlweze`; preserve its existing name, database target, secrets and cron. Set the activation flag to `true` only after database and smoke-test prerequisites pass.
+4. After authorization, from `workers/discord-sync`, run `npx --no-install wrangler deploy --config wrangler.toml --keep-vars`. Read back actual deployed name/target/flags; repository configuration is not deployment proof.
+5. Complete real member/admin/ROSE smoke tests, two-session locking rehearsal, a game-membership dry-run and a reviewed small batch. For a dry-run before live activation, invoke the existing `syncGameMemberships` helper in a guarded one-shot operator process with the intended production settings, an in-memory enabled flag and `{ dryRun: true }`; keep the deployed Worker's flag false. Do not enable the scheduled live Worker merely to preview changes. Enable required runtimes only after these gates pass; verify persisted status/audit, notification and preservation before broadening.
+
+### Enabling later
+
+1. Under separate production database authorization, finish the foundation schema and apply `20261021_discord_game_membership_expand.sql`, then `20261022_discord_game_membership_observation_ordering.sql`. Verify the mappings, grants and preservation checks above; do not replay installed scripts or copy Dev data.
+2. Complete the controlled dry-run/smoke gates while the deployed automation remains off.
+3. Change `DISCORD_GAME_MEMBERSHIP_ENABLED` to `true` in the production Worker's `[vars]`, retain `DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF=efchfvreaotskrdlweze`, and deploy from `workers/discord-sync` with `npx --no-install wrangler deploy --config wrangler.toml --keep-vars`.
+4. For immediate acceptance on website Apply, deploy the compatible website with the same two server-only controls and its authorized bot token/matching production credentials. Enabling only the Worker gives periodic recovery, not the website's immediate Apply path.
+5. Check a small real batch and its persisted audit/notification. To stop automation, restore the flag to `false` and redeploy/restart the relevant runtimes; retain schema and history.
+
+Manual SQL Editor changes need an operator log/history reconciliation; they do not automatically reproduce Dev migration history. Do not run unchecked `supabase db push` over installed objects.
+
+## Disable/recover
+
+Set `DISCORD_GAME_MEMBERSHIP_ENABLED=false` in every active website/bot/Worker environment, then restart/redeploy. Website manual membership and legacy ROSE behavior remain available. Retain additive schema and audit history.
+
+Disable does not undo past acceptance. Use reviewed compensating manual decisions for specific audited changes, respecting newer legitimate actions. Do not delete profiles/audits, drop populated tables, reset production or replace production with Dev. Backup restoration is a separate decision that can lose later writes.

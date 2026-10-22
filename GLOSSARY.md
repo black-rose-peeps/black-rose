@@ -14,7 +14,11 @@ An explicitly recorded relationship between a member and Black Rose for one game
 
 ## Accepted Member
 
-A member whose membership for a specific game has been accepted by an administrator. Members cannot accept their own applications.
+A member whose membership for a specific game has been approved by an administrator or through verified Discord game-role evidence after an explicit application and a valid saved in-game identity. Applying alone does not prove acceptance.
+
+## Discord-managed Game Membership
+
+A game membership accepted through its matching Discord game role. Confirmed loss of that role makes the membership Inactive without deleting the game profile or history. An explicit Leave remains Left until the member applies again. Manual administrator decisions remain separate.
 
 ## Game Role
 

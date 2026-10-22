@@ -306,7 +306,7 @@ The backfill may increase only `member_game_profiles`. Membership/event counts m
 | Acceptance notifications, read/dedup state and deep links                                                                                | Uses `game_membership_events` with trusted server reads; no new notification table, browser policy or Realtime publication.                            |
 | Team/tournament/championship/member read optimizations, navigation hubs, community event/Guild Code presentation                         | Existing schema; no additional migration.                                                                                                              |
 | WoW Forever dedicated announcement page/countdown/embed and automatic community fallback                                                 | Application only; the intended game must exist and be active in production. No automatic Dev catalog copy or new game seed.                            |
-| Discord-based automatic game acceptance                                                                                                  | **Deferred/not implemented.** No activation SQL in this release. Shared Worker/bot configuration must be verified separately before real sync testing. |
+| Discord-based automatic game acceptance | **Separate opt-in integration:** after the five foundation migrations, follow `discord-game-membership-automation.md` for the additional `20261021_discord_game_membership_expand.sql` then `20261022_discord_game_membership_observation_ordering.sql`, Dev evidence and explicit runtime/Worker deployment gates. Production remains unactivated. |
 
 See [game-membership-deployment.md](game-membership-deployment.md), [game-workspace-redesign.md](game-workspace-redesign.md), [discord-game-membership-automation.md](discord-game-membership-automation.md) and the linked feature docs in [README.md](README.md) for detailed behavior.
 
@@ -324,7 +324,7 @@ See [game-membership-deployment.md](game-membership-deployment.md), [game-worksp
 - [ ] Build/deploy with production configuration, not the Dev database or Dev-bound build. Main merge itself is not proof SQL or secrets have been applied.
 - [ ] Re-login as real member/admin on the deployed HTTPS origin; test Edit Profile, independent Main Game/per-game saves, admin game edit, apply/manual acceptance and acceptance notification refresh. Browser fixtures do not substitute for these real-account checks.
 - [ ] Verify private profiles remain private, inactive games disappear from current choices without erasing history, old member URLs redirect, and other overlay destinations remain intact.
-- [ ] Keep Discord acceptance automation deferred. Do not start/deploy/change the shared bot/Worker as an accidental part of a website release.
+- [ ] Keep Discord acceptance automation disabled unless its separate migration, environment checks and deployment/activation are approved. Follow `discord-game-membership-automation.md`; do not change the shared bot/Worker as an accidental part of a website release.
 
 If a step fails, keep writes frozen, record the failing transaction and inspect what already committed. Retain additive schema and new data; prefer a reviewed forward fix or a compatible application rollback. An old browser-only admin binary is incompatible after catalog RLS. Do not reopen anonymous writes, drop membership tables, delete audit events, or blanket-delete imported profiles to undo the UI. Restoring a backup is a separately authorized recovery operation and can lose later writes.
 

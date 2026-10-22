@@ -45,7 +45,7 @@ Before a separately authorized production release:
 4. Temporarily make the feed unavailable in an isolated rehearsal and confirm existing inbox items and unrelated notification categories remain usable; restore and retry.
 5. If application rollback is necessary, revert the compatible application release. Keep existing game profiles, memberships and append-only events; do not drop tables, delete history or reopen browser writes.
 
-Discord-role automatic acceptance remains **deferred and disabled**. No bot/Worker changes are part of this work. A future automation writer must use the approved status-transition/audit path so its genuine acceptance events can feed the same notification mechanism; see `discord-game-membership-automation.md`.
+The dashboard UX release itself does not activate Discord acceptance. The later optional integration uses genuine audited acceptance events through this notification mechanism; see `discord-game-membership-automation.md` for its Dev rehearsal, additional SQL and separate activation/deployment gates.
 
 ## Verification boundary
 

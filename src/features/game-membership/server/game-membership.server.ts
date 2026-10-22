@@ -1,5 +1,9 @@
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
+  applyDiscordGameMembership,
+  assertDiscordGameMembershipRuntime,
+} from "./discord-game-membership.server";
+import {
   assertTrustedOrigin,
   requireAdminSession,
   requireMemberSession,
@@ -228,8 +232,11 @@ export async function changeMyGameMembership(value: {
   action: MemberMembershipAction;
 }): Promise<GameMembership> {
   assertTrustedOrigin();
+  const discordEnabled = assertDiscordGameMembershipRuntime();
   const { memberId } = await requireVerifiedMemberSession();
   const input = parseMemberAction(value);
+  if (discordEnabled && input.action === "apply")
+    return membershipFromRow(await applyDiscordGameMembership(memberId, input.gameId));
   const [game, previous] = await Promise.all([
     loadGame(input.gameId),
     loadMemberState(memberId, input.gameId),

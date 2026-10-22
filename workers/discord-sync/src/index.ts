@@ -3,13 +3,10 @@ import { getBoostWindowMinutes, getSyncQueueConfig } from "./env";
 import { getBoostUntilMs, setBoostUntilMs } from "./boost";
 import { syncRoseRoles, type SyncSummary } from "./sync";
 import { syncMemberByDiscordId } from "./sync-member";
+import { assertGameMembershipTargetIfEnabled, syncGameMemberships } from "./game-membership";
 
 export default {
-  async scheduled(
-    event: ScheduledEvent,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<void> {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runScheduledSync(event, env));
   },
 
@@ -18,6 +15,48 @@ export default {
 
     if (url.pathname === "/health") {
       return Response.json({ ok: true, service: "blackrose-discord-sync" });
+    }
+
+    // Check the enabled target before any existing route can mutate ROSE/boost state.
+    if (
+      url.pathname.startsWith("/sync") &&
+      request.method === "POST" &&
+      isAuthorized(request, env)
+    ) {
+      try {
+        assertGameMembershipTargetIfEnabled(env);
+      } catch {
+        return new Response("Discord membership target rejected.", { status: 503 });
+      }
+    }
+
+    if (url.pathname === "/sync/game-memberships" && request.method === "POST") {
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
+      let dryRun = true;
+      const text = await request.text();
+      if (text.trim()) {
+        try {
+          const body: unknown = JSON.parse(text);
+          if (
+            !body ||
+            typeof body !== "object" ||
+            Array.isArray(body) ||
+            Object.keys(body).some((key) => key !== "dryRun") ||
+            ("dryRun" in body && typeof body.dryRun !== "boolean")
+          ) {
+            return new Response("Only a boolean dryRun is accepted.", { status: 400 });
+          }
+          dryRun = !("dryRun" in body && body.dryRun === false);
+        } catch {
+          return new Response("Invalid JSON body.", { status: 400 });
+        }
+      }
+      try {
+        validateEnv(env);
+        return Response.json(await syncGameMemberships(env, { dryRun }));
+      } catch {
+        return new Response("Game membership sync failed closed.", { status: 503 });
+      }
     }
 
     if (url.pathname === "/sync" && request.method === "POST") {
@@ -137,10 +176,7 @@ async function runSync(
     console.info("[discord-sync] Complete", summary);
     return summary;
   } catch (err) {
-    console.error(
-      "[discord-sync] Run failed:",
-      err instanceof Error ? err.message : err,
-    );
+    console.error("[discord-sync] Run failed:", err instanceof Error ? err.message : err);
     throw err;
   }
 }
@@ -155,6 +191,7 @@ function parsePriorityNotVerified(request: Request): boolean {
 }
 
 function validateEnv(env: Env): void {
+  assertGameMembershipTargetIfEnabled(env);
   const missing: string[] = [];
   if (!env.DISCORD_BOT_TOKEN?.trim()) missing.push("DISCORD_BOT_TOKEN");
   if (!env.DISCORD_GUILD_ID?.trim()) missing.push("DISCORD_GUILD_ID");

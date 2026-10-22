@@ -4,7 +4,7 @@ What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and m
 
 **Simple feature summary:** [patch-notes.md](./patch-notes.md)
 
-**Current branch → Main/Prod: exact five Dev migrations, production run order, copy/run SQL files, backfill discrepancy, pre/post checks and deployment gates:** [main-production-sql-rollout.md](./main-production-sql-rollout.md)
+**Foundation membership release → Main/Prod: five foundation migrations, production run order, backfill discrepancy, pre/post checks and deployment gates:** [main-production-sql-rollout.md](./main-production-sql-rollout.md). Optional Discord automation requires the additional expand/ordering migrations below.
 
 **Detailed reference (TypeScript types, RLS examples, bracket columns):** [ADMIN_DATABASE.md](./ADMIN_DATABASE.md)
 
@@ -28,7 +28,7 @@ What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and m
 
 **Edit Profile scroll, compact Overview identities and game acceptance alerts — behavior, verification and release gates:** [member-dashboard-ux-and-notifications.md](./member-dashboard-ux-and-notifications.md)
 
-**Deferred Discord-based game acceptance — exact role mappings, shared-worker risks, policy decisions and future rollout/recovery:** [discord-game-membership-automation.md](./discord-game-membership-automation.md). Documentation only; merging the current website does not enable automation.
+**Discord-based game acceptance — Dev SQL rehearsal, additional migrations, isolated targets and manual CLI rollout/recovery:** [discord-game-membership-automation.md](./discord-game-membership-automation.md). Code-only Worker release deployed; game automation remains disabled.
 
 | **Migrate old prod DB → new Supabase project (production cutover):** [SUPABASE_PROD_MIGRATION.md](./SUPABASE_PROD_MIGRATION.md) — new prod ref `efchfvreaotskrdlweze`
 

@@ -1,5 +1,12 @@
 # Patch notes
 
+## Discord game membership — local/Dev, not activated in production
+
+- Save a valid IGN and apply: members already holding the matching Discord game role can be accepted immediately.
+- Later role changes can update Discord-managed memberships without replacing character details or Main Game.
+- Manual admin decisions, Leave/Withdraw and existing acceptance history are respected; failed Discord checks do not revoke memberships.
+- Requires the additional SQL and explicit activation in [the Discord rollout guide](discord-game-membership-automation.md).
+
 ## Game profiles & memberships — unreleased
 
 ### New
@@ -24,4 +31,4 @@
 
 ### Before production
 
-Apply the database changes and configure production settings using [the SQL rollout guide](main-production-sql-rollout.md). Do not copy Dev data into Prod. Automatic Discord-based game acceptance is **not included** in this update.
+Apply the foundation database changes using [the SQL rollout guide](main-production-sql-rollout.md). Do not copy Dev data into Prod. The optional Discord integration above has a separate additional migration and deployment gate; merging website code does not activate it.
