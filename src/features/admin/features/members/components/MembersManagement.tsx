@@ -40,7 +40,12 @@ import { usePagination } from "@/features/admin/hooks/usePagination";
 import { useTableSort } from "@/features/admin/hooks/useTableSort";
 import { matchesAdminMemberDirectorySearch } from "@/features/admin/utils/search";
 import { useMembers, useResetMemberDiscordSync, useUpdateMemberVerification } from "../hooks";
-import type { AdminMember, MemberSyncQueueConfig, MemberSyncQueueFilter } from "../types";
+import type {
+  AdminMember,
+  MemberSyncQueueConfig,
+  MemberSyncQueueFilter,
+  MemberVerificationStatus,
+} from "../types";
 import { compareByOrder, compareStrings } from "@/features/admin/utils/sort-comparators";
 import {
   countMembersBySyncQueueFilter,
@@ -56,14 +61,29 @@ import { MemberSyncQueueFilters } from "./MemberSyncQueueFilters";
 import { MemberSyncQueueFilterHint } from "./MemberSyncQueueFilterHint";
 import { useDeleteMember } from "../hooks/useDeleteMember";
 import { DEFAULT_SYNC_HOT_DAYS } from "../constants";
-import { getMemberSyncQueueConfig, triggerDiscordMemberSync, triggerDiscordSync } from "../functions/discord-sync.functions";
+import {
+  getMemberSyncQueueConfig,
+  triggerDiscordMemberSync,
+  triggerDiscordSync,
+} from "../functions/discord-sync.functions";
 import { formatDiscordSyncMessage } from "../utils/discord-sync-config";
 import { ADMIN_AUDIT_ACTIONS, logAdminAction } from "@/features/admin/services/audit-log.service";
+import { useGamesWithRoles } from "../../games/hooks/useGames";
+import {
+  buildMemberDirectoryCsv,
+  matchesDirectoryFilter,
+  type DirectoryMode,
+  type DirectoryRoleFilter,
+} from "../utils/member-directory";
+import { MemberDirectoryFilters } from "./MemberDirectoryFilters";
+import { MemberGameDetails } from "./MemberGameDetails";
+import { GameRosterPanel } from "@/features/game-membership/components/GameRosterPanel";
 
 export function MembersManagement() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { members, isLoading, error, refetch, prependMember, replaceMember, removeMember } = useMembers();
+  const { members, isLoading, error, refetch, prependMember, replaceMember, removeMember } =
+    useMembers();
   const {
     updatingId,
     error: verificationError,
@@ -86,6 +106,20 @@ export function MembersManagement() {
   const [deletingMember, setDeletingMember] = useState<AdminMember | null>(null);
   const [deleteMode, setDeleteMode] = useState<"default" | "stale">("default");
   const [searchQuery, setSearchQuery] = useState("");
+  const {
+    data: games,
+    isLoading: isLoadingGames,
+    error: gamesError,
+    refetch: refetchGames,
+  } = useGamesWithRoles();
+  const [selectedGameId, setSelectedGameId] = useState("all");
+  const [membersView, setMembersView] = useState<"directory" | "membership">("directory");
+  const [directoryMode, setDirectoryMode] = useState<DirectoryMode>("identity");
+  const [roleFilter, setRoleFilter] = useState<DirectoryRoleFilter>("all");
+  const [verificationFilter, setVerificationFilter] = useState<MemberVerificationStatus | "all">(
+    "all",
+  );
+  const selectedGame = games?.find((game) => game.id === selectedGameId) ?? null;
   const [syncQueueFilter, setSyncQueueFilter] = useState<MemberSyncQueueFilter>("all");
   const [syncQueueConfig, setSyncQueueConfig] = useState<MemberSyncQueueConfig>(() => ({
     hotDays: DEFAULT_SYNC_HOT_DAYS,
@@ -104,11 +138,22 @@ export function MembersManagement() {
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
+      if (!matchesDirectoryFilter(member, selectedGame, directoryMode, roleFilter)) return false;
+      if (verificationFilter !== "all" && member.status !== verificationFilter) return false;
       if (!matchesSyncQueueFilter(member, syncQueueFilter, syncQueueConfig.hotDays)) return false;
       if (!searchQuery.trim()) return true;
       return matchesAdminMemberDirectorySearch(searchQuery, member);
     });
-  }, [members, searchQuery, syncQueueFilter, syncQueueConfig.hotDays]);
+  }, [
+    members,
+    searchQuery,
+    syncQueueFilter,
+    syncQueueConfig.hotDays,
+    selectedGame,
+    directoryMode,
+    roleFilter,
+    verificationFilter,
+  ]);
 
   const verificationOrder = useMemo(() => ["Not Verified", "Verified"] as const, []);
   const sortComparators = useMemo(
@@ -133,10 +178,21 @@ export function MembersManagement() {
     "desc",
   );
   const pagination = usePagination(sortedItems);
+  const { setPage } = pagination;
 
   useEffect(() => {
-    pagination.setPage(1);
-  }, [sortKey, direction, searchQuery, syncQueueFilter, pagination.setPage]);
+    setPage(1);
+  }, [
+    sortKey,
+    direction,
+    searchQuery,
+    syncQueueFilter,
+    selectedGameId,
+    directoryMode,
+    roleFilter,
+    verificationFilter,
+    setPage,
+  ]);
 
   useEffect(() => {
     void getMemberSyncQueueConfig({})
@@ -145,6 +201,21 @@ export function MembersManagement() {
         // Keep defaults aligned with Worker when env is unavailable locally.
       });
   }, []);
+
+  function handleExportCsv() {
+    const blob = new Blob(["\uFEFF", buildMemberDirectoryCsv(sortedItems, selectedGame)], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `members-${selectedGame?.slug ?? "all-games"}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Let the browser begin consuming the download before releasing its object URL.
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   function handleCreated(member: AdminMember) {
     prependMember(member);
@@ -278,10 +349,7 @@ export function MembersManagement() {
             size="sm"
             variant="outline"
             disabled={
-              syncingMemberId !== null ||
-              resettingId !== null ||
-              updatingId !== null ||
-              isSyncing
+              syncingMemberId !== null || resettingId !== null || updatingId !== null || isSyncing
             }
             className="min-h-11 gap-1.5 font-tech text-[10px] uppercase tracking-wider-2 sm:min-h-9"
             onClick={() => void handleSyncMember(member)}
@@ -413,7 +481,38 @@ export function MembersManagement() {
         )}
 
         <div className="p-4 pt-4 sm:p-6">
-          {isLoading ? (
+          <div
+            className="mb-4 flex flex-wrap gap-2"
+            role="group"
+            aria-label="Member management mode"
+          >
+            <Button
+              type="button"
+              variant={membersView === "directory" ? "default" : "outline"}
+              aria-pressed={membersView === "directory"}
+              onClick={() => setMembersView("directory")}
+            >
+              Member Directory
+            </Button>
+            <Button
+              type="button"
+              variant={membersView === "membership" ? "default" : "outline"}
+              aria-pressed={membersView === "membership"}
+              onClick={() => setMembersView("membership")}
+            >
+              Game Membership
+            </Button>
+          </div>
+          {membersView === "membership" ? (
+            <GameRosterPanel
+              games={games ?? []}
+              selectedGame={selectedGame}
+              onGameChange={setSelectedGameId}
+              isLoadingGames={isLoadingGames}
+              gamesError={gamesError ? "Could not load game list." : null}
+              onRetryGames={() => void refetchGames()}
+            />
+          ) : isLoading ? (
             isMobile ? (
               <ul className="divide-y divide-white/8 md:hidden">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -505,6 +604,39 @@ export function MembersManagement() {
           ) : (
             <>
               <div className="mb-4 space-y-3">
+                {gamesError ? (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      Game filters could not be loaded. The member directory is still available.
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => void refetchGames()}
+                      >
+                        Retry game filters
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                <MemberDirectoryFilters
+                  games={games ?? []}
+                  selectedGame={selectedGame}
+                  mode={directoryMode}
+                  role={roleFilter}
+                  verification={verificationFilter}
+                  isLoadingGames={isLoadingGames}
+                  count={sortedItems.length}
+                  exportDisabled={isLoading || !!error || sortedItems.length === 0}
+                  onGameChange={(id) => {
+                    setSelectedGameId(id);
+                    setRoleFilter("all");
+                  }}
+                  onModeChange={setDirectoryMode}
+                  onRoleChange={setRoleFilter}
+                  onVerificationChange={setVerificationFilter}
+                  onExport={handleExportCsv}
+                />
                 <MemberMobileSyncFilters
                   value={syncQueueFilter}
                   counts={queueCounts}
@@ -541,11 +673,26 @@ export function MembersManagement() {
                   }
                   description={
                     searchQuery.trim()
-                      ? `No members match "${searchQuery.trim()}" with the current sync filter.`
-                      : "No members match the current sync queue filter."
+                      ? `No members match "${searchQuery.trim()}" with the current filters.`
+                      : "No members match the current game, role, verification, and sync queue filters."
                   }
                   actions={
                     <div className="flex flex-wrap items-center justify-center gap-2">
+                      {selectedGame || verificationFilter !== "all" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedGameId("all");
+                            setRoleFilter("all");
+                            setDirectoryMode("identity");
+                            setVerificationFilter("all");
+                          }}
+                        >
+                          Clear directory filters
+                        </Button>
+                      ) : null}
                       {syncQueueFilter !== "all" ? (
                         <Button
                           type="button"
@@ -575,6 +722,7 @@ export function MembersManagement() {
                 <>
                   <MemberMobileList
                     members={pagination.paginatedItems}
+                    selectedGame={selectedGame}
                     page={pagination.page}
                     totalPages={pagination.totalPages}
                     total={pagination.total}
@@ -646,8 +794,11 @@ export function MembersManagement() {
                                   name={member.displayName}
                                   className="h-8 w-8 shrink-0 text-[10px] font-tech tracking-wider-2"
                                 />
-                                <span className={cn("font-medium", adminTableTextTruncate)}>
-                                  {member.displayName}
+                                <span className="min-w-0 flex-1">
+                                  <span className={cn("font-medium", adminTableTextTruncate)}>
+                                    {member.displayName}
+                                  </span>
+                                  <MemberGameDetails member={member} game={selectedGame} />
                                 </span>
                                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
                               </Link>

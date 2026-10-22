@@ -20,7 +20,7 @@ export interface DiscordMemberSyncSummary extends WorkerMemberSyncResult {
 }
 
 const MEMBER_SYNC_SELECT =
-  "id, username, discord_username, discord_id, status, registered_at, created_at, discord_not_in_guild_strikes, discord_sync_paused_at, member_profiles(avatar_url, slug, display_name)";
+  "id, username, discord_username, discord_id, status, registered_at, created_at, discord_not_in_guild_strikes, discord_sync_paused_at, member_profiles(avatar_url, slug, display_name, main_game, main_role, game_identities, valorant_game_name, valorant_tagline, ingame_display_name)";
 
 const WORKER_REQUEST_TIMEOUT_MS = 15000;
 

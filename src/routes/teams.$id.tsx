@@ -99,12 +99,11 @@ function TeamDetailPage() {
         } else {
           setTeam(data);
           const isViewerMember = Boolean(
-            memberId &&
-              data.members.some((m) => m.userId === memberId && m.status !== "removed"),
+            memberId && data.members.some((m) => m.userId === memberId && m.status !== "removed"),
           );
           const [regsResult, titlesResult] = await Promise.allSettled([
             isViewerMember ? fetchRegistrationsForTeam(data.id) : Promise.resolve([]),
-            fetchTeamChampionships(data.id),
+            fetchTeamChampionships(data.id, { teams: [data] }),
           ]);
           if (regsResult.status === "fulfilled") {
             setRegistrations(regsResult.value);
@@ -161,7 +160,7 @@ function TeamDetailPage() {
             variant="outline"
             className="rounded-none font-tech text-ui-readable uppercase"
           >
-            <Link to="/teams" search={{ create: false }}>
+            <Link to="/dashboard" search={{ view: "teams" }}>
               Back to Teams
             </Link>
           </Button>
@@ -181,7 +180,7 @@ function TeamDetailPage() {
             variant="outline"
             className="rounded-none font-tech text-ui-readable uppercase"
           >
-            <Link to="/teams" search={{ create: false }}>
+            <Link to="/dashboard" search={{ view: "teams" }}>
               Back to Teams
             </Link>
           </Button>
@@ -199,9 +198,9 @@ function TeamDetailPage() {
   const isPublicView = !isMember;
   const isActiveMember = Boolean(
     memberId &&
-      team.members.some(
-        (m) => m.userId === memberId && (m.status === "captain" || m.status === "active"),
-      ),
+    team.members.some(
+      (m) => m.userId === memberId && (m.status === "captain" || m.status === "active"),
+    ),
   );
   const canLeaveTeam = isActiveMember && !isCaptain;
   const showBannerActions = !isPublicView && !isInvited && (isCaptain || canLeaveTeam);
@@ -275,7 +274,7 @@ function TeamDetailPage() {
       void syncTeamMembershipNotifications(memberId).catch((err) => {
         console.warn("[teams] Failed to sync membership notifications:", err);
       });
-      navigate({ to: "/teams", search: { create: false } });
+      navigate({ to: "/dashboard", search: { view: "teams" } });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to leave team.");
     } finally {
@@ -288,9 +287,7 @@ function TeamDetailPage() {
     setDeleting(true);
     setActionError(null);
     try {
-      const memberIds = team.members
-        .filter((m) => m.status !== "removed")
-        .map((m) => m.userId);
+      const memberIds = team.members.filter((m) => m.status !== "removed").map((m) => m.userId);
       await deleteTeamAsCaptain(team.id);
       setDeleteOpen(false);
       await Promise.all(
@@ -300,7 +297,7 @@ function TeamDetailPage() {
           }),
         ),
       );
-      navigate({ to: "/teams", search: { create: false } });
+      navigate({ to: "/dashboard", search: { view: "teams" } });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to delete team.");
     } finally {
@@ -335,7 +332,7 @@ function TeamDetailPage() {
     try {
       await declineTeamInvite(team!.id, memberId);
       markTeamInviteRead(team!.id);
-      navigate({ to: "/teams", search: { create: false } });
+      navigate({ to: "/dashboard", search: { view: "teams" } });
       if (memberId) {
         void syncTeamMembershipNotifications(memberId).catch((err) => {
           console.warn("[teams] Failed to sync membership notifications:", err);
@@ -355,7 +352,10 @@ function TeamDetailPage() {
         variant="ghost"
         className="mb-6 -ml-2 rounded-none font-tech text-label-readable uppercase text-muted-foreground hover:bg-transparent hover:text-foreground"
       >
-        <Link to={isPublicView ? "/champions" : "/teams"} search={isPublicView ? undefined : { create: false }}>
+        <Link
+          to={isPublicView ? "/tournaments" : "/dashboard"}
+          search={isPublicView ? { view: "champions" } : { view: "teams" }}
+        >
           <ArrowLeft className="h-3.5 w-3.5" />
           {isPublicView ? "Hall of Champions" : "My Teams"}
         </Link>
@@ -505,9 +505,7 @@ function TeamDetailPage() {
         onInvite={() => setInviteOpen(true)}
         onRemove={isCaptain ? requestRemoveMember : undefined}
         onTransferCaptain={isCaptain ? setTransferTarget : undefined}
-        onRoleChange={
-          !isPublicView && isMember && !isInvited ? handleRoleChange : undefined
-        }
+        onRoleChange={!isPublicView && isMember && !isInvited ? handleRoleChange : undefined}
       />
 
       {!isPublicView && pendingRegs.length > 0 && (

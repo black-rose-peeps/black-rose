@@ -56,7 +56,7 @@ function RosterMemberAvatar({ member }: { member: TeamMember }) {
   if (member.profileSlug) {
     return (
       <Link
-        to="/members/$slug"
+        to="/br/$slug"
         params={{ slug: member.profileSlug }}
         className="shrink-0 transition hover:opacity-90"
       >
@@ -294,7 +294,7 @@ export function RosterTable({
 }: RosterTableProps) {
   const { data: activeGames } = useActiveGames();
   const gameDbName = legacyGameToDbName(team.game);
-  const game = activeGames?.find(g => g.name === gameDbName);
+  const game = activeGames?.find((g) => g.name === gameDbName);
   const { data: gameRoles } = useGameRoles(game?.id || "");
   const isCaptain = team.captainUserId === currentUserId;
   const showIgnColumn = !isValorantGame(team.game);

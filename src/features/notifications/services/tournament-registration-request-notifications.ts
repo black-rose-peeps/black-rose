@@ -1,6 +1,10 @@
-import { fetchTeamById } from "@/features/admin/features/teams/services/teams.service";
+import { fetchTeamsByIds } from "@/features/admin/features/teams/services/teams.service";
 import { fetchMemberById } from "@/features/admin/features/members/services/members.service";
-import { fetchTournamentsForNotificationsCached } from "@/features/member/queries/member-data-queries";
+import {
+  fetchMemberTeamsCached,
+  fetchTournamentsForNotificationsCached,
+} from "@/features/member/queries/member-data-queries";
+import type { Team } from "@/features/teams/types";
 import type { MockTournament } from "@/lib/mock-data";
 import {
   fetchPendingRegistrationRequestsForCaptain,
@@ -37,6 +41,7 @@ function notificationForRequest(
 export async function syncTournamentRegistrationRequestNotifications(
   captainUserId: string,
   tournaments?: Pick<MockTournament, "id" | "name" | "status">[],
+  memberTeams?: Team[],
 ): Promise<AppNotification[]> {
   const requests = await fetchPendingRegistrationRequestsForCaptain(captainUserId);
   if (!requests.length) {
@@ -53,11 +58,25 @@ export async function syncTournamentRegistrationRequestNotifications(
   );
   const createdAtById = new Map(existingNotifications.map((n) => [n.id, n.createdAt] as const));
 
+  const teams = memberTeams ?? (await fetchMemberTeamsCached(captainUserId));
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+  const missingTeamIds = [...new Set(requests.map((request) => request.rosterTeamId))].filter(
+    (id) => !teamById.has(id),
+  );
+  if (missingTeamIds.length) {
+    for (const team of await fetchTeamsByIds(missingTeamIds)) teamById.set(team.id, team);
+  }
+  const requesterById = new Map(
+    [...new Set(requests.map((request) => request.requesterUserId))].map(
+      (id) => [id, fetchMemberById(id)] as const,
+    ),
+  );
+
   const notifications = await Promise.all(
     requests.map(async (request) => {
       const tournament = tournamentById.get(request.tournamentId);
-      const team = await fetchTeamById(request.rosterTeamId);
-      const requester = await fetchMemberById(request.requesterUserId);
+      const team = teamById.get(request.rosterTeamId);
+      const requester = await requesterById.get(request.requesterUserId);
       const notificationId = `registration-request-${request.id}`;
       const notification = notificationForRequest(
         request,

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { useVerificationSync } from "@/features/auth/hooks/useVerificationSync";
@@ -72,9 +73,13 @@ function WaitlistPage() {
     };
   }, []);
 
-  function handleSignOut() {
-    clearSession();
-    navigate({ to: "/" });
+  async function handleSignOut() {
+    try {
+      await clearSession();
+      navigate({ to: "/" });
+    } catch {
+      toast.error("Could not sign out. Please try again.");
+    }
   }
 
   function copyTemplate(game: string, fields: readonly string[]) {

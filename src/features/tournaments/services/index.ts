@@ -1,13 +1,13 @@
 /**
- * Public tournament services — thin wrappers around the admin services.
+ * Public tournament reads share schema/mapping with admin, without write-side hydration.
  *
  * This keeps a single source of truth in Supabase. The public side never
  * maintains its own duplicate data.
  */
 
 export {
-  fetchTournaments,
-  fetchTournamentById,
+  fetchTournamentsLite as fetchTournaments,
+  fetchTournamentByIdReadOnly as fetchTournamentById,
   fetchTournamentByIdForSsr,
 } from "@/features/admin/features/tournaments/services/tournaments.service";
 

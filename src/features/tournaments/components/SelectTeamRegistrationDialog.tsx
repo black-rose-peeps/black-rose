@@ -148,7 +148,8 @@ export function SelectTeamRegistrationDialog({
   const selectedTeamIdentityError = selectedTeam
     ? tournamentRosterIdentityError(selectedTeam, tournamentGame, selectedTeamGaps, activeGames)
     : null;
-  const gameIdentityLabel = gameIdentityConfig(tournamentGame, activeGames)?.panelLabel ?? tournamentGame;
+  const gameIdentityLabel =
+    gameIdentityConfig(tournamentGame, activeGames)?.panelLabel ?? tournamentGame;
   const anyRosterEligible = teams.some((team) =>
     meetsTournamentRosterRequirement(team, tournamentGame),
   );
@@ -201,7 +202,7 @@ export function SelectTeamRegistrationDialog({
                 variant="outline"
                 className="rounded-none border-white/15 bg-transparent font-tech text-ui-readable uppercase"
               >
-                <Link to="/teams" search={{ create: false }}>
+                <Link to="/dashboard" search={{ view: "teams" }}>
                   Manage Teams
                 </Link>
               </Button>

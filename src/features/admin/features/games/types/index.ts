@@ -1,8 +1,15 @@
-import type { Game, GameWithRoles, CreateGameInput, UpdateGameInput } from "../services/games.service";
+import type {
+  Game,
+  GameWithRoles,
+  CreateGameInput,
+  UpdateGameInput,
+} from "../services/games.service";
+import type { GameProfileFieldConfig } from "@/features/game-membership/types";
 
 export type { Game, GameWithRoles, CreateGameInput, UpdateGameInput };
 
 export interface GameFormData {
+  profile_field_config: GameProfileFieldConfig;
   name: string;
   slug: string;
   display_name: string;

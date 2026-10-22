@@ -18,7 +18,7 @@ export function GuildCodeGrid() {
 
           <div className="flex items-start justify-between gap-4">
             <span className="font-display text-4xl tracking-display text-white/20 transition duration-300 group-hover:text-white/55">
-              {String(value.number).padStart(2, "0")}
+              {value.numeral}
             </span>
             <span className="mt-2 h-px w-10 bg-white/10 transition-all duration-300 group-hover:w-14 group-hover:bg-white/30" />
           </div>
@@ -29,7 +29,7 @@ export function GuildCodeGrid() {
           <p className="text-sm leading-relaxed text-muted-foreground">{value.body}</p>
 
           <div className="mt-auto font-tech text-[8px] uppercase tracking-[0.2em] text-white/30">
-            Guild Code · {String(value.number).padStart(2, "0")}
+            Guild Code · {value.numeral}
           </div>
         </article>
       ))}

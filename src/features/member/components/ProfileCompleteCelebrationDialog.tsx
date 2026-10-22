@@ -82,7 +82,7 @@ export function ProfileCompleteCelebrationDialog({
               asChild
               className="clip-cta h-11 w-full rounded-none border-emerald-400/25 bg-emerald-400/10 font-tech text-ui-readable uppercase text-emerald-100 hover:bg-emerald-400/15"
             >
-              <Link to="/members/$slug" params={{ slug: profileSlug }} onClick={onDismiss}>
+              <Link to="/br/$slug" params={{ slug: profileSlug }} onClick={onDismiss}>
                 View public profile
               </Link>
             </Button>

@@ -6,17 +6,24 @@ interface GuildRole {
   name: string;
 }
 
-export async function resolveRoseRoleId(env: {
-  DISCORD_BOT_TOKEN: string;
-  DISCORD_GUILD_ID: string;
-  DISCORD_ROSE_ROLE_ID?: string;
-  DISCORD_ROSE_ROLE_NAME?: string;
-}): Promise<string> {
+export async function resolveRoseRoleId(
+  env: {
+    DISCORD_BOT_TOKEN: string;
+    DISCORD_GUILD_ID: string;
+    DISCORD_ROSE_ROLE_ID?: string;
+    DISCORD_ROSE_ROLE_NAME?: string;
+  },
+  onRequest?: () => void,
+): Promise<string> {
   const configured = env.DISCORD_ROSE_ROLE_ID?.trim();
   if (configured) return configured;
 
   const roleName = env.DISCORD_ROSE_ROLE_NAME?.trim() || "ROSE";
-  const response = await discordBotFetch(env.DISCORD_BOT_TOKEN, `/guilds/${env.DISCORD_GUILD_ID}/roles`);
+  const response = await discordBotFetch(
+    env.DISCORD_BOT_TOKEN,
+    `/guilds/${env.DISCORD_GUILD_ID}/roles`,
+    onRequest,
+  );
 
   if (!response.ok) {
     const detail = await response.text();
@@ -29,9 +36,7 @@ export async function resolveRoseRoleId(env: {
   );
 
   if (!match) {
-    throw new Error(
-      `ROSE role "${roleName}" not found. Set DISCORD_ROSE_ROLE_ID on the Worker.`,
-    );
+    throw new Error(`ROSE role "${roleName}" not found. Set DISCORD_ROSE_ROLE_ID on the Worker.`);
   }
 
   return match.id;
@@ -42,10 +47,12 @@ export async function fetchGuildMemberRoleIds(
   token: string,
   guildId: string,
   discordUserId: string,
+  onRequest?: () => void,
 ): Promise<string[] | null> {
   const response = await discordBotFetch(
     token,
     `/guilds/${guildId}/members/${discordUserId}`,
+    onRequest,
   );
 
   if (response.status === 404) {
@@ -56,7 +63,7 @@ export async function fetchGuildMemberRoleIds(
     const body = (await response.json()) as { retry_after?: number };
     const waitMs = Math.ceil((body.retry_after ?? 1) * 1000) + 50;
     await sleep(waitMs);
-    return fetchGuildMemberRoleIds(token, guildId, discordUserId);
+    return fetchGuildMemberRoleIds(token, guildId, discordUserId, onRequest);
   }
 
   if (!response.ok) {
@@ -68,8 +75,14 @@ export async function fetchGuildMemberRoleIds(
   return member.roles ?? [];
 }
 
-async function discordBotFetch(token: string, path: string): Promise<Response> {
+async function discordBotFetch(
+  token: string,
+  path: string,
+  onRequest?: () => void,
+): Promise<Response> {
+  onRequest?.();
   return fetch(`${DISCORD_API}${path}`, {
+    ...(onRequest ? { redirect: "error" as const } : {}),
     headers: {
       Authorization: `Bot ${token}`,
       "User-Agent": USER_AGENT,

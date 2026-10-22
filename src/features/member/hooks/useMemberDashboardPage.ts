@@ -49,10 +49,13 @@ export interface MemberDashboardPageState {
 export function useMemberDashboardPage(): MemberDashboardPageState {
   const { session, isSyncing } = useSyncedMemberSession();
   const memberId = session?.id;
-  const { tournaments } = useTournamentList();
+  const { tournaments, isLoading: tournamentsLoading } = useTournamentList();
 
   const profileQuery = useMemberProfileQuery(memberId);
-  const dashboardQuery = useMemberTournamentDashboardQuery(memberId, tournaments);
+  const dashboardQuery = useMemberTournamentDashboardQuery(
+    memberId,
+    tournamentsLoading ? undefined : tournaments,
+  );
   const championshipsQuery = useMemberChampionshipsQuery(memberId);
 
   const profile = useMemo(() => {

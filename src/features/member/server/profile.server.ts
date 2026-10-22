@@ -13,13 +13,8 @@ import {
 } from "../utils/build-member-profile";
 import { sanitizeSocialLinksForViewer } from "../utils/social-links";
 import { sanitizeHttpUrl } from "../utils/validate-social-url";
-import { normalizeValorantTagline } from "../utils/valorant-identity";
-import {
-  sanitizeGameIdentities,
-  validateGameIdentitiesInput,
-  isRiotGame,
-} from "../utils/game-identity";
-import { resolveStoredMainGame } from "../utils/profile-main-game";
+import { fetchAcceptedGameMemberships } from "@/features/game-membership/server/public-memberships.server";
+
 import type { MemberProfile } from "../types";
 import {
   MEMBER_READ_COLUMNS,
@@ -36,7 +31,7 @@ const profileBundleCache = createTtlCache<{
 const profileLoadDeduper = createInflightDeduper<MemberProfile | null>();
 const profileCacheGeneration = new Map<string, number>();
 
-function invalidateMemberProfileCache(memberId: string): void {
+export function invalidateMemberProfileCache(memberId: string): void {
   memberProfileCache.delete(memberId);
   profileBundleCache.delete(memberId);
   profileCacheGeneration.set(memberId, (profileCacheGeneration.get(memberId) ?? 0) + 1);
@@ -367,6 +362,7 @@ export async function fetchMemberProfileBySlug(
   const profile = buildMemberProfile(member, bundle.profile, bundle.socials);
   return {
     ...profile,
+    acceptedGameMemberships: await fetchAcceptedGameMemberships(member.id),
     socialLinks: sanitizeSocialLinksForViewer(profile.socialLinks, isOwner),
   };
 }
@@ -409,41 +405,17 @@ export async function updateMemberProfile(input: UpdateMemberProfileInput): Prom
   if (profileError) throw new Error(profileError.message);
   if (!profile) throw new Error("Profile not found. Sign in again to create your profile.");
 
-  const identityError = validateGameIdentitiesInput(
-    {
-      valorantGameName: input.valorantGameName,
-      valorantTagline: input.valorantTagline,
-      gameIdentities: input.gameIdentities,
-    },
-    Object.keys(input.gameIdentities),
-  );
-  if (identityError) throw new Error(identityError);
+  // Compatibility clients may still send Main Game and identity snapshots. Common
+  // detail saves must not overwrite newer choices from the independent My Games workspace.
+  const { error: updateError } = await supabase.rpc("update_member_profile_details", {
+    p_member_id: input.memberId,
+    p_display_name: input.displayName.trim() || member.username,
+    p_headline: input.headline.trim() || "Black Rose Member",
+    p_bio: input.bio.trim(),
 
-  const valorantGameName = input.valorantGameName.trim();
-  const valorantTagline = normalizeValorantTagline(input.valorantTagline);
-  // Don't filter out dynamic games - allow all games that have values
-  const gameIdentities = input.gameIdentities;
-  const mainGame = resolveStoredMainGame(input.mainGame);
-  const legacyIngameName =
-    mainGame && !isRiotGame(mainGame) ? (gameIdentities[mainGame] ?? null) : null;
-
-  const { error: updateError } = await supabase
-    .from("member_profiles")
-    .update({
-      display_name: input.displayName.trim() || member.username,
-      headline: input.headline.trim() || "Black Rose Member",
-      bio: input.bio.trim(),
-      main_game: mainGame,
-      main_role: input.mainRole.trim(),
-      region: input.region.trim(),
-      valorant_game_name: valorantGameName || null,
-      valorant_tagline: valorantTagline || null,
-      game_identities: gameIdentities,
-      ingame_display_name: legacyIngameName,
-      is_public: input.isPublic,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", profile.id);
+    p_region: input.region.trim(),
+    p_is_public: input.isPublic,
+  });
 
   if (updateError) throw new Error(updateError.message);
 

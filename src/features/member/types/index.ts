@@ -37,6 +37,12 @@ export interface UpcomingMatch {
   scheduleSortKey?: string;
 }
 
+export interface AcceptedGameMembership {
+  gameId: string;
+  gameName: string;
+  gameIcon: string | null;
+}
+
 export interface MemberProfile {
   memberId: string;
   slug: string;
@@ -53,6 +59,8 @@ export interface MemberProfile {
   region: string;
   isVerified: boolean;
   isPublic: boolean;
+  /** Public-safe accepted game names/icons only; absent on legacy/owner-only responses. */
+  acceptedGameMemberships?: AcceptedGameMembership[];
   socialLinks: SocialLink[];
   valorantGameName: string;
   valorantTagline: string;

@@ -1,4 +1,5 @@
 export type NotificationType =
+  | "game_membership_accepted" // Your game membership was accepted
   | "team_invite" // Someone invited you to their team
   | "team_removed" // You were removed from a team roster
   | "invite_accepted" // A member accepted your team invite

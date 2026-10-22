@@ -90,6 +90,9 @@ export function useMembers() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "members" }, () => {
         debouncedRefetch({ silent: true });
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "member_profiles" }, () => {
+        debouncedRefetch({ silent: true });
+      })
       .subscribe();
 
     return () => {
@@ -103,7 +106,9 @@ export function useMembers() {
   }, []);
 
   const replaceMember = useCallback((member: AdminMember) => {
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? member : item)));
+    setMembers((prev) =>
+      prev.map((item) => (item.id === member.id ? { ...item, ...member } : item)),
+    );
   }, []);
 
   const removeMember = useCallback((memberId: string) => {

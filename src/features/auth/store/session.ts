@@ -7,16 +7,11 @@
 
 import type { AppUser } from "../types";
 import { markDiscordLinked } from "../services/discord";
+import { logoutMemberSession } from "../functions/session-auth.functions";
 
 const SESSION_KEY = "br_session";
 const SESSION_CHANGED = "br-session-changed";
 const MEMBER_SESSION_COOKIE = "br_member_id";
-const MEMBER_SESSION_MAX_AGE = 60 * 60 * 24 * 30;
-
-function syncMemberSessionCookie(memberId: string): void {
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${MEMBER_SESSION_COOKIE}=${encodeURIComponent(memberId)}; Path=/; Max-Age=${MEMBER_SESSION_MAX_AGE}; SameSite=Lax${secure}`;
-}
 
 function clearMemberSessionCookie(): void {
   document.cookie = `${MEMBER_SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
@@ -63,7 +58,7 @@ export function getSession(): AppUser | null {
     const raw = readStoredSession();
     if (!raw) return null;
     const user = JSON.parse(raw) as AppUser;
-    syncMemberSessionCookie(user.id);
+
     return {
       ...user,
       discordUsername: user.discordUsername ?? user.username,
@@ -82,7 +77,7 @@ export function setSession(user: AppUser): void {
 
     localStorage.setItem(SESSION_KEY, next);
     sessionStorage.removeItem(SESSION_KEY);
-    syncMemberSessionCookie(user.id);
+
     notifySessionChanged();
 
     if (user.discordId) {
@@ -93,8 +88,9 @@ export function setSession(user: AppUser): void {
   }
 }
 
-export function clearSession(): void {
+export async function clearSession(): Promise<void> {
   if (typeof window === "undefined") return;
+  await logoutMemberSession();
   try {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
