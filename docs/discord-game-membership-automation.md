@@ -8,7 +8,15 @@ Implemented locally on `feat/discord-game-membership-automation`; **not activate
 
 Dev verification did not access production data, start a live bot or deploy the Worker. The subsequent release is explicitly code-only: production Wrangler configuration sets `DISCORD_GAME_MEMBERSHIP_ENABLED=false` and the expected production project reference. Publishing that code does not activate game-membership automation or apply production SQL.
 
-**Environment warning:** the latest effective local application settings select Prod, not Dev. The shared Worker source also targets Prod; its deployed settings are unverified. Connecting the management tool to Dev changes neither runtime. Prepare matching isolated Dev browser/server keys and a Dev Worker endpoint, then restart the processes before a real Dev application/sync test. Do not use current sync buttons or unqualified bot/deploy aliases as Dev tests.
+**Environment warning:** Dev-verification preflight found local application settings selecting Prod, not Dev. The shared Worker's deployed bindings are now confirmed Prod-bound with game automation disabled. Connecting the management tool to Dev changes neither runtime. Recheck effective local settings and prepare matching isolated Dev browser/server keys and a Dev Worker endpoint before a real Dev application/sync test. Do not use production-bound sync buttons or unqualified bot/deploy aliases as Dev tests.
+
+### Verified code-only release
+
+- Source commit: `69a1bbb88ff37ec725a5c62a1d8727484dd6dd7d` on `feat/discord-game-membership-automation`.
+- Worker: `blackrose-discord-sync`; version `98578f1b-e107-4c18-b1d7-5c53a8a69f62`, deployed October 22, 2026 at `08:39 UTC`.
+- Cloudflare deployment read-back confirmed this version at 100% traffic, `DISCORD_GAME_MEMBERSHIP_ENABLED=false`, and expected project `efchfvreaotskrdlweze`.
+- Native Node `GET /health` returned HTTP 200 with `ok: true`. Existing bot-token, Supabase service-key and sync-secret bindings remain present; no secret values were printed or changed.
+- Schedule: `*/15 * * * *`. No production membership SQL was applied and no manual sync/write endpoint was invoked during release verification.
 
 ## Rules
 
@@ -100,8 +108,16 @@ That environment file is an operator prerequisite, not created here. The Worker 
 1. Inspect production schema/catalog drift and deployed targets under separate approval. Save suitable backup and before-state checks. All intended games must exist unambiguously.
 2. Freeze member/admin membership writes and all bot jobs, drain in-flight actions, then install both reviewed additional SQL files after the foundation migrations. Keep activation disabled until checks and compatible callers are ready. Promote source/SQL, never Dev data, fixture rows, keys or UUID assumptions.
 3. Deploy compatible website and Worker with production settings. The production Worker configuration now explicitly includes disabled activation and expected project `efchfvreaotskrdlweze`; preserve its existing name, database target, secrets and cron. Set the activation flag to `true` only after database and smoke-test prerequisites pass.
-4. After authorization, from `workers/discord-sync`, run `npx --no-install wrangler deploy --config wrangler.toml`. Read back actual deployed name/target/flags; repository configuration is not deployment proof.
-5. Complete real member/admin/ROSE smoke tests, two-session locking rehearsal, a game-membership dry-run and a reviewed small batch. Enable required runtimes only after these gates pass; verify persisted status/audit, notification and preservation before broadening.
+4. After authorization, from `workers/discord-sync`, run `npx --no-install wrangler deploy --config wrangler.toml --keep-vars`. Read back actual deployed name/target/flags; repository configuration is not deployment proof.
+5. Complete real member/admin/ROSE smoke tests, two-session locking rehearsal, a game-membership dry-run and a reviewed small batch. For a dry-run before live activation, invoke the existing `syncGameMemberships` helper in a guarded one-shot operator process with the intended production settings, an in-memory enabled flag and `{ dryRun: true }`; keep the deployed Worker's flag false. Do not enable the scheduled live Worker merely to preview changes. Enable required runtimes only after these gates pass; verify persisted status/audit, notification and preservation before broadening.
+
+### Enabling later
+
+1. Under separate production database authorization, finish the foundation schema and apply `20261021_discord_game_membership_expand.sql`, then `20261022_discord_game_membership_observation_ordering.sql`. Verify the mappings, grants and preservation checks above; do not replay installed scripts or copy Dev data.
+2. Complete the controlled dry-run/smoke gates while the deployed automation remains off.
+3. Change `DISCORD_GAME_MEMBERSHIP_ENABLED` to `true` in the production Worker's `[vars]`, retain `DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF=efchfvreaotskrdlweze`, and deploy from `workers/discord-sync` with `npx --no-install wrangler deploy --config wrangler.toml --keep-vars`.
+4. For immediate acceptance on website Apply, deploy the compatible website with the same two server-only controls and its authorized bot token/matching production credentials. Enabling only the Worker gives periodic recovery, not the website's immediate Apply path.
+5. Check a small real batch and its persisted audit/notification. To stop automation, restore the flag to `false` and redeploy/restart the relevant runtimes; retain schema and history.
 
 Manual SQL Editor changes need an operator log/history reconciliation; they do not automatically reproduce Dev migration history. Do not run unchecked `supabase db push` over installed objects.
 

@@ -50,7 +50,7 @@ Never commit environment files or expose server secrets with a `VITE_` prefix. M
 | `npm run format`                           | Prettier                 |
 | `node --experimental-test-module-mocks --import tsx --test tests/*.test.ts` | Regression tests         |
 
-Discord tooling is documented in [docs/discord-bot.md](docs/discord-bot.md). Optional [Discord-based game acceptance](docs/discord-game-membership-automation.md) is implemented and rehearsed on Dev, but remains disabled by default and is **not deployed to production**. It requires the additional expand/ordering SQL migrations and explicit runtime activation.
+Discord tooling is documented in [docs/discord-bot.md](docs/discord-bot.md). Optional [Discord-based game acceptance](docs/discord-game-membership-automation.md) is implemented and rehearsed on Dev. The Worker code is deployed with automation **disabled**; production SQL and explicit Worker/website activation remain separate requirements.
 
 ## Key routes
 

@@ -28,7 +28,7 @@ What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and m
 
 **Edit Profile scroll, compact Overview identities and game acceptance alerts — behavior, verification and release gates:** [member-dashboard-ux-and-notifications.md](./member-dashboard-ux-and-notifications.md)
 
-**Discord-based game acceptance — implemented locally, Dev SQL rehearsal, additional migrations, isolated targets and manual CLI rollout/recovery:** [discord-game-membership-automation.md](./discord-game-membership-automation.md). Disabled by default; no production activation/deployment performed.
+**Discord-based game acceptance — Dev SQL rehearsal, additional migrations, isolated targets and manual CLI rollout/recovery:** [discord-game-membership-automation.md](./discord-game-membership-automation.md). Code-only Worker release deployed; game automation remains disabled.
 
 | **Migrate old prod DB → new Supabase project (production cutover):** [SUPABASE_PROD_MIGRATION.md](./SUPABASE_PROD_MIGRATION.md) — new prod ref `efchfvreaotskrdlweze`
 
