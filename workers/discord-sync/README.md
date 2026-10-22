@@ -2,6 +2,8 @@
 
 Scheduled Worker that syncs the Discord **ROSE** role to `members.status` in Supabase. Runs every 15 minutes; use `POST /sync/boost` for an immediate sync during active verification waves.
 
+**Optional game-membership automation:** disabled by default; requires the additional expand/ordering SQL and explicit project/guild settings. Follow [the membership rollout guide](../../docs/discord-game-membership-automation.md) for Dev isolation, default-safe dry-run, manual CLI deployment and recovery. Use `wrangler.dev.toml` explicitly for Dev; the default configuration targets the existing production service. No live deployment/activation was performed for this integration.
+
 ## Architecture
 
 ```text

@@ -8,7 +8,7 @@
 - Display accepted game membership names/icons on profiles whose privacy permits the viewer. Do not publish applications, inactive/left status, membership reasons, class, server or faction through this new projection.
 - Make `/br/{stored-profile-slug}` canonical. Preserve existing shared `/members/{slug}` links through a permanent redirect, without renaming stored slugs or deriving URLs again from mutable Discord/display names.
 
-Discord-based acceptance is **documentation-only and deferred**, not part of the current UI work. Its exact role mappings, proposed policies and future environment-isolation/release checklist live in `discord-game-membership-automation.md`. Existing manual acceptance and validation remain unchanged.
+Discord-based acceptance is separate from this workspace UI release. Its later optional implementation, approved rules, Dev rehearsal and additional SQL/activation requirements are documented in `discord-game-membership-automation.md`. Automation stays disabled by default; the manual workflow remains available.
 
 The subsequent Active/Inactive visibility work is verified separately in `game-status-visibility.md` and `game-status-dev-verification.json`: inactive games leave current user game/profile/membership displays and new choices, but saved data and existing team/tournament/history pages remain available. Its 221-test verification supersedes the earlier UI-only QA snapshot below.
 

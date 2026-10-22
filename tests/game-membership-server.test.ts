@@ -10,6 +10,7 @@ const f = {
   calls: [] as { table: string; filters: [string, unknown][] }[],
   rpcs: [] as { name: string; args: Record<string, unknown> }[],
   response: {} as Record<string, unknown>,
+  discordResponse: null as Record<string, unknown> | null,
   invalidations: 0,
   trustedOrigin: true,
   verified: true,
@@ -32,7 +33,7 @@ const hooks = registerHooks({
       from(table){const filters=[];f.calls.push({table,filters});let range;
         const data=()=>{let rows=(f.rows[table]||[]).filter(r=>filters.every(([key,val])=>Array.isArray(val)?val.includes(r[key]):r[key]===val));if(range)rows=rows.slice(range[0],range[0]+Math.min(2,range[1]-range[0]+1));return rows;};
         const q={select(){return q;},eq(key,val){filters.push([key,val]);return q;},in(key,val){filters.push([key,val]);return q;},order(){return q;},range(a,b){range=[a,b];return q;},maybeSingle:async()=>({data:data()[0]||null,error:null}),then(resolve,reject){return Promise.resolve({data:data(),error:null}).then(resolve,reject);}};return q;
-      },rpc:async(name,args)=>{f.rpcs.push({name,args});return {data:f.response,error:null};}
+      },rpc:async(name,args)=>{f.rpcs.push({name,args});return {data:name==='reconcile_discord_game_memberships'?{applied:f.discordResponse??f.response}:f.response,error:null};}
     };}`;
     if (source)
       return { url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true };
@@ -47,6 +48,7 @@ function reset() {
   f.calls = [];
   f.rpcs = [];
   f.invalidations = 0;
+  f.discordResponse = null;
   f.trustedOrigin = true;
   f.verified = true;
   f.rows = {
@@ -246,4 +248,68 @@ test("admin acceptance uses the stable authenticated admin UUID, never the usern
   await service.changeGameMembershipAsAdmin({ memberId, gameId, status: "accepted" });
   assert.equal(f.rpcs[0].args.p_actor_id, memberId);
   assert.notEqual(f.rpcs[0].args.p_actor_id, "fixture-admin");
+});
+
+test("enabled Apply uses a trusted Discord proof and one atomic RPC instead of preloading each game/profile table", async () => {
+  reset();
+  const keys = [
+    "DISCORD_GAME_MEMBERSHIP_ENABLED",
+    "DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF",
+    "VITE_SUPABASE_URL",
+    "DISCORD_GUILD_ID",
+    "DISCORD_BOT_TOKEN",
+  ];
+  const before = keys.map((key) => process.env[key]);
+  const originalFetch = globalThis.fetch;
+  try {
+    Object.assign(process.env, {
+      DISCORD_GAME_MEMBERSHIP_ENABLED: "true",
+      DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF: "xjwugbbrqpwnenmlrkdh",
+      VITE_SUPABASE_URL: "https://xjwugbbrqpwnenmlrkdh.supabase.co",
+      DISCORD_GUILD_ID: "1193921905795792906",
+      DISCORD_BOT_TOKEN: "fixture-token",
+    });
+    const roles = [
+      "1548977405069234256",
+      "1547101455125577789",
+      "1465129387182522450",
+      "1475345886434295898",
+      "1465128743726219287",
+      "1331615176784482306",
+      "1439483814182129695",
+    ];
+    const discordId = "111111111111111111";
+    f.rows.members[0].discord_id = discordId;
+    f.rows.member_game_profiles[0].members = { discord_id: discordId };
+    f.rows.member_game_profiles[0].games = { is_active: true };
+    globalThis.fetch = async (input) =>
+      Response.json(
+        String(input).endsWith("/roles")
+          ? roles.map((id) => ({ id }))
+          : { user: { id: discordId }, roles },
+      );
+    f.response = {
+      member_id: memberId,
+      game_id: gameId,
+      status: "applying",
+      updated_at: "2026-01-01",
+    };
+    f.discordResponse = { ...f.response, status: "accepted" };
+    const saved = await service.changeMyGameMembership({ gameId, action: "apply" });
+    assert.equal(saved.status, "accepted");
+    assert.equal(f.rpcs.length, 1);
+    assert.equal(f.rpcs[0].name, "reconcile_discord_game_memberships");
+    assert.equal(f.rpcs[0].args.p_apply_member_id, memberId);
+    assert.equal(f.rpcs[0].args.p_apply_game_id, gameId);
+    assert.deepEqual(
+      f.calls.map((call) => call.table),
+      ["member_game_profiles"],
+    );
+  } finally {
+    keys.forEach((key, index) => {
+      if (before[index] === undefined) delete process.env[key];
+      else process.env[key] = before[index];
+    });
+    globalThis.fetch = originalFetch;
+  }
 });

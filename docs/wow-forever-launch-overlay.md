@@ -18,7 +18,7 @@ At or after the deadline:
 - The dedicated page remains accessible for an active game. Its countdown becomes **Now live**, retaining the announcement and Discord joining information. Fresh post-expiry visits also show Now live.
 - Expiry itself never navigates or reloads the user's page. Only a later user click follows the destination.
 
-Inactive games, unavailable catalogs and catalog failures withhold the icon and page campaign content, Discord action and iframe, including direct page visits. Failed page reads offer Retry. Palworld and Where Winds Meet destinations, Palworld query gating and Show more ordering are preserved. Visiting this page or Discord does not grant website membership; deferred Discord acceptance automation is untouched.
+Inactive games, unavailable catalogs and catalog failures withhold the icon and page campaign content, Discord action and iframe, including direct page visits. Failed page reads offer Retry. Palworld and Where Winds Meet destinations, Palworld query gating and Show more ordering are preserved. Visiting this page or Discord does not grant website membership; the separate opt-in acceptance rules and deployment gates are in `discord-game-membership-automation.md`.
 
 ## Exact deadline and provenance
 

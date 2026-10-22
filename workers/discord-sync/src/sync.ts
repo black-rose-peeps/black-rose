@@ -21,6 +21,14 @@ import {
   type SyncMemberRow,
 } from "./sync-queue";
 import { buildStrikeUpdate, type MemberRow } from "./sync-strike";
+import { isDiscordGameMembershipEnabled } from "../../../src/features/game-membership/discord-role-proof";
+import {
+  assertGameMembershipTargetIfEnabled,
+  GAME_MEMBERSHIP_RESERVED_REQUESTS,
+  SubrequestBudget,
+  syncGameMemberships,
+  type GameMembershipSyncSummary,
+} from "./game-membership";
 
 /** Minimum batch slots reserved for verified ROSE-removal checks each run. */
 function verifiedReservedSlots(batchSize: number): number {
@@ -28,6 +36,7 @@ function verifiedReservedSlots(batchSize: number): number {
 }
 
 export interface SyncSummary {
+  gameMemberships?: GameMembershipSyncSummary;
   checked: number;
   updated: number;
   verified: number;
@@ -64,6 +73,15 @@ export async function syncRoseRoles(
   env: Env,
   options?: SyncRoseRolesOptions,
 ): Promise<SyncSummary> {
+  assertGameMembershipTargetIfEnabled(env);
+  const budget = isDiscordGameMembershipEnabled(env.DISCORD_GAME_MEMBERSHIP_ENABLED)
+    ? new SubrequestBudget()
+    : undefined;
+  const roseLimit =
+    WORKERS_FREE_SUBREQUEST_BUDGET -
+    SUBREQUEST_MARGIN -
+    (budget ? GAME_MEMBERSHIP_RESERVED_REQUESTS : 0);
+  const onRoseRequest = budget ? () => budget.take(roseLimit) : undefined;
   const batchSize = getMaxMembersPerRun(env);
   const hotDays = getHotQueueDays(env);
   const strikeLimit = getNotInGuildStrikeLimit(env);
@@ -95,9 +113,10 @@ export async function syncRoseRoles(
     priorityNotVerified: options?.priorityNotVerified ?? false,
   };
 
-  const roseRoleId = await resolveRoseRoleId(env);
+  const roseRoleId = await resolveRoseRoleId(env, onRoseRequest);
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
+    ...(budget ? { global: { fetch: budget.fetch(roseLimit) } } : {}),
   });
 
   const rotationMs = baselineIntervalMinutes * 60 * 1000;
@@ -106,7 +125,7 @@ export async function syncRoseRoles(
   const priorityNotVerified = options?.priorityNotVerified ?? false;
 
   const queueCounts = await countNotVerifiedQueues(supabase, cutoffIso);
-  summary.subrequestsUsed += 3;
+  if (!budget) summary.subrequestsUsed += 3;
 
   summary.notVerifiedHotQueued = queueCounts.hot;
   summary.notVerifiedColdQueued = queueCounts.cold;
@@ -206,16 +225,24 @@ export async function syncRoseRoles(
     }
   }
 
-  const subrequestLimit = WORKERS_FREE_SUBREQUEST_BUDGET - SUBREQUEST_MARGIN;
+  const subrequestLimit = roseLimit;
 
-  for (const member of members) {
+  // Honor reserved removal checks before the new game-phase reservation cuts
+  // this batch short. Leave legacy OFF ordering and explicit priority mode intact.
+  const processingMembers = budget
+    ? [
+        ...members.filter((member) => member.status === "Verified"),
+        ...members.filter((member) => member.status !== "Verified"),
+      ]
+    : members;
+  for (const member of processingMembers) {
     const discordId = member.discord_id?.trim();
     if (!discordId) {
       summary.skipped += 1;
       continue;
     }
 
-    if (summary.subrequestsUsed + 2 > subrequestLimit) {
+    if ((budget?.used ?? summary.subrequestsUsed) + 2 > subrequestLimit) {
       summary.deferred += 1;
       continue;
     }
@@ -227,6 +254,7 @@ export async function syncRoseRoles(
         env.DISCORD_BOT_TOKEN,
         env.DISCORD_GUILD_ID,
         discordId,
+        onRoseRequest,
       );
       summary.subrequestsUsed += 1;
 
@@ -253,7 +281,7 @@ export async function syncRoseRoles(
         continue;
       }
 
-      if (summary.subrequestsUsed + 1 > subrequestLimit) {
+      if ((budget?.used ?? summary.subrequestsUsed) + 1 > subrequestLimit) {
         summary.deferred += 1;
         console.warn(`[discord-sync] Deferred ${discordId} update (subrequest budget)`);
         continue;
@@ -309,5 +337,21 @@ export async function syncRoseRoles(
     }
   }
 
+  if (budget) {
+    try {
+      summary.gameMemberships = await syncGameMemberships(env, {
+        dryRun: false,
+        budget,
+        tick: rotationTick,
+      });
+    } catch (error) {
+      summary.errors++;
+      console.error(
+        "[discord-sync] Game membership phase failed closed:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+    summary.subrequestsUsed = budget.used;
+  }
   return summary;
 }

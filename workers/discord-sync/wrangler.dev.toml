@@ -1,0 +1,20 @@
+# DEV-only target. No cron, route, or production secrets are inherited.
+# Supply DEV credentials separately; membership writes stay disabled by default.
+name = "blackrose-discord-membership-dev"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+workers_dev = true
+
+[triggers]
+crons = []
+
+[vars]
+DISCORD_GUILD_ID = "1193921905795792906"
+DISCORD_ROSE_ROLE_NAME = "ROSE"
+DISCORD_ROSE_ROLE_ID = "1465647773658517660"
+SUPABASE_URL = "https://xjwugbbrqpwnenmlrkdh.supabase.co"
+DISCORD_GAME_MEMBERSHIP_ENABLED = "false"
+DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF = "xjwugbbrqpwnenmlrkdh"
+DISCORD_GAME_MEMBERSHIP_BATCH_SIZE = "8"
+SYNC_BATCH_SIZE = "22"
+SYNC_BASELINE_INTERVAL_MINUTES = "15"

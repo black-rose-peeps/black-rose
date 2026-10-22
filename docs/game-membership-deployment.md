@@ -18,7 +18,7 @@ See `../GLOSSARY.md`. One primary profile and one optional Black Rose membership
 
 Members maintain their own information and can express interest, apply, withdraw, or leave. Applying requires a saved nonblank IGN. An administrator controls Accepted and administrative status changes. Saving or importing an IGN never creates a membership or implies acceptance. Inactive games preserve saved information; withdrawal/leaving remain possible while new applications and acceptance are blocked.
 
-**Discord-based automatic acceptance is deferred and not implemented.** See `discord-game-membership-automation.md` before revisiting it or planning a main/production release: it records the owner's role mappings, shared-Worker target risk and future activation/recovery gates. The current website can ship with manual acceptance; merging it does not activate bot automation.
+**Optional Discord-based acceptance now has a separate implementation and Dev rehearsal.** See `discord-game-membership-automation.md` for its additional migration, approved rules, shared-Worker target risk and manual activation/recovery gates. This foundation website release can still ship with manual acceptance; merging it does not activate automation.
 
 ### Catalog integration
 
@@ -70,7 +70,7 @@ The expand file was already installed in Dev as `20261019063253`. Keep its histo
 - Record row counts and checksums of existing games, roles, members and member profiles. The verification SQL excludes only the two additive catalog columns when comparing original catalog data.
 - Preserve existing settings and data. No reset, truncation, table replacement, Dev-data import, or destructive contraction is part of this release.
 - Plan the application rollout and re-login notice so the new database RPCs exist before the corresponding code is served and protected catalog writers work before the RLS gate.
-- Explicitly retain manual membership or separately implement/approve the deferred Discord acceptance plan. Verify the actual Worker target independently of the website before exercising verification sync; local Dev app configuration alone does not isolate the shared Worker.
+- Explicitly retain manual membership or follow the separately gated Discord acceptance rollout. Verify the actual Worker target independently of the website before exercising verification sync; local Dev app configuration alone does not isolate the shared Worker.
 
 ## Backfill behavior and Dev evidence
 

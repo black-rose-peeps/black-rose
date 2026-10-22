@@ -7,6 +7,11 @@ import {
 } from "./discord-config.server";
 import { applyVerificationFromRoleIds } from "./discord-verification.server";
 import { resolveRoseRoleId } from "./discord-guild.server";
+import {
+  assertDiscordGameMembershipTarget,
+  isDiscordGameMembershipEnabled,
+} from "../../game-membership/discord-role-proof";
+import { syncDiscordGameMembershipByDiscordId } from "../../game-membership/server/discord-game-membership.server";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_USER_AGENT = "BlackRoseArena (https://blackrose.asia, 1.0.0)";
@@ -75,6 +80,37 @@ function parseMemberUpdate(data: unknown): GuildMemberUpdate | null {
   };
 }
 
+function assertGatewayMembershipTarget(guildId: string): void {
+  if (!isDiscordGameMembershipEnabled(process.env.DISCORD_GAME_MEMBERSHIP_ENABLED)) return;
+  assertDiscordGameMembershipTarget({
+    // Match getSupabaseAdmin's URL precedence exactly.
+    supabaseUrl: process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
+    expectedProjectRef: process.env.DISCORD_GAME_MEMBERSHIP_EXPECTED_PROJECT_REF,
+    guildId,
+  });
+}
+
+/** Events are wake-ups only: the membership adapter always reads authoritative REST. */
+export async function handleDiscordMembershipEvent(
+  eventType: string | undefined,
+  data: unknown,
+  config: { guildId: string; roseRoleId: string },
+): Promise<void> {
+  if (eventType !== "GUILD_MEMBER_UPDATE" && eventType !== "GUILD_MEMBER_REMOVE") return;
+  if (!data || typeof data !== "object") return;
+  const event = data as { guild_id?: unknown; user?: { id?: unknown } };
+  if (event.guild_id !== config.guildId || typeof event.user?.id !== "string") return;
+  assertGatewayMembershipTarget(config.guildId);
+  if (eventType === "GUILD_MEMBER_UPDATE") {
+    const update = parseMemberUpdate(data);
+    if (!update) return;
+    await applyVerificationFromRoleIds(event.user.id, update.roles, config.roseRoleId);
+  }
+  if (isDiscordGameMembershipEnabled(process.env.DISCORD_GAME_MEMBERSHIP_ENABLED)) {
+    await syncDiscordGameMembershipByDiscordId(event.user.id);
+  }
+}
+
 /** Long-running Discord Gateway worker — updates Supabase when ROSE role changes. */
 export async function startDiscordRoleBot(): Promise<void> {
   if (!isDiscordRoleSyncConfigured()) {
@@ -83,6 +119,7 @@ export async function startDiscordRoleBot(): Promise<void> {
 
   const token = getDiscordBotToken()!;
   const guildId = getDiscordGuildId()!;
+  assertGatewayMembershipTarget(guildId);
   const roseRoleId = await resolveRoseRoleId();
 
   if (!roseRoleId) {
@@ -176,15 +213,11 @@ export async function startDiscordRoleBot(): Promise<void> {
                 console.info("[discord-bot] Ready");
               }
 
-              if (payload.t === "GUILD_MEMBER_UPDATE") {
-                const update = parseMemberUpdate(payload.d);
-                if (!update || update.guild_id !== guildId || !update.user?.id) break;
-
-                void applyVerificationFromRoleIds(
-                  update.user.id,
-                  update.roles,
+              if (payload.t === "GUILD_MEMBER_UPDATE" || payload.t === "GUILD_MEMBER_REMOVE") {
+                void handleDiscordMembershipEvent(payload.t, payload.d, {
+                  guildId,
                   roseRoleId,
-                ).catch((err) => {
+                }).catch((err) => {
                   console.error(
                     "[discord-bot] Failed to sync member:",
                     err instanceof Error ? err.message : err,
