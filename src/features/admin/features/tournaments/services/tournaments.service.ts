@@ -75,7 +75,7 @@ function rowToTournament(row: TournamentRowWithGames | Record<string, unknown>):
   const participationType =
     (row.participation_type as ParticipationType | undefined) ??
     resolveParticipationType(game, wwmMode);
-  
+
   // Safely access nested games data
   const gamesData = (row as TournamentRowWithGames).games;
   const tournamentHeaderImage = gamesData?.tournament_header_image ?? null;
@@ -297,6 +297,21 @@ export async function fetchTournamentById(id: string): Promise<MockTournament | 
   return hydrateTournament(rowToTournament(data));
 }
 
+/** Member/public reads derive status without reconciling counts or persisting deadlines. */
+export async function fetchTournamentByIdReadOnly(id: string): Promise<MockTournament | null> {
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select(TOURNAMENT_WITH_GAME_COLUMNS)
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw new Error(error.message);
+  }
+  return data ? withResolvedTournamentStatus(rowToTournament(data)) : null;
+}
+
 /** SSR-safe tournament fetch via PostgREST (avoids supabase-js Realtime on Node). */
 export async function fetchTournamentByIdForSsr(id: string): Promise<MockTournament | null> {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -338,7 +353,7 @@ export async function createTournament(input: CreateTournamentInput): Promise<Mo
   }
 
   const gameId = gameData?.id ?? null;
-  
+
   if (!gameId) {
     throw new Error(`Game "${input.game}" not found in games table. Please create the game first.`);
   }

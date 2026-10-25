@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ArenaEmptyState } from "@/features/shared/components/ArenaEmptyState";
+
 import { TournamentRegistrationGuide } from "./TournamentRegistrationGuide";
 
 interface TeamsEmptyStateProps {
@@ -10,7 +11,7 @@ interface TeamsEmptyStateProps {
 
 export function TeamsEmptyState({ onCreateTeam }: TeamsEmptyStateProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <ArenaEmptyState
         compact
         eyebrow="No Roster"
@@ -25,7 +26,7 @@ export function TeamsEmptyState({ onCreateTeam }: TeamsEmptyStateProps) {
             <Button
               type="button"
               onClick={onCreateTeam}
-              className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
+              className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90 motion-reduce:transition-none"
             >
               <Plus className="h-4 w-4" />
               Create a Team
@@ -33,14 +34,13 @@ export function TeamsEmptyState({ onCreateTeam }: TeamsEmptyStateProps) {
             <Button
               asChild
               variant="outline"
-              className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase"
+              className="clip-cta inline-flex h-11 items-center rounded-none border-white/15 font-tech text-ui-readable uppercase motion-reduce:transition-none"
             >
               <Link to="/tournaments">Browse Tournaments</Link>
             </Button>
           </>
         }
       />
-
       <div>
         <p className="mb-3 font-tech text-label-readable uppercase text-muted-foreground">
           Tournament registration path

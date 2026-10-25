@@ -5,6 +5,7 @@ import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePalworldServerDetail } from "@/features/game-servers/hooks/usePalworldServerDetail";
+import { ActivePalworldBoundary } from "@/features/game-servers/components/ActivePalworldBoundary";
 import { usePalworldPlayers } from "@/features/game-servers/hooks/usePalworldPlayers";
 import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
 import { hasFullMemberAccess } from "@/features/auth/utils/routes";
@@ -1009,6 +1010,14 @@ function ActivePlayersPanel({
 // ---------------------------------------------------------------------------
 
 function ServerDetailPage() {
+  return (
+    <ActivePalworldBoundary>
+      <ServerDetailPageContent />
+    </ActivePalworldBoundary>
+  );
+}
+
+function ServerDetailPageContent() {
   const { id } = Route.useParams();
   const { server, isLoading, error } = usePalworldServerDetail(id);
   const session = useMemberSession();

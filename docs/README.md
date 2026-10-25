@@ -2,11 +2,33 @@
 
 What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and member flows read and write through Supabase services in the app.
 
+**Simple feature summary:** [patch-notes.md](./patch-notes.md)
+
+**Foundation membership release → Main/Prod: five foundation migrations, production run order, backfill discrepancy, pre/post checks and deployment gates:** [main-production-sql-rollout.md](./main-production-sql-rollout.md). Optional Discord automation requires the additional expand/ordering migrations below.
+
 **Detailed reference (TypeScript types, RLS examples, bracket columns):** [ADMIN_DATABASE.md](./ADMIN_DATABASE.md)
 
 **Tournaments & bracket Supabase setup (step-by-step):** [ADMIN_TOURNAMENTS.md](./ADMIN_TOURNAMENTS.md)
 
 **Clone prod DB → staging project (local + Vercel preview):** [SUPABASE_STAGING_CLONE.md](./SUPABASE_STAGING_CLONE.md)
+
+**Member directory game/role filters — Dev verification and production promotion:** [member-directory-deployment.md](./member-directory-deployment.md)
+
+**Navigation hubs, community typography, and profile editing — release checklist:** [user-experience-deployment.md](./user-experience-deployment.md)
+
+**Overview/My Teams request optimization — read boundaries, measured fixtures, and rollout:** [member-read-optimization.md](./member-read-optimization.md)
+
+**Game profiles, explicit game membership, trusted sessions and RLS — Dev evidence and production rollout:** [game-membership-deployment.md](./game-membership-deployment.md)
+
+**My Games workspace, independent saves, accepted public memberships and `/br/` profile URLs:** [game-workspace-redesign.md](./game-workspace-redesign.md)
+
+**Game Active/Inactive status — user visibility, preserved profiles and historical records, verification and application-only rollout:** [game-status-visibility.md](./game-status-visibility.md)
+
+**WoW Forever — dedicated launch page, understated countdown, embedded announcement and automatic community fallback:** [wow-forever-launch-overlay.md](./wow-forever-launch-overlay.md)
+
+**Edit Profile scroll, compact Overview identities and game acceptance alerts — behavior, verification and release gates:** [member-dashboard-ux-and-notifications.md](./member-dashboard-ux-and-notifications.md)
+
+**Discord-based game acceptance — Dev SQL rehearsal, additional migrations, isolated targets and manual CLI rollout/recovery:** [discord-game-membership-automation.md](./discord-game-membership-automation.md). Code-only Worker release deployed; game automation remains disabled.
 
 | **Migrate old prod DB → new Supabase project (production cutover):** [SUPABASE_PROD_MIGRATION.md](./SUPABASE_PROD_MIGRATION.md) — new prod ref `efchfvreaotskrdlweze`
 
@@ -16,7 +38,7 @@ What you need in **Supabase (PostgreSQL)** to run the platform. Core admin and m
 
 The Admin Console (`/login?console=1` → `/admin`) uses a **username + password** flow separate from the Discord OAuth used by regular members.
 
-Admin credentials live in a dedicated **`admin_accounts`** table — not in `.env` and not on player `members` rows. The app calls `verify_admin_login` (Supabase RPC) on sign-in.
+Admin credentials live in a dedicated **`admin_accounts`** table — not in `.env` and not on player `members` rows. The trusted server calls `verify_admin_login` on sign-in and issues a signed HttpOnly session cookie. The browser must not call credential/session RPCs directly after the catalog/auth RLS gate.
 
 **Setup (two steps in Supabase SQL Editor):**
 
@@ -29,7 +51,9 @@ select public.create_admin_account('admin', 'your-secure-password-here');
 
 Then sign in at `/login?console=1` with those credentials.
 
-Required env vars (Supabase only — no admin seed vars):
+Configure server-only `SUPABASE_SERVICE_ROLE_KEY` and a random `SESSION_SECRET` of at least 32 characters, in addition to the browser variables below. Use environment-specific credentials and a separately generated production signing secret; never expose either server value through a `VITE_` variable. See the deployment guide before enabling protected writes.
+
+Browser variables:
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
@@ -76,15 +100,15 @@ Members → Teams → Tournaments → Participants → Bracket
 
 ### `teams` — teams
 
-| Column                 | Type        | Notes                                                               |
-| ---------------------- | ----------- | ------------------------------------------------------------------- |
-| `id`                   | uuid        | **PK**                                                              |
-| `name`                 | text        |                                                                     |
-| `tag`                  | text        | unique                                                              |
+| Column                 | Type        | Notes                                                                                     |
+| ---------------------- | ----------- | ----------------------------------------------------------------------------------------- |
+| `id`                   | uuid        | **PK**                                                                                    |
+| `name`                 | text        |                                                                                           |
+| `tag`                  | text        | unique                                                                                    |
 | `game`                 | text        | `Valorant` \| `League of Legends` \| `Teamfight Tactics` \| `Where Winds Meet` \| `Multi` |
-| `captain_user_id`      | uuid        | **FK → profiles.id**                                                |
-| `active_tournament_id` | uuid/text   | nullable **FK → tournaments.id**                                    |
-| `created_at`           | timestamptz |                                                                     |
+| `captain_user_id`      | uuid        | **FK → profiles.id**                                                                      |
+| `active_tournament_id` | uuid/text   | nullable **FK → tournaments.id**                                                          |
+| `created_at`           | timestamptz |                                                                                           |
 
 ---
 

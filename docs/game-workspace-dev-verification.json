@@ -1,0 +1,194 @@
+{
+  "environment": "Dev/Preview only",
+  "project_ref": "xjwugbbrqpwnenmlrkdh",
+  "production_executed": false,
+  "branch": "work/local-development",
+  "head": "3453afe",
+  "migration": {
+    "version": "20261019161848",
+    "name": "game_workspace_preferences_20261019",
+    "file": "sql/20261019_game_workspace_preferences.sql",
+    "status": "applied and read back on Dev"
+  },
+  "function_readback": [
+    {
+      "signature": "set_member_main_game(uuid,uuid)",
+      "normalized_body_checksum": "58f2e5de4cdab185e48d08f90208f44b",
+      "repository_body_match": true,
+      "security_definer": false,
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "signature": "update_member_profile_details(uuid,text,text,text,text,boolean)",
+      "normalized_body_checksum": "77b68f7ea8f8527fc3ce737ed0092b2e",
+      "repository_body_match": true,
+      "security_definer": false,
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    }
+  ],
+  "preservation_before_migration_and_after_rollback_rehearsal": {
+    "method": "md5 of jsonb_agg(to_jsonb(row) ordered by id), including all current columns; not directly comparable to older selective-column checksums",
+    "members": { "count": 261, "checksum": "4f7f06d726daef9cc147b6fc73eb7c44" },
+    "member_profiles": { "count": 261, "checksum": "6346382a4d52d19094dd0df60ee896c6" },
+    "games": { "count": 10, "checksum": "6a5d406a0755214c7f5c6764b8d22561" },
+    "game_roles": { "count": 38, "checksum": "385688be599a3f5aa46dba6bc2d04235" },
+    "game_profiles_count": 85,
+    "memberships_count": 2,
+    "events_count": 3,
+    "matching_before_after": true,
+    "note": "This later snapshot includes Dev data already present before the workspace migration. It does not replace the earlier 84-profile backfill snapshot or attribute intervening edits."
+  },
+  "rollback_only_sql_verification": {
+    "file": "sql/20261019_game_workspace_verify.sql",
+    "status": "passed; all synthetic writes rolled back",
+    "checks": [
+      "canonical Main Game projection",
+      "common details preserved by Main Game writes",
+      "Main Game preserved by common detail writes",
+      "no inferred profile or membership",
+      "Riot identity preserved",
+      "inactive, unknown, ambiguous game and missing member rejected",
+      "explicit preference clear",
+      "game profiles, memberships and audit preserved",
+      "browser-role execution denied by function privileges"
+    ],
+    "two_session_lock_contention": "not exercised; same members-row lock inspected in SQL"
+  },
+  "focused_application_tests": {
+    "public_projection_components_and_legacy_redirect": { "passed": 11, "failed": 0 },
+    "details_only_writer_regression": "passed after verified RED/GREEN",
+    "main_game_server_transport_sql_and_membership_guards": { "passed": 19, "failed": 0 }
+  },
+  "public_browser_fixtures": {
+    "script_in_hermes_scratch": "public-memberships-browser-qa.mjs",
+    "scenarios": ["desktop", "mobile", "private-profile guest"],
+    "status": "passed",
+    "legacy_http_status": 301,
+    "canonical_fixture_path": "/br/fixture-slug",
+    "canonical_http_status": 200,
+    "horizontal_overflow": false,
+    "page_errors": 0,
+    "remote_writes": 0,
+    "real_authenticated_account": false,
+    "sidebar_order": ["Player Info", "Black Rose memberships", "Social Links"],
+    "narrow_column_names_and_status_layout": "passed"
+  },
+  "admin_browser_fixtures": {
+    "script_in_hermes_scratch": "game-roster-browser-qa.mjs",
+    "scenarios": ["desktop", "mobile"],
+    "status": "passed",
+    "scope": "real roster component and QueryClient, fixture services, not authenticated admin account",
+    "checks": [
+      "keyboard-searchable game picker",
+      "secondary filters collapsed by default and removable active chips while collapsed",
+      "compact rows with configured character details retained in the drawer",
+      "status and roster filtering",
+      "12 all-filtered CSV rows beyond the visible page",
+      "spreadsheet formula neutralization",
+      "member detail drawer",
+      "failed-save retry and preserved reason",
+      "status refresh",
+      "Escape close"
+    ],
+    "horizontal_overflow": false,
+    "page_errors": 0,
+    "remote_writes": 0,
+    "settled_viewport_screenshots_inspected": true
+  },
+  "member_browser_fixtures": {
+    "script_in_hermes_scratch": "my-games-browser-qa.mjs",
+    "scenarios": ["desktop", "mobile"],
+    "status": "passed",
+    "scope": "real Dashboard/Profile routes with isolated session and remote-service fixtures",
+    "dashboard_order": ["Overview", "My Games", "Teams"],
+    "scroll_preserved": true,
+    "untouched_prefill_reload_warnings_per_scenario": 0,
+    "real_edit_reload_warning_per_scenario": 1,
+    "cancelled_reload_preserves_draft": true,
+    "themed_scrollbar": true,
+    "checks": [
+      "legacy game-editor redirect",
+      "keyboard-searchable Main Game",
+      "independent preference save",
+      "draft preservation between games",
+      "dirty exit cancellation",
+      "failed-save retry",
+      "explicit membership application",
+      "Region remains editable in Identity",
+      "common detail save preserves Main Game",
+      "privacy retained"
+    ],
+    "horizontal_overflow": false,
+    "page_errors": 0,
+    "remote_writes": 0,
+    "screenshots_inspected": true
+  },
+  "directory_browser_fixtures": {
+    "script_in_hermes_scratch": "member-directory-browser-qa.mjs",
+    "scenarios": ["desktop", "mobile"],
+    "status": "passed",
+    "scope": "real directory filters and filtering/CSV utilities with fixture parent and members, not full admin route or authenticated account",
+    "checks": [
+      "closed secondary filters and optional help",
+      "keyboard-searchable game catalog",
+      "14 unknown secondary roles",
+      "literal all role independent of All roles",
+      "collapsed chips and reset",
+      "6 filtered CSV rows beyond 3 visible fixture rows",
+      "CSV formula neutralization"
+    ],
+    "horizontal_overflow": false,
+    "page_errors": 0,
+    "remote_writes": 0,
+    "screenshots_inspected": true
+  },
+  "dropdown_scrollbar_browser_fixtures": {
+    "script_in_hermes_scratch": "dropdown-scrollbar-browser-qa.mjs",
+    "scenarios": ["desktop", "mobile"],
+    "status": "passed",
+    "scope": "real shared CommandList, Select viewport and DropdownMenuContent with long isolated catalogs",
+    "computed_scrollbar_width": "thin",
+    "matching_theme_colors": true,
+    "actual_scrolling_and_last_option_selection": true,
+    "page_errors": 0,
+    "remote_writes": 0
+  },
+  "ui_followup_scope": {
+    "new_database_migrations": false,
+    "bot_or_worker_changes": false,
+    "discord_acceptance": "deferred; documentation only in discord-game-membership-automation.md",
+    "owner_role_mapping_pairs_exactly_verified": 7
+  },
+  "combined_suite_snapshot": {
+    "passed": 186,
+    "failed": 0,
+    "skipped": 0,
+    "final_after_all_integration": true
+  },
+  "production_build": "passed",
+  "scoped_lint": {
+    "scope": "source and focused test files touched by this UI follow-up",
+    "errors": 0,
+    "warnings": 0,
+    "new_error_diagnostics": 0,
+    "whole_repository_lint": "not claimed clean; prior expanded source scope had two HEAD-existing no-explicit-any errors in RosterTable.tsx and four warnings"
+  },
+  "typecheck": {
+    "current_diagnostics": 18,
+    "fresh_archived_head_diagnostics": 18,
+    "added_diagnostics": 0,
+    "removed_diagnostics": 0,
+    "status": "existing baseline errors remain; TypeScript itself does not pass",
+    "comparison": "diagnostic multisets with checkout positions and equivalent quoted-union ordering normalized"
+  },
+  "git_diff_check": "passed",
+  "review": "Initial security/correctness review findings corrected and regression-verified; member/admin/public presentation checks reconciled. Not a full application security audit.",
+  "pending": [
+    "real OAuth/admin re-login and supported native/mobile authentication rehearsal",
+    "separately authorized production preflight and deployment"
+  ]
+}

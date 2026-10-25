@@ -1,8 +1,9 @@
 import {
-  fetchTeamById,
+  fetchTeamsByIds,
   fetchUserTeamMembershipRows,
 } from "@/features/admin/features/teams/services/teams.service";
 import type { Team } from "@/features/teams/types";
+import { fetchMemberTeamsCached } from "@/features/member/queries/member-data-queries";
 import type { TeamMemberStatus } from "@/features/teams/types";
 import {
   getNotifications,
@@ -71,25 +72,49 @@ function resolveNotificationTime(
 }
 
 /** Sync pending invites and roster-removal alerts for the logged-in member. */
-export async function syncTeamMembershipNotifications(userId: string): Promise<AppNotification[]> {
+const inFlightByMember = new Map<string, Promise<AppNotification[]>>();
+
+export function syncTeamMembershipNotifications(userId: string): Promise<AppNotification[]> {
+  const existing = inFlightByMember.get(userId);
+  if (existing) return existing;
+  const sync = syncMembershipNotifications(userId).finally(() => {
+    if (inFlightByMember.get(userId) === sync) inFlightByMember.delete(userId);
+  });
+  inFlightByMember.set(userId, sync);
+  return sync;
+}
+
+async function syncMembershipNotifications(userId: string): Promise<AppNotification[]> {
   const memberships = await fetchUserTeamMembershipRows(userId);
   const previousSnapshot = loadStatusSnapshot(userId);
   const nextSnapshot: Record<string, TeamMemberStatus> = {};
 
-  const existingNotifications = getNotifications();
+  const existingNotifications = getNotifications(userId);
   const existingById = new Map(existingNotifications.map((n) => [n.id, n] as const));
   const readById = new Map(
     existingNotifications.filter((n) => n.read).map((n) => [n.id, true] as const),
   );
-  const createdAtById = new Map(
-    existingNotifications.map((n) => [n.id, n.createdAt] as const),
-  );
+  const createdAtById = new Map(existingNotifications.map((n) => [n.id, n.createdAt] as const));
 
-  const teamIds = [...new Set(memberships.map((m) => m.teamId))];
-  const teams = await Promise.all(teamIds.map((teamId) => fetchTeamById(teamId)));
-  const teamById = new Map(
-    teams.filter((team): team is Team => team !== null).map((team) => [team.id, team]),
-  );
+  const teams = await fetchMemberTeamsCached(userId);
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+  const missingTeamIds = [
+    ...new Set(
+      memberships
+        .filter(
+          (membership) =>
+            !teamById.has(membership.teamId) &&
+            (membership.status === "invited" ||
+              (membership.status === "removed" &&
+                (shouldNotifyRemoval(previousSnapshot[membership.teamId], membership.status) ||
+                  existingById.has(`team-removed-${membership.teamId}`)))),
+        )
+        .map((membership) => membership.teamId),
+    ),
+  ];
+  if (missingTeamIds.length) {
+    for (const team of await fetchTeamsByIds(missingTeamIds)) teamById.set(team.id, team);
+  }
 
   const pendingInvites: AppNotification[] = [];
   const removalEvents: AppNotification[] = [];
@@ -103,12 +128,11 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
 
     if (membership.status === "invited") {
       const notificationId = `team-invite-${team.id}`;
-      const alreadyRead = isNotificationRead(notificationId);
-      const unread =
-        !alreadyRead && shouldMarkInviteUnread(previousStatus, membership.status);
+      const alreadyRead = isNotificationRead(notificationId, userId);
+      const unread = !alreadyRead && shouldMarkInviteUnread(previousStatus, membership.status);
       const read = unread
         ? false
-        : readById.has(notificationId) || isNotificationRead(notificationId);
+        : readById.has(notificationId) || isNotificationRead(notificationId, userId);
       pendingInvites.push({
         id: notificationId,
         type: "team_invite",
@@ -127,7 +151,7 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
 
     if (membership.status === "removed") {
       const notificationId = `team-removed-${team.id}`;
-      const alreadyRead = isNotificationRead(notificationId);
+      const alreadyRead = isNotificationRead(notificationId, userId);
       const freshRemoval = shouldNotifyRemoval(previousStatus, membership.status);
       const alreadyNotified = existingById.has(notificationId);
       if (!freshRemoval && !alreadyNotified) continue;
@@ -135,7 +159,7 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
       const unread = !alreadyRead && freshRemoval;
       const read = unread
         ? false
-        : readById.has(notificationId) || isNotificationRead(notificationId);
+        : readById.has(notificationId) || isNotificationRead(notificationId, userId);
       removalEvents.push({
         id: notificationId,
         type: "team_removed",
@@ -147,14 +171,14 @@ export async function syncTeamMembershipNotifications(userId: string): Promise<A
           createdAtById.get(notificationId),
         ),
         read,
-        href: "/teams",
+        href: "/dashboard?view=teams",
       });
     }
   }
 
   saveStatusSnapshot(userId, nextSnapshot);
-  mergeTeamInviteNotifications(pendingInvites);
-  mergeTeamEventNotifications(removalEvents);
+  mergeTeamInviteNotifications(pendingInvites, userId);
+  mergeTeamEventNotifications(removalEvents, userId);
   notifyListeners();
 
   return [...pendingInvites, ...removalEvents];

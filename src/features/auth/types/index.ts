@@ -26,6 +26,6 @@ export interface AppUser {
   role: UserRole;
   /** ISO timestamp of when the account was created in our system */
   registeredAt: string;
-  /** Public profile slug — used for /members/:slug links */
+  /** Stable public profile slug — used for /br/:slug links. */
   profileSlug?: string;
 }

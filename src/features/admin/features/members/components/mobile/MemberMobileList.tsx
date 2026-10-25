@@ -5,9 +5,12 @@ import { MemberAvatar } from "@/features/member/components/MemberAvatar";
 import { memberStatusBadgeVariant, initialsFromName } from "../../utils";
 import type { AdminMember } from "../../types";
 import { MemberMobileRowActions } from "./MemberMobileRowActions";
+import { MemberGameDetails } from "../MemberGameDetails";
+import type { DirectoryGame } from "../../utils/member-directory";
 
 interface MemberMobileListProps {
   members: AdminMember[];
+  selectedGame?: DirectoryGame | null;
   page: number;
   totalPages: number;
   total: number;
@@ -34,6 +37,7 @@ interface MemberMobileListProps {
 /** Mobile-intentional member directory. */
 export function MemberMobileList({
   members,
+  selectedGame = null,
   page,
   totalPages,
   total,
@@ -81,6 +85,7 @@ export function MemberMobileList({
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">@{member.discordUsername}</p>
+                  <MemberGameDetails member={member} game={selectedGame} />
                   <p className="mt-1 font-tech text-label-readable uppercase text-muted-foreground">
                     Registered {member.registeredAt}
                   </p>

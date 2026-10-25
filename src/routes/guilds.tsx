@@ -5,6 +5,7 @@ import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { useMemberSession } from "@/features/auth/hooks/useMemberSession";
+import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import { DiscordAppAnchor } from "@/features/shared/components/DiscordAppAnchor";
 import { DISCORD_VERIFICATION_CHANNEL_URL } from "@/features/auth/constants";
 import wwmGuildBanner from "@/assets/wwm-guild-header.jpg";
@@ -298,6 +299,37 @@ function GuildsPage() {
   const session = useMemberSession();
   const isAuthenticated = session !== null;
   const [activeGuild, setActiveGuild] = useState<Guild | null>(null);
+  const { data: games, isLoading, isError, refetch } = useActiveGames();
+  const available =
+    !isLoading &&
+    !isError &&
+    games?.some((game) => game.is_active && game.slug === "where-winds-meet");
+
+  if (!available)
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <main className="site-header-offset-hero mx-auto min-h-[60vh] max-w-3xl px-6 pb-20">
+          <h1 className="font-display text-4xl tracking-display">In-Game Guilds</h1>
+          <p role={isError ? "alert" : "status"} className="mt-4 text-muted-foreground">
+            {isLoading
+              ? "Loading available games…"
+              : isError
+                ? "Unable to load available games. Please try again."
+                : "Guild information is currently unavailable."}
+          </p>
+          {isError && (
+            <button type="button" className="mt-4 underline" onClick={() => void refetch()}>
+              Retry
+            </button>
+          )}
+          <Link to="/community" className="mt-6 inline-block underline">
+            Back to community
+          </Link>
+        </main>
+        <Footer />
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-background text-foreground">

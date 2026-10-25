@@ -6,12 +6,21 @@ import { MEMBER_READ_QUERY_OPTIONS } from "./member-query-options";
 import { TOURNAMENTS_QUERY_KEY } from "@/features/tournaments/hooks";
 import type { MockTournament } from "@/lib/mock-data";
 
-// Create a stable tournament snapshot for query key
+// Include the inputs used to build dashboard entries, not only tournament IDs.
 function getTournamentSnapshot(tournaments?: MockTournament[]) {
   if (!tournaments || tournaments.length === 0) return "empty";
-  // Use sorted tournament IDs for stable representation
-  const sortedIds = tournaments.map((t) => t.id).sort();
-  return sortedIds.join(",");
+  return JSON.stringify(
+    [...tournaments]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((tournament) => [
+        tournament.id,
+        tournament.name,
+        tournament.game,
+        tournament.status,
+        tournament.startDate,
+        tournament.registrationDeadline,
+      ]),
+  );
 }
 
 export function memberTournamentDashboardQueryOptions(
@@ -26,7 +35,7 @@ export function memberTournamentDashboardQueryOptions(
       tournamentSnapshot,
     ],
     queryFn: () => fetchMemberTournamentDashboard(memberId!, { tournaments }),
-    enabled: !!memberId && !!tournaments && tournaments.length > 0,
+    enabled: !!memberId && tournaments !== undefined,
     ...MEMBER_READ_QUERY_OPTIONS,
   });
 }

@@ -11,7 +11,10 @@ export const fetchMemberProfileBySlug = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<MemberProfile | null> => {
     const { fetchMemberProfileBySlug } = await import("../server/profile.server");
-    return fetchMemberProfileBySlug(data.slug, data.viewerMemberId);
+    const { getTrustedMemberSession } =
+      await import("@/features/auth/server/trusted-session.server");
+    const viewer = await getTrustedMemberSession();
+    return fetchMemberProfileBySlug(data.slug, viewer?.memberId);
   });
 
 export const fetchMyMemberProfile = createServerFn({ method: "POST" })
@@ -21,7 +24,10 @@ export const fetchMyMemberProfile = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<MemberProfile | null> => {
     const { fetchMemberProfileByMemberId } = await import("../server/profile.server");
-    return fetchMemberProfileByMemberId(data.memberId);
+    const { requireMemberSession } = await import("@/features/auth/server/trusted-session.server");
+    const { memberId } = await requireMemberSession();
+    if (data.memberId !== memberId) throw new Error("Unauthorized.");
+    return fetchMemberProfileByMemberId(memberId);
   });
 
 export interface UpdateMyMemberProfileInput {
@@ -46,5 +52,10 @@ export const updateMyMemberProfile = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<MemberProfile> => {
     const { updateMemberProfile } = await import("../server/profile.server");
-    return updateMemberProfile(data);
+    const { requireMemberSession, assertTrustedOrigin } =
+      await import("@/features/auth/server/trusted-session.server");
+    assertTrustedOrigin();
+    const { memberId } = await requireMemberSession();
+    if (data.memberId !== memberId) throw new Error("Unauthorized.");
+    return updateMemberProfile({ ...data, memberId });
   });

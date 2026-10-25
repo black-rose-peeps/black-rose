@@ -33,6 +33,8 @@ import { Route as TeamsIdRouteImport } from './routes/teams.$id'
 import { Route as ServersIdRouteImport } from './routes/servers.$id'
 import { Route as MembersSlugRouteImport } from './routes/members.$slug'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
+import { Route as CommunityWowForeverRouteImport } from './routes/community.wow-forever'
+import { Route as BrSlugRouteImport } from './routes/br.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments'
@@ -167,6 +169,16 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRoute,
 } as any)
+const CommunityWowForeverRoute = CommunityWowForeverRouteImport.update({
+  id: '/community/wow-forever',
+  path: '/community/wow-forever',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrSlugRoute = BrSlugRouteImport.update({
+  id: '/br/$slug',
+  path: '/br/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -254,6 +266,8 @@ export interface FileRoutesByFullPath {
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/br/$slug': typeof BrSlugRoute
+  '/community/wow-forever': typeof CommunityWowForeverRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/members/$slug': typeof MembersSlugRoute
   '/servers/$id': typeof ServersIdRoute
@@ -286,6 +300,8 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/br/$slug': typeof BrSlugRoute
+  '/community/wow-forever': typeof CommunityWowForeverRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/members/$slug': typeof MembersSlugRoute
   '/servers/$id': typeof ServersIdRoute
@@ -326,6 +342,8 @@ export interface FileRoutesById {
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/br/$slug': typeof BrSlugRoute
+  '/community/wow-forever': typeof CommunityWowForeverRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/members/$slug': typeof MembersSlugRoute
   '/servers/$id': typeof ServersIdRoute
@@ -367,6 +385,8 @@ export interface FileRouteTypes {
     | '/admin/tournaments'
     | '/admin/users'
     | '/auth/callback'
+    | '/br/$slug'
+    | '/community/wow-forever'
     | '/dashboard/profile'
     | '/members/$slug'
     | '/servers/$id'
@@ -399,6 +419,8 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/teams'
     | '/auth/callback'
+    | '/br/$slug'
+    | '/community/wow-forever'
     | '/dashboard/profile'
     | '/members/$slug'
     | '/servers/$id'
@@ -438,6 +460,8 @@ export interface FileRouteTypes {
     | '/admin/tournaments'
     | '/admin/users'
     | '/auth/callback'
+    | '/br/$slug'
+    | '/community/wow-forever'
     | '/dashboard/profile'
     | '/members/$slug'
     | '/servers/$id'
@@ -470,6 +494,8 @@ export interface RootRouteChildren {
   UnauthorizedRoute: typeof UnauthorizedRoute
   WaitlistRoute: typeof WaitlistRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  BrSlugRoute: typeof BrSlugRoute
+  CommunityWowForeverRoute: typeof CommunityWowForeverRoute
   MembersSlugRoute: typeof MembersSlugRoute
   ChampionsIndexRoute: typeof ChampionsIndexRoute
   CommunityIndexRoute: typeof CommunityIndexRoute
@@ -644,6 +670,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/profile'
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/community/wow-forever': {
+      id: '/community/wow-forever'
+      path: '/community/wow-forever'
+      fullPath: '/community/wow-forever'
+      preLoaderRoute: typeof CommunityWowForeverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/br/$slug': {
+      id: '/br/$slug'
+      path: '/br/$slug'
+      fullPath: '/br/$slug'
+      preLoaderRoute: typeof BrSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
       id: '/auth/callback'
@@ -860,6 +900,8 @@ const rootRouteChildren: RootRouteChildren = {
   UnauthorizedRoute: UnauthorizedRoute,
   WaitlistRoute: WaitlistRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  BrSlugRoute: BrSlugRoute,
+  CommunityWowForeverRoute: CommunityWowForeverRoute,
   MembersSlugRoute: MembersSlugRoute,
   ChampionsIndexRoute: ChampionsIndexRoute,
   CommunityIndexRoute: CommunityIndexRoute,

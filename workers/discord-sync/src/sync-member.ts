@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { assertGameMembershipTargetIfEnabled } from "./game-membership";
 import type { Env } from "./env";
 import { getNotInGuildStrikeLimit } from "./env";
 import { fetchGuildMemberRoleIds, resolveRoseRoleId } from "./discord";
@@ -19,6 +20,7 @@ export async function syncMemberByDiscordId(
   discordUserId: string,
   options?: { clearSyncState?: boolean },
 ): Promise<MemberSyncResult> {
+  assertGameMembershipTargetIfEnabled(env);
   const discordId = discordUserId.trim();
   if (!discordId) {
     throw new Error("Missing discordId.");
@@ -52,7 +54,7 @@ export async function syncMemberByDiscordId(
       : Number(row.discord_not_in_guild_strikes ?? 0),
     discord_sync_paused_at: options?.clearSyncState
       ? null
-      : (row.discord_sync_paused_at as string | null) ?? null,
+      : ((row.discord_sync_paused_at as string | null) ?? null),
   };
 
   const roleIds = await fetchGuildMemberRoleIds(

@@ -34,7 +34,11 @@ interface FullMediaEventCardProps extends EventCardProps {
   facebookVideoId: string;
 }
 
-export type EventCardWithMedia = VideoEventCardProps | ImageEventCardProps | MixedMediaEventCardProps | FullMediaEventCardProps;
+export type EventCardWithMedia =
+  | VideoEventCardProps
+  | ImageEventCardProps
+  | MixedMediaEventCardProps
+  | FullMediaEventCardProps;
 
 type MediaType = "youtube" | "facebook" | "image";
 
@@ -55,9 +59,7 @@ export function EventCard({
   if (hasFacebook) mediaTypes.push("facebook");
   if (hasImage) mediaTypes.push("image");
 
-  const [activeMedia, setActiveMedia] = useState<MediaType>(
-    mediaTypes[0] || "image"
-  );
+  const [activeMedia, setActiveMedia] = useState<MediaType>(mediaTypes[0] || "image");
 
   const activeIndex = mediaTypes.indexOf(activeMedia);
 
@@ -154,9 +156,7 @@ export function EventCard({
                   type="button"
                   onClick={() => setActiveMedia(type)}
                   className={`h-2 w-2 rounded-full transition ${
-                    activeMedia === type
-                      ? "bg-white"
-                      : "bg-white/40 hover:bg-white/60"
+                    activeMedia === type ? "bg-white" : "bg-white/40 hover:bg-white/60"
                   }`}
                   aria-label={`Switch to ${type}`}
                 />
@@ -185,7 +185,12 @@ export function EventCard({
         </div>
 
         <div className="relative mt-4 flex-1 border-t border-white/[0.07] pt-4">
-          <p className="text-sm leading-6 text-white/50 md:text-base">{description}</p>
+          <p
+            className="text-left text-sm leading-7 text-white/60 sm:text-justify sm:hyphens-auto md:text-base"
+            lang="en"
+          >
+            {description}
+          </p>
         </div>
       </div>
     </article>

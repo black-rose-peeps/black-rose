@@ -28,11 +28,11 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
   const onVerifiedRef = useRef(onVerified);
   onVerifiedRef.current = onVerified;
 
-  const applySessionUpdate = useCallback(async (): Promise<boolean> => {
+  const applySessionUpdate = useCallback(async (fresh = false): Promise<boolean> => {
     const session = getSession();
     if (!session) return false;
 
-    const updated = await syncMemberAccessFromDatabase();
+    const updated = await syncMemberAccessFromDatabase({ fresh });
     if (!updated) return false;
 
     if (hasFullMemberAccess(updated.role)) {
@@ -43,13 +43,16 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
     return false;
   }, []);
 
-  const syncVerificationFromDatabase = useCallback(async () => {
-    try {
-      await applySessionUpdate();
-    } catch {
-      // Background refresh — avoid noisy errors on poll/realtime.
-    }
-  }, [applySessionUpdate]);
+  const syncVerificationFromDatabase = useCallback(
+    async (fresh = false) => {
+      try {
+        await applySessionUpdate(fresh);
+      } catch {
+        // Background refresh — avoid noisy errors on poll/realtime.
+      }
+    },
+    [applySessionUpdate],
+  );
 
   const syncVerification = useCallback(async () => {
     const session = getSession();
@@ -63,7 +66,7 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
 
     try {
       const result = await refreshVerificationFromDiscord({ data: { memberId: session.id } });
-      let verified = await applySessionUpdate();
+      let verified = await applySessionUpdate(true);
 
       if (!verified && result.hasRose && result.status === "Verified" && !result.notInGuild) {
         const current = getSession();
@@ -83,7 +86,7 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
         }
 
         if (!verified) {
-          verified = await applySessionUpdate();
+          verified = await applySessionUpdate(true);
         }
       }
 
@@ -109,7 +112,7 @@ export function useVerificationSync({ onVerified, poll = true }: UseVerification
 
   const session = getSession();
   useMemberVerificationRealtime(session?.id ?? null, () => {
-    void syncVerificationFromDatabase();
+    void syncVerificationFromDatabase(true);
   });
 
   useEffect(() => {

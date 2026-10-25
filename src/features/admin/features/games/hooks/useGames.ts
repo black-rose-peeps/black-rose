@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MEMBER_READ_QUERY_OPTIONS } from "@/features/member/queries/member-query-options";
 import {
   getGames,
   getActiveGames,
@@ -23,6 +24,7 @@ export const GAME_QUERY_KEY = (id: string) => ["games", id] as const;
 export const GAME_SLUG_QUERY_KEY = (slug: string) => ["games", "slug", slug] as const;
 export const GAMES_WITH_ROLES_QUERY_KEY = ["games", "with-roles"] as const;
 export const GAME_ROLES_QUERY_KEY = (gameId: string) => ["games", gameId, "roles"] as const;
+const MEMBER_GAME_WORKSPACE_QUERY_KEY = ["my-game-workspace"] as const;
 
 export function useGames() {
   return useQuery({
@@ -36,7 +38,7 @@ export function useActiveGames() {
   return useQuery({
     queryKey: ACTIVE_GAMES_QUERY_KEY,
     queryFn: getActiveGames,
-    staleTime: 30 * 60 * 1000, // 30 minutes - cache with long TTL
+    ...MEMBER_READ_QUERY_OPTIONS,
   });
 }
 
@@ -85,6 +87,7 @@ export function useCreateGame() {
       queryClient.invalidateQueries({ queryKey: GAMES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ACTIVE_GAMES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: GAMES_WITH_ROLES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: MEMBER_GAME_WORKSPACE_QUERY_KEY });
     },
   });
 }
@@ -93,14 +96,14 @@ export function useUpdateGame() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateGameInput }) =>
-      updateGame(id, input),
+    mutationFn: ({ id, input }: { id: string; input: UpdateGameInput }) => updateGame(id, input),
     onSuccess: (_, { id }) => {
       // Invalidate specific game and all games queries on update
       queryClient.invalidateQueries({ queryKey: GAMES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ACTIVE_GAMES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: GAME_QUERY_KEY(id) });
       queryClient.invalidateQueries({ queryKey: GAMES_WITH_ROLES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: MEMBER_GAME_WORKSPACE_QUERY_KEY });
     },
   });
 }
@@ -115,6 +118,7 @@ export function useDeleteGame() {
       queryClient.invalidateQueries({ queryKey: GAMES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ACTIVE_GAMES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: GAMES_WITH_ROLES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: MEMBER_GAME_WORKSPACE_QUERY_KEY });
     },
   });
 }
@@ -129,6 +133,7 @@ export function useAddGameRole() {
       // Invalidate game roles and games with roles queries
       queryClient.invalidateQueries({ queryKey: GAME_ROLES_QUERY_KEY(gameId) });
       queryClient.invalidateQueries({ queryKey: GAMES_WITH_ROLES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: MEMBER_GAME_WORKSPACE_QUERY_KEY });
     },
   });
 }
@@ -137,12 +142,12 @@ export function useRemoveGameRole() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ gameId, roleId }: { gameId: string; roleId: string }) =>
-      removeGameRole(roleId),
+    mutationFn: ({ gameId, roleId }: { gameId: string; roleId: string }) => removeGameRole(roleId),
     onSuccess: (_, { gameId }) => {
       // Invalidate game roles and games with roles queries
       queryClient.invalidateQueries({ queryKey: GAME_ROLES_QUERY_KEY(gameId) });
       queryClient.invalidateQueries({ queryKey: GAMES_WITH_ROLES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: MEMBER_GAME_WORKSPACE_QUERY_KEY });
     },
   });
 }

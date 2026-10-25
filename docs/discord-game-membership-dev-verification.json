@@ -1,0 +1,182 @@
+{
+  "phase": "dev-verified-complete",
+  "authorizedProjectRef": "xjwugbbrqpwnenmlrkdh",
+  "productionProjectRef": "efchfvreaotskrdlweze",
+  "productionAccessed": false,
+  "localRuntimeProjectAtPreflight": "efchfvreaotskrdlweze",
+  "localRuntimeSettingsModified": false,
+  "liveWorkerDeployed": false,
+  "discordRoleMetadataReadOnly": {
+    "status": 200,
+    "configuredGuild": "1193921905795792906",
+    "requiredRoleCount": 7,
+    "missingRoleIds": []
+  },
+  "before": [
+    {
+      "table": "members",
+      "rows": 261,
+      "dataMd5": "1fb51953168926413fde38946ea83f6c"
+    },
+    {
+      "table": "member_profiles",
+      "rows": 261,
+      "dataMd5": "3d0ff58a373b96371668437e70c8ad78"
+    },
+    {
+      "table": "games",
+      "rows": 13,
+      "dataMd5": "905c0b9bc9ab4e51de343027a3b9162f"
+    },
+    {
+      "table": "game_roles",
+      "rows": 44,
+      "dataMd5": "9f37a08b33d77c484b9b17ceffb7756b"
+    },
+    {
+      "table": "member_game_profiles",
+      "rows": 90,
+      "dataMd5": "7aeaec1f2506c196202a896e63d69584"
+    },
+    {
+      "table": "game_memberships",
+      "rows": 6,
+      "dataMd5": "c967eb7a51807a16d5145e8b24598df5"
+    },
+    {
+      "table": "game_membership_events",
+      "rows": 18,
+      "dataMd5": "5ba5cb80ebf3cf7b1949debb96d337f4"
+    }
+  ],
+  "checksumRecipe": "md5(string_agg(md5(to_jsonb(row)::text), '' order by stable primary key)); game_memberships excludes discord_managed, discord_observed_at, membership_decided_at, discord_suppressed; game_membership_events excludes discord_evidence. Original included columns/order are identical before and after.",
+  "devMigrationApplied": true,
+  "rollbackOnlyVerificationPassed": true,
+  "note": "Both migrations applied only to Dev. Main43 and ordering14 assertion groups passed in rollback-only transactions; original seven-table counts/checksums match, with zero persisted synthetic members. Both independent reviews passed without blocking findings. Runtime flags/settings and production were not changed; live-runtime and two-session smoke checks remain rollout gates.",
+  "rollbackOnlyPassedGroups": 57,
+  "appliedMigration": {
+    "name": "discord_game_membership_expand",
+    "version": "20261021183148",
+    "trimmedSqlMd5": "ec1e4140bf26100ea1dc5fcf67459d05",
+    "comparison": "Exact statement equality after trimming outer whitespace; raw trailing newlines differ."
+  },
+  "after": [
+    {
+      "table": "members",
+      "rows": 261,
+      "dataMd5": "1fb51953168926413fde38946ea83f6c"
+    },
+    {
+      "table": "member_profiles",
+      "rows": 261,
+      "dataMd5": "3d0ff58a373b96371668437e70c8ad78"
+    },
+    {
+      "table": "games",
+      "rows": 13,
+      "dataMd5": "905c0b9bc9ab4e51de343027a3b9162f"
+    },
+    {
+      "table": "game_roles",
+      "rows": 44,
+      "dataMd5": "9f37a08b33d77c484b9b17ceffb7756b"
+    },
+    {
+      "table": "member_game_profiles",
+      "rows": 90,
+      "dataMd5": "7aeaec1f2506c196202a896e63d69584"
+    },
+    {
+      "table": "game_memberships",
+      "rows": 6,
+      "dataMd5": "c967eb7a51807a16d5145e8b24598df5"
+    },
+    {
+      "table": "game_membership_events",
+      "rows": 18,
+      "dataMd5": "5ba5cb80ebf3cf7b1949debb96d337f4"
+    }
+  ],
+  "preservationVerified": true,
+  "persistedSyntheticMembers": 0,
+  "validation": {
+    "regressionTestsPassed": 338,
+    "regressionFailures": 0,
+    "websiteBuildPassed": true,
+    "workerTypecheckPassed": true,
+    "rootTypeScriptBaselineDiagnostics": 18,
+    "rootTypeScriptCurrentDiagnostics": 18,
+    "rootTypeScriptAddedDiagnostics": 0,
+    "liveRuntimeSmokeTested": false,
+    "twoSessionConcurrencyTested": false,
+    "callerScopedLintErrors": 0,
+    "devWranglerDryRunPassed": true,
+    "wranglerVersion": "4.100.0",
+    "additionalCallerSafeguards": [
+      "Budgeted redirects rejected; disabled legacy path unchanged",
+      "Metadata confirmations cannot reuse a request preceding a later member snapshot"
+    ],
+    "changedTypeScriptFilesLinted": 16,
+    "changedFileLintErrors": 0,
+    "changedFileLintWarnings": 0,
+    "reservedRoseRemovalRegressionPassed": true,
+    "sourceCredentialScanFindings": 0,
+    "publicBuildFilesScanned": 157,
+    "serverSecretSettingsCompared": 4,
+    "publicBuildSecretFindings": 0
+  },
+  "orderingRegression": {
+    "observedFailure": "older negative proof overrode a newer unchanged positive observation",
+    "fixture": "sql/20261022_discord_game_membership_ordering_verify.sql",
+    "forwardRepair": "sql/20261022_discord_game_membership_observation_ordering.sql",
+    "repairApplied": true,
+    "regressionPassed": true,
+    "syntheticMembersPersisted": 0,
+    "additionalObservedFailure": "Discord persistence time incorrectly rejected newer negative observation",
+    "bothDefectsReproducedOnDev": true,
+    "orderingPassedGroups": 14
+  },
+  "sqlSuites": {
+    "mainPassedGroups": 43,
+    "orderingPassedGroups": 14,
+    "totalPassedGroups": 57
+  },
+  "orderingRepairMigration": {
+    "name": "discord_game_membership_observation_ordering",
+    "version": "20261021192946",
+    "normalizedSqlMd5": "c1db613dcc65cf18750cb2f3f5ee607b",
+    "comparison": "Normalized SQL after removing line comments and whitespace; not raw-byte equality."
+  },
+  "databaseSecurity": {
+    "mappingCount": 7,
+    "mappingRlsEnabled": true,
+    "affectedFunctionsChecked": 4,
+    "anonExecuteAllowed": false,
+    "authenticatedExecuteAllowed": false,
+    "serviceExecuteAllowed": true,
+    "functionsUseSecurityInvoker": true
+  },
+  "independentReview": {
+    "status": "passed",
+    "originalBlockingFindings": 2,
+    "bothReproducedBeforeRepair": true,
+    "bothDevRegressionGroupsNowPass": true,
+    "workerReservationReview": "passed",
+    "corePassed": true,
+    "coreSecurityConcerns": [],
+    "coreLogicErrors": [],
+    "coreNonBlockingNotes": [
+      "Two-session locking remains a rollout gate; parent executed both single-session Dev suites",
+      "Historical equal-time backfill is conservative by inspection; migration-boundary fixture optional"
+    ],
+    "workerReservationFindings": [],
+    "workerFocusedTestsPassed": 25,
+    "workerFocusedTestsFailed": 0
+  },
+  "currentLocalRuntime": {
+    "configuredProjectRef": "efchfvreaotskrdlweze",
+    "membershipAutomationEnabled": false,
+    "expectedProjectConfigured": false,
+    "settingsModified": false
+  }
+}
