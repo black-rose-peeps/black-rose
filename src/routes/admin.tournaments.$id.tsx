@@ -91,7 +91,7 @@ export const Route = createFileRoute("/admin/tournaments/$id")({
   ),
   errorComponent: ({ error }) => (
     <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-      Couldn't load tournament: {error.message}
+      Couldn't load tournament: {error instanceof Error ? error.message : "Unknown error"}
     </div>
   ),
 });
