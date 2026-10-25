@@ -1,7 +1,7 @@
 import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/react-start";
 
 import "./server/server-functions";
-import { parseMemberSessionCookie } from "@/features/auth/server/member-session-cookie";
+
 import { runWithRequestMemberId } from "@/features/auth/server/member-session-request.server";
 import { renderErrorPage } from "./lib/error-page";
 import { resolveSiteOriginFromRequest } from "./lib/site-meta";
@@ -18,12 +18,11 @@ const siteOriginMiddleware = createMiddleware({ type: "request" }).server(
   },
 );
 
-const memberSessionMiddleware = createMiddleware({ type: "request" }).server(
-  async ({ request, next }) => {
-    const memberId = parseMemberSessionCookie(request.headers.get("cookie"));
-    return runWithRequestMemberId(memberId, () => next({ context: { memberId } }));
-  },
-);
+const memberSessionMiddleware = createMiddleware({ type: "request" }).server(async ({ next }) => {
+  const { getTrustedMemberSession } = await import("@/features/auth/server/trusted-session.server");
+  const memberId = (await getTrustedMemberSession())?.memberId ?? null;
+  return runWithRequestMemberId(memberId, () => next({ context: { memberId } }));
+});
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {

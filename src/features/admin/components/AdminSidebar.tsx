@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { LogOut } from "lucide-react";
 import { Emblem } from "@/features/shared/components/Emblem";
 import { logoutAdminConsole } from "@/features/admin/auth/admin-session";
@@ -8,9 +9,13 @@ export function AdminSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  function handleLogout() {
-    logoutAdminConsole();
-    navigate({ to: "/login", search: { console: "1" } });
+  async function handleLogout() {
+    try {
+      await logoutAdminConsole();
+      navigate({ to: "/login", search: { console: "1" } });
+    } catch {
+      toast.error("Could not sign out. Please try again.");
+    }
   }
 
   return (

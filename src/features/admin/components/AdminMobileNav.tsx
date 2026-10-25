@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { LogOut, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -11,10 +12,14 @@ export function AdminMobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  function handleLogout() {
-    setOpen(false);
-    logoutAdminConsole();
-    navigate({ to: "/login", search: { console: "1" } });
+  async function handleLogout() {
+    try {
+      await logoutAdminConsole();
+      setOpen(false);
+      navigate({ to: "/login", search: { console: "1" } });
+    } catch {
+      toast.error("Could not sign out. Please try again.");
+    }
   }
 
   return (

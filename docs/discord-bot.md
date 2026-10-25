@@ -2,6 +2,8 @@
 
 ROSE role changes on Discord are synced to `members.status` in Supabase. The waitlist reads Supabase only (Realtime + DB fallback poll).
 
+**Optional game memberships:** the new integration is disabled by default and has separate SQL/runtime activation gates. See [the Discord membership rollout guide](discord-game-membership-automation.md) before using it. With activation enabled, scheduled/full sync also runs a bounded game-membership phase; the existing single-member verification endpoint remains ROSE-only. For Dev, use the separately named Dev Worker/configuration, not the production-bound default aliases.
+
 ## Architecture (production)
 
 ```text

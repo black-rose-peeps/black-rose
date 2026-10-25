@@ -23,7 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUpdateGame, useGamesWithRoles, useAddGameRole, useRemoveGameRole } from "../hooks/useGames";
+import {
+  useUpdateGame,
+  useGamesWithRoles,
+  useAddGameRole,
+  useRemoveGameRole,
+} from "../hooks/useGames";
 import {
   GAME_HEADER_ACCEPT,
   GAME_HEADER_MAX_BYTES,
@@ -39,6 +44,7 @@ import {
   removeGameIconImage,
 } from "../services/game-icon-image.service";
 import type { GameWithRoles, GameFormData } from "../types";
+import { GameProfileFieldEditor, validateGameProfileFields } from "./GameProfileFieldEditor";
 import { ACCENT_CLASS_OPTIONS, IDENTITY_GROUP_OPTIONS } from "../constants";
 
 interface EditGameModalProps {
@@ -54,6 +60,7 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
   const addRole = useAddGameRole();
   const removeRole = useRemoveGameRole();
   const [newRoleName, setNewRoleName] = useState("");
+  const [profileFieldsError, setProfileFieldsError] = useState<string | null>(null);
   const [headerImageFile, setHeaderImageFile] = useState<File | null>(null);
   const [headerImageError, setHeaderImageError] = useState<string | null>(null);
   const [headerImagePreview, setHeaderImagePreview] = useState<string | null>(null);
@@ -66,11 +73,12 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
 
   const availableAccents = useMemo(() => {
     const usedAccents = new Set(
-      existingGames?.filter((g) => g.id !== game?.id).map((g) => g.accent_class) || []
+      existingGames?.filter((g) => g.id !== game?.id).map((g) => g.accent_class) || [],
     );
     return ACCENT_CLASS_OPTIONS.filter((a) => !usedAccents.has(a.value));
   }, [existingGames, game]);
   const [formData, setFormData] = useState<GameFormData>({
+    profile_field_config: {},
     name: "",
     slug: "",
     display_name: "",
@@ -88,6 +96,7 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
   useEffect(() => {
     if (game) {
       setFormData({
+        profile_field_config: game.profile_field_config ?? {},
         name: game.name,
         slug: game.slug,
         display_name: game.display_name,
@@ -195,21 +204,34 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
 
   const handleSlugChange = (value: string) => {
     // Normalize to lowercase URL-safe slug
-    const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const normalized = value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
     setFormData({ ...formData, slug: normalized });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!game) return;
+    const fieldsError = validateGameProfileFields(formData.profile_field_config);
+    setProfileFieldsError(fieldsError);
+    if (fieldsError) return;
     try {
       await updateGame.mutateAsync({
         id: game.id,
         input: {
+          profile_field_config: formData.profile_field_config,
           name: formData.name,
-          slug: formData.slug || formData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+          slug:
+            formData.slug ||
+            formData.name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, ""),
           display_name: formData.display_name || formData.name,
-          identity_group: formData.identity_group === "none" ? null : formData.identity_group || null,
+          identity_group:
+            formData.identity_group === "none" ? null : formData.identity_group || null,
           identity_field_label: formData.identity_field_label || null,
           identity_field_placeholder: formData.identity_field_placeholder || null,
           identity_helper_text: formData.identity_helper_text || null,
@@ -299,6 +321,18 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                 <TabsTrigger value="identity">Identity</TabsTrigger>
               </TabsList>
               <TabsContent value="basic" className="space-y-4 mt-4 overflow-y-auto min-h-0">
+                <GameProfileFieldEditor
+                  value={formData.profile_field_config}
+                  onChange={(profile_field_config) => {
+                    setFormData({ ...formData, profile_field_config });
+                    setProfileFieldsError(null);
+                  }}
+                />
+                {profileFieldsError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {profileFieldsError}
+                  </p>
+                )}
                 <div className="space-y-2">
                   <Label>Game Name</Label>
                   <Input
@@ -332,9 +366,7 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                     placeholder="Valorant"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Human-readable name shown in UI
-                  </p>
+                  <p className="text-xs text-muted-foreground">Human-readable name shown in UI</p>
                 </div>
 
                 <div className="space-y-2">
@@ -373,7 +405,9 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                     <div className="flex items-center space-x-2">
                       <Switch
                         checked={formData.is_active}
-                        onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, is_active: checked })
+                        }
                       />
                       <Label>Active</Label>
                     </div>
@@ -405,7 +439,10 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                       </div>
                     ) : (
                       <div className="flex items-center justify-center w-20 h-20 border-2 border-dashed border-border rounded-md hover:border-primary/50 transition-colors">
-                        <label htmlFor="icon-image-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                        <label
+                          htmlFor="icon-image-upload"
+                          className="cursor-pointer w-full h-full flex flex-col items-center justify-center"
+                        >
                           <Upload className="h-6 w-6 text-muted-foreground mb-1" />
                           <p className="text-xs text-muted-foreground">Icon</p>
                         </label>
@@ -418,12 +455,11 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                         />
                       </div>
                     )}
-                    {iconImageError && (
-                      <p className="text-xs text-destructive">{iconImageError}</p>
-                    )}
+                    {iconImageError && <p className="text-xs text-destructive">{iconImageError}</p>}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Recommended: Square image, max {Math.round(GAME_ICON_MAX_BYTES / (1024 * 1024))}MB
+                    Recommended: Square image, max {Math.round(GAME_ICON_MAX_BYTES / (1024 * 1024))}
+                    MB
                   </p>
                 </div>
 
@@ -449,11 +485,15 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                       </div>
                     ) : (
                       <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-md hover:border-primary/50 transition-colors">
-                        <label htmlFor="header-image-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                        <label
+                          htmlFor="header-image-upload"
+                          className="cursor-pointer w-full h-full flex flex-col items-center justify-center"
+                        >
                           <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                           <p className="text-sm text-muted-foreground">Click to upload image</p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            JPG, PNG, WebP (max {Math.round(GAME_HEADER_MAX_BYTES / (1024 * 1024))}MB)
+                            JPG, PNG, WebP (max {Math.round(GAME_HEADER_MAX_BYTES / (1024 * 1024))}
+                            MB)
                           </p>
                         </label>
                         <input
@@ -490,7 +530,12 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                             }
                           }}
                         />
-                        <Button type="button" size="sm" onClick={handleAddRole} disabled={addRole.isPending}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleAddRole}
+                          disabled={addRole.isPending}
+                        >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
@@ -502,17 +547,23 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                             key={role.id}
                             className="group flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm"
                           >
-                            <span>{role.role_name}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300"
-                              onClick={() => handleRemoveRole(role.id)}
-                              disabled={removeRole.isPending}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <span>
+                              {role.role_name}
+                              {role.is_active === false ? " (Retired)" : ""}
+                            </span>
+                            {role.is_active !== false && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-red-400 hover:text-red-300"
+                                onClick={() => handleRemoveRole(role.id)}
+                                disabled={removeRole.isPending}
+                                aria-label={`Remove role ${role.role_name}`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -539,7 +590,8 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Games in the same group share identity fields (e.g., Riot games share one Riot ID)
+                    Games in the same group share identity fields (e.g., Riot games share one Riot
+                    ID)
                   </p>
                 </div>
 
@@ -547,7 +599,9 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                   <Label>Identity Field Label</Label>
                   <Input
                     value={formData.identity_field_label}
-                    onChange={(e) => setFormData({ ...formData, identity_field_label: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, identity_field_label: e.target.value })
+                    }
                     placeholder="Riot ID / Character Name"
                   />
                 </div>
@@ -556,7 +610,9 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                   <Label>Identity Field Placeholder</Label>
                   <Input
                     value={formData.identity_field_placeholder}
-                    onChange={(e) => setFormData({ ...formData, identity_field_placeholder: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, identity_field_placeholder: e.target.value })
+                    }
                     placeholder="PlayerName#TAG"
                   />
                 </div>
@@ -565,7 +621,9 @@ export function EditGameModal({ game, open, onOpenChange, onSuccess }: EditGameM
                   <Label>Identity Helper Text</Label>
                   <Textarea
                     value={formData.identity_helper_text}
-                    onChange={(e) => setFormData({ ...formData, identity_helper_text: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, identity_helper_text: e.target.value })
+                    }
                     placeholder="Used on team rosters and tournament brackets"
                     rows={3}
                   />

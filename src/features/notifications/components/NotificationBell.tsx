@@ -26,6 +26,7 @@ import type { AppNotification, NotificationType } from "../types";
 import { relativeTime } from "../utils/relative-time";
 
 const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
+  game_membership_accepted: <ShieldCheck className="h-4 w-4" />,
   team_invite: <Users2 className="h-4 w-4" />,
   team_removed: <UserMinus className="h-4 w-4" />,
   invite_accepted: <Users2 className="h-4 w-4" />,
@@ -42,6 +43,7 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
 };
 
 const TYPE_COLOR: Record<NotificationType, string> = {
+  game_membership_accepted: "text-emerald-400",
   team_invite: "text-sky-400",
   team_removed: "text-red-400",
   invite_accepted: "text-emerald-400",
@@ -115,7 +117,7 @@ function NotificationPanel({
                   Nothing <span className="text-stroke">new.</span>
                 </>
               }
-              description="Team invites, tournament updates, profile comments, and match alerts will appear here when they land."
+              description="Game approvals, team invites, tournament updates, profile comments, and match alerts appear here."
               className="border-white/6 bg-transparent"
             />
           </li>
@@ -152,15 +154,36 @@ function NotificationPanel({
             );
 
             const teamInviteMatch = n.href?.match(/^\/teams\/([^/]+)$/);
-            const memberProfileMatch = n.href?.match(/^\/members\/([^/]+)$/);
+            const memberProfileMatch = n.href?.match(/^\/(?:br|members)\/([^/]+)$/);
             const tournamentMatch = n.href?.match(/^\/tournaments\/([^/]+)$/);
+            const gameMembershipSearch =
+              n.type === "game_membership_accepted"
+                ? new URLSearchParams(
+                    n.href?.startsWith("/dashboard?") ? n.href.slice("/dashboard?".length) : "",
+                  )
+                : null;
 
             return (
               <li key={n.id}>
-                {n.href === "/teams" ? (
+                {gameMembershipSearch ? (
                   <Link
-                    to="/teams"
-                    search={{ create: false }}
+                    to="/dashboard"
+                    search={{
+                      view: "games",
+                      focusGame: gameMembershipSearch.get("focusGame") || undefined,
+                    }}
+                    onClick={() => {
+                      onRead(n.id);
+                      onClose();
+                    }}
+                    className="block"
+                  >
+                    {content}
+                  </Link>
+                ) : n.href === "/teams" || n.href === "/dashboard?view=teams" ? (
+                  <Link
+                    to="/dashboard"
+                    search={{ view: "teams" }}
                     onClick={() => {
                       onRead(n.id);
                       onClose();
@@ -183,7 +206,7 @@ function NotificationPanel({
                   </Link>
                 ) : memberProfileMatch ? (
                   <Link
-                    to="/members/$slug"
+                    to="/br/$slug"
                     params={{ slug: memberProfileMatch[1] }}
                     onClick={() => {
                       onRead(n.id);

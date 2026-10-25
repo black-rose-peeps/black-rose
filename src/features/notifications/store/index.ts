@@ -152,8 +152,8 @@ function mergeReadState(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function getNotifications(): AppNotification[] {
-  return getAll();
+export function getNotifications(memberId = requireMemberId()): AppNotification[] {
+  return memberId ? getAllForMember(memberId) : [];
 }
 
 export function getUnreadCount(): number {
@@ -193,11 +193,13 @@ export function clearAll(): void {
 }
 
 /** Replace team-invite notifications while preserving read state for still-pending invites. */
-export function mergeTeamInviteNotifications(incoming: AppNotification[]): void {
-  const memberId = requireMemberId();
+export function mergeTeamInviteNotifications(
+  incoming: AppNotification[],
+  memberId = requireMemberId(),
+): void {
   if (!memberId) return;
 
-  const existing = getAll();
+  const existing = getAllForMember(memberId);
   const other = existing.filter((n) => n.type !== "team_invite");
   const mergedInvites = mergeReadState(incoming, existing, memberId);
 
@@ -214,11 +216,13 @@ export function markTeamInviteRead(teamId: string): void {
 const TEAM_EVENT_NOTIFICATION_TYPES = new Set<AppNotification["type"]>(["team_removed"]);
 
 /** Replace team event notifications (e.g. removal) while preserving read state. */
-export function mergeTeamEventNotifications(incoming: AppNotification[]): void {
-  const memberId = requireMemberId();
+export function mergeTeamEventNotifications(
+  incoming: AppNotification[],
+  memberId = requireMemberId(),
+): void {
   if (!memberId) return;
 
-  const existing = getAll();
+  const existing = getAllForMember(memberId);
   const other = existing.filter((n) => !TEAM_EVENT_NOTIFICATION_TYPES.has(n.type));
   const merged = mergeReadState(incoming, existing, memberId);
 
@@ -230,6 +234,25 @@ export function mergeTeamEventNotifications(incoming: AppNotification[]): void {
 
 export function markTeamRemovalRead(teamId: string): void {
   markAsRead(`team-removed-${teamId}`);
+}
+
+/** Replace the authoritative acceptance feed without changing other notification categories. */
+export function mergeGameMembershipNotifications(
+  incoming: AppNotification[],
+  memberId = requireMemberId(),
+): void {
+  if (!memberId) return;
+
+  const existing = getAllForMember(memberId);
+  const other = existing.filter((n) => n.type !== "game_membership_accepted");
+  const unique = new Map(
+    incoming.filter((n) => n.type === "game_membership_accepted").map((n) => [n.id, n]),
+  );
+  const merged = mergeReadState([...unique.values()], existing, memberId);
+  const combined = [...merged, ...other].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  save(combined, memberId);
 }
 
 const REGISTRATION_NOTIFICATION_TYPES = new Set<AppNotification["type"]>([
@@ -326,4 +349,3 @@ export function subscribeToNotifications(listener: () => void): () => void {
   window.addEventListener(NOTIFICATIONS_UPDATED, listener);
   return () => window.removeEventListener(NOTIFICATIONS_UPDATED, listener);
 }
-

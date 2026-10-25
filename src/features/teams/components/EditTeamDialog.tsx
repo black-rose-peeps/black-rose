@@ -22,11 +22,7 @@ import {
 } from "@/components/ui/select";
 import { updateTeam } from "@/features/admin/features/teams/services/teams.service";
 import { techFieldClass } from "@/features/member/components/MemberShell";
-import {
-  GAME_OPTIONS,
-  dbGameToLegacyGame,
-  legacyGameToDbName,
-} from "@/features/teams/constants";
+import { dbGameToLegacyGame } from "@/features/teams/constants";
 import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import type { Team } from "@/features/teams/types";
 
@@ -38,20 +34,23 @@ interface EditTeamDialogProps {
 }
 
 export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeamDialogProps) {
-  const { data: dbGames, isLoading: gamesLoading } = useActiveGames();
+  const { data: dbGames, isLoading: gamesLoading, isError: gamesError } = useActiveGames();
   const [name, setName] = useState(team.name);
   const [tag, setTag] = useState(team.tag);
   const [game, setGame] = useState(team.game);
-  const [gameId, setGameId] = useState<string | undefined>(undefined);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Convert database games to legacy format for backward compatibility
-  const gameOptions = dbGames
-    ? dbGames
-        .filter((g) => g.name !== "Multi") // Exclude Multi-game from team creation
-        .map((g) => ({ value: dbGameToLegacyGame(g), label: g.display_name, id: g.id }))
-    : GAME_OPTIONS.filter((g) => g.value !== "Multi");
+  const gameOptions = (gamesLoading || gamesError ? [] : (dbGames ?? []))
+    .filter((g) => g.is_active && g.name !== "Multi")
+    .map((g) => ({ value: dbGameToLegacyGame(g), label: g.display_name, id: g.id }));
+  const savedGameUnavailable = !gameOptions.some((option) => option.value === team.game);
+  const selectedGame = gameOptions.find((option) => option.value === game);
+  // Keeping the saved game must not depend on its presence in the active catalog.
+  const gameId = game === team.game ? team.gameId || selectedGame?.id : selectedGame?.id;
+  const selectionValid = Boolean(gameId) && (!team.activeTournamentId || game === team.game);
 
   useEffect(() => {
     if (!open) return;
@@ -61,19 +60,13 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
     setError(null);
   }, [open, team]);
 
-  // Update gameId when game changes
-  useEffect(() => {
-    const selectedGame = dbGames?.find((g) => g.name === legacyGameToDbName(game));
-    setGameId(selectedGame?.id);
-  }, [game, dbGames]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
 
     try {
-      if (!gameId) {
+      if (!selectionValid || !gameId) {
         const errorMessage = "Game must be selected before updating team.";
         setError(errorMessage);
         toast.error(errorMessage);
@@ -153,14 +146,24 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
                 Primary Game
               </Label>
               <Select
-                value={game}
+                value={selectedGame || game === team.game ? game : ""}
                 onValueChange={(v) => setGame(v as Team["game"])}
-                disabled={Boolean(team.activeTournamentId) || gamesLoading}
+                disabled={
+                  Boolean(team.activeTournamentId) ||
+                  gamesLoading ||
+                  gamesError ||
+                  gameOptions.length === 0
+                }
               >
                 <SelectTrigger id="team-game" className={techFieldClass}>
-                  <SelectValue />
+                  <SelectValue placeholder="Select an active game" />
                 </SelectTrigger>
                 <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
+                  {savedGameUnavailable && (
+                    <SelectItem value={team.game} disabled className="font-tech text-xs">
+                      {team.game} (saved; unavailable)
+                    </SelectItem>
+                  )}
                   {gameOptions.map((g) => (
                     <SelectItem key={g.value} value={g.value} className="font-tech text-xs">
                       {g.label}
@@ -168,6 +171,15 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
                   ))}
                 </SelectContent>
               </Select>
+              {gamesError ? (
+                <p role="alert" className="text-sm text-red-400">
+                  Unable to load active games. Your saved game can be kept.
+                </p>
+              ) : !gamesLoading && gameOptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No active games available. Your saved game can be kept.
+                </p>
+              ) : null}
               {team.activeTournamentId && (
                 <p className="text-sm text-muted-foreground/60">
                   Game cannot be changed while registered for a tournament.
@@ -189,7 +201,7 @@ export function EditTeamDialog({ open, onOpenChange, team, onUpdated }: EditTeam
             </Button>
             <Button
               type="submit"
-              disabled={submitting || !gameId}
+              disabled={submitting || !selectionValid}
               className="clip-cta inline-flex h-11 items-center rounded-none bg-white font-tech text-ui-readable uppercase text-black hover:bg-white/90"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

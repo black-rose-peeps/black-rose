@@ -213,6 +213,15 @@
     background: rgba(0, 0, 0, 0.1);
   }
 
+  /* Radix injects unlayered rules that hide its Select viewport scrollbar. */
+  .custom-scrollbar[data-radix-select-viewport] {
+    scrollbar-width: thin !important;
+  }
+
+  .custom-scrollbar[data-radix-select-viewport]::-webkit-scrollbar {
+    display: block !important;
+  }
+
   /* Enhanced hover and focus effects */
   .hover-lift {
     transition:

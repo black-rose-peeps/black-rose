@@ -15,15 +15,13 @@ export function QuickStat({
   empty?: boolean;
 }) {
   return (
-    <div className="relative flex items-center gap-3 border border-white/8 bg-[oklch(0.07_0_0)] px-4 py-3.5 card-depth clip-tab">
+    <div className="relative flex min-w-0 items-center gap-3 border border-white/8 bg-[oklch(0.07_0_0)] px-4 py-3.5 card-depth clip-tab">
       <CornerAccents />
       <span className="relative shrink-0 text-muted-foreground">{icon}</span>
       <div className="relative min-w-0">
-        <p className="font-tech text-label-readable uppercase text-muted-foreground">
-          {label}
-        </p>
+        <p className="font-tech text-label-readable uppercase text-muted-foreground">{label}</p>
         <p
-          className={`mt-0.5 truncate text-sm font-medium ${empty ? "text-muted-foreground/50" : ""}`}
+          className={`mt-0.5 break-words text-sm font-medium ${empty ? "text-muted-foreground/50" : ""}`}
         >
           {value || "—"}
         </p>
@@ -41,7 +39,7 @@ export function DashboardSection({
   children,
   className,
 }: {
-  label: string;
+  label?: string;
   title: string;
   icon?: ReactNode;
   action?: ReactNode;
@@ -49,13 +47,7 @@ export function DashboardSection({
   className?: string;
 }) {
   return (
-    <TechPanel
-      label={label}
-      title={title}
-      icon={icon}
-      action={action}
-      className={className}
-    >
+    <TechPanel label={label} title={title} icon={icon} action={action} className={className}>
       {children}
     </TechPanel>
   );

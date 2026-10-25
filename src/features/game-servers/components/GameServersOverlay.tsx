@@ -2,7 +2,13 @@ import { Link } from "@tanstack/react-router";
 import { usePalworldServers } from "../hooks/usePalworldServers";
 import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
 import type { Game } from "@/features/admin/features/games/services/games.service";
-import { useState, memo } from "react";
+import { useState, memo, type MouseEvent } from "react";
+import { useWoWForeverCountdown } from "../hooks/useWoWForeverCountdown";
+import {
+  isWoWForever,
+  getWoWForeverCountdown,
+  WOW_FOREVER_PAGE_PATH,
+} from "../utils/wow-forever-launch";
 
 // ---------------------------------------------------------------------------
 // Game registry
@@ -13,6 +19,7 @@ interface CommunityGame {
   label: string;
   icon: string;
   hasServers: boolean;
+  isWoWForever: boolean;
   subtitle?: string;
   href: "/servers" | "/tournaments" | "/guilds" | "/community";
 }
@@ -25,11 +32,12 @@ function gameToCommunityGame(game: Game): CommunityGame {
 
   // Hardcoded redirects for specific games
   const hardcodedHrefs: Record<string, CommunityGame["href"]> = {
-    "palworld": "/servers",
+    palworld: "/servers",
     "where-winds-meet": "/guilds",
   };
 
-  const href = hardcodedHrefs[game.slug] || "/community";
+  const isForever = isWoWForever(game);
+  const href = isForever ? "/community" : hardcodedHrefs[game.slug] || "/community";
 
   // Map href to subtitle for tooltip consistency
   const hrefToSubtitle: Record<CommunityGame["href"], string> = {
@@ -44,6 +52,7 @@ function gameToCommunityGame(game: Game): CommunityGame {
     label: game.display_name,
     icon: game.icon || "/BR Text white.png", // Fallback icon if none provided
     hasServers,
+    isWoWForever: isForever,
     subtitle: hasServers ? undefined : hrefToSubtitle[href],
     href,
   };
@@ -66,6 +75,7 @@ const FloatingGameIcon = memo(function FloatingGameIcon({
   totalServers = 0,
   isLoadingServers = false,
 }: FloatingGameIconProps) {
+  const launchCountdown = useWoWForeverCountdown(game.isWoWForever);
   const showDot = game.hasServers && !isLoadingServers && onlineCount > 0;
 
   const tooltipSubtitle = game.hasServers ? (
@@ -77,14 +87,14 @@ const FloatingGameIcon = memo(function FloatingGameIcon({
       </span>
     )
   ) : (
-    <span>{game.subtitle}</span>
+    <span>{launchCountdown ? "Launch details" : game.subtitle}</span>
   );
 
-  return (
-    <Link to={game.href} aria-label={game.label} className="group relative flex items-center z-20">
-      {/* Circle icon — 36px on mobile, 56px on md+ */}
+  const contents = (
+    <>
+      {/* Circle icon — 48px on mobile, 56px on md+ */}
       <div className="relative">
-        <div className="h-12 w-12 md:h-14 md:w-14 overflow-visible rounded-full ring-1 ring-white/20 shadow-[0_2px_12px_rgba(0,0,0,0.6)] transition-all duration-200 group-hover:ring-white/45 group-hover:scale-110">
+        <div className="h-12 w-12 md:h-14 md:w-14 overflow-visible rounded-full ring-1 shadow-[0_2px_12px_rgba(0,0,0,0.6)] transition-all duration-200 group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ring-white/20 group-hover:ring-white/45">
           <img
             src={game.icon}
             alt={game.label}
@@ -105,8 +115,8 @@ const FloatingGameIcon = memo(function FloatingGameIcon({
         )}
       </div>
 
-      {/* Hover tooltip — slides right, same on all screen sizes */}
-      <div className="pointer-events-none absolute left-10 md:left-16 flex flex-col opacity-0 transition-opacity duration-100 group-hover:opacity-100 z-30">
+      {/* Keep launch details on their own page, not in a floating callout. */}
+      <div className="pointer-events-none absolute left-10 md:left-16 flex flex-col opacity-0 transition-opacity duration-100 group-hover:opacity-100 group-focus-visible:opacity-100 z-30">
         <div className="whitespace-nowrap border border-white/15 bg-black/95 px-2.5 py-1.5 md:px-3 md:py-2 shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
           <p className="font-tech text-xs md:text-sm uppercase tracking-widest leading-none text-white">
             {game.label}
@@ -116,6 +126,32 @@ const FloatingGameIcon = memo(function FloatingGameIcon({
           </p>
         </div>
       </div>
+    </>
+  );
+
+  // A sleeping tab or a delayed timer must never open the expired promotion.
+  function guardPromotionExpiry(event: MouseEvent<HTMLAnchorElement>) {
+    if (!getWoWForeverCountdown(Date.now())) {
+      event.currentTarget.setAttribute("href", "/community");
+      event.currentTarget.removeAttribute("target");
+      event.currentTarget.removeAttribute("rel");
+    }
+  }
+
+  return launchCountdown ? (
+    <a
+      href={WOW_FOREVER_PAGE_PATH}
+      aria-label={game.label}
+      className="group relative z-20 flex items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60"
+      onClick={guardPromotionExpiry}
+      onAuxClick={guardPromotionExpiry}
+      onContextMenu={guardPromotionExpiry}
+    >
+      {contents}
+    </a>
+  ) : (
+    <Link to={game.href} aria-label={game.label} className="group relative z-20 flex items-center">
+      {contents}
     </Link>
   );
 });
@@ -128,19 +164,25 @@ const MAX_VISIBLE_GAMES = 5;
 
 export function HeroGameServersWidget() {
   // Fetch active games from database
-  const { data: games, isLoading: isLoadingGames } = useActiveGames();
-  
+  const { data: games, isLoading: isLoadingGames, isError: gamesError } = useActiveGames();
+
   // Single hook call — shared across all icons that need server data
-  const { servers, isLoading: isLoadingServers } = usePalworldServers();
+  const hasActiveServers =
+    !isLoadingGames &&
+    !gamesError &&
+    Boolean(games?.some((game) => game.is_active && game.slug === "palworld"));
+  const { servers, isLoading: isLoadingServers } = usePalworldServers(hasActiveServers);
   const onlineCount = servers.filter((s) => s.online).length;
   const totalServers = servers.length;
 
   // Convert games to CommunityGame format
-  const communityGames = games?.map(gameToCommunityGame) || [];
-  
+  const communityGames = (isLoadingGames || gamesError ? [] : (games ?? []))
+    .filter((game) => game.is_active)
+    .map(gameToCommunityGame);
+
   // State for showing more games
   const [showAll, setShowAll] = useState(false);
-  
+
   // Determine which games to show
   const visibleGames = showAll ? communityGames : communityGames.slice(0, MAX_VISIBLE_GAMES);
   const hasMoreGames = communityGames.length > MAX_VISIBLE_GAMES;

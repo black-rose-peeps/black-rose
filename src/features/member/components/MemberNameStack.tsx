@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 interface MemberNameStackProps {
   displayName: string;
   discordUsername: string;
-  /** When set, the display name links to `/members/$slug`. */
+  /** When set, the display name links to `/br/$slug`. */
   profileSlug?: string | null;
   size?: "xs" | "sm" | "md";
   showYou?: boolean;
@@ -38,7 +38,7 @@ export function MemberNameStack({
     <div className={cn("min-w-0", className)}>
       <div className="flex min-w-0 items-center gap-1.5">
         {slug ? (
-          <Link to="/members/$slug" params={{ slug }} className={nameClassName}>
+          <Link to="/br/$slug" params={{ slug }} className={nameClassName}>
             {displayName}
           </Link>
         ) : (

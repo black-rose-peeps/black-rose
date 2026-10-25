@@ -26,10 +26,7 @@ import { updateMemberProfile } from "@/features/member/services/member-profile.s
 import type { MemberProfile } from "@/features/member/types";
 import { validateGameIdentitiesInput } from "@/features/member/utils/game-identity";
 import { profileFormStateFromMember } from "@/features/member/utils/profile-form-state";
-import {
-  profileGameSelectOptions,
-  resolveProfileMainGame,
-} from "@/features/member/utils/profile-main-game";
+import { resolveProfileMainGame } from "@/features/member/utils/profile-main-game";
 import { sanitizeHttpUrl } from "@/features/member/utils/validate-social-url";
 import { queryKeys } from "@/lib/query-keys";
 import { useActiveGames } from "@/features/admin/features/games/hooks/useGames";
@@ -60,15 +57,18 @@ export function EditInGameIdsModal({
   const [error, setError] = useState<string | null>(null);
   const prevOpenRef = useRef(false);
 
-  const { data: activeGames } = useActiveGames();
+  const { data: activeGames, isLoading: gamesLoading, isError: gamesError } = useActiveGames();
+  const selectableGames = useMemo(
+    () => (gamesLoading || gamesError ? [] : (activeGames ?? []).filter((g) => g.is_active)),
+    [activeGames, gamesLoading, gamesError],
+  );
   const availableGames = useMemo(
-    () => activeGames?.map((g) => g.display_name) || [],
-    [activeGames],
+    () => selectableGames.map((g) => g.display_name),
+    [selectableGames],
   );
-  const gameOptions = useMemo(
-    () => profileGameSelectOptions(mainGame, availableGames),
-    [mainGame, availableGames],
-  );
+  const selectedMainGame = availableGames.includes(resolveProfileMainGame(mainGame))
+    ? resolveProfileMainGame(mainGame)
+    : "";
 
   useEffect(() => {
     if (!prevOpenRef.current && open) {
@@ -152,14 +152,15 @@ export function EditInGameIdsModal({
                 Main Game
               </Label>
               <Select
-                value={resolveProfileMainGame(mainGame) || undefined}
+                value={selectedMainGame}
                 onValueChange={setMainGame}
+                disabled={gamesLoading || gamesError || availableGames.length === 0}
               >
                 <SelectTrigger className={techFieldClass}>
                   <SelectValue placeholder="Select a game" />
                 </SelectTrigger>
                 <SelectContent className="rounded-none border-white/12 bg-[oklch(0.1_0_0)]">
-                  {gameOptions.map((game) => (
+                  {availableGames.map((game) => (
                     <SelectItem key={game} value={game} className="font-tech text-xs">
                       {game}
                     </SelectItem>
@@ -167,8 +168,8 @@ export function EditInGameIdsModal({
                 </SelectContent>
               </Select>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Your main game identity is shown first. Add other titles if you compete outside
-                your main game.
+                Your main game identity is shown first. Add other titles if you compete outside your
+                main game.
               </p>
             </div>
 
@@ -178,7 +179,7 @@ export function EditInGameIdsModal({
               valorantGameName={valorantGameName}
               valorantTagline={valorantTagline}
               gameIdentities={gameIdentities}
-              games={activeGames}
+              games={selectableGames}
               onValorantGameNameChange={setValorantGameName}
               onValorantTaglineChange={setValorantTagline}
               onGameIdentityChange={(game, value) =>

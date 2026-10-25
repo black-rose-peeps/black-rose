@@ -17,9 +17,7 @@ export async function syncProfileCommentNotifications(
   const readById = new Map(
     existingNotifications.filter((n) => n.read).map((n) => [n.id, true] as const),
   );
-  const createdAtById = new Map(
-    existingNotifications.map((n) => [n.id, n.createdAt] as const),
-  );
+  const createdAtById = new Map(existingNotifications.map((n) => [n.id, n.createdAt] as const));
 
   const notifications: AppNotification[] = alerts.map((alert) => {
     const notificationId = `profile-comment-${alert.commentId}`;
@@ -30,7 +28,7 @@ export async function syncProfileCommentNotifications(
       body: `${alert.authorDisplayName} commented on your profile: "${alert.bodyPreview}"`,
       createdAt: createdAtById.get(notificationId) ?? alert.createdAt,
       read: isNotificationRead(notificationId) || readById.has(notificationId),
-      href: `/members/${alert.profileSlug}`,
+      href: `/br/${encodeURIComponent(alert.profileSlug)}`,
     };
   });
 

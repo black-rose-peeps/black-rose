@@ -254,6 +254,7 @@ function rowToTeam(row: Record<string, unknown>, members: TeamMember[]): Team {
     name: row.name as string,
     tag: row.tag as string,
     game: row.game as Team["game"],
+    gameId: typeof row.game_id === "string" ? row.game_id : undefined,
     captainUserId: row.captain_user_id as string,
     members,
     createdAt: row.created_at as string,

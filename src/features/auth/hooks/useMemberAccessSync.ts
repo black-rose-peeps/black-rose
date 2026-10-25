@@ -15,23 +15,26 @@ export function useMemberAccessSync() {
   const memberId = session?.id ?? null;
   const memberRole = session?.role ?? null;
 
-  const checkAccess = useCallback(async () => {
-    const current = getSession();
-    if (!current || !hasFullMemberAccess(current.role)) return;
+  const checkAccess = useCallback(
+    async (fresh = false) => {
+      const current = getSession();
+      if (!current || !hasFullMemberAccess(current.role)) return;
 
-    try {
-      const updated = await syncMemberAccessFromDatabase();
-      if (!updated) return;
-      if (!hasFullMemberAccess(updated.role)) {
-        navigate({ to: "/waitlist", replace: true });
+      try {
+        const updated = await syncMemberAccessFromDatabase({ fresh });
+        if (!updated) return;
+        if (!hasFullMemberAccess(updated.role)) {
+          navigate({ to: "/waitlist", replace: true });
+        }
+      } catch (err) {
+        console.warn("[auth] Member access sync failed:", err);
       }
-    } catch (err) {
-      console.warn("[auth] Member access sync failed:", err);
-    }
-  }, [navigate]);
+    },
+    [navigate],
+  );
 
   useMemberVerificationRealtime(memberId, () => {
-    void checkAccess();
+    void checkAccess(true);
   });
 
   useEffect(() => {
@@ -41,11 +44,14 @@ export function useMemberAccessSync() {
     const intervalId = window.setInterval(() => {
       void checkAccess();
     }, FALLBACK_POLL_INTERVAL_MS);
-    window.addEventListener("focus", checkAccess);
+    const handleFocus = () => {
+      void checkAccess();
+    };
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       window.clearInterval(intervalId);
-      window.removeEventListener("focus", checkAccess);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [checkAccess, memberId, memberRole]);
 }

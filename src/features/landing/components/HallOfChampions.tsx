@@ -37,7 +37,8 @@ export function HallOfChampions() {
             className="mb-0"
           />
           <Link
-            to="/champions"
+            to="/tournaments"
+            search={{ view: "champions" }}
             className="self-start font-semibold text-xs font-tech uppercase tracking-wider-2 text-muted-foreground transition hover:text-foreground md:self-end"
           >
             View full archive →
@@ -77,7 +78,8 @@ export function HallOfChampions() {
             {hasMore && (
               <div className="mt-10 text-center">
                 <Link
-                  to="/champions"
+                  to="/tournaments"
+                  search={{ view: "champions" }}
                   className="clip-cta inline-flex h-11 items-center gap-2 border border-white/15 bg-white/6 px-6 font-tech text-[10px] uppercase tracking-[0.2em] text-white transition hover:bg-white/10"
                 >
                   View all {champions.length} champions

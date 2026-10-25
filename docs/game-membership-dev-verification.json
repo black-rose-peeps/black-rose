@@ -1,0 +1,101 @@
+{
+  "environment": "Dev/Preview only",
+  "project_ref": "xjwugbbrqpwnenmlrkdh",
+  "production_executed": false,
+  "branch": "work/local-development",
+  "original_data_before_and_after": [
+    {
+      "entity": "games",
+      "rows": 10,
+      "checksum": "bb3eb18faf68e2614d4443e8e481e921",
+      "exclude_additive_columns": ["profile_field_config"]
+    },
+    {
+      "entity": "game_roles",
+      "rows": 38,
+      "checksum": "51f5f614668523e87d4a52f1961bb0ad",
+      "exclude_additive_columns": ["is_active"]
+    },
+    {
+      "entity": "members",
+      "rows": 261,
+      "checksum": "eaa0e089eca4b2fd58c9f7f72e4ba734",
+      "exclude_additive_columns": []
+    },
+    {
+      "entity": "member_profiles",
+      "rows": 261,
+      "checksum": "122a418ca41f58f76e49e038de5ef64a",
+      "exclude_additive_columns": []
+    }
+  ],
+  "migration_history": [
+    { "version": "20261019063253", "name": "game_membership_expand_20261019" },
+    { "version": "20261019120120", "name": "game_membership_integrity_20261019" },
+    { "version": "20261019120303", "name": "game_membership_catalog_rls_20261019" },
+    { "version": "20261019120817", "name": "game_membership_backfill_20261019" }
+  ],
+  "integrity_function_body_hashes_match_repository_after_comment_whitespace_normalization": true,
+  "rollback_only_sql_verification": "passed; synthetic member, admin, game, profile, membership and audit writes rolled back",
+  "backfill": {
+    "source_rows": 88,
+    "importable_and_inserted_profiles": 84,
+    "unmatched_source_rows_preserved_in_legacy": 2,
+    "ambiguous_source_rows": 0,
+    "conflicting_identity_pairs": 0,
+    "invalid_identity_pairs": 0,
+    "overlong_role_pairs": 0,
+    "memberships_created": 0,
+    "audit_events_created": 0
+  },
+  "rls_enabled": [
+    "games",
+    "game_roles",
+    "admin_accounts",
+    "member_game_profiles",
+    "game_memberships",
+    "game_membership_events"
+  ],
+  "anon_authenticated_writes_denied_for_listed_tables": true,
+  "public_reads_retained": ["games", "game_roles"],
+  "private_profile_membership_audit_and_admin_tables_not_publicly_readable": true,
+  "browser_admin_credential_and_session_rpc_execution_denied": true,
+  "combined_tests_final": { "passed": 142, "failed": 0, "skipped": 0 },
+  "build_final": "passed",
+  "scoped_source_lint": { "files": 85, "errors": 0, "warnings": 4 },
+  "typecheck": {
+    "status": "fails with existing baseline diagnostics",
+    "current_diagnostics": 18,
+    "baseline_diagnostics": 18,
+    "added_diagnostics": 0,
+    "removed_diagnostics": 0,
+    "normalization": "checkout prefixes, line/column positions and equivalent quoted-union ordering"
+  },
+  "mounted_route_dom_fixture": {
+    "status": "passed",
+    "script_in_hermes_scratch": "game-profile-ui-tests/profile-route-check.mjs",
+    "real_route_and_query_client": true,
+    "session_and_remote_services": "isolated fixtures, not a real account",
+    "coverage": [
+      "common/game save and draft isolation",
+      "section persistence and dirty navigation/beforeunload protection",
+      "Enter-key isolation, failed-save retry and duplicate pending-click protection",
+      "privacy payload preservation",
+      "membership separation and stale approval refresh on focus",
+      "Main Game role is read-only, not a second editable role control"
+    ]
+  },
+  "environment_resolution_final": {
+    "development_and_local_production_build_host": "xjwugbbrqpwnenmlrkdh.supabase.co",
+    "server_session_secret_configured": true,
+    "local_environment_file_git_ignored": true
+  },
+  "git_diff_check": "passed",
+  "head_final": "3453afe",
+  "remaining_at_recording": [
+    "final independent review",
+    "real member OAuth/admin re-login and supported native/mobile authentication rehearsal",
+    "visual browser verification of the new game-membership UI; DOM fixture is not visual proof",
+    "separately authorized production preflight and deployment"
+  ]
+}
